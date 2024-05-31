@@ -1,0 +1,50 @@
+state_name,naturalGas_electricity_generation,units,net_generation,units
+Connecticut,135274,thousand Mcf,38376,thousand megawatthours
+Maine,13718,thousand Mcf,9308,thousand megawatthours
+Massachusetts,128810,thousand Mcf,26263,thousand megawatthours
+New Hampshire,21563,thousand Mcf,16988,thousand megawatthours
+Rhode Island,57260,thousand Mcf,8170,thousand megawatthours
+Vermont,11,thousand Mcf,2175,thousand megawatthours
+New Jersey,267122,thousand Mcf,73727,thousand megawatthours
+New York,390742,thousand Mcf,130301,thousand megawatthours
+Pennsylvania,530196,thousand Mcf,212285,thousand megawatthours
+Illinois,135512,thousand Mcf,184791,thousand megawatthours
+Indiana,187338,thousand Mcf,108968,thousand megawatthours
+Michigan,227843,thousand Mcf,113646,thousand megawatthours
+Ohio,320242,thousand Mcf,127005,thousand megawatthours
+Wisconsin,123761,thousand Mcf,63997,thousand megawatthours
+Iowa,46554,thousand Mcf,61044,thousand megawatthours
+Kansas,28281,thousand Mcf,51609,thousand megawatthours
+Minnesota,60104,thousand Mcf,59993,thousand megawatthours
+Missouri,56228,thousand Mcf,84878,thousand megawatthours
+Nebraska,9196,thousand Mcf,36574,thousand megawatthours
+North Dakota,9479,thousand Mcf,42550,thousand megawatthours
+South Dakota,9099,thousand Mcf,12616,thousand megawatthours
+Delaware,36213,thousand Mcf,5161,thousand megawatthours
+District of Columbia,102,thousand Mcf,79,thousand megawatthours
+Florida,1264604,thousand Mcf,239092,thousand megawatthours
+Georgia,373254,thousand Mcf,123995,thousand megawatthours
+Maryland,96425,thousand Mcf,42726,thousand megawatthours
+North Carolina,330119,thousand Mcf,132128,thousand megawatthours
+South Carolina,168833,thousand Mcf,97660,thousand megawatthours
+Virginia,356464,thousand Mcf,92643,thousand megawatthours
+West Virginia,10722,thousand Mcf,66184,thousand megawatthours
+Alabama,414405,thousand Mcf,140436,thousand megawatthours
+Kentucky,112656,thousand Mcf,78272,thousand megawatthours
+Mississippi,365497,thousand Mcf,61559,thousand megawatthours
+Tennessee,103091,thousand Mcf,79143,thousand megawatthours
+Arkansas,146438,thousand Mcf,66314,thousand megawatthours
+Louisiana,295132,thousand Mcf,71319,thousand megawatthours
+Oklahoma,326213,thousand Mcf,86295,thousand megawatthours
+Texas,1483020,thousand Mcf,432030,thousand megawatthours
+Arizona,284589,thousand Mcf,111771,thousand megawatthours
+Colorado,122561,thousand Mcf,55284,thousand megawatthours
+Idaho,23683,thousand Mcf,17599,thousand megawatthours
+Montana,5129,thousand Mcf,28177,thousand megawatthours
+Nevada,195569,thousand Mcf,39149,thousand megawatthours
+New Mexico,98370,thousand Mcf,32543,thousand megawatthours
+Utah,61161,thousand Mcf,38704,thousand megawatthours
+Wyoming,1873,thousand Mcf,44588,thousand megawatthours
+California,569235,thousand Mcf,179120,thousand megawatthours
+Oregon,122347,thousand Mcf,63430,thousand megawatthours
+Washington,72873,thousand Mcf,115362,thousand megawatthours
