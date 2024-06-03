@@ -5,7 +5,3 @@ node_modules
 notes/
 **/*-todo.md
 archived_files/
-easiur_batchConversion_download/*
-!easiur_batchConversion_download/.gitkeep
-easiur_batchConversion_upload/*
-!easiur_batchConversion_upload/.gitkeep
