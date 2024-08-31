@@ -1,0 +1,3110 @@
+﻿State FIPS,County FIPS,County,State Abbr,State,ReEDS BA,Cambium GEA
+1,53,Escambia,AL,Alabama,p90,SERTP
+1,3,Baldwin,AL,Alabama,p90,SERTP
+1,71,Jackson,AL,Alabama,p89,SERTP
+1,121,Talladega,AL,Alabama,p90,SERTP
+1,95,Marshall,AL,Alabama,p89,SERTP
+1,39,Covington,AL,Alabama,p90,SERTP
+1,63,Greene,AL,Alabama,p89,SERTP
+1,51,Elmore,AL,Alabama,p90,SERTP
+1,33,Colbert,AL,Alabama,p89,SERTP
+1,47,Dallas,AL,Alabama,p90,SERTP
+1,59,Franklin,AL,Alabama,p89,SERTP
+1,89,Madison,AL,Alabama,p89,SERTP
+1,21,Chilton,AL,Alabama,p90,SERTP
+1,105,Perry,AL,Alabama,p89,SERTP
+1,93,Marion,AL,Alabama,p89,SERTP
+1,117,Shelby,AL,Alabama,p89,SERTP
+1,25,Clarke,AL,Alabama,p90,SERTP
+1,35,Conecuh,AL,Alabama,p90,SERTP
+1,99,Monroe,AL,Alabama,p90,SERTP
+1,65,Hale,AL,Alabama,p89,SERTP
+1,13,Butler,AL,Alabama,p90,SERTP
+1,17,Chambers,AL,Alabama,p90,SERTP
+1,27,Clay,AL,Alabama,p90,SERTP
+1,73,Jefferson,AL,Alabama,p89,SERTP
+1,67,Henry,AL,Alabama,p90,SERTP
+1,131,Wilcox,AL,Alabama,p89,SERTP
+1,103,Morgan,AL,Alabama,p89,SERTP
+1,55,Etowah,AL,Alabama,p90,SERTP
+1,119,Sumter,AL,Alabama,p89,SERTP
+1,31,Coffee,AL,Alabama,p90,SERTP
+1,109,Pike,AL,Alabama,p90,SERTP
+1,113,Russell,AL,Alabama,p90,SERTP
+1,87,Macon,AL,Alabama,p90,SERTP
+1,85,Lowndes,AL,Alabama,p90,SERTP
+1,91,Marengo,AL,Alabama,p89,SERTP
+1,101,Montgomery,AL,Alabama,p90,SERTP
+1,1,Autauga,AL,Alabama,p90,SERTP
+1,133,Winston,AL,Alabama,p89,SERTP
+1,19,Cherokee,AL,Alabama,p90,SERTP
+1,83,Limestone,AL,Alabama,p89,SERTP
+1,45,Dale,AL,Alabama,p90,SERTP
+1,123,Tallapoosa,AL,Alabama,p90,SERTP
+1,75,Lamar,AL,Alabama,p89,SERTP
+1,43,Cullman,AL,Alabama,p89,SERTP
+1,57,Fayette,AL,Alabama,p89,SERTP
+1,11,Bullock,AL,Alabama,p90,SERTP
+1,69,Houston,AL,Alabama,p90,SERTP
+1,41,Crenshaw,AL,Alabama,p90,SERTP
+1,81,Lee,AL,Alabama,p90,SERTP
+1,7,Bibb,AL,Alabama,p89,SERTP
+1,5,Barbour,AL,Alabama,p90,SERTP
+1,37,Coosa,AL,Alabama,p90,SERTP
+1,15,Calhoun,AL,Alabama,p90,SERTP
+1,29,Cleburne,AL,Alabama,p90,SERTP
+1,115,St. Clair,AL,Alabama,p90,SERTP
+1,107,Pickens,AL,Alabama,p89,SERTP
+1,79,Lawrence,AL,Alabama,p89,SERTP
+1,129,Washington,AL,Alabama,p90,SERTP
+1,97,Mobile,AL,Alabama,p90,SERTP
+1,49,DeKalb,AL,Alabama,p89,SERTP
+1,23,Choctaw,AL,Alabama,p89,SERTP
+1,111,Randolph,AL,Alabama,p90,SERTP
+1,9,Blount,AL,Alabama,p90,SERTP
+1,61,Geneva,AL,Alabama,p90,SERTP
+1,125,Tuscaloosa,AL,Alabama,p89,SERTP
+1,127,Walker,AL,Alabama,p89,SERTP
+1,77,Lauderdale,AL,Alabama,p89,SERTP
+4,15,Mohave,AZ,Arizona,p27,WestConnect_South
+4,7,Gila,AZ,Arizona,p28,WestConnect_South
+4,5,Coconino,AZ,Arizona,p28,WestConnect_South
+4,12,La Paz,AZ,Arizona,p28,WestConnect_South
+4,23,Santa Cruz,AZ,Arizona,p30,WestConnect_South
+4,9,Graham,AZ,Arizona,p28,WestConnect_South
+4,1,Apache,AZ,Arizona,p29,WestConnect_South
+4,19,Pima,AZ,Arizona,p30,WestConnect_South
+4,11,Greenlee,AZ,Arizona,p28,WestConnect_South
+4,27,Yuma,AZ,Arizona,p28,WestConnect_South
+4,13,Maricopa,AZ,Arizona,p28,WestConnect_South
+4,17,Navajo,AZ,Arizona,p28,WestConnect_South
+4,3,Cochise,AZ,Arizona,p28,WestConnect_South
+4,25,Yavapai,AZ,Arizona,p28,WestConnect_South
+4,21,Pinal,AZ,Arizona,p28,WestConnect_South
+5,99,Nevada,AR,Arkansas,p85,MISO_South
+5,147,Woodruff,AR,Arkansas,p85,MISO_South
+5,65,Izard,AR,Arkansas,p85,MISO_South
+5,13,Calhoun,AR,Arkansas,p85,MISO_South
+5,17,Chicot,AR,Arkansas,p85,MISO_South
+5,27,Columbia,AR,Arkansas,p85,MISO_South
+5,67,Jackson,AR,Arkansas,p85,MISO_South
+5,73,Lafayette,AR,Arkansas,p85,MISO_South
+5,149,Yell,AR,Arkansas,p85,MISO_South
+5,131,Sebastian,AR,Arkansas,p56,SPP_South
+5,103,Ouachita,AR,Arkansas,p85,MISO_South
+5,55,Greene,AR,Arkansas,p85,MISO_South
+5,119,Pulaski,AR,Arkansas,p85,MISO_South
+5,109,Pike,AR,Arkansas,p56,SPP_South
+5,31,Craighead,AR,Arkansas,p85,MISO_South
+5,143,Washington,AR,Arkansas,p56,SPP_South
+5,53,Grant,AR,Arkansas,p85,MISO_South
+5,3,Ashley,AR,Arkansas,p85,MISO_South
+5,137,Stone,AR,Arkansas,p85,MISO_South
+5,71,Johnson,AR,Arkansas,p56,SPP_South
+5,121,Randolph,AR,Arkansas,p85,MISO_South
+5,95,Monroe,AR,Arkansas,p85,MISO_South
+5,63,Independence,AR,Arkansas,p85,MISO_South
+5,39,Dallas,AR,Arkansas,p85,MISO_South
+5,51,Garland,AR,Arkansas,p85,MISO_South
+5,33,Crawford,AR,Arkansas,p56,SPP_South
+5,47,Franklin,AR,Arkansas,p56,SPP_South
+5,59,Hot Spring,AR,Arkansas,p85,MISO_South
+5,145,White,AR,Arkansas,p85,MISO_South
+5,21,Clay,AR,Arkansas,p85,MISO_South
+5,89,Marion,AR,Arkansas,p56,SPP_South
+5,105,Perry,AR,Arkansas,p85,MISO_South
+5,93,Mississippi,AR,Arkansas,p85,MISO_South
+5,117,Prairie,AR,Arkansas,p85,MISO_South
+5,35,Crittenden,AR,Arkansas,p85,MISO_South
+5,25,Cleveland,AR,Arkansas,p85,MISO_South
+5,41,Desha,AR,Arkansas,p85,MISO_South
+5,81,Little River,AR,Arkansas,p85,MISO_South
+5,7,Benton,AR,Arkansas,p56,SPP_South
+5,5,Baxter,AR,Arkansas,p85,MISO_South
+5,29,Conway,AR,Arkansas,p85,MISO_South
+5,15,Carroll,AR,Arkansas,p56,SPP_South
+5,37,Cross,AR,Arkansas,p85,MISO_South
+5,115,Pope,AR,Arkansas,p85,MISO_South
+5,79,Lincoln,AR,Arkansas,p85,MISO_South
+5,107,Phillips,AR,Arkansas,p85,MISO_South
+5,97,Montgomery,AR,Arkansas,p56,SPP_South
+5,129,Searcy,AR,Arkansas,p56,SPP_South
+5,49,Fulton,AR,Arkansas,p85,MISO_South
+5,111,Poinsett,AR,Arkansas,p85,MISO_South
+5,23,Cleburne,AR,Arkansas,p56,SPP_South
+5,61,Howard,AR,Arkansas,p56,SPP_South
+5,9,Boone,AR,Arkansas,p56,SPP_South
+5,125,Saline,AR,Arkansas,p85,MISO_South
+5,141,Van Buren,AR,Arkansas,p56,SPP_South
+5,127,Scott,AR,Arkansas,p56,SPP_South
+5,77,Lee,AR,Arkansas,p85,MISO_South
+5,113,Polk,AR,Arkansas,p56,SPP_South
+5,87,Madison,AR,Arkansas,p56,SPP_South
+5,91,Miller,AR,Arkansas,p85,MISO_South
+5,85,Lonoke,AR,Arkansas,p85,MISO_South
+5,101,Newton,AR,Arkansas,p56,SPP_South
+5,1,Arkansas,AR,Arkansas,p85,MISO_South
+5,19,Clark,AR,Arkansas,p85,MISO_South
+5,133,Sevier,AR,Arkansas,p85,MISO_South
+5,83,Logan,AR,Arkansas,p56,SPP_South
+5,45,Faulkner,AR,Arkansas,p85,MISO_South
+5,123,St. Francis,AR,Arkansas,p85,MISO_South
+5,135,Sharp,AR,Arkansas,p85,MISO_South
+5,57,Hempstead,AR,Arkansas,p85,MISO_South
+5,43,Drew,AR,Arkansas,p85,MISO_South
+5,75,Lawrence,AR,Arkansas,p85,MISO_South
+5,11,Bradley,AR,Arkansas,p85,MISO_South
+5,139,Union,AR,Arkansas,p85,MISO_South
+5,69,Jefferson,AR,Arkansas,p85,MISO_South
+6,65,Riverside,CA,California,p10,CAISO
+6,99,Stanislaus,CA,California,p9,CAISO
+6,17,El Dorado,CA,California,p9,CAISO
+6,13,Contra Costa,CA,California,p9,CAISO
+6,73,San Diego,CA,California,p11,CAISO
+6,67,Sacramento,CA,California,p9,CAISO
+6,27,Inyo,CA,California,p10,CAISO
+6,103,Tehama,CA,California,p9,CAISO
+6,55,Napa,CA,California,p9,CAISO
+6,31,Kings,CA,California,p9,CAISO
+6,109,Tuolumne,CA,California,p9,CAISO
+6,3,Alpine,CA,California,p9,CAISO
+6,53,Monterey,CA,California,p9,CAISO
+6,71,San Bernardino,CA,California,p10,CAISO
+6,51,Mono,CA,California,p10,CAISO
+6,39,Madera,CA,California,p9,CAISO
+6,63,Plumas,CA,California,p9,CAISO
+6,95,Solano,CA,California,p9,CAISO
+6,59,Orange,CA,California,p10,CAISO
+6,47,Merced,CA,California,p9,CAISO
+6,33,Lake,CA,California,p9,CAISO
+6,89,Shasta,CA,California,p9,CAISO
+6,21,Glenn,CA,California,p9,CAISO
+6,93,Siskiyou,CA,California,p8,NorthernGrid_South
+6,105,Trinity,CA,California,p9,CAISO
+6,25,Imperial,CA,California,p10,CAISO
+6,35,Lassen,CA,California,p8,NorthernGrid_South
+6,81,San Mateo,CA,California,p9,CAISO
+6,41,Marin,CA,California,p9,CAISO
+6,5,Amador,CA,California,p9,CAISO
+6,7,Butte,CA,California,p9,CAISO
+6,115,Yuba,CA,California,p9,CAISO
+6,37,Los Angeles,CA,California,p10,CAISO
+6,15,Del Norte,CA,California,p9,CAISO
+6,29,Kern,CA,California,p10,CAISO
+6,97,Sonoma,CA,California,p9,CAISO
+6,107,Tulare,CA,California,p10,CAISO
+6,79,San Luis Obispo,CA,California,p9,CAISO
+6,9,Calaveras,CA,California,p9,CAISO
+6,61,Placer,CA,California,p9,CAISO
+6,23,Humboldt,CA,California,p9,CAISO
+6,111,Ventura,CA,California,p10,CAISO
+6,49,Modoc,CA,California,p8,NorthernGrid_South
+6,77,San Joaquin,CA,California,p9,CAISO
+6,101,Sutter,CA,California,p9,CAISO
+6,85,Santa Clara,CA,California,p9,CAISO
+6,91,Sierra,CA,California,p9,CAISO
+6,87,Santa Cruz,CA,California,p9,CAISO
+6,113,Yolo,CA,California,p9,CAISO
+6,19,Fresno,CA,California,p9,CAISO
+6,1,Alameda,CA,California,p9,CAISO
+6,45,Mendocino,CA,California,p9,CAISO
+6,83,Santa Barbara,CA,California,p9,CAISO
+6,75,San Francisco,CA,California,p9,CAISO
+6,43,Mariposa,CA,California,p9,CAISO
+6,57,Nevada,CA,California,p9,CAISO
+6,69,San Benito,CA,California,p9,CAISO
+6,11,Colusa,CA,California,p9,CAISO
+8,49,Grand,CO,Colorado,p33,WestConnect_North
+8,23,Costilla,CO,Colorado,p34,WestConnect_North
+8,111,San Juan,CO,Colorado,p34,WestConnect_North
+8,9,Baca,CO,Colorado,p34,WestConnect_North
+8,61,Kiowa,CO,Colorado,p34,WestConnect_North
+8,125,Yuma,CO,Colorado,p33,WestConnect_North
+8,77,Mesa,CO,Colorado,p33,WestConnect_North
+8,7,Archuleta,CO,Colorado,p34,WestConnect_North
+8,5,Arapahoe,CO,Colorado,p33,WestConnect_North
+8,41,El Paso,CO,Colorado,p34,WestConnect_North
+8,81,Moffat,CO,Colorado,p33,WestConnect_North
+8,107,Routt,CO,Colorado,p33,WestConnect_North
+8,79,Mineral,CO,Colorado,p34,WestConnect_North
+8,97,Pitkin,CO,Colorado,p33,WestConnect_North
+8,37,Eagle,CO,Colorado,p33,WestConnect_North
+8,15,Chaffee,CO,Colorado,p34,WestConnect_North
+8,29,Delta,CO,Colorado,p34,WestConnect_North
+8,115,Sedgwick,CO,Colorado,p33,WestConnect_North
+8,11,Bent,CO,Colorado,p34,WestConnect_North
+8,69,Larimer,CO,Colorado,p33,WestConnect_North
+8,75,Logan,CO,Colorado,p33,WestConnect_North
+8,57,Jackson,CO,Colorado,p33,WestConnect_North
+8,43,Fremont,CO,Colorado,p34,WestConnect_North
+8,1,Adams,CO,Colorado,p33,WestConnect_North
+8,19,Clear Creek,CO,Colorado,p33,WestConnect_North
+8,113,San Miguel,CO,Colorado,p34,WestConnect_North
+8,87,Morgan,CO,Colorado,p33,WestConnect_North
+8,85,Montrose,CO,Colorado,p34,WestConnect_North
+8,91,Ouray,CO,Colorado,p34,WestConnect_North
+8,101,Pueblo,CO,Colorado,p34,WestConnect_North
+8,123,Weld,CO,Colorado,p33,WestConnect_North
+8,83,Montezuma,CO,Colorado,p34,WestConnect_North
+8,45,Garfield,CO,Colorado,p33,WestConnect_North
+8,103,Rio Blanco,CO,Colorado,p33,WestConnect_North
+8,55,Huerfano,CO,Colorado,p34,WestConnect_North
+8,119,Teller,CO,Colorado,p33,WestConnect_North
+8,31,Denver,CO,Colorado,p33,WestConnect_North
+8,109,Saguache,CO,Colorado,p34,WestConnect_North
+8,13,Boulder,CO,Colorado,p33,WestConnect_North
+8,17,Cheyenne,CO,Colorado,p34,WestConnect_North
+8,99,Prowers,CO,Colorado,p34,WestConnect_North
+8,65,Lake,CO,Colorado,p33,WestConnect_North
+8,14,Broomfield,CO,Colorado,p33,WestConnect_North
+8,27,Custer,CO,Colorado,p34,WestConnect_North
+8,73,Lincoln,CO,Colorado,p34,WestConnect_North
+8,67,La Plata,CO,Colorado,p34,WestConnect_North
+8,89,Otero,CO,Colorado,p34,WestConnect_North
+8,21,Conejos,CO,Colorado,p34,WestConnect_North
+8,33,Dolores,CO,Colorado,p34,WestConnect_North
+8,47,Gilpin,CO,Colorado,p33,WestConnect_North
+8,59,Jefferson,CO,Colorado,p33,WestConnect_North
+8,117,Summit,CO,Colorado,p33,WestConnect_North
+8,25,Crowley,CO,Colorado,p34,WestConnect_North
+8,35,Douglas,CO,Colorado,p33,WestConnect_North
+8,105,Rio Grande,CO,Colorado,p34,WestConnect_North
+8,93,Park,CO,Colorado,p33,WestConnect_North
+8,53,Hinsdale,CO,Colorado,p34,WestConnect_North
+8,3,Alamosa,CO,Colorado,p34,WestConnect_North
+8,95,Phillips,CO,Colorado,p33,WestConnect_North
+8,39,Elbert,CO,Colorado,p34,WestConnect_North
+8,63,Kit Carson,CO,Colorado,p34,WestConnect_North
+8,51,Gunnison,CO,Colorado,p34,WestConnect_North
+8,71,Las Animas,CO,Colorado,p34,WestConnect_North
+8,121,Washington,CO,Colorado,p33,WestConnect_North
+9,11,New London,CT,Connecticut,p132,ISONE
+9,1,Fairfield,CT,Connecticut,p132,ISONE
+9,9,New Haven,CT,Connecticut,p132,ISONE
+9,15,Windham,CT,Connecticut,p132,ISONE
+9,7,Middlesex,CT,Connecticut,p132,ISONE
+9,5,Litchfield,CT,Connecticut,p132,ISONE
+9,3,Hartford,CT,Connecticut,p132,ISONE
+9,13,Tolland,CT,Connecticut,p132,ISONE
+10,1,Kent,DE,Delaware,p125,PJM_East
+10,5,Sussex,DE,Delaware,p125,PJM_East
+10,3,New Castle,DE,Delaware,p125,PJM_East
+11,1,District of Columbia,DC,District of Columbia,p123,PJM_East
+12,11,Broward,FL,Florida,p102,FRCC
+12,69,Lake,FL,Florida,p101,FRCC
+12,43,Glades,FL,Florida,p101,FRCC
+12,57,Hillsborough,FL,Florida,p101,FRCC
+12,75,Levy,FL,Florida,p101,FRCC
+12,133,Washington,FL,Florida,p91,SERTP
+12,19,Clay,FL,Florida,p101,FRCC
+12,1,Alachua,FL,Florida,p101,FRCC
+12,87,Monroe,FL,Florida,p101,FRCC
+12,113,Santa Rosa,FL,Florida,p91,SERTP
+12,101,Pasco,FL,Florida,p101,FRCC
+12,91,Okaloosa,FL,Florida,p91,SERTP
+12,85,Martin,FL,Florida,p102,FRCC
+12,123,Taylor,FL,Florida,p101,FRCC
+12,83,Marion,FL,Florida,p101,FRCC
+12,45,Gulf,FL,Florida,p91,SERTP
+12,23,Columbia,FL,Florida,p101,FRCC
+12,111,St. Lucie,FL,Florida,p102,FRCC
+12,49,Hardee,FL,Florida,p101,FRCC
+12,125,Union,FL,Florida,p101,FRCC
+12,9,Brevard,FL,Florida,p102,FRCC
+12,61,Indian River,FL,Florida,p102,FRCC
+12,77,Liberty,FL,Florida,p101,FRCC
+12,86,Miami-Dade,FL,Florida,p102,FRCC
+12,127,Volusia,FL,Florida,p101,FRCC
+12,7,Bradford,FL,Florida,p101,FRCC
+12,5,Bay,FL,Florida,p91,SERTP
+12,41,Gilchrist,FL,Florida,p101,FRCC
+12,81,Manatee,FL,Florida,p101,FRCC
+12,129,Wakulla,FL,Florida,p101,FRCC
+12,97,Osceola,FL,Florida,p101,FRCC
+12,107,Putnam,FL,Florida,p101,FRCC
+12,79,Madison,FL,Florida,p101,FRCC
+12,115,Sarasota,FL,Florida,p101,FRCC
+12,29,Dixie,FL,Florida,p101,FRCC
+12,37,Franklin,FL,Florida,p101,FRCC
+12,15,Charlotte,FL,Florida,p101,FRCC
+12,21,Collier,FL,Florida,p101,FRCC
+12,89,Nassau,FL,Florida,p101,FRCC
+12,47,Hamilton,FL,Florida,p101,FRCC
+12,33,Escambia,FL,Florida,p91,SERTP
+12,59,Holmes,FL,Florida,p91,SERTP
+12,35,Flagler,FL,Florida,p101,FRCC
+12,117,Seminole,FL,Florida,p101,FRCC
+12,105,Polk,FL,Florida,p101,FRCC
+12,93,Okeechobee,FL,Florida,p101,FRCC
+12,3,Baker,FL,Florida,p101,FRCC
+12,53,Hernando,FL,Florida,p101,FRCC
+12,95,Orange,FL,Florida,p101,FRCC
+12,51,Hendry,FL,Florida,p101,FRCC
+12,63,Jackson,FL,Florida,p91,SERTP
+12,39,Gadsden,FL,Florida,p101,FRCC
+12,121,Suwannee,FL,Florida,p101,FRCC
+12,71,Lee,FL,Florida,p101,FRCC
+12,119,Sumter,FL,Florida,p101,FRCC
+12,55,Highlands,FL,Florida,p101,FRCC
+12,103,Pinellas,FL,Florida,p101,FRCC
+12,131,Walton,FL,Florida,p91,SERTP
+12,31,Duval,FL,Florida,p101,FRCC
+12,109,St. Johns,FL,Florida,p101,FRCC
+12,17,Citrus,FL,Florida,p101,FRCC
+12,13,Calhoun,FL,Florida,p91,SERTP
+12,99,Palm Beach,FL,Florida,p102,FRCC
+12,65,Jefferson,FL,Florida,p101,FRCC
+12,67,Lafayette,FL,Florida,p101,FRCC
+12,73,Leon,FL,Florida,p101,FRCC
+12,27,DeSoto,FL,Florida,p101,FRCC
+13,299,Ware,GA,Georgia,p94,SERTP
+13,237,Putnam,GA,Georgia,p94,SERTP
+13,285,Troup,GA,Georgia,p94,SERTP
+13,231,Pike,GA,Georgia,p94,SERTP
+13,273,Terrell,GA,Georgia,p94,SERTP
+13,135,Gwinnett,GA,Georgia,p94,SERTP
+13,75,Cook,GA,Georgia,p94,SERTP
+13,57,Cherokee,GA,Georgia,p94,SERTP
+13,43,Candler,GA,Georgia,p94,SERTP
+13,199,Meriwether,GA,Georgia,p94,SERTP
+13,267,Tattnall,GA,Georgia,p94,SERTP
+13,11,Banks,GA,Georgia,p94,SERTP
+13,139,Hall,GA,Georgia,p94,SERTP
+13,69,Coffee,GA,Georgia,p94,SERTP
+13,83,Dade,GA,Georgia,p94,SERTP
+13,45,Carroll,GA,Georgia,p94,SERTP
+13,321,Worth,GA,Georgia,p94,SERTP
+13,123,Gilmer,GA,Georgia,p94,SERTP
+13,251,Screven,GA,Georgia,p94,SERTP
+13,113,Fayette,GA,Georgia,p94,SERTP
+13,87,Decatur,GA,Georgia,p94,SERTP
+13,311,White,GA,Georgia,p94,SERTP
+13,85,Dawson,GA,Georgia,p94,SERTP
+13,91,Dodge,GA,Georgia,p94,SERTP
+13,233,Polk,GA,Georgia,p94,SERTP
+13,101,Echols,GA,Georgia,p94,SERTP
+13,177,Lee,GA,Georgia,p94,SERTP
+13,1,Appling,GA,Georgia,p94,SERTP
+13,19,Berrien,GA,Georgia,p94,SERTP
+13,133,Greene,GA,Georgia,p94,SERTP
+13,127,Glynn,GA,Georgia,p94,SERTP
+13,183,Long,GA,Georgia,p94,SERTP
+13,315,Wilcox,GA,Georgia,p94,SERTP
+13,77,Coweta,GA,Georgia,p94,SERTP
+13,185,Lowndes,GA,Georgia,p94,SERTP
+13,49,Charlton,GA,Georgia,p94,SERTP
+13,191,McIntosh,GA,Georgia,p94,SERTP
+13,223,Paulding,GA,Georgia,p94,SERTP
+13,151,Henry,GA,Georgia,p94,SERTP
+13,111,Fannin,GA,Georgia,p94,SERTP
+13,23,Bleckley,GA,Georgia,p94,SERTP
+13,61,Clay,GA,Georgia,p94,SERTP
+13,9,Baldwin,GA,Georgia,p94,SERTP
+13,247,Rockdale,GA,Georgia,p94,SERTP
+13,125,Glascock,GA,Georgia,p94,SERTP
+13,141,Hancock,GA,Georgia,p94,SERTP
+13,227,Pickens,GA,Georgia,p94,SERTP
+13,265,Taliaferro,GA,Georgia,p94,SERTP
+13,301,Warren,GA,Georgia,p94,SERTP
+13,15,Bartow,GA,Georgia,p94,SERTP
+13,37,Calhoun,GA,Georgia,p94,SERTP
+13,219,Oconee,GA,Georgia,p94,SERTP
+13,29,Bryan,GA,Georgia,p94,SERTP
+13,115,Floyd,GA,Georgia,p94,SERTP
+13,79,Crawford,GA,Georgia,p94,SERTP
+13,107,Emanuel,GA,Georgia,p94,SERTP
+13,161,Jeff Davis,GA,Georgia,p94,SERTP
+13,235,Pulaski,GA,Georgia,p94,SERTP
+13,97,Douglas,GA,Georgia,p94,SERTP
+13,129,Gordon,GA,Georgia,p94,SERTP
+13,283,Treutlen,GA,Georgia,p94,SERTP
+13,287,Turner,GA,Georgia,p94,SERTP
+13,257,Stephens,GA,Georgia,p94,SERTP
+13,173,Lanier,GA,Georgia,p94,SERTP
+13,195,Madison,GA,Georgia,p94,SERTP
+13,81,Crisp,GA,Georgia,p94,SERTP
+13,7,Baker,GA,Georgia,p94,SERTP
+13,229,Pierce,GA,Georgia,p94,SERTP
+13,5,Bacon,GA,Georgia,p94,SERTP
+13,193,Macon,GA,Georgia,p94,SERTP
+13,205,Mitchell,GA,Georgia,p94,SERTP
+13,295,Walker,GA,Georgia,p94,SERTP
+13,105,Elbert,GA,Georgia,p94,SERTP
+13,305,Wayne,GA,Georgia,p94,SERTP
+13,243,Randolph,GA,Georgia,p94,SERTP
+13,93,Dooly,GA,Georgia,p94,SERTP
+13,117,Forsyth,GA,Georgia,p94,SERTP
+13,179,Liberty,GA,Georgia,p94,SERTP
+13,207,Monroe,GA,Georgia,p94,SERTP
+13,35,Butts,GA,Georgia,p94,SERTP
+13,25,Brantley,GA,Georgia,p94,SERTP
+13,225,Peach,GA,Georgia,p94,SERTP
+13,253,Seminole,GA,Georgia,p94,SERTP
+13,245,Richmond,GA,Georgia,p94,SERTP
+13,33,Burke,GA,Georgia,p94,SERTP
+13,211,Morgan,GA,Georgia,p94,SERTP
+13,47,Catoosa,GA,Georgia,p94,SERTP
+13,197,Marion,GA,Georgia,p94,SERTP
+13,59,Clarke,GA,Georgia,p94,SERTP
+13,249,Schley,GA,Georgia,p94,SERTP
+13,201,Miller,GA,Georgia,p94,SERTP
+13,145,Harris,GA,Georgia,p94,SERTP
+13,189,McDuffie,GA,Georgia,p94,SERTP
+13,319,Wilkinson,GA,Georgia,p94,SERTP
+13,263,Talbot,GA,Georgia,p94,SERTP
+13,89,DeKalb,GA,Georgia,p94,SERTP
+13,21,Bibb,GA,Georgia,p94,SERTP
+13,217,Newton,GA,Georgia,p94,SERTP
+13,71,Colquitt,GA,Georgia,p94,SERTP
+13,121,Fulton,GA,Georgia,p94,SERTP
+13,317,Wilkes,GA,Georgia,p94,SERTP
+13,171,Lamar,GA,Georgia,p94,SERTP
+13,163,Jefferson,GA,Georgia,p94,SERTP
+13,289,Twiggs,GA,Georgia,p94,SERTP
+13,95,Dougherty,GA,Georgia,p94,SERTP
+13,261,Sumter,GA,Georgia,p94,SERTP
+13,39,Camden,GA,Georgia,p94,SERTP
+13,63,Clayton,GA,Georgia,p94,SERTP
+13,303,Washington,GA,Georgia,p94,SERTP
+13,51,Chatham,GA,Georgia,p94,SERTP
+13,167,Johnson,GA,Georgia,p94,SERTP
+13,259,Stewart,GA,Georgia,p94,SERTP
+13,143,Haralson,GA,Georgia,p94,SERTP
+13,53,Chattahoochee,GA,Georgia,p94,SERTP
+13,3,Atkinson,GA,Georgia,p94,SERTP
+13,137,Habersham,GA,Georgia,p94,SERTP
+13,279,Toombs,GA,Georgia,p94,SERTP
+13,155,Irwin,GA,Georgia,p94,SERTP
+13,239,Quitman,GA,Georgia,p94,SERTP
+13,109,Evans,GA,Georgia,p94,SERTP
+13,31,Bulloch,GA,Georgia,p94,SERTP
+13,309,Wheeler,GA,Georgia,p94,SERTP
+13,297,Walton,GA,Georgia,p94,SERTP
+13,221,Oglethorpe,GA,Georgia,p94,SERTP
+13,165,Jenkins,GA,Georgia,p94,SERTP
+13,215,Muscogee,GA,Georgia,p94,SERTP
+13,291,Union,GA,Georgia,p94,SERTP
+13,149,Heard,GA,Georgia,p94,SERTP
+13,153,Houston,GA,Georgia,p94,SERTP
+13,131,Grady,GA,Georgia,p94,SERTP
+13,157,Jackson,GA,Georgia,p94,SERTP
+13,55,Chattooga,GA,Georgia,p94,SERTP
+13,103,Effingham,GA,Georgia,p94,SERTP
+13,119,Franklin,GA,Georgia,p94,SERTP
+13,307,Webster,GA,Georgia,p94,SERTP
+13,169,Jones,GA,Georgia,p94,SERTP
+13,209,Montgomery,GA,Georgia,p94,SERTP
+13,27,Brooks,GA,Georgia,p94,SERTP
+13,293,Upson,GA,Georgia,p94,SERTP
+13,275,Thomas,GA,Georgia,p94,SERTP
+13,73,Columbia,GA,Georgia,p94,SERTP
+13,241,Rabun,GA,Georgia,p94,SERTP
+13,67,Cobb,GA,Georgia,p94,SERTP
+13,313,Whitfield,GA,Georgia,p94,SERTP
+13,181,Lincoln,GA,Georgia,p94,SERTP
+13,187,Lumpkin,GA,Georgia,p94,SERTP
+13,269,Taylor,GA,Georgia,p94,SERTP
+13,213,Murray,GA,Georgia,p94,SERTP
+13,99,Early,GA,Georgia,p94,SERTP
+13,175,Laurens,GA,Georgia,p94,SERTP
+13,147,Hart,GA,Georgia,p94,SERTP
+13,271,Telfair,GA,Georgia,p94,SERTP
+13,281,Towns,GA,Georgia,p94,SERTP
+13,65,Clinch,GA,Georgia,p94,SERTP
+13,13,Barrow,GA,Georgia,p94,SERTP
+13,17,Ben Hill,GA,Georgia,p94,SERTP
+13,159,Jasper,GA,Georgia,p94,SERTP
+13,277,Tift,GA,Georgia,p94,SERTP
+13,255,Spalding,GA,Georgia,p94,SERTP
+16,33,Clark,ID,Idaho,p16,NorthernGrid_East
+16,47,Gooding,ID,Idaho,p15,NorthernGrid_East
+16,59,Lemhi,ID,Idaho,p15,NorthernGrid_East
+16,21,Boundary,ID,Idaho,p14,NorthernGrid_East
+16,25,Camas,ID,Idaho,p15,NorthernGrid_East
+16,35,Clearwater,ID,Idaho,p15,NorthernGrid_East
+16,53,Jerome,ID,Idaho,p15,NorthernGrid_East
+16,3,Adams,ID,Idaho,p15,NorthernGrid_East
+16,71,Oneida,ID,Idaho,p16,NorthernGrid_East
+16,39,Elmore,ID,Idaho,p15,NorthernGrid_East
+16,63,Lincoln,ID,Idaho,p15,NorthernGrid_East
+16,51,Jefferson,ID,Idaho,p16,NorthernGrid_East
+16,55,Kootenai,ID,Idaho,p14,NorthernGrid_East
+16,31,Cassia,ID,Idaho,p16,NorthernGrid_East
+16,65,Madison,ID,Idaho,p16,NorthernGrid_East
+16,13,Blaine,ID,Idaho,p15,NorthernGrid_East
+16,17,Bonner,ID,Idaho,p14,NorthernGrid_East
+16,27,Canyon,ID,Idaho,p15,NorthernGrid_East
+16,73,Owyhee,ID,Idaho,p15,NorthernGrid_East
+16,67,Minidoka,ID,Idaho,p15,NorthernGrid_East
+16,75,Payette,ID,Idaho,p15,NorthernGrid_East
+16,43,Fremont,ID,Idaho,p16,NorthernGrid_East
+16,57,Latah,ID,Idaho,p14,NorthernGrid_East
+16,11,Bingham,ID,Idaho,p16,NorthernGrid_East
+16,69,Nez Perce,ID,Idaho,p14,NorthernGrid_East
+16,87,Washington,ID,Idaho,p15,NorthernGrid_East
+16,85,Valley,ID,Idaho,p15,NorthernGrid_East
+16,1,Ada,ID,Idaho,p15,NorthernGrid_East
+16,19,Bonneville,ID,Idaho,p16,NorthernGrid_East
+16,83,Twin Falls,ID,Idaho,p16,NorthernGrid_East
+16,45,Gem,ID,Idaho,p15,NorthernGrid_East
+16,49,Idaho,ID,Idaho,p15,NorthernGrid_East
+16,23,Butte,ID,Idaho,p15,NorthernGrid_East
+16,61,Lewis,ID,Idaho,p14,NorthernGrid_East
+16,9,Benewah,ID,Idaho,p14,NorthernGrid_East
+16,77,Power,ID,Idaho,p16,NorthernGrid_East
+16,41,Franklin,ID,Idaho,p16,NorthernGrid_East
+16,81,Teton,ID,Idaho,p16,NorthernGrid_East
+16,7,Bear Lake,ID,Idaho,p16,NorthernGrid_East
+16,5,Bannock,ID,Idaho,p16,NorthernGrid_East
+16,37,Custer,ID,Idaho,p15,NorthernGrid_East
+16,15,Boise,ID,Idaho,p15,NorthernGrid_East
+16,29,Caribou,ID,Idaho,p16,NorthernGrid_East
+16,79,Shoshone,ID,Idaho,p15,NorthernGrid_East
+17,7,Boone,IL,Illinois,p80,PJM_West
+17,193,White,IL,Illinois,p81,MISO_Central
+17,5,Bond,IL,Illinois,p81,MISO_Central
+17,173,Shelby,IL,Illinois,p83,MISO_Central
+17,195,Whiteside,IL,Illinois,p80,PJM_West
+17,41,Douglas,IL,Illinois,p83,MISO_Central
+17,81,Jefferson,IL,Illinois,p81,MISO_Central
+17,129,Menard,IL,Illinois,p81,MISO_Central
+17,97,Lake,IL,Illinois,p80,PJM_West
+17,107,Logan,IL,Illinois,p82,MISO_Central
+17,161,Rock Island,IL,Illinois,p81,MISO_Central
+17,79,Jasper,IL,Illinois,p83,MISO_Central
+17,115,Macon,IL,Illinois,p83,MISO_Central
+17,29,Coles,IL,Illinois,p83,MISO_Central
+17,37,DeKalb,IL,Illinois,p80,PJM_West
+17,15,Carroll,IL,Illinois,p80,PJM_West
+17,111,McHenry,IL,Illinois,p80,PJM_West
+17,23,Clark,IL,Illinois,p83,MISO_Central
+17,191,Wayne,IL,Illinois,p81,MISO_Central
+17,151,Pope,IL,Illinois,p81,MISO_Central
+17,49,Effingham,IL,Illinois,p83,MISO_Central
+17,125,Mason,IL,Illinois,p81,MISO_Central
+17,141,Ogle,IL,Illinois,p80,PJM_West
+17,61,Greene,IL,Illinois,p81,MISO_Central
+17,9,Brown,IL,Illinois,p81,MISO_Central
+17,77,Jackson,IL,Illinois,p81,MISO_Central
+17,185,Wabash,IL,Illinois,p83,MISO_Central
+17,183,Vermilion,IL,Illinois,p83,MISO_Central
+17,127,Massac,IL,Illinois,p81,MISO_Central
+17,133,Monroe,IL,Illinois,p81,MISO_Central
+17,19,Champaign,IL,Illinois,p83,MISO_Central
+17,1,Adams,IL,Illinois,p81,MISO_Central
+17,177,Stephenson,IL,Illinois,p80,PJM_West
+17,87,Johnson,IL,Illinois,p81,MISO_Central
+17,113,McLean,IL,Illinois,p83,MISO_Central
+17,101,Lawrence,IL,Illinois,p83,MISO_Central
+17,91,Kankakee,IL,Illinois,p80,PJM_West
+17,85,Jo Daviess,IL,Illinois,p80,PJM_West
+17,123,Marshall,IL,Illinois,p82,MISO_Central
+17,83,Jersey,IL,Illinois,p81,MISO_Central
+17,45,Edgar,IL,Illinois,p83,MISO_Central
+17,11,Bureau,IL,Illinois,p81,MISO_Central
+17,199,Williamson,IL,Illinois,p81,MISO_Central
+17,69,Hardin,IL,Illinois,p81,MISO_Central
+17,139,Moultrie,IL,Illinois,p83,MISO_Central
+17,57,Fulton,IL,Illinois,p81,MISO_Central
+17,43,DuPage,IL,Illinois,p80,PJM_West
+17,75,Iroquois,IL,Illinois,p83,MISO_Central
+17,135,Montgomery,IL,Illinois,p81,MISO_Central
+17,203,Woodford,IL,Illinois,p82,MISO_Central
+17,17,Cass,IL,Illinois,p81,MISO_Central
+17,13,Calhoun,IL,Illinois,p81,MISO_Central
+17,159,Richland,IL,Illinois,p83,MISO_Central
+17,175,Stark,IL,Illinois,p81,MISO_Central
+17,99,LaSalle,IL,Illinois,p80,PJM_West
+17,65,Hamilton,IL,Illinois,p81,MISO_Central
+17,147,Piatt,IL,Illinois,p83,MISO_Central
+17,67,Hancock,IL,Illinois,p81,MISO_Central
+17,73,Henry,IL,Illinois,p81,MISO_Central
+17,27,Clinton,IL,Illinois,p81,MISO_Central
+17,187,Warren,IL,Illinois,p81,MISO_Central
+17,181,Union,IL,Illinois,p81,MISO_Central
+17,119,Madison,IL,Illinois,p81,MISO_Central
+17,55,Franklin,IL,Illinois,p81,MISO_Central
+17,103,Lee,IL,Illinois,p80,PJM_West
+17,169,Schuyler,IL,Illinois,p81,MISO_Central
+17,153,Pulaski,IL,Illinois,p81,MISO_Central
+17,149,Pike,IL,Illinois,p81,MISO_Central
+17,131,Mercer,IL,Illinois,p81,MISO_Central
+17,157,Randolph,IL,Illinois,p81,MISO_Central
+17,109,McDonough,IL,Illinois,p81,MISO_Central
+17,31,Cook,IL,Illinois,p80,PJM_West
+17,165,Saline,IL,Illinois,p81,MISO_Central
+17,155,Putnam,IL,Illinois,p81,MISO_Central
+17,3,Alexander,IL,Illinois,p81,MISO_Central
+17,53,Ford,IL,Illinois,p83,MISO_Central
+17,137,Morgan,IL,Illinois,p81,MISO_Central
+17,167,Sangamon,IL,Illinois,p82,MISO_Central
+17,143,Peoria,IL,Illinois,p82,MISO_Central
+17,95,Knox,IL,Illinois,p81,MISO_Central
+17,51,Fayette,IL,Illinois,p81,MISO_Central
+17,63,Grundy,IL,Illinois,p80,PJM_West
+17,39,De Witt,IL,Illinois,p83,MISO_Central
+17,121,Marion,IL,Illinois,p81,MISO_Central
+17,71,Henderson,IL,Illinois,p81,MISO_Central
+17,163,St. Clair,IL,Illinois,p81,MISO_Central
+17,171,Scott,IL,Illinois,p81,MISO_Central
+17,189,Washington,IL,Illinois,p81,MISO_Central
+17,201,Winnebago,IL,Illinois,p80,PJM_West
+17,145,Perry,IL,Illinois,p81,MISO_Central
+17,21,Christian,IL,Illinois,p83,MISO_Central
+17,89,Kane,IL,Illinois,p80,PJM_West
+17,47,Edwards,IL,Illinois,p83,MISO_Central
+17,33,Crawford,IL,Illinois,p83,MISO_Central
+17,197,Will,IL,Illinois,p80,PJM_West
+17,59,Gallatin,IL,Illinois,p81,MISO_Central
+17,25,Clay,IL,Illinois,p83,MISO_Central
+17,35,Cumberland,IL,Illinois,p83,MISO_Central
+17,117,Macoupin,IL,Illinois,p81,MISO_Central
+17,179,Tazewell,IL,Illinois,p82,MISO_Central
+17,105,Livingston,IL,Illinois,p80,PJM_West
+17,93,Kendall,IL,Illinois,p80,PJM_West
+18,77,Jefferson,IN,Indiana,p107,MISO_Central
+18,183,Whitley,IN,Indiana,p105,MISO_Central
+18,127,Porter,IN,Indiana,p105,MISO_Central
+18,125,Pike,IN,Indiana,p107,MISO_Central
+18,141,St. Joseph,IN,Indiana,p105,MISO_Central
+18,61,Harrison,IN,Indiana,p107,MISO_Central
+18,9,Blackford,IN,Indiana,p105,MISO_Central
+18,111,Newton,IN,Indiana,p105,MISO_Central
+18,23,Clinton,IN,Indiana,p105,MISO_Central
+18,151,Steuben,IN,Indiana,p105,MISO_Central
+18,49,Fulton,IN,Indiana,p105,MISO_Central
+18,129,Posey,IN,Indiana,p107,MISO_Central
+18,97,Marion,IN,Indiana,p106,MISO_Central
+18,107,Montgomery,IN,Indiana,p105,MISO_Central
+18,161,Union,IN,Indiana,p107,MISO_Central
+18,79,Jennings,IN,Indiana,p107,MISO_Central
+18,115,Ohio,IN,Indiana,p107,MISO_Central
+18,29,Dearborn,IN,Indiana,p107,MISO_Central
+18,37,Dubois,IN,Indiana,p107,MISO_Central
+18,15,Carroll,IN,Indiana,p105,MISO_Central
+18,5,Bartholomew,IN,Indiana,p107,MISO_Central
+18,7,Benton,IN,Indiana,p105,MISO_Central
+18,81,Johnson,IN,Indiana,p107,MISO_Central
+18,173,Warrick,IN,Indiana,p107,MISO_Central
+18,41,Fayette,IN,Indiana,p107,MISO_Central
+18,69,Huntington,IN,Indiana,p105,MISO_Central
+18,139,Rush,IN,Indiana,p107,MISO_Central
+18,11,Boone,IN,Indiana,p105,MISO_Central
+18,57,Hamilton,IN,Indiana,p106,MISO_Central
+18,43,Floyd,IN,Indiana,p107,MISO_Central
+18,75,Jay,IN,Indiana,p105,MISO_Central
+18,135,Randolph,IN,Indiana,p105,MISO_Central
+18,123,Perry,IN,Indiana,p107,MISO_Central
+18,45,Fountain,IN,Indiana,p105,MISO_Central
+18,83,Knox,IN,Indiana,p107,MISO_Central
+18,133,Putnam,IN,Indiana,p105,MISO_Central
+18,19,Clark,IN,Indiana,p107,MISO_Central
+18,1,Adams,IN,Indiana,p105,MISO_Central
+18,177,Wayne,IN,Indiana,p107,MISO_Central
+18,101,Martin,IN,Indiana,p107,MISO_Central
+18,91,LaPorte,IN,Indiana,p105,MISO_Central
+18,85,Kosciusko,IN,Indiana,p105,MISO_Central
+18,87,LaGrange,IN,Indiana,p105,MISO_Central
+18,113,Noble,IN,Indiana,p105,MISO_Central
+18,165,Vermillion,IN,Indiana,p105,MISO_Central
+18,109,Morgan,IN,Indiana,p107,MISO_Central
+18,31,Decatur,IN,Indiana,p107,MISO_Central
+18,155,Switzerland,IN,Indiana,p107,MISO_Central
+18,169,Wabash,IN,Indiana,p105,MISO_Central
+18,119,Owen,IN,Indiana,p107,MISO_Central
+18,103,Miami,IN,Indiana,p105,MISO_Central
+18,55,Greene,IN,Indiana,p107,MISO_Central
+18,131,Pulaski,IN,Indiana,p105,MISO_Central
+18,157,Tippecanoe,IN,Indiana,p105,MISO_Central
+18,153,Sullivan,IN,Indiana,p107,MISO_Central
+18,149,Starke,IN,Indiana,p105,MISO_Central
+18,181,White,IN,Indiana,p105,MISO_Central
+18,67,Howard,IN,Indiana,p105,MISO_Central
+18,73,Jasper,IN,Indiana,p105,MISO_Central
+18,27,Daviess,IN,Indiana,p107,MISO_Central
+18,159,Tipton,IN,Indiana,p105,MISO_Central
+18,17,Cass,IN,Indiana,p105,MISO_Central
+18,13,Brown,IN,Indiana,p107,MISO_Central
+18,65,Henry,IN,Indiana,p107,MISO_Central
+18,147,Spencer,IN,Indiana,p107,MISO_Central
+18,175,Washington,IN,Indiana,p107,MISO_Central
+18,99,Marshall,IN,Indiana,p105,MISO_Central
+18,25,Crawford,IN,Indiana,p107,MISO_Central
+18,35,Delaware,IN,Indiana,p105,MISO_Central
+18,117,Orange,IN,Indiana,p107,MISO_Central
+18,179,Wells,IN,Indiana,p105,MISO_Central
+18,93,Lawrence,IN,Indiana,p107,MISO_Central
+18,105,Monroe,IN,Indiana,p107,MISO_Central
+18,21,Clay,IN,Indiana,p107,MISO_Central
+18,89,Lake,IN,Indiana,p105,MISO_Central
+18,145,Shelby,IN,Indiana,p107,MISO_Central
+18,59,Hancock,IN,Indiana,p105,MISO_Central
+18,47,Franklin,IN,Indiana,p107,MISO_Central
+18,33,DeKalb,IN,Indiana,p105,MISO_Central
+18,51,Gibson,IN,Indiana,p107,MISO_Central
+18,63,Hendricks,IN,Indiana,p105,MISO_Central
+18,39,Elkhart,IN,Indiana,p105,MISO_Central
+18,95,Madison,IN,Indiana,p105,MISO_Central
+18,163,Vanderburgh,IN,Indiana,p107,MISO_Central
+18,171,Warren,IN,Indiana,p105,MISO_Central
+18,121,Parke,IN,Indiana,p105,MISO_Central
+18,71,Jackson,IN,Indiana,p107,MISO_Central
+18,137,Ripley,IN,Indiana,p107,MISO_Central
+18,3,Allen,IN,Indiana,p105,MISO_Central
+18,53,Grant,IN,Indiana,p105,MISO_Central
+18,143,Scott,IN,Indiana,p107,MISO_Central
+18,167,Vigo,IN,Indiana,p105,MISO_Central
+19,105,Jones,IA,Iowa,p70,MISO_North
+19,93,Ida,IA,Iowa,p45,MISO_North
+19,25,Calhoun,IA,Iowa,p45,MISO_North
+19,35,Cherokee,IA,Iowa,p45,MISO_North
+19,179,Wapello,IA,Iowa,p70,MISO_North
+19,117,Lucas,IA,Iowa,p70,MISO_North
+19,47,Crawford,IA,Iowa,p45,MISO_North
+19,33,Cerro Gordo,IA,Iowa,p45,MISO_North
+19,197,Wright,IA,Iowa,p45,MISO_North
+19,59,Dickinson,IA,Iowa,p45,MISO_North
+19,189,Winnebago,IA,Iowa,p45,MISO_North
+19,145,Page,IA,Iowa,p45,MISO_North
+19,89,Howard,IA,Iowa,p69,MISO_North
+19,21,Buena Vista,IA,Iowa,p45,MISO_North
+19,121,Madison,IA,Iowa,p70,MISO_North
+19,71,Fremont,IA,Iowa,p45,MISO_North
+19,171,Tama,IA,Iowa,p70,MISO_North
+19,163,Scott,IA,Iowa,p70,MISO_North
+19,95,Iowa,IA,Iowa,p70,MISO_North
+19,51,Davis,IA,Iowa,p70,MISO_North
+19,39,Clarke,IA,Iowa,p70,MISO_North
+19,63,Emmet,IA,Iowa,p45,MISO_North
+19,167,Sioux,IA,Iowa,p45,MISO_North
+19,143,Osceola,IA,Iowa,p45,MISO_North
+19,3,Adams,IA,Iowa,p70,MISO_North
+19,53,Decatur,IA,Iowa,p70,MISO_North
+19,137,Montgomery,IA,Iowa,p45,MISO_North
+19,155,Pottawattamie,IA,Iowa,p45,MISO_North
+19,31,Cedar,IA,Iowa,p70,MISO_North
+19,109,Kossuth,IA,Iowa,p45,MISO_North
+19,165,Shelby,IA,Iowa,p45,MISO_North
+19,153,Polk,IA,Iowa,p70,MISO_North
+19,149,Plymouth,IA,Iowa,p45,MISO_North
+19,157,Poweshiek,IA,Iowa,p70,MISO_North
+19,131,Mitchell,IA,Iowa,p69,MISO_North
+19,119,Lyon,IA,Iowa,p45,MISO_North
+19,103,Johnson,IA,Iowa,p70,MISO_North
+19,55,Delaware,IA,Iowa,p70,MISO_North
+19,169,Story,IA,Iowa,p70,MISO_North
+19,73,Greene,IA,Iowa,p70,MISO_North
+19,67,Floyd,IA,Iowa,p69,MISO_North
+19,27,Carroll,IA,Iowa,p45,MISO_North
+19,187,Webster,IA,Iowa,p45,MISO_North
+19,181,Warren,IA,Iowa,p70,MISO_North
+19,175,Union,IA,Iowa,p70,MISO_North
+19,99,Jasper,IA,Iowa,p70,MISO_North
+19,65,Fayette,IA,Iowa,p69,MISO_North
+19,147,Palo Alto,IA,Iowa,p45,MISO_North
+19,17,Bremer,IA,Iowa,p69,MISO_North
+19,13,Black Hawk,IA,Iowa,p69,MISO_North
+19,159,Ringgold,IA,Iowa,p70,MISO_North
+19,75,Grundy,IA,Iowa,p69,MISO_North
+19,43,Clayton,IA,Iowa,p69,MISO_North
+19,57,Des Moines,IA,Iowa,p70,MISO_North
+19,135,Monroe,IA,Iowa,p70,MISO_North
+19,11,Benton,IA,Iowa,p70,MISO_North
+19,69,Franklin,IA,Iowa,p45,MISO_North
+19,139,Muscatine,IA,Iowa,p70,MISO_North
+19,83,Hardin,IA,Iowa,p70,MISO_North
+19,45,Clinton,IA,Iowa,p70,MISO_North
+19,123,Mahaska,IA,Iowa,p70,MISO_North
+19,87,Henry,IA,Iowa,p70,MISO_North
+19,113,Linn,IA,Iowa,p70,MISO_North
+19,101,Jefferson,IA,Iowa,p70,MISO_North
+19,85,Harrison,IA,Iowa,p45,MISO_North
+19,91,Humboldt,IA,Iowa,p45,MISO_North
+19,133,Monona,IA,Iowa,p45,MISO_North
+19,19,Buchanan,IA,Iowa,p69,MISO_North
+19,177,Van Buren,IA,Iowa,p70,MISO_North
+19,1,Adair,IA,Iowa,p70,MISO_North
+19,183,Washington,IA,Iowa,p70,MISO_North
+19,127,Marshall,IA,Iowa,p70,MISO_North
+19,77,Guthrie,IA,Iowa,p70,MISO_North
+19,185,Wayne,IA,Iowa,p70,MISO_North
+19,23,Butler,IA,Iowa,p69,MISO_North
+19,111,Lee,IA,Iowa,p70,MISO_North
+19,151,Pocahontas,IA,Iowa,p45,MISO_North
+19,191,Winneshiek,IA,Iowa,p69,MISO_North
+19,49,Dallas,IA,Iowa,p70,MISO_North
+19,141,O'Brien,IA,Iowa,p45,MISO_North
+19,125,Marion,IA,Iowa,p70,MISO_North
+19,9,Audubon,IA,Iowa,p45,MISO_North
+19,61,Dubuque,IA,Iowa,p70,MISO_North
+19,115,Louisa,IA,Iowa,p70,MISO_North
+19,37,Chickasaw,IA,Iowa,p69,MISO_North
+19,15,Boone,IA,Iowa,p70,MISO_North
+19,29,Cass,IA,Iowa,p70,MISO_North
+19,129,Mills,IA,Iowa,p45,MISO_North
+19,97,Jackson,IA,Iowa,p70,MISO_North
+19,161,Sac,IA,Iowa,p45,MISO_North
+19,107,Keokuk,IA,Iowa,p70,MISO_North
+19,79,Hamilton,IA,Iowa,p70,MISO_North
+19,195,Worth,IA,Iowa,p45,MISO_North
+19,173,Taylor,IA,Iowa,p45,MISO_North
+19,41,Clay,IA,Iowa,p45,MISO_North
+19,81,Hancock,IA,Iowa,p45,MISO_North
+19,7,Appanoose,IA,Iowa,p70,MISO_North
+19,193,Woodbury,IA,Iowa,p45,MISO_North
+19,5,Allamakee,IA,Iowa,p69,MISO_North
+20,135,Ness,KS,Kansas,p53,SPP_South
+20,43,Doniphan,KS,Kansas,p53,SPP_South
+20,57,Ford,KS,Kansas,p53,SPP_South
+20,75,Hamilton,KS,Kansas,p52,SPP_South
+20,199,Wallace,KS,Kansas,p52,SPP_South
+20,11,Bourbon,KS,Kansas,p53,SPP_South
+20,139,Osage,KS,Kansas,p53,SPP_South
+20,69,Gray,KS,Kansas,p53,SPP_South
+20,203,Wichita,KS,Kansas,p52,SPP_South
+20,113,McPherson,KS,Kansas,p53,SPP_South
+20,87,Jefferson,KS,Kansas,p53,SPP_South
+20,91,Johnson,KS,Kansas,p53,SPP_South
+20,85,Jackson,KS,Kansas,p53,SPP_South
+20,101,Lane,KS,Kansas,p52,SPP_South
+20,1,Allen,KS,Kansas,p53,SPP_South
+20,177,Shawnee,KS,Kansas,p53,SPP_South
+20,19,Chautauqua,KS,Kansas,p53,SPP_South
+20,133,Neosho,KS,Kansas,p53,SPP_South
+20,83,Hodgeman,KS,Kansas,p53,SPP_South
+20,45,Douglas,KS,Kansas,p53,SPP_South
+20,123,Mitchell,KS,Kansas,p53,SPP_South
+20,49,Elk,KS,Kansas,p53,SPP_South
+20,151,Pratt,KS,Kansas,p53,SPP_South
+20,191,Sumner,KS,Kansas,p53,SPP_South
+20,23,Cheyenne,KS,Kansas,p52,SPP_South
+20,111,Lyon,KS,Kansas,p53,SPP_South
+20,9,Barton,KS,Kansas,p53,SPP_South
+20,61,Geary,KS,Kansas,p53,SPP_South
+20,141,Osborne,KS,Kansas,p53,SPP_South
+20,125,Montgomery,KS,Kansas,p53,SPP_South
+20,127,Morris,KS,Kansas,p53,SPP_South
+20,183,Smith,KS,Kansas,p53,SPP_South
+20,77,Harper,KS,Kansas,p53,SPP_South
+20,185,Stafford,KS,Kansas,p53,SPP_South
+20,41,Dickinson,KS,Kansas,p53,SPP_South
+20,195,Trego,KS,Kansas,p52,SPP_South
+20,173,Sedgwick,KS,Kansas,p53,SPP_South
+20,81,Haskell,KS,Kansas,p53,SPP_South
+20,7,Barber,KS,Kansas,p53,SPP_South
+20,5,Atchison,KS,Kansas,p53,SPP_South
+20,193,Thomas,KS,Kansas,p52,SPP_South
+20,29,Cloud,KS,Kansas,p53,SPP_South
+20,15,Butler,KS,Kansas,p53,SPP_South
+20,37,Crawford,KS,Kansas,p53,SPP_South
+20,115,Marion,KS,Kansas,p53,SPP_South
+20,79,Harvey,KS,Kansas,p53,SPP_South
+20,161,Riley,KS,Kansas,p53,SPP_South
+20,107,Linn,KS,Kansas,p53,SPP_South
+20,97,Kiowa,KS,Kansas,p53,SPP_South
+20,129,Morton,KS,Kansas,p52,SPP_South
+20,33,Comanche,KS,Kansas,p53,SPP_South
+20,47,Edwards,KS,Kansas,p53,SPP_South
+20,59,Franklin,KS,Kansas,p53,SPP_South
+20,197,Wabaunsee,KS,Kansas,p53,SPP_South
+20,201,Washington,KS,Kansas,p53,SPP_South
+20,145,Pawnee,KS,Kansas,p53,SPP_South
+20,189,Stevens,KS,Kansas,p52,SPP_South
+20,21,Cherokee,KS,Kansas,p53,SPP_South
+20,89,Jewell,KS,Kansas,p53,SPP_South
+20,205,Wilson,KS,Kansas,p53,SPP_South
+20,105,Lincoln,KS,Kansas,p53,SPP_South
+20,93,Kearny,KS,Kansas,p52,SPP_South
+20,179,Sheridan,KS,Kansas,p52,SPP_South
+20,117,Marshall,KS,Kansas,p53,SPP_South
+20,207,Woodson,KS,Kansas,p53,SPP_South
+20,35,Cowley,KS,Kansas,p53,SPP_South
+20,25,Clark,KS,Kansas,p53,SPP_South
+20,167,Russell,KS,Kansas,p53,SPP_South
+20,143,Ottawa,KS,Kansas,p53,SPP_South
+20,53,Ellsworth,KS,Kansas,p53,SPP_South
+20,3,Anderson,KS,Kansas,p53,SPP_South
+20,137,Norton,KS,Kansas,p52,SPP_South
+20,71,Greeley,KS,Kansas,p52,SPP_South
+20,121,Miami,KS,Kansas,p53,SPP_South
+20,163,Rooks,KS,Kansas,p53,SPP_South
+20,171,Scott,KS,Kansas,p52,SPP_South
+20,95,Kingman,KS,Kansas,p53,SPP_South
+20,63,Gove,KS,Kansas,p52,SPP_South
+20,39,Decatur,KS,Kansas,p52,SPP_South
+20,51,Ellis,KS,Kansas,p53,SPP_South
+20,149,Pottawatomie,KS,Kansas,p53,SPP_South
+20,153,Rawlins,KS,Kansas,p52,SPP_South
+20,157,Republic,KS,Kansas,p53,SPP_South
+20,131,Nemaha,KS,Kansas,p53,SPP_South
+20,55,Finney,KS,Kansas,p52,SPP_South
+20,103,Leavenworth,KS,Kansas,p53,SPP_South
+20,119,Meade,KS,Kansas,p53,SPP_South
+20,209,Wyandotte,KS,Kansas,p53,SPP_South
+20,169,Saline,KS,Kansas,p53,SPP_South
+20,155,Reno,KS,Kansas,p53,SPP_South
+20,31,Coffey,KS,Kansas,p53,SPP_South
+20,109,Logan,KS,Kansas,p52,SPP_South
+20,165,Rush,KS,Kansas,p53,SPP_South
+20,99,Labette,KS,Kansas,p53,SPP_South
+20,175,Seward,KS,Kansas,p53,SPP_South
+20,147,Phillips,KS,Kansas,p53,SPP_South
+20,65,Graham,KS,Kansas,p52,SPP_South
+20,13,Brown,KS,Kansas,p53,SPP_South
+20,17,Chase,KS,Kansas,p53,SPP_South
+20,159,Rice,KS,Kansas,p53,SPP_South
+20,27,Clay,KS,Kansas,p53,SPP_South
+20,67,Grant,KS,Kansas,p52,SPP_South
+20,73,Greenwood,KS,Kansas,p53,SPP_South
+20,181,Sherman,KS,Kansas,p52,SPP_South
+20,187,Stanton,KS,Kansas,p52,SPP_South
+21,171,Monroe,KY,Kentucky,p93,SERTP
+21,163,Meade,KY,Kentucky,p109,PJM_East
+21,71,Floyd,KY,Kentucky,p110,PJM_East
+21,217,Taylor,KY,Kentucky,p109,PJM_East
+21,121,Knox,KY,Kentucky,p109,PJM_East
+21,39,Carlisle,KY,Kentucky,p93,SERTP
+21,63,Elliott,KY,Kentucky,p109,PJM_East
+21,51,Clay,KY,Kentucky,p109,PJM_East
+21,95,Harlan,KY,Kentucky,p109,PJM_East
+21,143,Lyon,KY,Kentucky,p93,SERTP
+21,167,Mercer,KY,Kentucky,p109,PJM_East
+21,137,Lincoln,KY,Kentucky,p109,PJM_East
+21,53,Clinton,KY,Kentucky,p93,SERTP
+21,3,Allen,KY,Kentucky,p93,SERTP
+21,93,Hardin,KY,Kentucky,p109,PJM_East
+21,205,Rowan,KY,Kentucky,p109,PJM_East
+21,105,Hickman,KY,Kentucky,p93,SERTP
+21,207,Russell,KY,Kentucky,p93,SERTP
+21,117,Kenton,KY,Kentucky,p109,PJM_East
+21,179,Nelson,KY,Kentucky,p109,PJM_East
+21,25,Breathitt,KY,Kentucky,p110,PJM_East
+21,35,Calloway,KY,Kentucky,p93,SERTP
+21,225,Union,KY,Kentucky,p108,MISO_Central
+21,197,Powell,KY,Kentucky,p109,PJM_East
+21,59,Daviess,KY,Kentucky,p108,MISO_Central
+21,211,Shelby,KY,Kentucky,p109,PJM_East
+21,33,Caldwell,KY,Kentucky,p108,MISO_Central
+21,47,Christian,KY,Kentucky,p93,SERTP
+21,89,Greenup,KY,Kentucky,p109,PJM_East
+21,21,Boyle,KY,Kentucky,p109,PJM_East
+21,145,McCracken,KY,Kentucky,p93,SERTP
+21,201,Robertson,KY,Kentucky,p109,PJM_East
+21,189,Owsley,KY,Kentucky,p109,PJM_East
+21,181,Nicholas,KY,Kentucky,p109,PJM_East
+21,187,Owen,KY,Kentucky,p109,PJM_East
+21,27,Breckinridge,KY,Kentucky,p108,MISO_Central
+21,73,Franklin,KY,Kentucky,p109,PJM_East
+21,67,Fayette,KY,Kentucky,p109,PJM_East
+21,213,Simpson,KY,Kentucky,p93,SERTP
+21,147,McCreary,KY,Kentucky,p93,SERTP
+21,65,Estill,KY,Kentucky,p109,PJM_East
+21,175,Morgan,KY,Kentucky,p109,PJM_East
+21,99,Hart,KY,Kentucky,p109,PJM_East
+21,159,Martin,KY,Kentucky,p110,PJM_East
+21,13,Bell,KY,Kentucky,p109,PJM_East
+21,17,Bourbon,KY,Kentucky,p109,PJM_East
+21,155,Marion,KY,Kentucky,p109,PJM_East
+21,239,Woodford,KY,Kentucky,p109,PJM_East
+21,221,Trigg,KY,Kentucky,p93,SERTP
+21,215,Spencer,KY,Kentucky,p109,PJM_East
+21,165,Menifee,KY,Kentucky,p109,PJM_East
+21,109,Jackson,KY,Kentucky,p109,PJM_East
+21,31,Butler,KY,Kentucky,p93,SERTP
+21,131,Leslie,KY,Kentucky,p110,PJM_East
+21,157,Marshall,KY,Kentucky,p93,SERTP
+21,149,McLean,KY,Kentucky,p108,MISO_Central
+21,153,Magoffin,KY,Kentucky,p109,PJM_East
+21,169,Metcalfe,KY,Kentucky,p93,SERTP
+21,209,Scott,KY,Kentucky,p109,PJM_East
+21,103,Henry,KY,Kentucky,p109,PJM_East
+21,55,Crittenden,KY,Kentucky,p108,MISO_Central
+21,119,Knott,KY,Kentucky,p110,PJM_East
+21,45,Casey,KY,Kentucky,p109,PJM_East
+21,83,Graves,KY,Kentucky,p93,SERTP
+21,123,Larue,KY,Kentucky,p109,PJM_East
+21,85,Grayson,KY,Kentucky,p108,MISO_Central
+21,91,Hancock,KY,Kentucky,p108,MISO_Central
+21,233,Webster,KY,Kentucky,p108,MISO_Central
+21,101,Henderson,KY,Kentucky,p108,MISO_Central
+21,113,Jessamine,KY,Kentucky,p109,PJM_East
+21,87,Green,KY,Kentucky,p109,PJM_East
+21,177,Muhlenberg,KY,Kentucky,p108,MISO_Central
+21,1,Adair,KY,Kentucky,p109,PJM_East
+21,133,Letcher,KY,Kentucky,p110,PJM_East
+21,19,Boyd,KY,Kentucky,p110,PJM_East
+21,237,Wolfe,KY,Kentucky,p109,PJM_East
+21,203,Rockcastle,KY,Kentucky,p109,PJM_East
+21,231,Wayne,KY,Kentucky,p93,SERTP
+21,135,Lewis,KY,Kentucky,p109,PJM_East
+21,75,Fulton,KY,Kentucky,p93,SERTP
+21,57,Cumberland,KY,Kentucky,p93,SERTP
+21,43,Carter,KY,Kentucky,p110,PJM_East
+21,139,Livingston,KY,Kentucky,p93,SERTP
+21,69,Fleming,KY,Kentucky,p109,PJM_East
+21,199,Pulaski,KY,Kentucky,p93,SERTP
+21,11,Bath,KY,Kentucky,p109,PJM_East
+21,37,Campbell,KY,Kentucky,p109,PJM_East
+21,219,Todd,KY,Kentucky,p93,SERTP
+21,15,Boone,KY,Kentucky,p109,PJM_East
+21,29,Bullitt,KY,Kentucky,p109,PJM_East
+21,115,Johnson,KY,Kentucky,p109,PJM_East
+21,107,Hopkins,KY,Kentucky,p108,MISO_Central
+21,161,Mason,KY,Kentucky,p109,PJM_East
+21,79,Garrard,KY,Kentucky,p109,PJM_East
+21,129,Lee,KY,Kentucky,p109,PJM_East
+21,235,Whitley,KY,Kentucky,p109,PJM_East
+21,97,Harrison,KY,Kentucky,p109,PJM_East
+21,81,Grant,KY,Kentucky,p109,PJM_East
+21,41,Carroll,KY,Kentucky,p109,PJM_East
+21,173,Montgomery,KY,Kentucky,p109,PJM_East
+21,195,Pike,KY,Kentucky,p110,PJM_East
+21,229,Washington,KY,Kentucky,p109,PJM_East
+21,193,Perry,KY,Kentucky,p110,PJM_East
+21,5,Anderson,KY,Kentucky,p109,PJM_East
+21,7,Ballard,KY,Kentucky,p93,SERTP
+21,127,Lawrence,KY,Kentucky,p110,PJM_East
+21,183,Ohio,KY,Kentucky,p108,MISO_Central
+21,185,Oldham,KY,Kentucky,p109,PJM_East
+21,77,Gallatin,KY,Kentucky,p109,PJM_East
+21,61,Edmonson,KY,Kentucky,p109,PJM_East
+21,9,Barren,KY,Kentucky,p109,PJM_East
+21,125,Laurel,KY,Kentucky,p109,PJM_East
+21,141,Logan,KY,Kentucky,p93,SERTP
+21,191,Pendleton,KY,Kentucky,p109,PJM_East
+21,223,Trimble,KY,Kentucky,p109,PJM_East
+21,151,Madison,KY,Kentucky,p109,PJM_East
+21,49,Clark,KY,Kentucky,p109,PJM_East
+21,111,Jefferson,KY,Kentucky,p109,PJM_East
+21,23,Bracken,KY,Kentucky,p109,PJM_East
+21,227,Warren,KY,Kentucky,p93,SERTP
+22,27,Claiborne,LA,Louisiana,p86,MISO_South
+22,67,Morehouse,LA,Louisiana,p86,MISO_South
+22,73,Ouachita,LA,Louisiana,p86,MISO_South
+22,99,St. Martin,LA,Louisiana,p58,MISO_South
+22,65,Madison,LA,Louisiana,p86,MISO_South
+22,13,Bienville,LA,Louisiana,p58,MISO_South
+22,17,Caddo,LA,Louisiana,p58,MISO_South
+22,31,De Soto,LA,Louisiana,p58,MISO_South
+22,109,Terrebonne,LA,Louisiana,p58,MISO_South
+22,55,Lafayette,LA,Louisiana,p58,MISO_South
+22,103,St. Tammany,LA,Louisiana,p58,MISO_South
+22,119,Webster,LA,Louisiana,p58,MISO_South
+22,71,Orleans,LA,Louisiana,p58,MISO_South
+22,121,West Baton Rouge,LA,Louisiana,p58,MISO_South
+22,95,St. John the Baptist,LA,Louisiana,p58,MISO_South
+22,63,Livingston,LA,Louisiana,p58,MISO_South
+22,39,Evangeline,LA,Louisiana,p58,MISO_South
+22,51,Jefferson,LA,Louisiana,p58,MISO_South
+22,53,Jefferson Davis,LA,Louisiana,p58,MISO_South
+22,3,Allen,LA,Louisiana,p58,MISO_South
+22,105,Tangipahoa,LA,Louisiana,p58,MISO_South
+22,93,St. James,LA,Louisiana,p58,MISO_South
+22,117,Washington,LA,Louisiana,p58,MISO_South
+22,35,East Carroll,LA,Louisiana,p86,MISO_South
+22,25,Catahoula,LA,Louisiana,p58,MISO_South
+22,33,East Baton Rouge,LA,Louisiana,p58,MISO_South
+22,47,Iberville,LA,Louisiana,p58,MISO_South
+22,59,La Salle,LA,Louisiana,p58,MISO_South
+22,21,Caldwell,LA,Louisiana,p58,MISO_South
+22,89,St. Charles,LA,Louisiana,p58,MISO_South
+22,29,Concordia,LA,Louisiana,p58,MISO_South
+22,15,Bossier,LA,Louisiana,p58,MISO_South
+22,37,East Feliciana,LA,Louisiana,p58,MISO_South
+22,115,Vernon,LA,Louisiana,p58,MISO_South
+22,79,Rapides,LA,Louisiana,p58,MISO_South
+22,107,Tensas,LA,Louisiana,p86,MISO_South
+22,97,St. Landry,LA,Louisiana,p58,MISO_South
+22,41,Franklin,LA,Louisiana,p86,MISO_South
+22,81,Red River,LA,Louisiana,p58,MISO_South
+22,7,Assumption,LA,Louisiana,p58,MISO_South
+22,5,Ascension,LA,Louisiana,p58,MISO_South
+22,127,Winn,LA,Louisiana,p58,MISO_South
+22,77,Pointe Coupee,LA,Louisiana,p58,MISO_South
+22,49,Jackson,LA,Louisiana,p58,MISO_South
+22,23,Cameron,LA,Louisiana,p58,MISO_South
+22,111,Union,LA,Louisiana,p86,MISO_South
+22,9,Avoyelles,LA,Louisiana,p58,MISO_South
+22,61,Lincoln,LA,Louisiana,p86,MISO_South
+22,125,West Feliciana,LA,Louisiana,p58,MISO_South
+22,83,Richland,LA,Louisiana,p86,MISO_South
+22,45,Iberia,LA,Louisiana,p58,MISO_South
+22,123,West Carroll,LA,Louisiana,p86,MISO_South
+22,113,Vermilion,LA,Louisiana,p58,MISO_South
+22,87,St. Bernard,LA,Louisiana,p58,MISO_South
+22,91,St. Helena,LA,Louisiana,p58,MISO_South
+22,85,Sabine,LA,Louisiana,p58,MISO_South
+22,101,St. Mary,LA,Louisiana,p58,MISO_South
+22,1,Acadia,LA,Louisiana,p58,MISO_South
+22,19,Calcasieu,LA,Louisiana,p58,MISO_South
+22,43,Grant,LA,Louisiana,p58,MISO_South
+22,57,Lafourche,LA,Louisiana,p58,MISO_South
+22,75,Plaquemines,LA,Louisiana,p58,MISO_South
+22,11,Beauregard,LA,Louisiana,p58,MISO_South
+22,69,Natchitoches,LA,Louisiana,p58,MISO_South
+23,17,Oxford,ME,Maine,p134,ISONE
+23,13,Knox,ME,Maine,p134,ISONE
+23,27,Waldo,ME,Maine,p134,ISONE
+23,31,York,ME,Maine,p134,ISONE
+23,3,Aroostook,ME,Maine,p134,ISONE
+23,21,Piscataquis,ME,Maine,p134,ISONE
+23,25,Somerset,ME,Maine,p134,ISONE
+23,7,Franklin,ME,Maine,p134,ISONE
+23,5,Cumberland,ME,Maine,p134,ISONE
+23,29,Washington,ME,Maine,p134,ISONE
+23,15,Lincoln,ME,Maine,p134,ISONE
+23,23,Sagadahoc,ME,Maine,p134,ISONE
+23,9,Hancock,ME,Maine,p134,ISONE
+23,19,Penobscot,ME,Maine,p134,ISONE
+23,1,Androscoggin,ME,Maine,p134,ISONE
+23,11,Kennebec,ME,Maine,p134,ISONE
+24,27,Howard,MD,Maryland,p123,PJM_East
+24,17,Charles,MD,Maryland,p123,PJM_East
+24,13,Carroll,MD,Maryland,p123,PJM_East
+24,31,Montgomery,MD,Maryland,p123,PJM_East
+24,39,Somerset,MD,Maryland,p123,PJM_East
+24,3,Anne Arundel,MD,Maryland,p123,PJM_East
+24,25,Harford,MD,Maryland,p123,PJM_East
+24,35,Queen Anne's,MD,Maryland,p123,PJM_East
+24,21,Frederick,MD,Maryland,p121,PJM_East
+24,47,Worcester,MD,Maryland,p123,PJM_East
+24,33,Prince George's,MD,Maryland,p123,PJM_East
+24,37,St. Mary's,MD,Maryland,p123,PJM_East
+24,15,Cecil,MD,Maryland,p123,PJM_East
+24,29,Kent,MD,Maryland,p123,PJM_East
+24,5,Baltimore,MD,Maryland,p123,PJM_East
+24,41,Talbot,MD,Maryland,p123,PJM_East
+24,510,Baltimore,MD,Maryland,p123,PJM_East
+24,23,Garrett,MD,Maryland,p121,PJM_East
+24,9,Calvert,MD,Maryland,p123,PJM_East
+24,45,Wicomico,MD,Maryland,p123,PJM_East
+24,19,Dorchester,MD,Maryland,p123,PJM_East
+24,1,Allegany,MD,Maryland,p121,PJM_East
+24,11,Caroline,MD,Maryland,p123,PJM_East
+24,43,Washington,MD,Maryland,p121,PJM_East
+25,5,Bristol,MA,Massachusetts,p131,ISONE
+25,7,Dukes,MA,Massachusetts,p131,ISONE
+25,15,Hampshire,MA,Massachusetts,p131,ISONE
+25,9,Essex,MA,Massachusetts,p131,ISONE
+25,23,Plymouth,MA,Massachusetts,p131,ISONE
+25,1,Barnstable,MA,Massachusetts,p131,ISONE
+25,19,Nantucket,MA,Massachusetts,p131,ISONE
+25,11,Franklin,MA,Massachusetts,p131,ISONE
+25,13,Hampden,MA,Massachusetts,p131,ISONE
+25,17,Middlesex,MA,Massachusetts,p131,ISONE
+25,27,Worcester,MA,Massachusetts,p131,ISONE
+25,3,Berkshire,MA,Massachusetts,p131,ISONE
+25,21,Norfolk,MA,Massachusetts,p131,ISONE
+25,25,Suffolk,MA,Massachusetts,p131,ISONE
+26,155,Shiawassee,MI,Michigan,p103,MISO_Central
+26,109,Menominee,MI,Michigan,p74,MISO_North
+26,31,Cheboygan,MI,Michigan,p103,MISO_Central
+26,165,Wexford,MI,Michigan,p103,MISO_Central
+26,153,Schoolcraft,MI,Michigan,p103,MISO_Central
+26,149,St. Joseph,MI,Michigan,p104,PJM_West
+26,131,Ontonagon,MI,Michigan,p74,MISO_North
+26,157,Tuscola,MI,Michigan,p103,MISO_Central
+26,119,Montmorency,MI,Michigan,p103,MISO_Central
+26,55,Grand Traverse,MI,Michigan,p103,MISO_Central
+26,103,Marquette,MI,Michigan,p74,MISO_North
+26,67,Ionia,MI,Michigan,p103,MISO_Central
+26,73,Isabella,MI,Michigan,p103,MISO_Central
+26,27,Cass,MI,Michigan,p104,PJM_West
+26,99,Macomb,MI,Michigan,p103,MISO_Central
+26,65,Ingham,MI,Michigan,p103,MISO_Central
+26,147,St. Clair,MI,Michigan,p103,MISO_Central
+26,17,Bay,MI,Michigan,p103,MISO_Central
+26,13,Baraga,MI,Michigan,p74,MISO_North
+26,159,Van Buren,MI,Michigan,p104,PJM_West
+26,105,Mason,MI,Michigan,p103,MISO_Central
+26,93,Livingston,MI,Michigan,p103,MISO_Central
+26,35,Clare,MI,Michigan,p103,MISO_Central
+26,25,Calhoun,MI,Michigan,p103,MISO_Central
+26,117,Montcalm,MI,Michigan,p103,MISO_Central
+26,47,Emmet,MI,Michigan,p103,MISO_Central
+26,33,Chippewa,MI,Michigan,p103,MISO_Central
+26,59,Hillsdale,MI,Michigan,p103,MISO_Central
+26,145,Saginaw,MI,Michigan,p103,MISO_Central
+26,21,Berrien,MI,Michigan,p104,PJM_West
+26,89,Leelanau,MI,Michigan,p103,MISO_Central
+26,121,Muskegon,MI,Michigan,p103,MISO_Central
+26,71,Iron,MI,Michigan,p74,MISO_North
+26,163,Wayne,MI,Michigan,p103,MISO_Central
+26,95,Luce,MI,Michigan,p103,MISO_Central
+26,51,Gladwin,MI,Michigan,p103,MISO_Central
+26,63,Huron,MI,Michigan,p103,MISO_Central
+26,39,Crawford,MI,Michigan,p103,MISO_Central
+26,143,Roscommon,MI,Michigan,p103,MISO_Central
+26,3,Alger,MI,Michigan,p74,MISO_North
+26,53,Gogebic,MI,Michigan,p74,MISO_North
+26,137,Otsego,MI,Michigan,p103,MISO_Central
+26,127,Oceana,MI,Michigan,p103,MISO_Central
+26,77,Kalamazoo,MI,Michigan,p104,PJM_West
+26,111,Midland,MI,Michigan,p103,MISO_Central
+26,23,Branch,MI,Michigan,p103,MISO_Central
+26,49,Genesee,MI,Michigan,p103,MISO_Central
+26,151,Sanilac,MI,Michigan,p103,MISO_Central
+26,125,Oakland,MI,Michigan,p103,MISO_Central
+26,141,Presque Isle,MI,Michigan,p103,MISO_Central
+26,61,Houghton,MI,Michigan,p74,MISO_North
+26,9,Antrim,MI,Michigan,p103,MISO_Central
+26,115,Monroe,MI,Michigan,p103,MISO_Central
+26,29,Charlevoix,MI,Michigan,p103,MISO_Central
+26,15,Barry,MI,Michigan,p103,MISO_Central
+26,37,Clinton,MI,Michigan,p103,MISO_Central
+26,97,Mackinac,MI,Michigan,p103,MISO_Central
+26,129,Ogemaw,MI,Michigan,p103,MISO_Central
+26,79,Kalkaska,MI,Michigan,p103,MISO_Central
+26,107,Mecosta,MI,Michigan,p103,MISO_Central
+26,161,Washtenaw,MI,Michigan,p103,MISO_Central
+26,41,Delta,MI,Michigan,p74,MISO_North
+26,81,Kent,MI,Michigan,p103,MISO_Central
+26,7,Alpena,MI,Michigan,p103,MISO_Central
+26,5,Allegan,MI,Michigan,p103,MISO_Central
+26,57,Gratiot,MI,Michigan,p103,MISO_Central
+26,43,Dickinson,MI,Michigan,p74,MISO_North
+26,75,Jackson,MI,Michigan,p103,MISO_Central
+26,135,Oscoda,MI,Michigan,p103,MISO_Central
+26,11,Arenac,MI,Michigan,p103,MISO_Central
+26,69,Iosco,MI,Michigan,p103,MISO_Central
+26,139,Ottawa,MI,Michigan,p103,MISO_Central
+26,83,Keweenaw,MI,Michigan,p74,MISO_North
+26,45,Eaton,MI,Michigan,p103,MISO_Central
+26,123,Newaygo,MI,Michigan,p103,MISO_Central
+26,87,Lapeer,MI,Michigan,p103,MISO_Central
+26,113,Missaukee,MI,Michigan,p103,MISO_Central
+26,101,Manistee,MI,Michigan,p103,MISO_Central
+26,91,Lenawee,MI,Michigan,p103,MISO_Central
+26,85,Lake,MI,Michigan,p103,MISO_Central
+26,19,Benzie,MI,Michigan,p103,MISO_Central
+26,133,Osceola,MI,Michigan,p103,MISO_Central
+26,1,Alcona,MI,Michigan,p103,MISO_Central
+27,77,Lake of the Woods,MN,Minnesota,p42,MISO_North
+27,127,Redwood,MN,Minnesota,p44,MISO_North
+27,49,Goodhue,MN,Minnesota,p43,MISO_North
+27,151,Swift,MN,Minnesota,p43,MISO_North
+27,111,Otter Tail,MN,Minnesota,p43,MISO_North
+27,23,Chippewa,MN,Minnesota,p44,MISO_North
+27,61,Itasca,MN,Minnesota,p43,MISO_North
+27,9,Benton,MN,Minnesota,p43,MISO_North
+27,125,Red Lake,MN,Minnesota,p42,MISO_North
+27,141,Sherburne,MN,Minnesota,p43,MISO_North
+27,79,Le Sueur,MN,Minnesota,p43,MISO_North
+27,107,Norman,MN,Minnesota,p42,MISO_North
+27,161,Waseca,MN,Minnesota,p68,MISO_North
+27,97,Morrison,MN,Minnesota,p43,MISO_North
+27,129,Renville,MN,Minnesota,p44,MISO_North
+27,15,Brown,MN,Minnesota,p68,MISO_North
+27,37,Dakota,MN,Minnesota,p43,MISO_North
+27,29,Clearwater,MN,Minnesota,p42,MISO_North
+27,115,Pine,MN,Minnesota,p43,MISO_North
+27,7,Beltrami,MN,Minnesota,p42,MISO_North
+27,5,Becker,MN,Minnesota,p42,MISO_North
+27,41,Douglas,MN,Minnesota,p43,MISO_North
+27,173,Yellow Medicine,MN,Minnesota,p44,MISO_North
+27,81,Lincoln,MN,Minnesota,p44,MISO_North
+27,11,Big Stone,MN,Minnesota,p43,MISO_North
+27,139,Scott,MN,Minnesota,p43,MISO_North
+27,69,Kittson,MN,Minnesota,p42,MISO_North
+27,135,Roseau,MN,Minnesota,p42,MISO_North
+27,75,Lake,MN,Minnesota,p43,MISO_North
+27,57,Hubbard,MN,Minnesota,p43,MISO_North
+27,43,Faribault,MN,Minnesota,p68,MISO_North
+27,123,Ramsey,MN,Minnesota,p43,MISO_North
+27,83,Lyon,MN,Minnesota,p44,MISO_North
+27,45,Fillmore,MN,Minnesota,p68,MISO_North
+27,1,Aitkin,MN,Minnesota,p43,MISO_North
+27,19,Carver,MN,Minnesota,p43,MISO_North
+27,133,Rock,MN,Minnesota,p44,MISO_North
+27,113,Pennington,MN,Minnesota,p42,MISO_North
+27,87,Mahnomen,MN,Minnesota,p42,MISO_North
+27,85,McLeod,MN,Minnesota,p43,MISO_North
+27,91,Martin,MN,Minnesota,p68,MISO_North
+27,101,Murray,MN,Minnesota,p44,MISO_North
+27,109,Olmsted,MN,Minnesota,p43,MISO_North
+27,31,Cook,MN,Minnesota,p43,MISO_North
+27,165,Watonwan,MN,Minnesota,p68,MISO_North
+27,155,Traverse,MN,Minnesota,p43,MISO_North
+27,55,Houston,MN,Minnesota,p68,MISO_North
+27,103,Nicollet,MN,Minnesota,p68,MISO_North
+27,119,Polk,MN,Minnesota,p42,MISO_North
+27,169,Winona,MN,Minnesota,p43,MISO_North
+27,149,Stevens,MN,Minnesota,p43,MISO_North
+27,153,Todd,MN,Minnesota,p43,MISO_North
+27,131,Rice,MN,Minnesota,p43,MISO_North
+27,157,Wabasha,MN,Minnesota,p43,MISO_North
+27,27,Clay,MN,Minnesota,p42,MISO_North
+27,73,Lac qui Parle,MN,Minnesota,p44,MISO_North
+27,67,Kandiyohi,MN,Minnesota,p43,MISO_North
+27,13,Blue Earth,MN,Minnesota,p68,MISO_North
+27,17,Carlton,MN,Minnesota,p43,MISO_North
+27,159,Wadena,MN,Minnesota,p43,MISO_North
+27,99,Mower,MN,Minnesota,p68,MISO_North
+27,147,Steele,MN,Minnesota,p43,MISO_North
+27,65,Kanabec,MN,Minnesota,p43,MISO_North
+27,117,Pipestone,MN,Minnesota,p44,MISO_North
+27,35,Crow Wing,MN,Minnesota,p43,MISO_North
+27,25,Chisago,MN,Minnesota,p43,MISO_North
+27,105,Nobles,MN,Minnesota,p44,MISO_North
+27,93,Meeker,MN,Minnesota,p43,MISO_North
+27,145,Stearns,MN,Minnesota,p43,MISO_North
+27,89,Marshall,MN,Minnesota,p42,MISO_North
+27,21,Cass,MN,Minnesota,p43,MISO_North
+27,33,Cottonwood,MN,Minnesota,p68,MISO_North
+27,47,Freeborn,MN,Minnesota,p68,MISO_North
+27,59,Isanti,MN,Minnesota,p43,MISO_North
+27,95,Mille Lacs,MN,Minnesota,p43,MISO_North
+27,39,Dodge,MN,Minnesota,p43,MISO_North
+27,63,Jackson,MN,Minnesota,p68,MISO_North
+27,51,Grant,MN,Minnesota,p43,MISO_North
+27,71,Koochiching,MN,Minnesota,p42,MISO_North
+27,121,Pope,MN,Minnesota,p43,MISO_North
+27,171,Wright,MN,Minnesota,p43,MISO_North
+27,163,Washington,MN,Minnesota,p43,MISO_North
+27,53,Hennepin,MN,Minnesota,p43,MISO_North
+27,3,Anoka,MN,Minnesota,p43,MISO_North
+27,137,St. Louis,MN,Minnesota,p43,MISO_North
+27,167,Wilkin,MN,Minnesota,p43,MISO_North
+27,143,Sibley,MN,Minnesota,p43,MISO_North
+28,55,Issaquena,MS,Mississippi,p87,MISO_South
+28,103,Noxubee,MS,Mississippi,p88,SERTP
+28,119,Quitman,MS,Mississippi,p87,MISO_South
+28,149,Warren,MS,Mississippi,p87,MISO_South
+28,153,Wayne,MS,Mississippi,p87,MISO_South
+28,131,Stone,MS,Mississippi,p87,MISO_South
+28,157,Wilkinson,MS,Mississippi,p87,MISO_South
+28,109,Pearl River,MS,Mississippi,p87,MISO_South
+28,31,Covington,MS,Mississippi,p87,MISO_South
+28,155,Webster,MS,Mississippi,p88,SERTP
+28,13,Calhoun,MS,Mississippi,p88,SERTP
+28,17,Chickasaw,MS,Mississippi,p88,SERTP
+28,159,Winston,MS,Mississippi,p88,SERTP
+28,99,Neshoba,MS,Mississippi,p88,SERTP
+28,147,Walthall,MS,Mississippi,p87,MISO_South
+28,65,Jefferson Davis,MS,Mississippi,p87,MISO_South
+28,27,Coahoma,MS,Mississippi,p87,MISO_South
+28,67,Jones,MS,Mississippi,p87,MISO_South
+28,73,Lamar,MS,Mississippi,p87,MISO_South
+28,145,Union,MS,Mississippi,p88,SERTP
+28,21,Claiborne,MS,Mississippi,p87,MISO_South
+28,89,Madison,MS,Mississippi,p87,MISO_South
+28,33,DeSoto,MS,Mississippi,p87,MISO_South
+28,47,Harrison,MS,Mississippi,p87,MISO_South
+28,59,Jackson,MS,Mississippi,p87,MISO_South
+28,117,Prentiss,MS,Mississippi,p88,SERTP
+28,35,Forrest,MS,Mississippi,p87,MISO_South
+28,25,Clay,MS,Mississippi,p88,SERTP
+28,105,Oktibbeha,MS,Mississippi,p88,SERTP
+28,93,Marshall,MS,Mississippi,p88,SERTP
+28,53,Humphreys,MS,Mississippi,p87,MISO_South
+28,3,Alcorn,MS,Mississippi,p88,SERTP
+28,137,Tate,MS,Mississippi,p87,MISO_South
+28,143,Tunica,MS,Mississippi,p87,MISO_South
+28,95,Monroe,MS,Mississippi,p88,SERTP
+28,63,Jefferson,MS,Mississippi,p87,MISO_South
+28,39,George,MS,Mississippi,p87,MISO_South
+28,51,Holmes,MS,Mississippi,p87,MISO_South
+28,71,Lafayette,MS,Mississippi,p88,SERTP
+28,121,Rankin,MS,Mississippi,p87,MISO_South
+28,163,Yazoo,MS,Mississippi,p87,MISO_South
+28,49,Hinds,MS,Mississippi,p87,MISO_South
+28,151,Washington,MS,Mississippi,p87,MISO_South
+28,111,Perry,MS,Mississippi,p87,MISO_South
+28,23,Clarke,MS,Mississippi,p87,MISO_South
+28,61,Jasper,MS,Mississippi,p87,MISO_South
+28,9,Benton,MS,Mississippi,p88,SERTP
+28,125,Sharkey,MS,Mississippi,p87,MISO_South
+28,141,Tishomingo,MS,Mississippi,p88,SERTP
+28,77,Lawrence,MS,Mississippi,p87,MISO_South
+28,127,Simpson,MS,Mississippi,p87,MISO_South
+28,7,Attala,MS,Mississippi,p87,MISO_South
+28,5,Amite,MS,Mississippi,p87,MISO_South
+28,41,Greene,MS,Mississippi,p87,MISO_South
+28,81,Lee,MS,Mississippi,p88,SERTP
+28,79,Leake,MS,Mississippi,p87,MISO_South
+28,107,Panola,MS,Mississippi,p87,MISO_South
+28,161,Yalobusha,MS,Mississippi,p88,SERTP
+28,97,Montgomery,MS,Mississippi,p87,MISO_South
+28,129,Smith,MS,Mississippi,p87,MISO_South
+28,29,Copiah,MS,Mississippi,p87,MISO_South
+28,15,Carroll,MS,Mississippi,p87,MISO_South
+28,37,Franklin,MS,Mississippi,p87,MISO_South
+28,115,Pontotoc,MS,Mississippi,p88,SERTP
+28,11,Bolivar,MS,Mississippi,p87,MISO_South
+28,139,Tippah,MS,Mississippi,p88,SERTP
+28,69,Kemper,MS,Mississippi,p88,SERTP
+28,135,Tallahatchie,MS,Mississippi,p87,MISO_South
+28,57,Itawamba,MS,Mississippi,p88,SERTP
+28,43,Grenada,MS,Mississippi,p87,MISO_South
+28,75,Lauderdale,MS,Mississippi,p87,MISO_South
+28,1,Adams,MS,Mississippi,p87,MISO_South
+28,19,Choctaw,MS,Mississippi,p88,SERTP
+28,133,Sunflower,MS,Mississippi,p87,MISO_South
+28,113,Pike,MS,Mississippi,p87,MISO_South
+28,87,Lowndes,MS,Mississippi,p88,SERTP
+28,91,Marion,MS,Mississippi,p87,MISO_South
+28,85,Lincoln,MS,Mississippi,p87,MISO_South
+28,101,Newton,MS,Mississippi,p87,MISO_South
+28,123,Scott,MS,Mississippi,p87,MISO_South
+28,83,Leflore,MS,Mississippi,p87,MISO_South
+28,45,Hancock,MS,Mississippi,p87,MISO_South
+29,155,Pemiscot,MO,Missouri,p84,MISO_Central
+29,165,Platte,MO,Missouri,p54,SPP_South
+29,215,Texas,MO,Missouri,p84,MISO_Central
+29,221,Washington,MO,Missouri,p73,MISO_Central
+29,109,Lawrence,MO,Missouri,p55,SPP_South
+29,31,Cape Girardeau,MO,Missouri,p72,MISO_Central
+29,131,Miller,MO,Missouri,p72,MISO_Central
+29,157,Perry,MO,Missouri,p72,MISO_Central
+29,153,Ozark,MO,Missouri,p55,SPP_South
+29,149,Oregon,MO,Missouri,p84,MISO_Central
+29,169,Pulaski,MO,Missouri,p73,MISO_Central
+29,209,Stone,MO,Missouri,p55,SPP_South
+29,119,McDonald,MO,Missouri,p55,SPP_South
+29,55,Crawford,MO,Missouri,p73,MISO_Central
+29,103,Knox,MO,Missouri,p71,MISO_Central
+29,187,St. Francois,MO,Missouri,p72,MISO_Central
+29,181,Ripley,MO,Missouri,p84,MISO_Central
+29,73,Gasconade,MO,Missouri,p72,MISO_Central
+29,67,Douglas,MO,Missouri,p55,SPP_South
+29,27,Callaway,MO,Missouri,p72,MISO_Central
+29,213,Taney,MO,Missouri,p55,SPP_South
+29,65,Dent,MO,Missouri,p84,MISO_Central
+29,147,Nodaway,MO,Missouri,p54,SPP_South
+29,99,Jefferson,MO,Missouri,p72,MISO_Central
+29,175,Randolph,MO,Missouri,p72,MISO_Central
+29,159,Pettis,MO,Missouri,p54,SPP_South
+29,17,Bollinger,MO,Missouri,p73,MISO_Central
+29,13,Bates,MO,Missouri,p55,SPP_South
+29,93,Iron,MO,Missouri,p73,MISO_Central
+29,105,Laclede,MO,Missouri,p84,MISO_Central
+29,205,Shelby,MO,Missouri,p71,MISO_Central
+29,35,Carter,MO,Missouri,p84,MISO_Central
+29,25,Caldwell,MO,Missouri,p54,SPP_South
+29,225,Webster,MO,Missouri,p55,SPP_South
+29,117,Livingston,MO,Missouri,p54,SPP_South
+29,179,Reynolds,MO,Missouri,p73,MISO_Central
+29,207,Stoddard,MO,Missouri,p84,MISO_Central
+29,197,Schuyler,MO,Missouri,p71,MISO_Central
+29,59,Dallas,MO,Missouri,p84,MISO_Central
+29,47,Clay,MO,Missouri,p54,SPP_South
+29,33,Carroll,MO,Missouri,p54,SPP_South
+29,211,Sullivan,MO,Missouri,p54,SPP_South
+29,89,Howard,MO,Missouri,p72,MISO_Central
+29,21,Buchanan,MO,Missouri,p54,SPP_South
+29,189,St. Louis,MO,Missouri,p72,MISO_Central
+29,201,Scott,MO,Missouri,p72,MISO_Central
+29,145,Newton,MO,Missouri,p55,SPP_South
+29,171,Putnam,MO,Missouri,p54,SPP_South
+29,163,Pike,MO,Missouri,p72,MISO_Central
+29,121,Macon,MO,Missouri,p71,MISO_Central
+29,217,Vernon,MO,Missouri,p55,SPP_South
+29,71,Franklin,MO,Missouri,p72,MISO_Central
+29,51,Cole,MO,Missouri,p72,MISO_Central
+29,39,Cedar,MO,Missouri,p55,SPP_South
+29,63,DeKalb,MO,Missouri,p54,SPP_South
+29,95,Jackson,MO,Missouri,p54,SPP_South
+29,143,New Madrid,MO,Missouri,p84,MISO_Central
+29,167,Polk,MO,Missouri,p55,SPP_South
+29,137,Monroe,MO,Missouri,p71,MISO_Central
+29,3,Andrew,MO,Missouri,p54,SPP_South
+29,53,Cooper,MO,Missouri,p72,MISO_Central
+29,183,St. Charles,MO,Missouri,p72,MISO_Central
+29,127,Marion,MO,Missouri,p71,MISO_Central
+29,186,Ste. Genevieve,MO,Missouri,p72,MISO_Central
+29,185,St. Clair,MO,Missouri,p55,SPP_South
+29,77,Greene,MO,Missouri,p55,SPP_South
+29,125,Maries,MO,Missouri,p72,MISO_Central
+29,141,Morgan,MO,Missouri,p72,MISO_Central
+29,61,Daviess,MO,Missouri,p54,SPP_South
+29,9,Barry,MO,Missouri,p55,SPP_South
+29,111,Lewis,MO,Missouri,p71,MISO_Central
+29,23,Butler,MO,Missouri,p84,MISO_Central
+29,49,Clinton,MO,Missouri,p54,SPP_South
+29,151,Osage,MO,Missouri,p72,MISO_Central
+29,223,Wayne,MO,Missouri,p84,MISO_Central
+29,510,St. Louis,MO,Missouri,p72,MISO_Central
+29,227,Worth,MO,Missouri,p54,SPP_South
+29,115,Linn,MO,Missouri,p54,SPP_South
+29,15,Benton,MO,Missouri,p55,SPP_South
+29,37,Cass,MO,Missouri,p54,SPP_South
+29,219,Warren,MO,Missouri,p72,MISO_Central
+29,29,Camden,MO,Missouri,p84,MISO_Central
+29,97,Jasper,MO,Missouri,p55,SPP_South
+29,129,Mercer,MO,Missouri,p54,SPP_South
+29,79,Grundy,MO,Missouri,p54,SPP_South
+29,107,Lafayette,MO,Missouri,p54,SPP_South
+29,161,Phelps,MO,Missouri,p73,MISO_Central
+29,81,Harrison,MO,Missouri,p54,SPP_South
+29,173,Ralls,MO,Missouri,p71,MISO_Central
+29,195,Saline,MO,Missouri,p54,SPP_South
+29,41,Chariton,MO,Missouri,p54,SPP_South
+29,5,Atchison,MO,Missouri,p54,SPP_South
+29,229,Wright,MO,Missouri,p84,MISO_Central
+29,7,Audrain,MO,Missouri,p72,MISO_Central
+29,203,Shannon,MO,Missouri,p84,MISO_Central
+29,75,Gentry,MO,Missouri,p54,SPP_South
+29,43,Christian,MO,Missouri,p55,SPP_South
+29,57,Dade,MO,Missouri,p55,SPP_South
+29,135,Moniteau,MO,Missouri,p72,MISO_Central
+29,69,Dunklin,MO,Missouri,p84,MISO_Central
+29,139,Montgomery,MO,Missouri,p72,MISO_Central
+29,11,Barton,MO,Missouri,p55,SPP_South
+29,199,Scotland,MO,Missouri,p71,MISO_Central
+29,45,Clark,MO,Missouri,p71,MISO_Central
+29,83,Henry,MO,Missouri,p55,SPP_South
+29,123,Madison,MO,Missouri,p73,MISO_Central
+29,101,Johnson,MO,Missouri,p54,SPP_South
+29,85,Hickory,MO,Missouri,p55,SPP_South
+29,91,Howell,MO,Missouri,p84,MISO_Central
+29,87,Holt,MO,Missouri,p54,SPP_South
+29,113,Lincoln,MO,Missouri,p72,MISO_Central
+29,19,Boone,MO,Missouri,p72,MISO_Central
+29,133,Mississippi,MO,Missouri,p72,MISO_Central
+29,177,Ray,MO,Missouri,p54,SPP_South
+29,1,Adair,MO,Missouri,p71,MISO_Central
+30,71,Phillips,MT,Montana,p18,NorthernGrid_East
+30,95,Stillwater,MT,Montana,p18,NorthernGrid_East
+30,63,Missoula,MT,Montana,p17,NorthernGrid_East
+30,39,Granite,MT,Montana,p17,NorthernGrid_East
+30,51,Liberty,MT,Montana,p18,NorthernGrid_East
+30,53,Lincoln,MT,Montana,p17,NorthernGrid_East
+30,3,Big Horn,MT,Montana,p18,NorthernGrid_East
+30,105,Valley,MT,Montana,p19,NorthernGrid_East
+30,93,Silver Bow,MT,Montana,p17,NorthernGrid_East
+30,35,Glacier,MT,Montana,p18,NorthernGrid_East
+30,25,Fallon,MT,Montana,p35,SPP_North
+30,33,Garfield,MT,Montana,p19,NorthernGrid_East
+30,47,Lake,MT,Montana,p17,NorthernGrid_East
+30,59,Meagher,MT,Montana,p18,NorthernGrid_East
+30,21,Dawson,MT,Montana,p35,SPP_North
+30,89,Sanders,MT,Montana,p17,NorthernGrid_East
+30,27,Fergus,MT,Montana,p20,NorthernGrid_East
+30,67,Park,MT,Montana,p18,NorthernGrid_East
+30,73,Pondera,MT,Montana,p18,NorthernGrid_East
+30,99,Teton,MT,Montana,p18,NorthernGrid_East
+30,65,Musselshell,MT,Montana,p20,NorthernGrid_East
+30,13,Cascade,MT,Montana,p18,NorthernGrid_East
+30,17,Custer,MT,Montana,p35,SPP_North
+30,31,Gallatin,MT,Montana,p18,NorthernGrid_East
+30,109,Wibaux,MT,Montana,p35,SPP_North
+30,55,McCone,MT,Montana,p35,SPP_North
+30,103,Treasure,MT,Montana,p20,NorthernGrid_East
+30,83,Richland,MT,Montana,p35,SPP_North
+30,45,Judith Basin,MT,Montana,p20,NorthernGrid_East
+30,87,Rosebud,MT,Montana,p20,NorthernGrid_East
+30,91,Sheridan,MT,Montana,p35,SPP_North
+30,85,Roosevelt,MT,Montana,p35,SPP_North
+30,101,Toole,MT,Montana,p18,NorthernGrid_East
+30,1,Beaverhead,MT,Montana,p17,NorthernGrid_East
+30,19,Daniels,MT,Montana,p35,SPP_North
+30,57,Madison,MT,Montana,p17,NorthernGrid_East
+30,43,Jefferson,MT,Montana,p17,NorthernGrid_East
+30,75,Powder River,MT,Montana,p20,NorthernGrid_East
+30,11,Carter,MT,Montana,p35,SPP_North
+30,69,Petroleum,MT,Montana,p20,NorthernGrid_East
+30,29,Flathead,MT,Montana,p17,NorthernGrid_East
+30,15,Chouteau,MT,Montana,p18,NorthernGrid_East
+30,37,Golden Valley,MT,Montana,p20,NorthernGrid_East
+30,79,Prairie,MT,Montana,p35,SPP_North
+30,107,Wheatland,MT,Montana,p20,NorthernGrid_East
+30,97,Sweet Grass,MT,Montana,p18,NorthernGrid_East
+30,41,Hill,MT,Montana,p18,NorthernGrid_East
+30,81,Ravalli,MT,Montana,p17,NorthernGrid_East
+30,7,Broadwater,MT,Montana,p17,NorthernGrid_East
+30,5,Blaine,MT,Montana,p18,NorthernGrid_East
+30,77,Powell,MT,Montana,p17,NorthernGrid_East
+30,49,Lewis and Clark,MT,Montana,p18,NorthernGrid_East
+30,23,Deer Lodge,MT,Montana,p17,NorthernGrid_East
+30,111,Yellowstone,MT,Montana,p20,NorthernGrid_East
+30,9,Carbon,MT,Montana,p18,NorthernGrid_East
+30,61,Mineral,MT,Montana,p17,NorthernGrid_East
+31,51,Dixon,NE,Nebraska,p40,SPP_North
+31,63,Frontier,NE,Nebraska,p40,SPP_North
+31,39,Cuming,NE,Nebraska,p40,SPP_North
+31,95,Jefferson,NE,Nebraska,p40,SPP_North
+31,163,Sherman,NE,Nebraska,p40,SPP_North
+31,171,Thomas,NE,Nebraska,p40,SPP_North
+31,121,Merrick,NE,Nebraska,p40,SPP_North
+31,71,Garfield,NE,Nebraska,p40,SPP_North
+31,137,Phelps,NE,Nebraska,p40,SPP_North
+31,3,Antelope,NE,Nebraska,p40,SPP_North
+31,53,Dodge,NE,Nebraska,p41,SPP_North
+31,143,Polk,NE,Nebraska,p40,SPP_North
+31,167,Stanton,NE,Nebraska,p40,SPP_North
+31,35,Clay,NE,Nebraska,p40,SPP_North
+31,25,Cass,NE,Nebraska,p41,SPP_North
+31,179,Wayne,NE,Nebraska,p40,SPP_North
+31,117,McPherson,NE,Nebraska,p40,SPP_North
+31,93,Howard,NE,Nebraska,p40,SPP_North
+31,105,Kimball,NE,Nebraska,p39,SPP_North
+31,21,Burt,NE,Nebraska,p41,SPP_North
+31,89,Holt,NE,Nebraska,p40,SPP_North
+31,145,Red Willow,NE,Nebraska,p40,SPP_North
+31,59,Fillmore,NE,Nebraska,p40,SPP_North
+31,47,Dawson,NE,Nebraska,p40,SPP_North
+31,33,Cheyenne,NE,Nebraska,p39,SPP_North
+31,181,Webster,NE,Nebraska,p40,SPP_North
+31,67,Gage,NE,Nebraska,p40,SPP_North
+31,73,Gosper,NE,Nebraska,p40,SPP_North
+31,27,Cedar,NE,Nebraska,p40,SPP_North
+31,159,Seward,NE,Nebraska,p40,SPP_North
+31,17,Brown,NE,Nebraska,p40,SPP_North
+31,13,Box Butte,NE,Nebraska,p39,SPP_North
+31,65,Furnas,NE,Nebraska,p40,SPP_North
+31,147,Richardson,NE,Nebraska,p41,SPP_North
+31,99,Kearney,NE,Nebraska,p40,SPP_North
+31,175,Valley,NE,Nebraska,p40,SPP_North
+31,165,Sioux,NE,Nebraska,p39,SPP_North
+31,31,Cherry,NE,Nebraska,p40,SPP_North
+31,109,Lancaster,NE,Nebraska,p41,SPP_North
+31,155,Saunders,NE,Nebraska,p41,SPP_North
+31,169,Thayer,NE,Nebraska,p40,SPP_North
+31,119,Madison,NE,Nebraska,p40,SPP_North
+31,103,Keya Paha,NE,Nebraska,p40,SPP_North
+31,55,Douglas,NE,Nebraska,p41,SPP_North
+31,157,Scotts Bluff,NE,Nebraska,p39,SPP_North
+31,131,Otoe,NE,Nebraska,p41,SPP_North
+31,153,Sarpy,NE,Nebraska,p41,SPP_North
+31,149,Rock,NE,Nebraska,p40,SPP_North
+31,123,Morrill,NE,Nebraska,p39,SPP_North
+31,45,Dawes,NE,Nebraska,p39,SPP_North
+31,83,Harlan,NE,Nebraska,p40,SPP_North
+31,19,Buffalo,NE,Nebraska,p40,SPP_North
+31,133,Pawnee,NE,Nebraska,p41,SPP_North
+31,1,Adams,NE,Nebraska,p40,SPP_North
+31,177,Washington,NE,Nebraska,p41,SPP_North
+31,101,Keith,NE,Nebraska,p39,SPP_North
+31,91,Hooker,NE,Nebraska,p40,SPP_North
+31,85,Hayes,NE,Nebraska,p40,SPP_North
+31,87,Hitchcock,NE,Nebraska,p40,SPP_North
+31,113,Logan,NE,Nebraska,p40,SPP_North
+31,69,Garden,NE,Nebraska,p39,SPP_North
+31,139,Pierce,NE,Nebraska,p40,SPP_North
+31,11,Boone,NE,Nebraska,p40,SPP_North
+31,43,Dakota,NE,Nebraska,p40,SPP_North
+31,57,Dundy,NE,Nebraska,p39,SPP_North
+31,75,Grant,NE,Nebraska,p39,SPP_North
+31,135,Perkins,NE,Nebraska,p39,SPP_North
+31,97,Johnson,NE,Nebraska,p41,SPP_North
+31,129,Nuckolls,NE,Nebraska,p40,SPP_North
+31,79,Hall,NE,Nebraska,p40,SPP_North
+31,161,Sheridan,NE,Nebraska,p39,SPP_North
+31,107,Knox,NE,Nebraska,p40,SPP_North
+31,115,Loup,NE,Nebraska,p40,SPP_North
+31,29,Chase,NE,Nebraska,p39,SPP_North
+31,15,Boyd,NE,Nebraska,p40,SPP_North
+31,37,Colfax,NE,Nebraska,p41,SPP_North
+31,5,Arthur,NE,Nebraska,p39,SPP_North
+31,7,Banner,NE,Nebraska,p39,SPP_North
+31,81,Hamilton,NE,Nebraska,p40,SPP_North
+31,173,Thurston,NE,Nebraska,p40,SPP_North
+31,41,Custer,NE,Nebraska,p40,SPP_North
+31,185,York,NE,Nebraska,p40,SPP_North
+31,77,Greeley,NE,Nebraska,p40,SPP_North
+31,183,Wheeler,NE,Nebraska,p40,SPP_North
+31,127,Nemaha,NE,Nebraska,p41,SPP_North
+31,141,Platte,NE,Nebraska,p40,SPP_North
+31,125,Nance,NE,Nebraska,p40,SPP_North
+31,9,Blaine,NE,Nebraska,p40,SPP_North
+31,61,Franklin,NE,Nebraska,p40,SPP_North
+31,23,Butler,NE,Nebraska,p40,SPP_North
+31,111,Lincoln,NE,Nebraska,p40,SPP_North
+31,49,Deuel,NE,Nebraska,p39,SPP_North
+31,151,Saline,NE,Nebraska,p40,SPP_North
+32,13,Humboldt,NV,Nevada,p12,NorthernGrid_South
+32,17,Lincoln,NV,Nevada,p12,NorthernGrid_South
+32,27,Pershing,NV,Nevada,p12,NorthernGrid_South
+32,31,Washoe,NV,Nevada,p12,NorthernGrid_South
+32,3,Clark,NV,Nevada,p13,NorthernGrid_South
+32,33,White Pine,NV,Nevada,p12,NorthernGrid_South
+32,21,Mineral,NV,Nevada,p12,NorthernGrid_South
+32,5,Douglas,NV,Nevada,p12,NorthernGrid_South
+32,7,Elko,NV,Nevada,p12,NorthernGrid_South
+32,29,Storey,NV,Nevada,p12,NorthernGrid_South
+32,15,Lander,NV,Nevada,p12,NorthernGrid_South
+32,9,Esmeralda,NV,Nevada,p12,NorthernGrid_South
+32,23,Nye,NV,Nevada,p12,NorthernGrid_South
+32,510,Carson City,NV,Nevada,p12,NorthernGrid_South
+32,1,Churchill,NV,Nevada,p12,NorthernGrid_South
+32,19,Lyon,NV,Nevada,p12,NorthernGrid_South
+32,11,Eureka,NV,Nevada,p12,NorthernGrid_South
+33,15,Rockingham,NH,New Hampshire,p130,ISONE
+33,7,Coos,NH,New Hampshire,p130,ISONE
+33,5,Cheshire,NH,New Hampshire,p130,ISONE
+33,9,Grafton,NH,New Hampshire,p130,ISONE
+33,19,Sullivan,NH,New Hampshire,p130,ISONE
+33,1,Belknap,NH,New Hampshire,p130,ISONE
+33,11,Hillsborough,NH,New Hampshire,p130,ISONE
+33,17,Strafford,NH,New Hampshire,p130,ISONE
+33,13,Merrimack,NH,New Hampshire,p130,ISONE
+33,3,Carroll,NH,New Hampshire,p130,ISONE
+34,13,Essex,NJ,New Jersey,p126,PJM_East
+34,17,Hudson,NJ,New Jersey,p126,PJM_East
+34,27,Morris,NJ,New Jersey,p126,PJM_East
+34,31,Passaic,NJ,New Jersey,p126,PJM_East
+34,3,Bergen,NJ,New Jersey,p126,PJM_East
+34,39,Union,NJ,New Jersey,p126,PJM_East
+34,21,Mercer,NJ,New Jersey,p126,PJM_East
+34,33,Salem,NJ,New Jersey,p126,PJM_East
+34,35,Somerset,NJ,New Jersey,p126,PJM_East
+34,25,Monmouth,NJ,New Jersey,p126,PJM_East
+34,5,Burlington,NJ,New Jersey,p126,PJM_East
+34,7,Camden,NJ,New Jersey,p126,PJM_East
+34,41,Warren,NJ,New Jersey,p126,PJM_East
+34,29,Ocean,NJ,New Jersey,p126,PJM_East
+34,15,Gloucester,NJ,New Jersey,p126,PJM_East
+34,37,Sussex,NJ,New Jersey,p126,PJM_East
+34,9,Cape May,NJ,New Jersey,p126,PJM_East
+34,23,Middlesex,NJ,New Jersey,p126,PJM_East
+34,1,Atlantic,NJ,New Jersey,p126,PJM_East
+34,19,Hunterdon,NJ,New Jersey,p126,PJM_East
+34,11,Cumberland,NJ,New Jersey,p126,PJM_East
+35,17,Grant,NM,New Mexico,p31,WestConnect_South
+35,13,Doña Ana,NM,New Mexico,p31,WestConnect_South
+35,27,Lincoln,NM,New Mexico,p31,WestConnect_South
+35,55,Taos,NM,New Mexico,p31,WestConnect_South
+35,31,McKinley,NM,New Mexico,p31,WestConnect_South
+35,3,Catron,NM,New Mexico,p31,WestConnect_South
+35,53,Socorro,NM,New Mexico,p31,WestConnect_South
+35,51,Sierra,NM,New Mexico,p31,WestConnect_South
+35,39,Rio Arriba,NM,New Mexico,p31,WestConnect_South
+35,21,Harding,NM,New Mexico,p31,WestConnect_South
+35,59,Union,NM,New Mexico,p31,WestConnect_South
+35,47,San Miguel,NM,New Mexico,p31,WestConnect_South
+35,33,Mora,NM,New Mexico,p31,WestConnect_South
+35,35,Otero,NM,New Mexico,p31,WestConnect_South
+35,25,Lea,NM,New Mexico,p47,SPP_South
+35,5,Chaves,NM,New Mexico,p47,SPP_South
+35,7,Colfax,NM,New Mexico,p31,WestConnect_South
+35,41,Roosevelt,NM,New Mexico,p47,SPP_South
+35,29,Luna,NM,New Mexico,p31,WestConnect_South
+35,15,Eddy,NM,New Mexico,p47,SPP_South
+35,37,Quay,NM,New Mexico,p47,SPP_South
+35,9,Curry,NM,New Mexico,p47,SPP_South
+35,61,Valencia,NM,New Mexico,p31,WestConnect_South
+35,23,Hidalgo,NM,New Mexico,p31,WestConnect_South
+35,49,Santa Fe,NM,New Mexico,p31,WestConnect_South
+35,19,Guadalupe,NM,New Mexico,p31,WestConnect_South
+35,1,Bernalillo,NM,New Mexico,p31,WestConnect_South
+35,28,Los Alamos,NM,New Mexico,p31,WestConnect_South
+35,45,San Juan,NM,New Mexico,p31,WestConnect_South
+35,6,Cibola,NM,New Mexico,p31,WestConnect_South
+35,11,De Baca,NM,New Mexico,p31,WestConnect_South
+35,57,Torrance,NM,New Mexico,p31,WestConnect_South
+35,43,Sandoval,NM,New Mexico,p31,WestConnect_South
+36,109,Tompkins,NY,New York,p127,NYISO
+36,31,Essex,NY,New York,p127,NYISO
+36,119,Westchester,NY,New York,p127,NYISO
+36,103,Suffolk,NY,New York,p128,NYISO
+36,55,Monroe,NY,New York,p127,NYISO
+36,73,Orleans,NY,New York,p127,NYISO
+36,67,Onondaga,NY,New York,p127,NYISO
+36,27,Dutchess,NY,New York,p127,NYISO
+36,17,Chenango,NY,New York,p127,NYISO
+36,13,Chautauqua,NY,New York,p127,NYISO
+36,65,Oneida,NY,New York,p127,NYISO
+36,99,Seneca,NY,New York,p127,NYISO
+36,35,Fulton,NY,New York,p127,NYISO
+36,25,Delaware,NY,New York,p127,NYISO
+36,117,Wayne,NY,New York,p127,NYISO
+36,93,Schenectady,NY,New York,p127,NYISO
+36,105,Sullivan,NY,New York,p127,NYISO
+36,89,St. Lawrence,NY,New York,p127,NYISO
+36,21,Columbia,NY,New York,p127,NYISO
+36,59,Nassau,NY,New York,p128,NYISO
+36,47,Kings,NY,New York,p127,NYISO
+36,33,Franklin,NY,New York,p127,NYISO
+36,51,Livingston,NY,New York,p127,NYISO
+36,39,Greene,NY,New York,p127,NYISO
+36,63,Niagara,NY,New York,p127,NYISO
+36,95,Schoharie,NY,New York,p127,NYISO
+36,121,Wyoming,NY,New York,p127,NYISO
+36,71,Orange,NY,New York,p127,NYISO
+36,3,Allegany,NY,New York,p127,NYISO
+36,53,Madison,NY,New York,p127,NYISO
+36,77,Otsego,NY,New York,p127,NYISO
+36,61,New York,NY,New York,p127,NYISO
+36,9,Cattaraugus,NY,New York,p127,NYISO
+36,111,Ulster,NY,New York,p127,NYISO
+36,23,Cortland,NY,New York,p127,NYISO
+36,49,Lewis,NY,New York,p127,NYISO
+36,97,Schuyler,NY,New York,p127,NYISO
+36,79,Putnam,NY,New York,p127,NYISO
+36,107,Tioga,NY,New York,p127,NYISO
+36,115,Washington,NY,New York,p127,NYISO
+36,15,Chemung,NY,New York,p127,NYISO
+36,37,Genesee,NY,New York,p127,NYISO
+36,29,Erie,NY,New York,p127,NYISO
+36,5,Bronx,NY,New York,p127,NYISO
+36,7,Broome,NY,New York,p127,NYISO
+36,81,Queens,NY,New York,p127,NYISO
+36,41,Hamilton,NY,New York,p127,NYISO
+36,69,Ontario,NY,New York,p127,NYISO
+36,11,Cayuga,NY,New York,p127,NYISO
+36,75,Oswego,NY,New York,p127,NYISO
+36,57,Montgomery,NY,New York,p127,NYISO
+36,43,Herkimer,NY,New York,p127,NYISO
+36,123,Yates,NY,New York,p127,NYISO
+36,45,Jefferson,NY,New York,p127,NYISO
+36,83,Rensselaer,NY,New York,p127,NYISO
+36,19,Clinton,NY,New York,p127,NYISO
+36,1,Albany,NY,New York,p127,NYISO
+36,101,Steuben,NY,New York,p127,NYISO
+36,85,Richmond,NY,New York,p127,NYISO
+36,91,Saratoga,NY,New York,p127,NYISO
+36,87,Rockland,NY,New York,p127,NYISO
+36,113,Warren,NY,New York,p127,NYISO
+37,101,Johnston,NC,North Carolina,p98,SERTP
+37,85,Harnett,NC,North Carolina,p98,SERTP
+37,91,Hertford,NC,North Carolina,p98,SERTP
+37,87,Haywood,NC,North Carolina,p97,SERTP
+37,113,Macon,NC,North Carolina,p97,SERTP
+37,133,Onslow,NC,North Carolina,p98,SERTP
+37,19,Brunswick,NC,North Carolina,p98,SERTP
+37,177,Tyrrell,NC,North Carolina,p98,SERTP
+37,1,Alamance,NC,North Carolina,p98,SERTP
+37,45,Cleveland,NC,North Carolina,p97,SERTP
+37,83,Halifax,NC,North Carolina,p98,SERTP
+37,123,Montgomery,NC,North Carolina,p98,SERTP
+37,75,Graham,NC,North Carolina,p97,SERTP
+37,57,Davidson,NC,North Carolina,p97,SERTP
+37,43,Clay,NC,North Carolina,p97,SERTP
+37,135,Orange,NC,North Carolina,p98,SERTP
+37,69,Franklin,NC,North Carolina,p98,SERTP
+37,139,Pasquotank,NC,North Carolina,p98,SERTP
+37,11,Avery,NC,North Carolina,p97,SERTP
+37,199,Yancey,NC,North Carolina,p97,SERTP
+37,81,Guilford,NC,North Carolina,p97,SERTP
+37,195,Wilson,NC,North Carolina,p98,SERTP
+37,173,Swain,NC,North Carolina,p97,SERTP
+37,41,Chowan,NC,North Carolina,p98,SERTP
+37,193,Wilkes,NC,North Carolina,p97,SERTP
+37,5,Alleghany,NC,North Carolina,p97,SERTP
+37,7,Anson,NC,North Carolina,p97,SERTP
+37,115,Madison,NC,North Carolina,p97,SERTP
+37,37,Chatham,NC,North Carolina,p98,SERTP
+37,15,Bertie,NC,North Carolina,p98,SERTP
+37,29,Camden,NC,North Carolina,p98,SERTP
+37,129,New Hanover,NC,North Carolina,p98,SERTP
+37,97,Iredell,NC,North Carolina,p97,SERTP
+37,161,Rutherford,NC,North Carolina,p97,SERTP
+37,107,Lenoir,NC,North Carolina,p98,SERTP
+37,79,Greene,NC,North Carolina,p98,SERTP
+37,141,Pender,NC,North Carolina,p98,SERTP
+37,125,Moore,NC,North Carolina,p98,SERTP
+37,9,Ashe,NC,North Carolina,p97,SERTP
+37,61,Duplin,NC,North Carolina,p98,SERTP
+37,23,Burke,NC,North Carolina,p97,SERTP
+37,111,McDowell,NC,North Carolina,p97,SERTP
+37,151,Randolph,NC,North Carolina,p97,SERTP
+37,191,Wayne,NC,North Carolina,p98,SERTP
+37,49,Craven,NC,North Carolina,p98,SERTP
+37,183,Wake,NC,North Carolina,p98,SERTP
+37,127,Nash,NC,North Carolina,p98,SERTP
+37,185,Warren,NC,North Carolina,p98,SERTP
+37,77,Granville,NC,North Carolina,p98,SERTP
+37,143,Perquimans,NC,North Carolina,p98,SERTP
+37,167,Stanly,NC,North Carolina,p97,SERTP
+37,137,Pamlico,NC,North Carolina,p98,SERTP
+37,3,Alexander,NC,North Carolina,p97,SERTP
+37,53,Currituck,NC,North Carolina,p98,SERTP
+37,171,Surry,NC,North Carolina,p97,SERTP
+37,163,Sampson,NC,North Carolina,p98,SERTP
+37,121,Mitchell,NC,North Carolina,p97,SERTP
+37,71,Gaston,NC,North Carolina,p97,SERTP
+37,51,Cumberland,NC,North Carolina,p98,SERTP
+37,39,Cherokee,NC,North Carolina,p97,SERTP
+37,63,Durham,NC,North Carolina,p98,SERTP
+37,95,Hyde,NC,North Carolina,p98,SERTP
+37,59,Davie,NC,North Carolina,p97,SERTP
+37,197,Yadkin,NC,North Carolina,p97,SERTP
+37,47,Columbus,NC,North Carolina,p98,SERTP
+37,33,Caswell,NC,North Carolina,p98,SERTP
+37,89,Henderson,NC,North Carolina,p97,SERTP
+37,21,Buncombe,NC,North Carolina,p97,SERTP
+37,189,Watauga,NC,North Carolina,p97,SERTP
+37,145,Person,NC,North Carolina,p98,SERTP
+37,93,Hoke,NC,North Carolina,p98,SERTP
+37,105,Lee,NC,North Carolina,p98,SERTP
+37,25,Cabarrus,NC,North Carolina,p97,SERTP
+37,35,Catawba,NC,North Carolina,p97,SERTP
+37,179,Union,NC,North Carolina,p97,SERTP
+37,117,Martin,NC,North Carolina,p98,SERTP
+37,65,Edgecombe,NC,North Carolina,p98,SERTP
+37,147,Pitt,NC,North Carolina,p98,SERTP
+37,175,Transylvania,NC,North Carolina,p97,SERTP
+37,99,Jackson,NC,North Carolina,p97,SERTP
+37,159,Rowan,NC,North Carolina,p97,SERTP
+37,17,Bladen,NC,North Carolina,p98,SERTP
+37,13,Beaufort,NC,North Carolina,p98,SERTP
+37,187,Washington,NC,North Carolina,p98,SERTP
+37,181,Vance,NC,North Carolina,p98,SERTP
+37,73,Gates,NC,North Carolina,p98,SERTP
+37,67,Forsyth,NC,North Carolina,p97,SERTP
+37,27,Caldwell,NC,North Carolina,p97,SERTP
+37,157,Rockingham,NC,North Carolina,p97,SERTP
+37,131,Northampton,NC,North Carolina,p98,SERTP
+37,153,Richmond,NC,North Carolina,p98,SERTP
+37,149,Polk,NC,North Carolina,p97,SERTP
+37,169,Stokes,NC,North Carolina,p97,SERTP
+37,119,Mecklenburg,NC,North Carolina,p97,SERTP
+37,103,Jones,NC,North Carolina,p98,SERTP
+37,55,Dare,NC,North Carolina,p98,SERTP
+37,155,Robeson,NC,North Carolina,p98,SERTP
+37,165,Scotland,NC,North Carolina,p98,SERTP
+37,31,Carteret,NC,North Carolina,p98,SERTP
+37,109,Lincoln,NC,North Carolina,p97,SERTP
+38,45,LaMoure,ND,North Dakota,p37,MISO_North
+38,83,Sheridan,ND,North Dakota,p37,MISO_North
+38,1,Adams,ND,North Dakota,p36,SPP_North
+38,19,Cavalier,ND,North Dakota,p37,MISO_North
+38,91,Steele,ND,North Dakota,p37,MISO_North
+38,85,Sioux,ND,North Dakota,p36,SPP_North
+38,101,Ward,ND,North Dakota,p37,MISO_North
+38,87,Slope,ND,North Dakota,p36,SPP_North
+38,69,Pierce,ND,North Dakota,p37,MISO_North
+38,11,Bowman,ND,North Dakota,p36,SPP_North
+38,57,Mercer,ND,North Dakota,p36,SPP_North
+38,43,Kidder,ND,North Dakota,p37,MISO_North
+38,75,Renville,ND,North Dakota,p36,SPP_North
+38,79,Rolette,ND,North Dakota,p37,MISO_North
+38,97,Traill,ND,North Dakota,p37,MISO_North
+38,29,Emmons,ND,North Dakota,p36,SPP_North
+38,37,Grant,ND,North Dakota,p36,SPP_North
+38,15,Burleigh,ND,North Dakota,p36,SPP_North
+38,5,Benson,ND,North Dakota,p37,MISO_North
+38,7,Billings,ND,North Dakota,p36,SPP_North
+38,81,Sargent,ND,North Dakota,p37,MISO_North
+38,41,Hettinger,ND,North Dakota,p36,SPP_North
+38,77,Richland,ND,North Dakota,p37,MISO_North
+38,9,Bottineau,ND,North Dakota,p37,MISO_North
+38,61,Mountrail,ND,North Dakota,p36,SPP_North
+38,49,McHenry,ND,North Dakota,p37,MISO_North
+38,23,Divide,ND,North Dakota,p36,SPP_North
+38,63,Nelson,ND,North Dakota,p37,MISO_North
+38,39,Griggs,ND,North Dakota,p37,MISO_North
+38,51,McIntosh,ND,North Dakota,p36,SPP_North
+38,95,Towner,ND,North Dakota,p37,MISO_North
+38,71,Ramsey,ND,North Dakota,p37,MISO_North
+38,53,McKenzie,ND,North Dakota,p36,SPP_North
+38,3,Barnes,ND,North Dakota,p37,MISO_North
+38,25,Dunn,ND,North Dakota,p36,SPP_North
+38,35,Grand Forks,ND,North Dakota,p37,MISO_North
+38,93,Stutsman,ND,North Dakota,p37,MISO_North
+38,105,Williams,ND,North Dakota,p36,SPP_North
+38,21,Dickey,ND,North Dakota,p36,SPP_North
+38,89,Stark,ND,North Dakota,p36,SPP_North
+38,59,Morton,ND,North Dakota,p36,SPP_North
+38,33,Golden Valley,ND,North Dakota,p36,SPP_North
+38,47,Logan,ND,North Dakota,p36,SPP_North
+38,27,Eddy,ND,North Dakota,p37,MISO_North
+38,67,Pembina,ND,North Dakota,p37,MISO_North
+38,73,Ransom,ND,North Dakota,p37,MISO_North
+38,13,Burke,ND,North Dakota,p36,SPP_North
+38,17,Cass,ND,North Dakota,p37,MISO_North
+38,65,Oliver,ND,North Dakota,p36,SPP_North
+38,99,Walsh,ND,North Dakota,p37,MISO_North
+38,31,Foster,ND,North Dakota,p37,MISO_North
+38,55,McLean,ND,North Dakota,p37,MISO_North
+38,103,Wells,ND,North Dakota,p37,MISO_North
+39,17,Butler,OH,Ohio,p114,PJM_East
+39,13,Belmont,OH,Ohio,p112,PJM_East
+39,159,Union,OH,Ohio,p112,PJM_East
+39,99,Mahoning,OH,Ohio,p111,PJM_East
+39,175,Wyandot,OH,Ohio,p112,PJM_East
+39,65,Hardin,OH,Ohio,p112,PJM_East
+39,147,Seneca,OH,Ohio,p112,PJM_East
+39,73,Hocking,OH,Ohio,p112,PJM_East
+39,67,Harrison,OH,Ohio,p112,PJM_East
+39,27,Clinton,OH,Ohio,p113,PJM_East
+39,119,Muskingum,OH,Ohio,p112,PJM_East
+39,55,Geauga,OH,Ohio,p111,PJM_East
+39,103,Medina,OH,Ohio,p111,PJM_East
+39,169,Wayne,OH,Ohio,p112,PJM_East
+39,153,Summit,OH,Ohio,p111,PJM_East
+39,149,Shelby,OH,Ohio,p112,PJM_East
+39,131,Pike,OH,Ohio,p112,PJM_East
+39,157,Tuscarawas,OH,Ohio,p112,PJM_East
+39,109,Miami,OH,Ohio,p113,PJM_East
+39,31,Coshocton,OH,Ohio,p112,PJM_East
+39,165,Warren,OH,Ohio,p114,PJM_East
+39,155,Trumbull,OH,Ohio,p111,PJM_East
+39,3,Allen,OH,Ohio,p112,PJM_East
+39,53,Gallia,OH,Ohio,p112,PJM_East
+39,137,Putnam,OH,Ohio,p112,PJM_East
+39,167,Washington,OH,Ohio,p112,PJM_East
+39,143,Sandusky,OH,Ohio,p111,PJM_East
+39,95,Lucas,OH,Ohio,p111,PJM_East
+39,51,Fulton,OH,Ohio,p111,PJM_East
+39,39,Defiance,OH,Ohio,p112,PJM_East
+39,63,Hancock,OH,Ohio,p112,PJM_East
+39,121,Noble,OH,Ohio,p112,PJM_East
+39,71,Highland,OH,Ohio,p112,PJM_East
+39,171,Williams,OH,Ohio,p112,PJM_East
+39,163,Vinton,OH,Ohio,p112,PJM_East
+39,145,Scioto,OH,Ohio,p112,PJM_East
+39,89,Licking,OH,Ohio,p112,PJM_East
+39,21,Champaign,OH,Ohio,p112,PJM_East
+39,47,Fayette,OH,Ohio,p113,PJM_East
+39,33,Crawford,OH,Ohio,p112,PJM_East
+39,59,Guernsey,OH,Ohio,p112,PJM_East
+39,35,Cuyahoga,OH,Ohio,p111,PJM_East
+39,25,Clermont,OH,Ohio,p114,PJM_East
+39,117,Morrow,OH,Ohio,p112,PJM_East
+39,105,Meigs,OH,Ohio,p112,PJM_East
+39,93,Lorain,OH,Ohio,p111,PJM_East
+39,7,Ashtabula,OH,Ohio,p111,PJM_East
+39,5,Ashland,OH,Ohio,p112,PJM_East
+39,173,Wood,OH,Ohio,p111,PJM_East
+39,41,Delaware,OH,Ohio,p112,PJM_East
+39,81,Jefferson,OH,Ohio,p112,PJM_East
+39,97,Madison,OH,Ohio,p113,PJM_East
+39,129,Pickaway,OH,Ohio,p112,PJM_East
+39,79,Jackson,OH,Ohio,p112,PJM_East
+39,107,Mercer,OH,Ohio,p112,PJM_East
+39,161,Van Wert,OH,Ohio,p112,PJM_East
+39,115,Morgan,OH,Ohio,p112,PJM_East
+39,15,Brown,OH,Ohio,p114,PJM_East
+39,37,Darke,OH,Ohio,p112,PJM_East
+39,29,Columbiana,OH,Ohio,p111,PJM_East
+39,111,Monroe,OH,Ohio,p112,PJM_East
+39,23,Clark,OH,Ohio,p113,PJM_East
+39,49,Franklin,OH,Ohio,p112,PJM_East
+39,151,Stark,OH,Ohio,p111,PJM_East
+39,125,Paulding,OH,Ohio,p112,PJM_East
+39,141,Ross,OH,Ohio,p112,PJM_East
+39,61,Hamilton,OH,Ohio,p114,PJM_East
+39,9,Athens,OH,Ohio,p112,PJM_East
+39,77,Huron,OH,Ohio,p112,PJM_East
+39,127,Perry,OH,Ohio,p112,PJM_East
+39,19,Carroll,OH,Ohio,p112,PJM_East
+39,133,Portage,OH,Ohio,p111,PJM_East
+39,1,Adams,OH,Ohio,p112,PJM_East
+39,87,Lawrence,OH,Ohio,p112,PJM_East
+39,113,Montgomery,OH,Ohio,p113,PJM_East
+39,101,Marion,OH,Ohio,p112,PJM_East
+39,85,Lake,OH,Ohio,p111,PJM_East
+39,91,Logan,OH,Ohio,p112,PJM_East
+39,123,Ottawa,OH,Ohio,p111,PJM_East
+39,83,Knox,OH,Ohio,p112,PJM_East
+39,45,Fairfield,OH,Ohio,p112,PJM_East
+39,11,Auglaize,OH,Ohio,p112,PJM_East
+39,69,Henry,OH,Ohio,p112,PJM_East
+39,139,Richland,OH,Ohio,p112,PJM_East
+39,75,Holmes,OH,Ohio,p112,PJM_East
+39,43,Erie,OH,Ohio,p111,PJM_East
+39,57,Greene,OH,Ohio,p113,PJM_East
+39,135,Preble,OH,Ohio,p113,PJM_East
+40,83,Logan,OK,Oklahoma,p50,SPP_South
+40,45,Ellis,OK,Oklahoma,p50,SPP_South
+40,123,Pontotoc,OK,Oklahoma,p50,SPP_South
+40,113,Osage,OK,Oklahoma,p51,SPP_South
+40,87,McClain,OK,Oklahoma,p50,SPP_South
+40,85,Love,OK,Oklahoma,p50,SPP_South
+40,91,McIntosh,OK,Oklahoma,p50,SPP_South
+40,101,Muskogee,OK,Oklahoma,p51,SPP_South
+40,1,Adair,OK,Oklahoma,p51,SPP_South
+40,133,Seminole,OK,Oklahoma,p50,SPP_South
+40,19,Carter,OK,Oklahoma,p50,SPP_South
+40,135,Sequoyah,OK,Oklahoma,p50,SPP_South
+40,75,Kiowa,OK,Oklahoma,p50,SPP_South
+40,57,Harmon,OK,Oklahoma,p50,SPP_South
+40,43,Dewey,OK,Oklahoma,p50,SPP_South
+40,11,Blaine,OK,Oklahoma,p50,SPP_South
+40,139,Texas,OK,Oklahoma,p49,SPP_South
+40,69,Johnston,OK,Oklahoma,p50,SPP_South
+40,37,Creek,OK,Oklahoma,p51,SPP_South
+40,15,Caddo,OK,Oklahoma,p50,SPP_South
+40,29,Coal,OK,Oklahoma,p50,SPP_South
+40,115,Ottawa,OK,Oklahoma,p51,SPP_South
+40,107,Okfuskee,OK,Oklahoma,p50,SPP_South
+40,79,Le Flore,OK,Oklahoma,p50,SPP_South
+40,129,Roger Mills,OK,Oklahoma,p50,SPP_South
+40,97,Mayes,OK,Oklahoma,p51,SPP_South
+40,41,Delaware,OK,Oklahoma,p51,SPP_South
+40,81,Lincoln,OK,Oklahoma,p50,SPP_South
+40,7,Beaver,OK,Oklahoma,p49,SPP_South
+40,5,Atoka,OK,Oklahoma,p50,SPP_South
+40,127,Pushmataha,OK,Oklahoma,p50,SPP_South
+40,77,Latimer,OK,Oklahoma,p50,SPP_South
+40,151,Woods,OK,Oklahoma,p50,SPP_South
+40,49,Garvin,OK,Oklahoma,p50,SPP_South
+40,23,Choctaw,OK,Oklahoma,p50,SPP_South
+40,111,Okmulgee,OK,Oklahoma,p51,SPP_South
+40,9,Beckham,OK,Oklahoma,p50,SPP_South
+40,61,Haskell,OK,Oklahoma,p50,SPP_South
+40,141,Tillman,OK,Oklahoma,p50,SPP_South
+40,125,Pottawatomie,OK,Oklahoma,p50,SPP_South
+40,71,Kay,OK,Oklahoma,p50,SPP_South
+40,121,Pittsburg,OK,Oklahoma,p50,SPP_South
+40,95,Marshall,OK,Oklahoma,p50,SPP_South
+40,39,Custer,OK,Oklahoma,p50,SPP_South
+40,63,Hughes,OK,Oklahoma,p50,SPP_South
+40,51,Grady,OK,Oklahoma,p50,SPP_South
+40,143,Tulsa,OK,Oklahoma,p51,SPP_South
+40,53,Grant,OK,Oklahoma,p50,SPP_South
+40,3,Alfalfa,OK,Oklahoma,p50,SPP_South
+40,137,Stephens,OK,Oklahoma,p50,SPP_South
+40,105,Nowata,OK,Oklahoma,p51,SPP_South
+40,93,Major,OK,Oklahoma,p50,SPP_South
+40,117,Pawnee,OK,Oklahoma,p50,SPP_South
+40,25,Cimarron,OK,Oklahoma,p49,SPP_South
+40,35,Craig,OK,Oklahoma,p51,SPP_South
+40,33,Cotton,OK,Oklahoma,p50,SPP_South
+40,47,Garfield,OK,Oklahoma,p50,SPP_South
+40,59,Harper,OK,Oklahoma,p50,SPP_South
+40,145,Wagoner,OK,Oklahoma,p51,SPP_South
+40,89,McCurtain,OK,Oklahoma,p50,SPP_South
+40,21,Cherokee,OK,Oklahoma,p51,SPP_South
+40,27,Cleveland,OK,Oklahoma,p50,SPP_South
+40,73,Kingfisher,OK,Oklahoma,p50,SPP_South
+40,67,Jefferson,OK,Oklahoma,p50,SPP_South
+40,99,Murray,OK,Oklahoma,p50,SPP_South
+40,147,Washington,OK,Oklahoma,p51,SPP_South
+40,65,Jackson,OK,Oklahoma,p50,SPP_South
+40,13,Bryan,OK,Oklahoma,p50,SPP_South
+40,17,Canadian,OK,Oklahoma,p50,SPP_South
+40,31,Comanche,OK,Oklahoma,p50,SPP_South
+40,109,Oklahoma,OK,Oklahoma,p50,SPP_South
+40,149,Washita,OK,Oklahoma,p50,SPP_South
+40,153,Woodward,OK,Oklahoma,p50,SPP_South
+40,131,Rogers,OK,Oklahoma,p51,SPP_South
+40,103,Noble,OK,Oklahoma,p50,SPP_South
+40,55,Greer,OK,Oklahoma,p50,SPP_South
+40,119,Payne,OK,Oklahoma,p50,SPP_South
+41,51,Multnomah,OR,Oregon,p5,NorthernGrid_West
+41,63,Wallowa,OR,Oregon,p5,NorthernGrid_West
+41,39,Lane,OR,Oregon,p5,NorthernGrid_West
+41,71,Yamhill,OR,Oregon,p5,NorthernGrid_West
+41,3,Benton,OR,Oregon,p5,NorthernGrid_West
+41,53,Polk,OR,Oregon,p5,NorthernGrid_West
+41,35,Klamath,OR,Oregon,p6,NorthernGrid_West
+41,25,Harney,OR,Oregon,p7,NorthernGrid_West
+41,21,Gilliam,OR,Oregon,p5,NorthernGrid_West
+41,59,Umatilla,OR,Oregon,p5,NorthernGrid_West
+41,47,Marion,OR,Oregon,p5,NorthernGrid_West
+41,33,Josephine,OR,Oregon,p6,NorthernGrid_West
+41,67,Washington,OR,Oregon,p5,NorthernGrid_West
+41,27,Hood River,OR,Oregon,p5,NorthernGrid_West
+41,17,Deschutes,OR,Oregon,p5,NorthernGrid_West
+41,13,Crook,OR,Oregon,p5,NorthernGrid_West
+41,65,Wasco,OR,Oregon,p5,NorthernGrid_West
+41,31,Jefferson,OR,Oregon,p5,NorthernGrid_West
+41,55,Sherman,OR,Oregon,p5,NorthernGrid_West
+41,45,Malheur,OR,Oregon,p7,NorthernGrid_West
+41,19,Douglas,OR,Oregon,p6,NorthernGrid_West
+41,1,Baker,OR,Oregon,p7,NorthernGrid_West
+41,69,Wheeler,OR,Oregon,p5,NorthernGrid_West
+41,11,Coos,OR,Oregon,p6,NorthernGrid_West
+41,57,Tillamook,OR,Oregon,p5,NorthernGrid_West
+41,43,Linn,OR,Oregon,p5,NorthernGrid_West
+41,29,Jackson,OR,Oregon,p6,NorthernGrid_West
+41,15,Curry,OR,Oregon,p6,NorthernGrid_West
+41,37,Lake,OR,Oregon,p7,NorthernGrid_West
+41,5,Clackamas,OR,Oregon,p5,NorthernGrid_West
+41,7,Clatsop,OR,Oregon,p5,NorthernGrid_West
+41,41,Lincoln,OR,Oregon,p5,NorthernGrid_West
+41,9,Columbia,OR,Oregon,p5,NorthernGrid_West
+41,61,Union,OR,Oregon,p5,NorthernGrid_West
+41,23,Grant,OR,Oregon,p5,NorthernGrid_West
+41,49,Morrow,OR,Oregon,p5,NorthernGrid_West
+42,27,Centre,PA,Pennsylvania,p119,PJM_East
+42,73,Lawrence,PA,Pennsylvania,p122,PJM_East
+42,67,Juniata,PA,Pennsylvania,p122,PJM_East
+42,13,Blair,PA,Pennsylvania,p122,PJM_East
+42,17,Bucks,PA,Pennsylvania,p122,PJM_East
+42,99,Perry,PA,Pennsylvania,p122,PJM_East
+42,65,Jefferson,PA,Pennsylvania,p122,PJM_East
+42,31,Clarion,PA,Pennsylvania,p122,PJM_East
+42,109,Snyder,PA,Pennsylvania,p122,PJM_East
+42,55,Franklin,PA,Pennsylvania,p120,PJM_East
+42,103,Pike,PA,Pennsylvania,p122,PJM_East
+42,119,Union,PA,Pennsylvania,p122,PJM_East
+42,131,Wyoming,PA,Pennsylvania,p122,PJM_East
+42,95,Northampton,PA,Pennsylvania,p122,PJM_East
+42,39,Crawford,PA,Pennsylvania,p122,PJM_East
+42,63,Indiana,PA,Pennsylvania,p122,PJM_East
+42,51,Fayette,PA,Pennsylvania,p115,PJM_East
+42,71,Lancaster,PA,Pennsylvania,p122,PJM_East
+42,121,Venango,PA,Pennsylvania,p122,PJM_East
+42,53,Forest,PA,Pennsylvania,p122,PJM_East
+42,3,Allegheny,PA,Pennsylvania,p115,PJM_East
+42,117,Tioga,PA,Pennsylvania,p122,PJM_East
+42,35,Clinton,PA,Pennsylvania,p119,PJM_East
+42,25,Carbon,PA,Pennsylvania,p122,PJM_East
+42,105,Potter,PA,Pennsylvania,p119,PJM_East
+42,93,Montour,PA,Pennsylvania,p122,PJM_East
+42,89,Monroe,PA,Pennsylvania,p122,PJM_East
+42,21,Cambria,PA,Pennsylvania,p122,PJM_East
+42,33,Clearfield,PA,Pennsylvania,p122,PJM_East
+42,47,Elk,PA,Pennsylvania,p119,PJM_East
+42,59,Greene,PA,Pennsylvania,p115,PJM_East
+42,79,Luzerne,PA,Pennsylvania,p122,PJM_East
+42,107,Schuylkill,PA,Pennsylvania,p122,PJM_East
+42,97,Northumberland,PA,Pennsylvania,p122,PJM_East
+42,129,Westmoreland,PA,Pennsylvania,p115,PJM_East
+42,15,Bradford,PA,Pennsylvania,p122,PJM_East
+42,37,Columbia,PA,Pennsylvania,p122,PJM_East
+42,29,Chester,PA,Pennsylvania,p122,PJM_East
+42,115,Susquehanna,PA,Pennsylvania,p122,PJM_East
+42,7,Beaver,PA,Pennsylvania,p115,PJM_East
+42,5,Armstrong,PA,Pennsylvania,p115,PJM_East
+42,41,Cumberland,PA,Pennsylvania,p122,PJM_East
+42,81,Lycoming,PA,Pennsylvania,p122,PJM_East
+42,77,Lehigh,PA,Pennsylvania,p122,PJM_East
+42,127,Wayne,PA,Pennsylvania,p122,PJM_East
+42,49,Erie,PA,Pennsylvania,p122,PJM_East
+42,23,Cameron,PA,Pennsylvania,p119,PJM_East
+42,111,Somerset,PA,Pennsylvania,p122,PJM_East
+42,9,Bedford,PA,Pennsylvania,p122,PJM_East
+42,61,Huntingdon,PA,Pennsylvania,p122,PJM_East
+42,125,Washington,PA,Pennsylvania,p115,PJM_East
+42,123,Warren,PA,Pennsylvania,p122,PJM_East
+42,83,McKean,PA,Pennsylvania,p122,PJM_East
+42,45,Delaware,PA,Pennsylvania,p122,PJM_East
+42,1,Adams,PA,Pennsylvania,p122,PJM_East
+42,19,Butler,PA,Pennsylvania,p115,PJM_East
+42,133,York,PA,Pennsylvania,p122,PJM_East
+42,113,Sullivan,PA,Pennsylvania,p122,PJM_East
+42,87,Mifflin,PA,Pennsylvania,p122,PJM_East
+42,85,Mercer,PA,Pennsylvania,p122,PJM_East
+42,91,Montgomery,PA,Pennsylvania,p122,PJM_East
+42,101,Philadelphia,PA,Pennsylvania,p122,PJM_East
+42,11,Berks,PA,Pennsylvania,p122,PJM_East
+42,69,Lackawanna,PA,Pennsylvania,p122,PJM_East
+42,75,Lebanon,PA,Pennsylvania,p122,PJM_East
+42,43,Dauphin,PA,Pennsylvania,p122,PJM_East
+42,57,Fulton,PA,Pennsylvania,p120,PJM_East
+44,3,Kent,RI,Rhode Island,p133,ISONE
+44,7,Providence,RI,Rhode Island,p133,ISONE
+44,5,Newport,RI,Rhode Island,p133,ISONE
+44,9,Washington,RI,Rhode Island,p133,ISONE
+44,1,Bristol,RI,Rhode Island,p133,ISONE
+45,23,Chester,SC,South Carolina,p95,SERTP
+45,49,Hampton,SC,South Carolina,p96,SERTP
+45,9,Bamberg,SC,South Carolina,p96,SERTP
+45,61,Lee,SC,South Carolina,p96,SERTP
+45,77,Pickens,SC,South Carolina,p95,SERTP
+45,7,Anderson,SC,South Carolina,p95,SERTP
+45,5,Allendale,SC,South Carolina,p96,SERTP
+45,41,Florence,SC,South Carolina,p96,SERTP
+45,81,Saluda,SC,South Carolina,p96,SERTP
+45,79,Richland,SC,South Carolina,p96,SERTP
+45,37,Edgefield,SC,South Carolina,p96,SERTP
+45,15,Berkeley,SC,South Carolina,p96,SERTP
+45,29,Colleton,SC,South Carolina,p96,SERTP
+45,11,Barnwell,SC,South Carolina,p96,SERTP
+45,69,Marlboro,SC,South Carolina,p96,SERTP
+45,75,Orangeburg,SC,South Carolina,p96,SERTP
+45,43,Georgetown,SC,South Carolina,p96,SERTP
+45,57,Lancaster,SC,South Carolina,p95,SERTP
+45,19,Charleston,SC,South Carolina,p96,SERTP
+45,1,Abbeville,SC,South Carolina,p95,SERTP
+45,87,Union,SC,South Carolina,p95,SERTP
+45,85,Sumter,SC,South Carolina,p96,SERTP
+45,91,York,SC,South Carolina,p95,SERTP
+45,83,Spartanburg,SC,South Carolina,p95,SERTP
+45,45,Greenville,SC,South Carolina,p95,SERTP
+45,55,Kershaw,SC,South Carolina,p96,SERTP
+45,31,Darlington,SC,South Carolina,p96,SERTP
+45,17,Calhoun,SC,South Carolina,p96,SERTP
+45,13,Beaufort,SC,South Carolina,p96,SERTP
+45,65,McCormick,SC,South Carolina,p96,SERTP
+45,73,Oconee,SC,South Carolina,p95,SERTP
+45,67,Marion,SC,South Carolina,p96,SERTP
+45,27,Clarendon,SC,South Carolina,p96,SERTP
+45,89,Williamsburg,SC,South Carolina,p96,SERTP
+45,21,Cherokee,SC,South Carolina,p95,SERTP
+45,47,Greenwood,SC,South Carolina,p95,SERTP
+45,33,Dillon,SC,South Carolina,p96,SERTP
+45,59,Laurens,SC,South Carolina,p95,SERTP
+45,25,Chesterfield,SC,South Carolina,p96,SERTP
+45,35,Dorchester,SC,South Carolina,p96,SERTP
+45,3,Aiken,SC,South Carolina,p96,SERTP
+45,53,Jasper,SC,South Carolina,p96,SERTP
+45,51,Horry,SC,South Carolina,p96,SERTP
+45,39,Fairfield,SC,South Carolina,p96,SERTP
+45,63,Lexington,SC,South Carolina,p96,SERTP
+45,71,Newberry,SC,South Carolina,p96,SERTP
+46,83,Lincoln,SD,South Dakota,p38,SPP_North
+46,45,Edmunds,SD,South Dakota,p38,SPP_North
+46,123,Tripp,SD,South Dakota,p38,SPP_North
+46,87,McCook,SD,South Dakota,p38,SPP_North
+46,113,Shannon,SD,South Dakota,p38,SPP_North
+46,101,Moody,SD,South Dakota,p38,SPP_North
+46,91,Marshall,SD,South Dakota,p38,SPP_North
+46,85,Lyman,SD,South Dakota,p38,SPP_North
+46,19,Butte,SD,South Dakota,p32,WestConnect_North
+46,57,Hamlin,SD,South Dakota,p38,SPP_North
+46,43,Douglas,SD,South Dakota,p38,SPP_North
+46,75,Jones,SD,South Dakota,p38,SPP_North
+46,135,Yankton,SD,South Dakota,p38,SPP_North
+46,11,Brookings,SD,South Dakota,p38,SPP_North
+46,69,Hyde,SD,South Dakota,p38,SPP_North
+46,115,Spink,SD,South Dakota,p38,SPP_North
+46,29,Codington,SD,South Dakota,p38,SPP_North
+46,37,Day,SD,South Dakota,p38,SPP_North
+46,15,Brule,SD,South Dakota,p38,SPP_North
+46,129,Walworth,SD,South Dakota,p38,SPP_North
+46,97,Miner,SD,South Dakota,p38,SPP_North
+46,107,Potter,SD,South Dakota,p38,SPP_North
+46,79,Lake,SD,South Dakota,p38,SPP_North
+46,41,Dewey,SD,South Dakota,p38,SPP_North
+46,81,Lawrence,SD,South Dakota,p32,WestConnect_North
+46,7,Bennett,SD,South Dakota,p38,SPP_North
+46,5,Beadle,SD,South Dakota,p38,SPP_North
+46,127,Union,SD,South Dakota,p38,SPP_North
+46,77,Kingsbury,SD,South Dakota,p38,SPP_North
+46,111,Sanborn,SD,South Dakota,p38,SPP_North
+46,23,Charles Mix,SD,South Dakota,p38,SPP_North
+46,49,Faulk,SD,South Dakota,p38,SPP_North
+46,125,Turner,SD,South Dakota,p38,SPP_North
+46,61,Hanson,SD,South Dakota,p38,SPP_North
+46,9,Bon Homme,SD,South Dakota,p38,SPP_North
+46,121,Todd,SD,South Dakota,p38,SPP_North
+46,71,Jackson,SD,South Dakota,p38,SPP_North
+46,95,Mellette,SD,South Dakota,p38,SPP_North
+46,51,Grant,SD,South Dakota,p38,SPP_North
+46,63,Harding,SD,South Dakota,p38,SPP_North
+46,39,Deuel,SD,South Dakota,p38,SPP_North
+46,3,Aurora,SD,South Dakota,p38,SPP_North
+46,53,Gregory,SD,South Dakota,p38,SPP_North
+46,137,Ziebach,SD,South Dakota,p38,SPP_North
+46,105,Perkins,SD,South Dakota,p38,SPP_North
+46,93,Meade,SD,South Dakota,p38,SPP_North
+46,25,Clark,SD,South Dakota,p38,SPP_North
+46,35,Davison,SD,South Dakota,p38,SPP_North
+46,117,Stanley,SD,South Dakota,p38,SPP_North
+46,47,Fall River,SD,South Dakota,p32,WestConnect_North
+46,33,Custer,SD,South Dakota,p32,WestConnect_North
+46,59,Hand,SD,South Dakota,p38,SPP_North
+46,21,Campbell,SD,South Dakota,p38,SPP_North
+46,89,McPherson,SD,South Dakota,p38,SPP_North
+46,67,Hutchinson,SD,South Dakota,p38,SPP_North
+46,73,Jerauld,SD,South Dakota,p38,SPP_North
+46,27,Clay,SD,South Dakota,p38,SPP_North
+46,99,Minnehaha,SD,South Dakota,p38,SPP_North
+46,65,Hughes,SD,South Dakota,p38,SPP_North
+46,17,Buffalo,SD,South Dakota,p38,SPP_North
+46,13,Brown,SD,South Dakota,p38,SPP_North
+46,109,Roberts,SD,South Dakota,p38,SPP_North
+46,31,Corson,SD,South Dakota,p38,SPP_North
+46,119,Sully,SD,South Dakota,p38,SPP_North
+46,103,Pennington,SD,South Dakota,p32,WestConnect_North
+46,55,Haakon,SD,South Dakota,p38,SPP_North
+47,63,Hamblen,TN,Tennessee,p92,SERTP
+47,39,Decatur,TN,Tennessee,p92,SERTP
+47,51,Franklin,TN,Tennessee,p92,SERTP
+47,95,Lake,TN,Tennessee,p92,SERTP
+47,163,Sullivan,TN,Tennessee,p92,SERTP
+47,171,Unicoi,TN,Tennessee,p92,SERTP
+47,71,Hardin,TN,Tennessee,p92,SERTP
+47,121,Meigs,TN,Tennessee,p92,SERTP
+47,137,Pickett,TN,Tennessee,p92,SERTP
+47,53,Gibson,TN,Tennessee,p92,SERTP
+47,3,Bedford,TN,Tennessee,p92,SERTP
+47,143,Rhea,TN,Tennessee,p92,SERTP
+47,167,Tipton,TN,Tennessee,p92,SERTP
+47,117,Marshall,TN,Tennessee,p92,SERTP
+47,179,Washington,TN,Tennessee,p92,SERTP
+47,35,Cumberland,TN,Tennessee,p92,SERTP
+47,25,Claiborne,TN,Tennessee,p92,SERTP
+47,93,Knox,TN,Tennessee,p92,SERTP
+47,105,Loudon,TN,Tennessee,p92,SERTP
+47,21,Cheatham,TN,Tennessee,p92,SERTP
+47,89,Jefferson,TN,Tennessee,p92,SERTP
+47,145,Roane,TN,Tennessee,p92,SERTP
+47,189,Wilson,TN,Tennessee,p92,SERTP
+47,59,Greene,TN,Tennessee,p92,SERTP
+47,33,Crockett,TN,Tennessee,p92,SERTP
+47,47,Fayette,TN,Tennessee,p92,SERTP
+47,181,Wayne,TN,Tennessee,p92,SERTP
+47,187,Williamson,TN,Tennessee,p92,SERTP
+47,27,Clay,TN,Tennessee,p92,SERTP
+47,67,Hancock,TN,Tennessee,p92,SERTP
+47,73,Hawkins,TN,Tennessee,p92,SERTP
+47,159,Smith,TN,Tennessee,p92,SERTP
+47,13,Campbell,TN,Tennessee,p92,SERTP
+47,17,Carroll,TN,Tennessee,p92,SERTP
+47,147,Robertson,TN,Tennessee,p92,SERTP
+47,65,Hamilton,TN,Tennessee,p92,SERTP
+47,99,Lawrence,TN,Tennessee,p92,SERTP
+47,175,Van Buren,TN,Tennessee,p92,SERTP
+47,165,Sumner,TN,Tennessee,p92,SERTP
+47,109,McNairy,TN,Tennessee,p92,SERTP
+47,31,Coffee,TN,Tennessee,p92,SERTP
+47,155,Sevier,TN,Tennessee,p92,SERTP
+47,169,Trousdale,TN,Tennessee,p92,SERTP
+47,55,Giles,TN,Tennessee,p92,SERTP
+47,103,Lincoln,TN,Tennessee,p92,SERTP
+47,119,Maury,TN,Tennessee,p92,SERTP
+47,131,Obion,TN,Tennessee,p92,SERTP
+47,157,Shelby,TN,Tennessee,p92,SERTP
+47,149,Rutherford,TN,Tennessee,p92,SERTP
+47,153,Sequatchie,TN,Tennessee,p92,SERTP
+47,123,Monroe,TN,Tennessee,p92,SERTP
+47,45,Dyer,TN,Tennessee,p92,SERTP
+47,83,Houston,TN,Tennessee,p92,SERTP
+47,1,Anderson,TN,Tennessee,p92,SERTP
+47,177,Warren,TN,Tennessee,p92,SERTP
+47,19,Carter,TN,Tennessee,p92,SERTP
+47,133,Overton,TN,Tennessee,p92,SERTP
+47,91,Johnson,TN,Tennessee,p92,SERTP
+47,85,Humphreys,TN,Tennessee,p92,SERTP
+47,101,Lewis,TN,Tennessee,p92,SERTP
+47,113,Madison,TN,Tennessee,p92,SERTP
+47,87,Jackson,TN,Tennessee,p92,SERTP
+47,139,Polk,TN,Tennessee,p92,SERTP
+47,69,Hardeman,TN,Tennessee,p92,SERTP
+47,11,Bradley,TN,Tennessee,p92,SERTP
+47,135,Perry,TN,Tennessee,p92,SERTP
+47,43,Dickson,TN,Tennessee,p92,SERTP
+47,57,Grainger,TN,Tennessee,p92,SERTP
+47,75,Haywood,TN,Tennessee,p92,SERTP
+47,79,Henry,TN,Tennessee,p92,SERTP
+47,107,McMinn,TN,Tennessee,p92,SERTP
+47,161,Stewart,TN,Tennessee,p92,SERTP
+47,97,Lauderdale,TN,Tennessee,p92,SERTP
+47,129,Morgan,TN,Tennessee,p92,SERTP
+47,29,Cocke,TN,Tennessee,p92,SERTP
+47,15,Cannon,TN,Tennessee,p92,SERTP
+47,37,Davidson,TN,Tennessee,p92,SERTP
+47,115,Marion,TN,Tennessee,p92,SERTP
+47,5,Benton,TN,Tennessee,p92,SERTP
+47,7,Bledsoe,TN,Tennessee,p92,SERTP
+47,81,Hickman,TN,Tennessee,p92,SERTP
+47,41,DeKalb,TN,Tennessee,p92,SERTP
+47,173,Union,TN,Tennessee,p92,SERTP
+47,185,White,TN,Tennessee,p92,SERTP
+47,77,Henderson,TN,Tennessee,p92,SERTP
+47,127,Moore,TN,Tennessee,p92,SERTP
+47,183,Weakley,TN,Tennessee,p92,SERTP
+47,61,Grundy,TN,Tennessee,p92,SERTP
+47,9,Blount,TN,Tennessee,p92,SERTP
+47,125,Montgomery,TN,Tennessee,p92,SERTP
+47,141,Putnam,TN,Tennessee,p92,SERTP
+47,49,Fentress,TN,Tennessee,p92,SERTP
+47,151,Scott,TN,Tennessee,p92,SERTP
+47,111,Macon,TN,Tennessee,p92,SERTP
+47,23,Chester,TN,Tennessee,p92,SERTP
+48,317,Martin,TX,Texas,p62,ERCOT
+48,163,Frio,TX,Texas,p65,ERCOT
+48,171,Gillespie,TX,Texas,p64,ERCOT
+48,71,Chambers,TX,Texas,p66,MISO_South
+48,217,Hill,TX,Texas,p63,ERCOT
+48,339,Montgomery,TX,Texas,p66,MISO_South
+48,121,Denton,TX,Texas,p63,ERCOT
+48,343,Morris,TX,Texas,p57,SPP_South
+48,63,Camp,TX,Texas,p57,SPP_South
+48,303,Lubbock,TX,Texas,p48,SPP_South
+48,383,Reagan,TX,Texas,p62,ERCOT
+48,367,Parker,TX,Texas,p63,ERCOT
+48,357,Ochiltree,TX,Texas,p48,SPP_South
+48,39,Brazoria,TX,Texas,p67,ERCOT
+48,51,Burleson,TX,Texas,p64,ERCOT
+48,289,Leon,TX,Texas,p63,ERCOT
+48,351,Newton,TX,Texas,p66,MISO_South
+48,477,Washington,TX,Texas,p64,ERCOT
+48,261,Kenedy,TX,Texas,p65,ERCOT
+48,95,Concho,TX,Texas,p61,ERCOT
+48,143,Erath,TX,Texas,p63,ERCOT
+48,259,Kendall,TX,Texas,p64,ERCOT
+48,427,Starr,TX,Texas,p65,ERCOT
+48,167,Galveston,TX,Texas,p67,ERCOT
+48,449,Titus,TX,Texas,p57,SPP_South
+48,365,Panola,TX,Texas,p57,SPP_South
+48,493,Wilson,TX,Texas,p65,ERCOT
+48,481,Wharton,TX,Texas,p65,ERCOT
+48,279,Lamb,TX,Texas,p48,SPP_South
+48,137,Edwards,TX,Texas,p64,ERCOT
+48,355,Nueces,TX,Texas,p65,ERCOT
+48,437,Swisher,TX,Texas,p48,SPP_South
+48,53,Burnet,TX,Texas,p64,ERCOT
+48,455,Trinity,TX,Texas,p66,MISO_South
+48,3,Andrews,TX,Texas,p62,ERCOT
+48,407,San Jacinto,TX,Texas,p66,MISO_South
+48,243,Jeff Davis,TX,Texas,p61,ERCOT
+48,409,San Patricio,TX,Texas,p65,ERCOT
+48,305,Lynn,TX,Texas,p48,SPP_South
+48,93,Comanche,TX,Texas,p63,ERCOT
+48,205,Hartley,TX,Texas,p48,SPP_South
+48,465,Val Verde,TX,Texas,p61,ERCOT
+48,105,Crockett,TX,Texas,p61,ERCOT
+48,295,Lipscomb,TX,Texas,p48,SPP_South
+48,405,San Augustine,TX,Texas,p66,MISO_South
+48,253,Jones,TX,Texas,p60,ERCOT
+48,353,Nolan,TX,Texas,p60,ERCOT
+48,207,Haskell,TX,Texas,p60,ERCOT
+48,117,Deaf Smith,TX,Texas,p48,SPP_South
+48,179,Gray,TX,Texas,p48,SPP_South
+48,501,Yoakum,TX,Texas,p48,SPP_South
+48,225,Houston,TX,Texas,p63,ERCOT
+48,25,Bee,TX,Texas,p65,ERCOT
+48,327,Menard,TX,Texas,p64,ERCOT
+48,35,Bosque,TX,Texas,p63,ERCOT
+48,385,Real,TX,Texas,p64,ERCOT
+48,335,Mitchell,TX,Texas,p60,ERCOT
+48,399,Runnels,TX,Texas,p61,ERCOT
+48,197,Hardeman,TX,Texas,p60,ERCOT
+48,59,Callahan,TX,Texas,p61,ERCOT
+48,211,Hemphill,TX,Texas,p48,SPP_South
+48,245,Jefferson,TX,Texas,p66,MISO_South
+48,33,Borden,TX,Texas,p60,ERCOT
+48,47,Brooks,TX,Texas,p65,ERCOT
+48,263,Kent,TX,Texas,p60,ERCOT
+48,337,Montague,TX,Texas,p63,ERCOT
+48,21,Bastrop,TX,Texas,p64,ERCOT
+48,89,Colorado,TX,Texas,p64,ERCOT
+48,145,Falls,TX,Texas,p63,ERCOT
+48,201,Harris,TX,Texas,p67,ERCOT
+48,425,Somervell,TX,Texas,p63,ERCOT
+48,249,Jim Wells,TX,Texas,p65,ERCOT
+48,189,Hale,TX,Texas,p48,SPP_South
+48,319,Mason,TX,Texas,p64,ERCOT
+48,181,Grayson,TX,Texas,p63,ERCOT
+48,313,Madison,TX,Texas,p63,ERCOT
+48,187,Guadalupe,TX,Texas,p64,ERCOT
+48,275,Knox,TX,Texas,p60,ERCOT
+48,293,Limestone,TX,Texas,p63,ERCOT
+48,27,Bell,TX,Texas,p63,ERCOT
+48,349,Navarro,TX,Texas,p63,ERCOT
+48,403,Sabine,TX,Texas,p66,MISO_South
+48,347,Nacogdoches,TX,Texas,p66,MISO_South
+48,67,Cass,TX,Texas,p57,SPP_South
+48,73,Cherokee,TX,Texas,p63,ERCOT
+48,241,Jasper,TX,Texas,p66,MISO_South
+48,467,Van Zandt,TX,Texas,p63,ERCOT
+48,495,Winkler,TX,Texas,p62,ERCOT
+48,497,Wise,TX,Texas,p63,ERCOT
+48,269,King,TX,Texas,p60,ERCOT
+48,213,Henderson,TX,Texas,p63,ERCOT
+48,271,Kinney,TX,Texas,p61,ERCOT
+48,147,Fannin,TX,Texas,p63,ERCOT
+48,417,Shackelford,TX,Texas,p63,ERCOT
+48,389,Reeves,TX,Texas,p61,ERCOT
+48,471,Walker,TX,Texas,p64,ERCOT
+48,281,Lampasas,TX,Texas,p63,ERCOT
+48,65,Carson,TX,Texas,p48,SPP_South
+48,483,Wheeler,TX,Texas,p48,SPP_South
+48,175,Goliad,TX,Texas,p65,ERCOT
+48,345,Motley,TX,Texas,p60,ERCOT
+48,99,Coryell,TX,Texas,p63,ERCOT
+48,487,Wilbarger,TX,Texas,p60,ERCOT
+48,393,Roberts,TX,Texas,p48,SPP_South
+48,435,Sutton,TX,Texas,p61,ERCOT
+48,255,Karnes,TX,Texas,p65,ERCOT
+48,277,Lamar,TX,Texas,p63,ERCOT
+48,159,Franklin,TX,Texas,p63,ERCOT
+48,325,Medina,TX,Texas,p65,ERCOT
+48,13,Atascosa,TX,Texas,p65,ERCOT
+48,17,Bailey,TX,Texas,p48,SPP_South
+48,155,Foard,TX,Texas,p60,ERCOT
+48,239,Jackson,TX,Texas,p65,ERCOT
+48,221,Hood,TX,Texas,p63,ERCOT
+48,309,McLennan,TX,Texas,p63,ERCOT
+48,297,Live Oak,TX,Texas,p65,ERCOT
+48,381,Randall,TX,Texas,p48,SPP_South
+48,291,Liberty,TX,Texas,p66,MISO_South
+48,215,Hidalgo,TX,Texas,p65,ERCOT
+48,165,Gaines,TX,Texas,p48,SPP_South
+48,109,Culberson,TX,Texas,p61,ERCOT
+48,31,Blanco,TX,Texas,p64,ERCOT
+48,131,Duval,TX,Texas,p65,ERCOT
+48,157,Fort Bend,TX,Texas,p67,ERCOT
+48,503,Young,TX,Texas,p63,ERCOT
+48,411,San Saba,TX,Texas,p63,ERCOT
+48,149,Fayette,TX,Texas,p64,ERCOT
+48,397,Rockwall,TX,Texas,p63,ERCOT
+48,153,Floyd,TX,Texas,p48,SPP_South
+48,459,Upshur,TX,Texas,p57,SPP_South
+48,307,McCulloch,TX,Texas,p63,ERCOT
+48,209,Hays,TX,Texas,p64,ERCOT
+48,169,Garza,TX,Texas,p48,SPP_South
+48,103,Crane,TX,Texas,p62,ERCOT
+48,55,Caldwell,TX,Texas,p64,ERCOT
+48,119,Delta,TX,Texas,p63,ERCOT
+48,45,Briscoe,TX,Texas,p60,ERCOT
+48,83,Coleman,TX,Texas,p61,ERCOT
+48,333,Mills,TX,Texas,p63,ERCOT
+48,457,Tyler,TX,Texas,p66,MISO_South
+48,251,Johnson,TX,Texas,p63,ERCOT
+48,469,Victoria,TX,Texas,p65,ERCOT
+48,321,Matagorda,TX,Texas,p65,ERCOT
+48,123,DeWitt,TX,Texas,p64,ERCOT
+48,423,Smith,TX,Texas,p63,ERCOT
+48,91,Comal,TX,Texas,p64,ERCOT
+48,85,Collin,TX,Texas,p63,ERCOT
+48,233,Hutchinson,TX,Texas,p48,SPP_South
+48,101,Cottle,TX,Texas,p60,ERCOT
+48,113,Dallas,TX,Texas,p63,ERCOT
+48,341,Moore,TX,Texas,p48,SPP_South
+48,311,McMullen,TX,Texas,p65,ERCOT
+48,87,Collingsworth,TX,Texas,p48,SPP_South
+48,413,Schleicher,TX,Texas,p61,ERCOT
+48,463,Uvalde,TX,Texas,p65,ERCOT
+48,1,Anderson,TX,Texas,p63,ERCOT
+48,177,Gonzales,TX,Texas,p64,ERCOT
+48,445,Terry,TX,Texas,p48,SPP_South
+48,133,Eastland,TX,Texas,p63,ERCOT
+48,19,Bandera,TX,Texas,p64,ERCOT
+48,285,Lavaca,TX,Texas,p64,ERCOT
+48,237,Jack,TX,Texas,p63,ERCOT
+48,299,Llano,TX,Texas,p64,ERCOT
+48,377,Presidio,TX,Texas,p61,ERCOT
+48,447,Throckmorton,TX,Texas,p63,ERCOT
+48,395,Robertson,TX,Texas,p63,ERCOT
+48,387,Red River,TX,Texas,p63,ERCOT
+48,273,Kleberg,TX,Texas,p65,ERCOT
+48,203,Harrison,TX,Texas,p57,SPP_South
+48,479,Webb,TX,Texas,p65,ERCOT
+48,433,Stonewall,TX,Texas,p60,ERCOT
+48,231,Hunt,TX,Texas,p63,ERCOT
+48,135,Ector,TX,Texas,p62,ERCOT
+48,499,Wood,TX,Texas,p63,ERCOT
+48,57,Calhoun,TX,Texas,p65,ERCOT
+48,43,Brewster,TX,Texas,p61,ERCOT
+48,75,Childress,TX,Texas,p60,ERCOT
+48,371,Pecos,TX,Texas,p61,ERCOT
+48,139,Ellis,TX,Texas,p63,ERCOT
+48,69,Castro,TX,Texas,p48,SPP_South
+48,199,Hardin,TX,Texas,p66,MISO_South
+48,11,Armstrong,TX,Texas,p48,SPP_South
+48,267,Kimble,TX,Texas,p64,ERCOT
+48,451,Tom Green,TX,Texas,p61,ERCOT
+48,429,Stephens,TX,Texas,p63,ERCOT
+48,439,Tarrant,TX,Texas,p63,ERCOT
+48,379,Rains,TX,Texas,p63,ERCOT
+48,29,Bexar,TX,Texas,p65,ERCOT
+48,37,Bowie,TX,Texas,p57,SPP_South
+48,219,Hockley,TX,Texas,p48,SPP_South
+48,15,Austin,TX,Texas,p64,ERCOT
+48,431,Sterling,TX,Texas,p61,ERCOT
+48,115,Dawson,TX,Texas,p60,ERCOT
+48,415,Scurry,TX,Texas,p60,ERCOT
+48,283,La Salle,TX,Texas,p65,ERCOT
+48,107,Crosby,TX,Texas,p60,ERCOT
+48,161,Freestone,TX,Texas,p63,ERCOT
+48,79,Cochran,TX,Texas,p48,SPP_South
+48,391,Refugio,TX,Texas,p65,ERCOT
+48,129,Donley,TX,Texas,p48,SPP_South
+48,235,Irion,TX,Texas,p61,ERCOT
+48,97,Cooke,TX,Texas,p63,ERCOT
+48,363,Palo Pinto,TX,Texas,p63,ERCOT
+48,475,Ward,TX,Texas,p62,ERCOT
+48,81,Coke,TX,Texas,p61,ERCOT
+48,507,Zavala,TX,Texas,p65,ERCOT
+48,505,Zapata,TX,Texas,p65,ERCOT
+48,287,Lee,TX,Texas,p64,ERCOT
+48,41,Brazos,TX,Texas,p64,ERCOT
+48,461,Upton,TX,Texas,p62,ERCOT
+48,173,Glasscock,TX,Texas,p62,ERCOT
+48,195,Hansford,TX,Texas,p48,SPP_South
+48,257,Kaufman,TX,Texas,p63,ERCOT
+48,229,Hudspeth,TX,Texas,p61,ERCOT
+48,491,Williamson,TX,Texas,p64,ERCOT
+48,193,Hamilton,TX,Texas,p63,ERCOT
+48,5,Angelina,TX,Texas,p63,ERCOT
+48,443,Terrell,TX,Texas,p61,ERCOT
+48,421,Sherman,TX,Texas,p48,SPP_South
+48,7,Aransas,TX,Texas,p65,ERCOT
+48,127,Dimmit,TX,Texas,p65,ERCOT
+48,419,Shelby,TX,Texas,p66,MISO_South
+48,453,Travis,TX,Texas,p64,ERCOT
+48,183,Gregg,TX,Texas,p57,SPP_South
+48,369,Parmer,TX,Texas,p48,SPP_South
+48,485,Wichita,TX,Texas,p63,ERCOT
+48,373,Polk,TX,Texas,p66,MISO_South
+48,185,Grimes,TX,Texas,p64,ERCOT
+48,489,Willacy,TX,Texas,p65,ERCOT
+48,361,Orange,TX,Texas,p66,MISO_South
+48,315,Marion,TX,Texas,p57,SPP_South
+48,77,Clay,TX,Texas,p63,ERCOT
+48,61,Cameron,TX,Texas,p65,ERCOT
+48,9,Archer,TX,Texas,p63,ERCOT
+48,247,Jim Hogg,TX,Texas,p65,ERCOT
+48,125,Dickens,TX,Texas,p60,ERCOT
+48,401,Rusk,TX,Texas,p63,ERCOT
+48,141,El Paso,TX,Texas,p59,WestConnect_South
+48,359,Oldham,TX,Texas,p48,SPP_South
+48,191,Hall,TX,Texas,p60,ERCOT
+48,223,Hopkins,TX,Texas,p63,ERCOT
+48,151,Fisher,TX,Texas,p60,ERCOT
+48,49,Brown,TX,Texas,p63,ERCOT
+48,323,Maverick,TX,Texas,p65,ERCOT
+48,111,Dallam,TX,Texas,p48,SPP_South
+48,23,Baylor,TX,Texas,p60,ERCOT
+48,375,Potter,TX,Texas,p48,SPP_South
+48,329,Midland,TX,Texas,p62,ERCOT
+48,301,Loving,TX,Texas,p62,ERCOT
+48,441,Taylor,TX,Texas,p61,ERCOT
+48,227,Howard,TX,Texas,p60,ERCOT
+48,331,Milam,TX,Texas,p63,ERCOT
+48,265,Kerr,TX,Texas,p64,ERCOT
+48,473,Waller,TX,Texas,p64,ERCOT
+49,19,Grand,UT,Utah,p25,NorthernGrid_South
+49,1,Beaver,UT,Utah,p25,NorthernGrid_South
+49,45,Tooele,UT,Utah,p25,NorthernGrid_South
+49,11,Davis,UT,Utah,p25,NorthernGrid_South
+49,43,Summit,UT,Utah,p26,NorthernGrid_South
+49,57,Weber,UT,Utah,p25,NorthernGrid_South
+49,7,Carbon,UT,Utah,p25,NorthernGrid_South
+49,5,Cache,UT,Utah,p25,NorthernGrid_South
+49,41,Sevier,UT,Utah,p25,NorthernGrid_South
+49,37,San Juan,UT,Utah,p25,NorthernGrid_South
+49,15,Emery,UT,Utah,p25,NorthernGrid_South
+49,29,Morgan,UT,Utah,p26,NorthernGrid_South
+49,23,Juab,UT,Utah,p25,NorthernGrid_South
+49,49,Utah,UT,Utah,p25,NorthernGrid_South
+49,9,Daggett,UT,Utah,p26,NorthernGrid_South
+49,3,Box Elder,UT,Utah,p25,NorthernGrid_South
+49,53,Washington,UT,Utah,p25,NorthernGrid_South
+49,51,Wasatch,UT,Utah,p26,NorthernGrid_South
+49,39,Sanpete,UT,Utah,p25,NorthernGrid_South
+49,21,Iron,UT,Utah,p25,NorthernGrid_South
+49,47,Uintah,UT,Utah,p26,NorthernGrid_South
+49,33,Rich,UT,Utah,p26,NorthernGrid_South
+49,25,Kane,UT,Utah,p25,NorthernGrid_South
+49,35,Salt Lake,UT,Utah,p25,NorthernGrid_South
+49,17,Garfield,UT,Utah,p25,NorthernGrid_South
+49,13,Duchesne,UT,Utah,p26,NorthernGrid_South
+49,27,Millard,UT,Utah,p25,NorthernGrid_South
+49,55,Wayne,UT,Utah,p25,NorthernGrid_South
+49,31,Piute,UT,Utah,p25,NorthernGrid_South
+50,19,Orleans,VT,Vermont,p129,ISONE
+50,1,Addison,VT,Vermont,p129,ISONE
+50,11,Franklin,VT,Vermont,p129,ISONE
+50,5,Caledonia,VT,Vermont,p129,ISONE
+50,7,Chittenden,VT,Vermont,p129,ISONE
+50,15,Lamoille,VT,Vermont,p129,ISONE
+50,9,Essex,VT,Vermont,p129,ISONE
+50,23,Washington,VT,Vermont,p129,ISONE
+50,3,Bennington,VT,Vermont,p129,ISONE
+50,21,Rutland,VT,Vermont,p129,ISONE
+50,25,Windham,VT,Vermont,p129,ISONE
+50,17,Orange,VT,Vermont,p129,ISONE
+50,13,Grand Isle,VT,Vermont,p129,ISONE
+50,27,Windsor,VT,Vermont,p129,ISONE
+51,69,Frederick,VA,Virginia,p100,PJM_East
+51,690,Martinsville,VA,Virginia,p118,PJM_East
+51,139,Page,VA,Virginia,p100,PJM_East
+51,11,Appomattox,VA,Virginia,p99,PJM_East
+51,540,Charlottesville,VA,Virginia,p99,PJM_East
+51,199,York,VA,Virginia,p99,PJM_East
+51,57,Essex,VA,Virginia,p99,PJM_East
+51,43,Clarke,VA,Virginia,p100,PJM_East
+51,75,Goochland,VA,Virginia,p99,PJM_East
+51,135,Nottoway,VA,Virginia,p99,PJM_East
+51,595,Emporia,VA,Virginia,p99,PJM_East
+51,830,Williamsburg,VA,Virginia,p99,PJM_East
+51,610,Falls Church,VA,Virginia,p99,PJM_East
+51,750,Radford,VA,Virginia,p118,PJM_East
+51,700,Newport News,VA,Virginia,p99,PJM_East
+51,133,Northumberland,VA,Virginia,p99,PJM_East
+51,19,Bedford,VA,Virginia,p118,PJM_East
+51,1,Accomack,VA,Virginia,p124,PJM_East
+51,177,Spotsylvania,VA,Virginia,p99,PJM_East
+51,101,King William,VA,Virginia,p99,PJM_East
+51,91,Highland,VA,Virginia,p99,PJM_East
+51,85,Hanover,VA,Virginia,p99,PJM_East
+51,87,Henrico,VA,Virginia,p99,PJM_East
+51,113,Madison,VA,Virginia,p100,PJM_East
+51,790,Staunton,VA,Virginia,p99,PJM_East
+51,45,Craig,VA,Virginia,p118,PJM_East
+51,670,Hopewell,VA,Virginia,p99,PJM_East
+51,83,Halifax,VA,Virginia,p99,PJM_East
+51,735,Poquoson,VA,Virginia,p99,PJM_East
+51,510,Alexandria,VA,Virginia,p99,PJM_East
+51,125,Nelson,VA,Virginia,p118,PJM_East
+51,141,Patrick,VA,Virginia,p118,PJM_East
+51,61,Fauquier,VA,Virginia,p99,PJM_East
+51,9,Amherst,VA,Virginia,p118,PJM_East
+51,678,Lexington,VA,Virginia,p99,PJM_East
+51,111,Lunenburg,VA,Virginia,p99,PJM_East
+51,23,Botetourt,VA,Virginia,p118,PJM_East
+51,191,Washington,VA,Virginia,p118,PJM_East
+51,49,Cumberland,VA,Virginia,p99,PJM_East
+51,185,Tazewell,VA,Virginia,p118,PJM_East
+51,77,Grayson,VA,Virginia,p118,PJM_East
+51,183,Sussex,VA,Virginia,p99,PJM_East
+51,127,New Kent,VA,Virginia,p99,PJM_East
+51,193,Westmoreland,VA,Virginia,p99,PJM_East
+51,5,Alleghany,VA,Virginia,p99,PJM_East
+51,7,Amelia,VA,Virginia,p99,PJM_East
+51,81,Greensville,VA,Virginia,p99,PJM_East
+51,173,Smyth,VA,Virginia,p118,PJM_East
+51,195,Wise,VA,Virginia,p118,PJM_East
+51,720,Norton,VA,Virginia,p118,PJM_East
+51,41,Chesterfield,VA,Virginia,p99,PJM_East
+51,840,Winchester,VA,Virginia,p100,PJM_East
+51,36,Charles City,VA,Virginia,p99,PJM_East
+51,97,King and Queen,VA,Virginia,p99,PJM_East
+51,107,Loudoun,VA,Virginia,p99,PJM_East
+51,161,Roanoke,VA,Virginia,p118,PJM_East
+51,79,Greene,VA,Virginia,p100,PJM_East
+51,660,Harrisonburg,VA,Virginia,p99,PJM_East
+51,115,Mathews,VA,Virginia,p99,PJM_East
+51,29,Buckingham,VA,Virginia,p99,PJM_East
+51,37,Charlotte,VA,Virginia,p99,PJM_East
+51,15,Augusta,VA,Virginia,p99,PJM_East
+51,21,Bland,VA,Virginia,p118,PJM_East
+51,89,Henry,VA,Virginia,p118,PJM_East
+51,145,Powhatan,VA,Virginia,p99,PJM_East
+51,640,Galax,VA,Virginia,p118,PJM_East
+51,59,Fairfax,VA,Virginia,p99,PJM_East
+51,197,Wythe,VA,Virginia,p118,PJM_East
+51,47,Culpeper,VA,Virginia,p99,PJM_East
+51,33,Caroline,VA,Virginia,p99,PJM_East
+51,680,Lynchburg,VA,Virginia,p118,PJM_East
+51,25,Brunswick,VA,Virginia,p99,PJM_East
+51,35,Carroll,VA,Virginia,p118,PJM_East
+51,117,Mecklenburg,VA,Virginia,p99,PJM_East
+51,179,Stafford,VA,Virginia,p99,PJM_East
+51,93,Isle of Wight,VA,Virginia,p99,PJM_East
+51,685,Manassas Park,VA,Virginia,p99,PJM_East
+51,630,Fredericksburg,VA,Virginia,p99,PJM_East
+51,105,Lee,VA,Virginia,p118,PJM_East
+51,137,Orange,VA,Virginia,p99,PJM_East
+51,3,Albemarle,VA,Virginia,p99,PJM_East
+51,590,Danville,VA,Virginia,p99,PJM_East
+51,53,Dinwiddie,VA,Virginia,p99,PJM_East
+51,143,Pittsylvania,VA,Virginia,p99,PJM_East
+51,820,Waynesboro,VA,Virginia,p99,PJM_East
+51,730,Petersburg,VA,Virginia,p99,PJM_East
+51,580,Covington,VA,Virginia,p99,PJM_East
+51,810,Virginia Beach,VA,Virginia,p99,PJM_East
+51,167,Russell,VA,Virginia,p118,PJM_East
+51,51,Dickenson,VA,Virginia,p118,PJM_East
+51,63,Floyd,VA,Virginia,p118,PJM_East
+51,95,James City,VA,Virginia,p99,PJM_East
+51,163,Rockbridge,VA,Virginia,p99,PJM_East
+51,171,Shenandoah,VA,Virginia,p99,PJM_East
+51,620,Franklin,VA,Virginia,p99,PJM_East
+51,121,Montgomery,VA,Virginia,p118,PJM_East
+51,71,Giles,VA,Virginia,p118,PJM_East
+51,570,Colonial Heights,VA,Virginia,p99,PJM_East
+51,169,Scott,VA,Virginia,p118,PJM_East
+51,515,Bedford,VA,Virginia,p118,PJM_East
+51,775,Salem,VA,Virginia,p118,PJM_East
+51,119,Middlesex,VA,Virginia,p99,PJM_East
+51,800,Suffolk,VA,Virginia,p99,PJM_East
+51,103,Lancaster,VA,Virginia,p99,PJM_East
+51,740,Portsmouth,VA,Virginia,p99,PJM_East
+51,131,Northampton,VA,Virginia,p124,PJM_East
+51,157,Rappahannock,VA,Virginia,p100,PJM_East
+51,710,Norfolk,VA,Virginia,p99,PJM_East
+51,153,Prince William,VA,Virginia,p99,PJM_East
+51,149,Prince George,VA,Virginia,p99,PJM_East
+51,165,Rockingham,VA,Virginia,p99,PJM_East
+51,109,Louisa,VA,Virginia,p99,PJM_East
+51,31,Campbell,VA,Virginia,p99,PJM_East
+51,550,Chesapeake,VA,Virginia,p99,PJM_East
+51,520,Bristol,VA,Virginia,p118,PJM_East
+51,155,Pulaski,VA,Virginia,p118,PJM_East
+51,530,Buena Vista,VA,Virginia,p99,PJM_East
+51,159,Richmond,VA,Virginia,p99,PJM_East
+51,760,Richmond,VA,Virginia,p99,PJM_East
+51,17,Bath,VA,Virginia,p99,PJM_East
+51,600,Fairfax,VA,Virginia,p99,PJM_East
+51,13,Arlington,VA,Virginia,p99,PJM_East
+51,65,Fluvanna,VA,Virginia,p99,PJM_East
+51,683,Manassas,VA,Virginia,p99,PJM_East
+51,147,Prince Edward,VA,Virginia,p99,PJM_East
+51,175,Southampton,VA,Virginia,p99,PJM_East
+51,99,King George,VA,Virginia,p99,PJM_East
+51,770,Roanoke,VA,Virginia,p118,PJM_East
+51,187,Warren,VA,Virginia,p100,PJM_East
+51,181,Surry,VA,Virginia,p99,PJM_East
+51,650,Hampton,VA,Virginia,p99,PJM_East
+51,67,Franklin,VA,Virginia,p118,PJM_East
+51,73,Gloucester,VA,Virginia,p99,PJM_East
+51,27,Buchanan,VA,Virginia,p118,PJM_East
+53,21,Franklin,WA,Washington,p3,NorthernGrid_West
+53,59,Skamania,WA,Washington,p2,NorthernGrid_West
+53,47,Okanogan,WA,Washington,p3,NorthernGrid_West
+53,33,King,WA,Washington,p1,NorthernGrid_West
+53,25,Grant,WA,Washington,p4,NorthernGrid_West
+53,35,Kitsap,WA,Washington,p1,NorthernGrid_West
+53,3,Asotin,WA,Washington,p2,NorthernGrid_West
+53,53,Pierce,WA,Washington,p1,NorthernGrid_West
+53,51,Pend Oreille,WA,Washington,p3,NorthernGrid_West
+53,39,Klickitat,WA,Washington,p2,NorthernGrid_West
+53,63,Spokane,WA,Washington,p3,NorthernGrid_West
+53,71,Walla Walla,WA,Washington,p2,NorthernGrid_West
+53,55,San Juan,WA,Washington,p1,NorthernGrid_West
+53,31,Jefferson,WA,Washington,p2,NorthernGrid_West
+53,17,Douglas,WA,Washington,p4,NorthernGrid_West
+53,13,Columbia,WA,Washington,p2,NorthernGrid_West
+53,65,Stevens,WA,Washington,p3,NorthernGrid_West
+53,73,Whatcom,WA,Washington,p1,NorthernGrid_West
+53,67,Thurston,WA,Washington,p1,NorthernGrid_West
+53,27,Grays Harbor,WA,Washington,p2,NorthernGrid_West
+53,69,Wahkiakum,WA,Washington,p2,NorthernGrid_West
+53,11,Clark,WA,Washington,p2,NorthernGrid_West
+53,75,Whitman,WA,Washington,p3,NorthernGrid_West
+53,57,Skagit,WA,Washington,p1,NorthernGrid_West
+53,43,Lincoln,WA,Washington,p3,NorthernGrid_West
+53,19,Ferry,WA,Washington,p3,NorthernGrid_West
+53,1,Adams,WA,Washington,p3,NorthernGrid_West
+53,45,Mason,WA,Washington,p2,NorthernGrid_West
+53,61,Snohomish,WA,Washington,p1,NorthernGrid_West
+53,9,Clallam,WA,Washington,p2,NorthernGrid_West
+53,23,Garfield,WA,Washington,p2,NorthernGrid_West
+53,49,Pacific,WA,Washington,p2,NorthernGrid_West
+53,77,Yakima,WA,Washington,p2,NorthernGrid_West
+53,5,Benton,WA,Washington,p2,NorthernGrid_West
+53,7,Chelan,WA,Washington,p1,NorthernGrid_West
+53,41,Lewis,WA,Washington,p2,NorthernGrid_West
+53,37,Kittitas,WA,Washington,p1,NorthernGrid_West
+53,15,Cowlitz,WA,Washington,p2,NorthernGrid_West
+53,29,Island,WA,Washington,p1,NorthernGrid_West
+54,51,Marshall,WV,West Virginia,p116,PJM_East
+54,39,Kanawha,WV,West Virginia,p117,PJM_East
+54,63,Monroe,WV,West Virginia,p116,PJM_East
+54,95,Tyler,WV,West Virginia,p116,PJM_East
+54,71,Pendleton,WV,West Virginia,p116,PJM_East
+54,3,Berkeley,WV,West Virginia,p116,PJM_East
+54,53,Mason,WV,West Virginia,p117,PJM_East
+54,35,Jackson,WV,West Virginia,p116,PJM_East
+54,25,Greenbrier,WV,West Virginia,p116,PJM_East
+54,93,Tucker,WV,West Virginia,p116,PJM_East
+54,105,Wirt,WV,West Virginia,p116,PJM_East
+54,89,Summers,WV,West Virginia,p116,PJM_East
+54,21,Gilmer,WV,West Virginia,p116,PJM_East
+54,59,Mingo,WV,West Virginia,p117,PJM_East
+54,47,McDowell,WV,West Virginia,p117,PJM_East
+54,33,Harrison,WV,West Virginia,p116,PJM_East
+54,73,Pleasants,WV,West Virginia,p116,PJM_East
+54,67,Nicholas,WV,West Virginia,p116,PJM_East
+54,27,Hampshire,WV,West Virginia,p116,PJM_East
+54,17,Doddridge,WV,West Virginia,p116,PJM_East
+54,13,Calhoun,WV,West Virginia,p116,PJM_East
+54,65,Morgan,WV,West Virginia,p116,PJM_East
+54,99,Wayne,WV,West Virginia,p117,PJM_East
+54,31,Hardy,WV,West Virginia,p116,PJM_East
+54,109,Wyoming,WV,West Virginia,p117,PJM_East
+54,103,Wetzel,WV,West Virginia,p116,PJM_East
+54,55,Mercer,WV,West Virginia,p117,PJM_East
+54,45,Logan,WV,West Virginia,p117,PJM_East
+54,83,Randolph,WV,West Virginia,p116,PJM_East
+54,19,Fayette,WV,West Virginia,p117,PJM_East
+54,1,Barbour,WV,West Virginia,p116,PJM_East
+54,101,Webster,WV,West Virginia,p116,PJM_East
+54,85,Ritchie,WV,West Virginia,p116,PJM_East
+54,91,Taylor,WV,West Virginia,p116,PJM_East
+54,87,Roane,WV,West Virginia,p116,PJM_East
+54,69,Ohio,WV,West Virginia,p116,PJM_East
+54,11,Cabell,WV,West Virginia,p117,PJM_East
+54,75,Pocahontas,WV,West Virginia,p116,PJM_East
+54,57,Mineral,WV,West Virginia,p116,PJM_East
+54,43,Lincoln,WV,West Virginia,p117,PJM_East
+54,97,Upshur,WV,West Virginia,p116,PJM_East
+54,79,Putnam,WV,West Virginia,p117,PJM_East
+54,107,Wood,WV,West Virginia,p116,PJM_East
+54,15,Clay,WV,West Virginia,p116,PJM_East
+54,37,Jefferson,WV,West Virginia,p116,PJM_East
+54,29,Hancock,WV,West Virginia,p116,PJM_East
+54,5,Boone,WV,West Virginia,p117,PJM_East
+54,7,Braxton,WV,West Virginia,p116,PJM_East
+54,81,Raleigh,WV,West Virginia,p117,PJM_East
+54,41,Lewis,WV,West Virginia,p116,PJM_East
+54,77,Preston,WV,West Virginia,p116,PJM_East
+54,9,Brooke,WV,West Virginia,p116,PJM_East
+54,61,Monongalia,WV,West Virginia,p116,PJM_East
+54,23,Grant,WV,West Virginia,p116,PJM_East
+54,49,Marion,WV,West Virginia,p116,PJM_East
+55,117,Sheboygan,WI,Wisconsin,p79,MISO_North
+55,25,Dane,WI,Wisconsin,p78,MISO_North
+55,35,Eau Claire,WI,Wisconsin,p46,MISO_North
+55,105,Rock,WI,Wisconsin,p78,MISO_North
+55,93,Pierce,WI,Wisconsin,p46,MISO_North
+55,21,Columbia,WI,Wisconsin,p76,MISO_North
+55,89,Ozaukee,WI,Wisconsin,p79,MISO_North
+55,33,Dunn,WI,Wisconsin,p46,MISO_North
+55,47,Green Lake,WI,Wisconsin,p76,MISO_North
+55,59,Kenosha,WI,Wisconsin,p79,MISO_North
+55,95,Polk,WI,Wisconsin,p46,MISO_North
+55,63,La Crosse,WI,Wisconsin,p46,MISO_North
+55,39,Fond du Lac,WI,Wisconsin,p76,MISO_North
+55,51,Iron,WI,Wisconsin,p46,MISO_North
+55,71,Manitowoc,WI,Wisconsin,p75,MISO_North
+55,121,Trempealeau,WI,Wisconsin,p46,MISO_North
+55,53,Jackson,WI,Wisconsin,p77,MISO_North
+55,3,Ashland,WI,Wisconsin,p46,MISO_North
+55,137,Waushara,WI,Wisconsin,p76,MISO_North
+55,31,Douglas,WI,Wisconsin,p46,MISO_North
+55,109,St. Croix,WI,Wisconsin,p46,MISO_North
+55,55,Jefferson,WI,Wisconsin,p79,MISO_North
+55,103,Richland,WI,Wisconsin,p77,MISO_North
+55,119,Taylor,WI,Wisconsin,p46,MISO_North
+55,131,Washington,WI,Wisconsin,p79,MISO_North
+55,78,Menominee,WI,Wisconsin,p76,MISO_North
+55,27,Dodge,WI,Wisconsin,p76,MISO_North
+55,67,Langlade,WI,Wisconsin,p75,MISO_North
+55,73,Marathon,WI,Wisconsin,p75,MISO_North
+55,13,Burnett,WI,Wisconsin,p46,MISO_North
+55,17,Chippewa,WI,Wisconsin,p46,MISO_North
+55,99,Price,WI,Wisconsin,p46,MISO_North
+55,65,Lafayette,WI,Wisconsin,p77,MISO_North
+55,11,Buffalo,WI,Wisconsin,p46,MISO_North
+55,139,Winnebago,WI,Wisconsin,p76,MISO_North
+55,69,Lincoln,WI,Wisconsin,p75,MISO_North
+55,135,Waupaca,WI,Wisconsin,p76,MISO_North
+55,57,Juneau,WI,Wisconsin,p76,MISO_North
+55,43,Grant,WI,Wisconsin,p77,MISO_North
+55,75,Marinette,WI,Wisconsin,p75,MISO_North
+55,123,Vernon,WI,Wisconsin,p77,MISO_North
+55,83,Oconto,WI,Wisconsin,p75,MISO_North
+55,45,Green,WI,Wisconsin,p78,MISO_North
+55,1,Adams,WI,Wisconsin,p76,MISO_North
+55,133,Waukesha,WI,Wisconsin,p79,MISO_North
+55,19,Clark,WI,Wisconsin,p46,MISO_North
+55,113,Sawyer,WI,Wisconsin,p46,MISO_North
+55,87,Outagamie,WI,Wisconsin,p76,MISO_North
+55,91,Pepin,WI,Wisconsin,p46,MISO_North
+55,85,Oneida,WI,Wisconsin,p75,MISO_North
+55,101,Racine,WI,Wisconsin,p79,MISO_North
+55,77,Marquette,WI,Wisconsin,p76,MISO_North
+55,127,Walworth,WI,Wisconsin,p79,MISO_North
+55,49,Iowa,WI,Wisconsin,p77,MISO_North
+55,23,Crawford,WI,Wisconsin,p77,MISO_North
+55,111,Sauk,WI,Wisconsin,p77,MISO_North
+55,9,Brown,WI,Wisconsin,p75,MISO_North
+55,61,Kewaunee,WI,Wisconsin,p75,MISO_North
+55,141,Wood,WI,Wisconsin,p76,MISO_North
+55,125,Vilas,WI,Wisconsin,p75,MISO_North
+55,107,Rusk,WI,Wisconsin,p46,MISO_North
+55,79,Milwaukee,WI,Wisconsin,p79,MISO_North
+55,129,Washburn,WI,Wisconsin,p46,MISO_North
+55,97,Portage,WI,Wisconsin,p75,MISO_North
+55,29,Door,WI,Wisconsin,p75,MISO_North
+55,37,Florence,WI,Wisconsin,p75,MISO_North
+55,15,Calumet,WI,Wisconsin,p76,MISO_North
+55,115,Shawano,WI,Wisconsin,p76,MISO_North
+55,7,Bayfield,WI,Wisconsin,p46,MISO_North
+55,5,Barron,WI,Wisconsin,p46,MISO_North
+55,41,Forest,WI,Wisconsin,p75,MISO_North
+55,81,Monroe,WI,Wisconsin,p77,MISO_North
+56,33,Sheridan,WY,Wyoming,p22,NorthernGrid_East
+56,21,Laramie,WY,Wyoming,p24,WestConnect_North
+56,35,Sublette,WY,Wyoming,p21,NorthernGrid_East
+56,25,Natrona,WY,Wyoming,p24,WestConnect_North
+56,3,Big Horn,WY,Wyoming,p21,NorthernGrid_East
+56,39,Teton,WY,Wyoming,p21,NorthernGrid_East
+56,31,Platte,WY,Wyoming,p24,WestConnect_North
+56,17,Hot Springs,WY,Wyoming,p21,NorthernGrid_East
+56,13,Fremont,WY,Wyoming,p21,NorthernGrid_East
+56,27,Niobrara,WY,Wyoming,p24,WestConnect_North
+56,43,Washakie,WY,Wyoming,p21,NorthernGrid_East
+56,11,Crook,WY,Wyoming,p23,WestConnect_North
+56,19,Johnson,WY,Wyoming,p22,NorthernGrid_East
+56,1,Albany,WY,Wyoming,p24,WestConnect_North
+56,45,Weston,WY,Wyoming,p23,WestConnect_North
+56,9,Converse,WY,Wyoming,p24,WestConnect_North
+56,23,Lincoln,WY,Wyoming,p21,NorthernGrid_East
+56,41,Uinta,WY,Wyoming,p21,NorthernGrid_East
+56,5,Campbell,WY,Wyoming,p23,WestConnect_North
+56,7,Carbon,WY,Wyoming,p24,WestConnect_North
+56,15,Goshen,WY,Wyoming,p24,WestConnect_North
+56,37,Sweetwater,WY,Wyoming,p21,NorthernGrid_East
+56,29,Park,WY,Wyoming,p21,NorthernGrid_East
