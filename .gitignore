@@ -9,3 +9,4 @@ easiur_batchConversion_upload/
 archived_files/
 output_results/
 euss_data/
+.venv/
