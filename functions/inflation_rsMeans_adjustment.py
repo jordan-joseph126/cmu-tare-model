@@ -1,0 +1,86 @@
+import pandas as pd
+import os
+
+# Get the current working directory of the project
+project_root = "C:\\Users\\14128\\Research\\cmu-tare-model"
+print(f"Project root directory: {project_root}")
+
+"""
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+INFLATION ADJUSTMENT
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Inflate Marginal Social Cost (Damage) Factors using BLS CPI for All Urban Consumers (CPI-U)
+- Series Id:	CUUR0000SA0
+- Not Seasonally Adjusted
+- Series Title:	All items in U.S. city average, all urban consumers, not seasonally adjusted
+- Area:	U.S. city average
+- Item:	All items
+- Base Period:	1982-84=100
+"""
+
+# Load the BLS Inflation Data
+filename = 'bls_cpiu_2005-2023.xlsx'
+relative_path = os.path.join(r"inflation_data", filename)
+file_path = os.path.join(project_root, relative_path)
+
+print(f"Retrieved data for filename: {filename}")
+print(f"Located at filepath: {file_path}")
+
+# Create a pandas dataframe
+df_bls_cpiu = pd.read_excel(file_path, sheet_name='bls_cpiu')
+
+df_bls_cpiu = pd.DataFrame({
+    'year': df_bls_cpiu['Year'],
+    'cpiu_annual': df_bls_cpiu['Annual']
+})
+
+# Obtain the Annual CPIU values for the years of interest
+bls_cpi_annual_2008 = df_bls_cpiu['cpiu_annual'].loc[(df_bls_cpiu['year'] == 2008)].item()
+bls_cpi_annual_2010 = df_bls_cpiu['cpiu_annual'].loc[(df_bls_cpiu['year'] == 2010)].item()
+bls_cpi_annual_2013 = df_bls_cpiu['cpiu_annual'].loc[(df_bls_cpiu['year'] == 2013)].item()
+bls_cpi_annual_2018 = df_bls_cpiu['cpiu_annual'].loc[(df_bls_cpiu['year'] == 2018)].item()
+bls_cpi_annual_2019 = df_bls_cpiu['cpiu_annual'].loc[(df_bls_cpiu['year'] == 2019)].item()
+bls_cpi_annual_2020 = df_bls_cpiu['cpiu_annual'].loc[(df_bls_cpiu['year'] == 2020)].item()
+bls_cpi_annual_2021 = df_bls_cpiu['cpiu_annual'].loc[(df_bls_cpiu['year'] == 2021)].item()
+bls_cpi_annual_2022 = df_bls_cpiu['cpiu_annual'].loc[(df_bls_cpiu['year'] == 2022)].item()
+bls_cpi_annual_2023 = df_bls_cpiu['cpiu_annual'].loc[(df_bls_cpiu['year'] == 2023)].item()
+
+# Precompute constant values
+cpi_ratio_2023_2023 = bls_cpi_annual_2023 / bls_cpi_annual_2023
+cpi_ratio_2023_2022 = bls_cpi_annual_2023 / bls_cpi_annual_2022
+cpi_ratio_2023_2021 = bls_cpi_annual_2023 / bls_cpi_annual_2021  # For EPA VSL (11.3M USD-2021)
+cpi_ratio_2023_2020 = bls_cpi_annual_2023 / bls_cpi_annual_2020  # For SCC
+cpi_ratio_2023_2019 = bls_cpi_annual_2023 / bls_cpi_annual_2019 
+cpi_ratio_2023_2018 = bls_cpi_annual_2023 / bls_cpi_annual_2018 
+cpi_ratio_2023_2013 = bls_cpi_annual_2023 / bls_cpi_annual_2013
+cpi_ratio_2023_2010 = bls_cpi_annual_2023 / bls_cpi_annual_2010
+cpi_ratio_2023_2008 = bls_cpi_annual_2023 / bls_cpi_annual_2008  # For EPA VSL and SCC
+
+"""
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+RSMEANS CITY COST INDEX
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+"""
+
+### Adjustment Factors for Construction: 
+#### RSMeans City Cost Index
+#### Consumer Price Index for All Urban Consumers (CPI, CPI-U)
+# Adjust for regional cost differences with RSMeans
+filename = "rsMeans_cityCostIndex.csv"
+relative_path = os.path.join(r"inflation_data", filename)
+file_path = os.path.join(project_root, relative_path)
+
+print(f"Retrieved data for filename: {filename}")
+print(f"Located at filepath: {file_path}")
+print("\n")
+
+df_rsMeans_cityCostIndex = pd.read_csv(file_path)
+
+df_rsMeans_cityCostIndex = pd.DataFrame({
+    'State': df_rsMeans_cityCostIndex['State'],
+    'City': df_rsMeans_cityCostIndex['City'],
+    'Material': (df_rsMeans_cityCostIndex['Material']).round(2),
+    'Installation': (df_rsMeans_cityCostIndex['Installation']).round(2),
+    'Average': (df_rsMeans_cityCostIndex['Average']).round(2),
+})
+df_rsMeans_cityCostIndex
