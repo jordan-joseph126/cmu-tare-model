@@ -1,11 +1,68 @@
 import pandas as pd
 import os
-# import functions.tare_setup as tare_setup
+from cmu_tare_model.functions.load_and_filter_euss_data import project_root
 
-# Get the current working directory of the project
-# project_root = os.path.abspath(os.getcwd())
-project_root = "C:\\Users\\14128\\Research\\cmu-tare-model"
-print(f"Project root directory: {project_root}")
+"""
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+FOSSIL FUEL EMISSIONS FACTORS
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+"""
+# LAST UPDATED DECEMBER 4, 2024
+def calculate_fossil_fuel_emission_factor(fuel_type, so2_factor, nox_factor, pm25_factor, conversion_factor1, conversion_factor2):
+    """
+    Calculate Emission Factors for Fossil Fuels.
+
+    Parameters:
+    -----------
+    fuel_type : str
+        Type of fuel (e.g., "naturalGas", "fuelOil", "propane").
+    so2_factor : float
+        SO2 emission factor in lb/Mbtu.
+    nox_factor : float
+        NOx emission factor in lb/Mbtu.
+    pm25_factor : float
+        PM2.5 emission factor in lb per volume unit (varies by fuel).
+    conversion_factor1 : int
+        Conversion factor for volume units to gallons/thousand gallons.
+    conversion_factor2 : int
+        Conversion factor for energy content (e.g., BTU per gallon/cf).
+    
+    Returns:
+    --------
+    dict
+        Dictionary containing emission factors for the given fuel type in lb/kWh or mt/kWh.
+    """
+
+    # Correct conversion factor from Mbtu to kWh
+    # 1 Mbtu = 1,000,000 Btu
+    # 1 kWh = 3,412 Btu
+    # So, 1 Mbtu = 1,000,000 / 3,412 kWh
+    mbtu_to_kwh = 1_000_000 / 3412  # Approximately 293.07107 kWh/Mbtu
+
+    # Emission factors in lb/kWh
+    emission_factors = {
+        f"{fuel_type}_so2": so2_factor * (1/mbtu_to_kwh),
+        f"{fuel_type}_nox": nox_factor * (1 / mbtu_to_kwh),
+        f"{fuel_type}_pm25": pm25_factor * (1 / conversion_factor1) * (1 / conversion_factor2) * 3412,
+    }
+
+    # # Natural gas-specific CO2e calculation (including leakage)
+    # leakage rate for natural gas infrastructure
+    # 1 Therm = 29.30 kWh --> 1.27 kg CO2e/therm * (1 therm/29.30 kWh) = 0.043 kg CO2e/kWh = 0.095 lb CO2e/kWh
+    naturalGas_leakage_mtCO2e_perkWh = 0.043 * (1 / 1000)
+
+    if fuel_type == "naturalGas":
+        # Convert units from kg/MWh to ton/MWh to ton/kWh
+        emission_factors[f"{fuel_type}_co2e"] = (228.5 * (1 / 1000) * (1 / 1000)) + naturalGas_leakage_mtCO2e_perkWh
+
+    # CO2e for propane and fuel oil
+    # Convert units from kg/MWh to ton/MWh to ton/kWh
+    elif fuel_type == "propane":
+        emission_factors[f"{fuel_type}_co2e"] = 275.8 * (1 / 1000) * (1 / 1000)
+    elif fuel_type == "fuelOil":
+        emission_factors[f"{fuel_type}_co2e"] = 303.9 * (1 / 1000) * (1 / 1000)
+
+    return emission_factors
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -173,7 +230,6 @@ def create_cambium_co2e_lookup(df_cambium_processed):
     return emis_scenario_cambium_lookup
 
 
-
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ELECTRICITY - HEALTH RELATED EMISSIONS
@@ -270,3 +326,64 @@ def calculate_coal_projection_factors(df_cambium):
 
     return df_interpolated
 
+"""
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+SCHMITT STUDY VALIDATION
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+"""
+
+# LAST UPDATED NOVEMBER 24 @ 5 PM
+# HEALTH RELATED EMISSIONS VALIDATION
+def process_Schmitt_emissions_data(df_grid_mix=None, df_grid_emis_factors=None):
+    if df_grid_mix is None:
+        df_grid_mix = pd.DataFrame({
+            'cambium_gea_region': [],
+            'fuel_source': [],
+            'fraction_generation': []
+        })
+    if df_grid_emis_factors is None:
+        df_grid_emis_factors = pd.DataFrame({
+            'cambium_gea_region': [],
+            'fuel_source': [],
+            'emis_rate': []
+        })
+    # Check unique fuel sources in both dataframes
+    fuel_sources_mix = set(df_grid_mix['fuel_source'].unique())
+    fuel_sources_emis = set(df_grid_emis_factors['fuel_source'].unique())
+
+    print("Fuel sources in df_grid_mix:", fuel_sources_mix)
+    print("Fuel sources in df_grid_emis_factors:", fuel_sources_emis)
+
+    # Merge the dataframes
+    df_combined = pd.merge(
+        df_grid_mix,
+        df_grid_emis_factors,
+        on=['cambium_gea_region', 'fuel_source'],
+        how='inner'
+    )
+
+    # Calculate emissions contribution
+    df_combined['emis_contribution'] = df_combined['fraction_generation'] * df_combined['emis_rate']
+
+    # Sum emissions contributions
+    df_emis_factors = df_combined.groupby(
+        ['year', 'cambium_gea_region', 'pollutant']
+    )['emis_contribution'].sum().reset_index()
+
+    # Pivot the dataframe
+    df_emis_factors_pivot = df_emis_factors.pivot_table(
+        index=['year', 'cambium_gea_region'],
+        columns='pollutant',
+        values='emis_contribution'
+    ).reset_index()
+
+    # Rename columns
+    df_emis_factors_pivot.rename(columns={
+        'NH3': 'delta_egrid_nh3',
+        'NOx': 'delta_egrid_nox',
+        'PM25': 'delta_egrid_pm25',
+        'SO2': 'delta_egrid_so2',
+        'VOC': 'delta_egrid_voc'
+    }, inplace=True)
+
+    return df_emis_factors_pivot

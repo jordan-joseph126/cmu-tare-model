@@ -1,11 +1,9 @@
-import pandas as pd
 import os
-# import functions.tare_setup as tare_setup
+import pandas as pd
+import numpy as np
+from scipy.interpolate import interp1d
 
-# Get the current working directory of the project
-# project_root = os.path.abspath(os.getcwd())
-project_root = "C:\\Users\\14128\\Research\\cmu-tare-model"
-print(f"Project root directory: {project_root}")
+from config import PROJECT_ROOT
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -14,10 +12,6 @@ ELECTRICITY - CLIMATE RELATED EMISSIONS
 """
 
 # LAST UPDATED/TESTED NOV 24, 2024 @ 5 PM
-from scipy.interpolate import interp1d
-import numpy as np
-import pandas as pd
-
 def calculate_electricity_co2e_cambium(df_cambium_import):
     """
     Interpolates Cambium electricity emission factors and converts units.
@@ -172,3 +166,74 @@ def create_cambium_co2e_lookup(df_cambium_processed):
 
     return emis_scenario_cambium_lookup
 
+### Climate-Related Emissions from CAMBIUM LRMER/SRMER 
+### Includes pre-combustion (fugitive) and combustion
+
+print("""
+-------------------------------------------------------------------------------------------------------
+PRE-IRA LONG RUN AND SHORT RUN MARGINAL EMISSIONS RATES (LRMER, SRMER) FROM CAMBIUM 2021 RELEASE
+-------------------------------------------------------------------------------------------------------
+
+""")
+
+# CAMBIUM 2021 FOR PRE-IRA SCENARIO
+filename = 'cambium21_midCase_annual_gea.xlsx'
+relative_path = os.path.join("cmu_tare_model", "data", "projections", filename)
+file_path = os.path.join(PROJECT_ROOT, relative_path)
+df_cambium21_margEmis_electricity = pd.read_excel(io=file_path, sheet_name='proc_Cambium21_MidCase_gea')
+
+print(f"""
+Retrieved data for filename: {filename}
+Located at filepath: {file_path}
+
+Loading dataframe ...
+Creating lookup dictionary for LRMER and SRMER ...
+-------------------------------------------------------------------------------------------------------
+""")
+
+# Calculate electricity emission factors for Cambium 2021
+# Process the data using the provided function to interpolate and convert units
+df_cambium21_processed = calculate_electricity_co2e_cambium(df_cambium21_margEmis_electricity)
+
+# # Display the processed DataFrame
+# df_cambium21_processed
+
+# Create the lookup dictionary using the create_cambium_emission_factor_lookup function
+emis_preIRA_co2e_cambium21_lookup = create_cambium_co2e_lookup(df_cambium21_processed)
+
+# Display the lookup dictionary
+emis_preIRA_co2e_cambium21_lookup
+
+print("""
+-------------------------------------------------------------------------------------------------------
+IRA LONG RUN AND SHORT RUN MARGINAL EMISSIONS RATES (LRMER, SRMER) FROM CAMBIUM 2022 RELEASE
+-------------------------------------------------------------------------------------------------------
+""")
+
+# CAMBIUM 2022 FOR IRA SCENARIO
+filename = 'cambium22_allScenarios_annual_gea.xlsx'
+relative_path = os.path.join("cmu_tare_model", "data", "projections", filename)
+file_path = os.path.join(PROJECT_ROOT, relative_path)
+df_cambium22_margEmis_electricity = pd.read_excel(io=file_path, sheet_name='proc_Cambium22_MidCase_gea')
+
+print(f"""
+Retrieved data for filename: {filename}
+Located at filepath: {file_path}
+
+Loading dataframe ...
+Creating lookup dictionary for 2024 LRMER and SRMER ...
+-------------------------------------------------------------------------------------------------------
+""")
+
+# Calculate electricity emission factors for Cambium 2021
+# Process the data using the provided function to interpolate and convert units
+df_cambium22_processed = calculate_electricity_co2e_cambium(df_cambium22_margEmis_electricity)
+
+# # Display the processed DataFrame
+# df_cambium22_processed
+
+# Create the lookup dictionary using the create_cambium_co2e_lookup function
+emis_IRA_co2e_cambium22_lookup = create_cambium_co2e_lookup(df_cambium22_processed)
+
+# Display the lookup dictionary
+emis_IRA_co2e_cambium22_lookup

@@ -1,10 +1,15 @@
 import pandas as pd
 import os
 
-# Get the current working directory of the project
-# project_root = os.path.abspath(os.getcwd())
-project_root = "C:\\Users\\14128\\Research\\cmu-tare-model"
-print(f"Project root directory: {project_root}")
+# import functions.tare_setup as tare_setup
+from cmu_tare_model.functions.rsMeans_adjustment import cpi_ratio_2023_2020
+
+# Constants (Assuming these are defined elsewhere in your code)
+TD_LOSSES = 0.06
+TD_LOSSES_MULTIPLIER = 1 / (1 - TD_LOSSES)
+EQUIPMENT_SPECS = {'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15}
+POLLUTANTS = ['so2', 'nox', 'pm25', 'co2e']
+EPA_SCC_USD2023_PER_TON = 190 * cpi_ratio_2023_2020 # For co2e adjust SCC
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -13,13 +18,6 @@ ANNUAL EMISSIONS AND DAMAGES
 """
 
 # UPDATED DEC 9, 2024 @ 3:00 PM
-# Constants (Assuming these are defined elsewhere in your code)
-TD_LOSSES = 0.06
-TD_LOSSES_MULTIPLIER = 1 / (1 - TD_LOSSES)
-EQUIPMENT_SPECS = {'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15}
-POLLUTANTS = ['so2', 'nox', 'pm25', 'co2e']
-# EPA_SCC_USD2023_PER_TON = 190 * cpi_ratio_2023_2020 # For co2e adjust SCC
-
 def calculate_marginal_damages(df, menu_mp, policy_scenario, df_baseline_damages=None, df_detailed_damages=None):
     """
     Calculate marginal damages of pollutants based on equipment usage, emissions, and policy scenarios.

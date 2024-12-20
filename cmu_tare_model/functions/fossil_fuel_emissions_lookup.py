@@ -1,24 +1,12 @@
 import pandas as pd
 import os
-# import functions.tare_setup as tare_setup
-from inflation_rsMeans_adjustment import cpi_ratio_2023_2020
+# from cmu_tare_model.functions.tare_setup import project_root
 
-# Get the current working directory of the project
-# project_root = os.path.abspath(os.getcwd())
-project_root = "C:\\Users\\14128\\Research\\cmu-tare-model"
-print(f"Project root directory: {project_root}")
-
-TD_LOSSES = 0.06
-TD_LOSSES_MULTIPLIER = 1 / (1 - TD_LOSSES)
-EQUIPMENT_SPECS = {'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15}
-POLLUTANTS = ['so2', 'nox', 'pm25', 'co2e']
-EPA_SCC_USD2023_PER_TON = 190 * cpi_ratio_2023_2020 # For co2e adjust SCC
-
-print("""
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-FUNCTIONS: FOSSIL FUEL EMISSIONS FACTORS
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-""")
+# print("""
+# ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# FUNCTIONS: FOSSIL FUEL EMISSIONS FACTORS
+# ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# """)
 
 # LAST UPDATED DECEMBER 4, 2024
 def calculate_fossil_fuel_emission_factor(fuel_type, so2_factor, nox_factor, pm25_factor, conversion_factor1, conversion_factor2):
@@ -77,21 +65,21 @@ def calculate_fossil_fuel_emission_factor(fuel_type, so2_factor, nox_factor, pm2
 
     return emission_factors
 
-# Print header
-print(""" 
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-CALCULATE EMISSIONS FACTORS: FOSSIL FUELS
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Fossil Fuels (Natural Gas, Fuel Oil, Propane):
-- NOx, SO2, CO2: 
-    - RESNET Table 7.1.2 Emissions Factors for Household Combustion Fuels
-    - Source: https://www.resnet.us/wp-content/uploads/ANSIRESNETICC301-2022_resnetpblshd.pdf
-    - All factors are in units of lb/Mbtu; energy consumption in kWh needs conversion.
-- PM2.5: 
-    - A National Methodology and Emission Inventory for Residential Fuel Combustion
-    - Source: https://www3.epa.gov/ttnchie1/conference/ei12/area/haneke.pdf
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-""")
+# # Print header
+# print(""" 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# CALCULATE EMISSIONS FACTORS: FOSSIL FUELS
+# ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Fossil Fuels (Natural Gas, Fuel Oil, Propane):
+# - NOx, SO2, CO2: 
+#     - RESNET Table 7.1.2 Emissions Factors for Household Combustion Fuels
+#     - Source: https://www.resnet.us/wp-content/uploads/ANSIRESNETICC301-2022_resnetpblshd.pdf
+#     - All factors are in units of lb/Mbtu; energy consumption in kWh needs conversion.
+# - PM2.5: 
+#     - A National Methodology and Emission Inventory for Residential Fuel Combustion
+#     - Source: https://www3.epa.gov/ttnchie1/conference/ei12/area/haneke.pdf
+# ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# """)
 
 # Calculate emission factors for each fuel type
 fuel_oil_factors = calculate_fossil_fuel_emission_factor(
@@ -133,7 +121,6 @@ df_marg_emis_factors = df_marg_emis_factors.assign(state="National")
 
 # Reorder columns for clarity
 df_marg_emis_factors = df_marg_emis_factors[["state", "fuel_type", "pollutant", "value", "unit"]]
-print(df_marg_emis_factors)
 
 # Create lookup dictionary for fossil fuel emissions factors
 emis_fossil_fuel_lookup = {}
@@ -148,4 +135,16 @@ for fuel in fuel_types:
         for pollutant in ["co2e", "so2", "nox", "pm25"]
     }
 
-print(emis_fossil_fuel_lookup)
+# print(f"""
+# --------------------------------------------------------------------------------------------------------------------------------------
+# Fossil Fuels: Climate and Health-Related Pollutants
+# --------------------------------------------------------------------------------------------------------------------------------------
+# DATAFRAME: Marginal Emission Factors for Fossil Fuels
+      
+# {df_marg_emis_factors}  
+
+# LOOKUP DICTIONARY: Fossil Fuel Emissions
+
+# {emis_fossil_fuel_lookup}
+
+# """)
