@@ -2,7 +2,11 @@ import pandas as pd
 import os
 
 # import functions.tare_setup as tare_setup
-from cmu_tare_model.functions.rsMeans_adjustment import cpi_ratio_2023_2020
+from cmu_tare_model.functions.inflation_adjustment import cpi_ratio_2023_2020
+from cmu_tare_model.functions.project_future_energy_consumption import lookup_hdd_factor
+from cmu_tare_model.functions.create_lookup_emissions_fossil_fuel import lookup_emis_fossil_fuel
+from cmu_tare_model.functions.create_lookup_climate_damages_electricity import lookup_co2e_emis_electricity_preIRA, lookup_co2e_emis_electricity_IRA
+from cmu_tare_model.functions.create_lookup_health_damages_electricity import lookup_health_damages_electricity_preIRA, lookup_health_damages_electricity_iraRef
 
 # Constants (Assuming these are defined elsewhere in your code)
 TD_LOSSES = 0.06
@@ -49,7 +53,7 @@ def calculate_marginal_damages(df, menu_mp, policy_scenario, df_baseline_damages
         df_detailed_damages = pd.DataFrame(index=df_copy.index)
     
     # Define policy-specific settings
-    scenario_prefix, cambium_scenario, emis_fossil_fuel_lookup, emis_climate_electricity_lookup, damages_health_electricity_lookup = define_scenario_settings(menu_mp, policy_scenario)
+    scenario_prefix, cambium_scenario, lookup_emis_fossil_fuel, lookup_co2e_emis_electricity, lookup_health_damages_electricity = define_scenario_settings(menu_mp, policy_scenario)
     
     # Precompute HDD adjustment factors by region and year
     hdd_factors_per_year = precompute_hdd_factors(df_copy)
@@ -69,12 +73,12 @@ def calculate_marginal_damages(df, menu_mp, policy_scenario, df_baseline_damages
         df_detailed_damages=df_detailed_damages,
         menu_mp=menu_mp,
         td_losses_multiplier=TD_LOSSES_MULTIPLIER,
-        emis_climate_electricity_lookup=emis_climate_electricity_lookup,
+        lookup_co2e_emis_electricity=lookup_co2e_emis_electricity,
         cambium_scenario=cambium_scenario,
         scenario_prefix=scenario_prefix,
         hdd_factors_df=hdd_factors_per_year,
-        emis_fossil_fuel_lookup=emis_fossil_fuel_lookup,
-        damages_health_electricity_lookup=damages_health_electricity_lookup,
+        lookup_emis_fossil_fuel=lookup_emis_fossil_fuel,
+        lookup_health_damages_electricity=lookup_health_damages_electricity,
         EPA_SCC_USD2023_PER_TON=EPA_SCC_USD2023_PER_TON,
         equipment_specs=equipment_specs
     )
@@ -98,29 +102,29 @@ def define_scenario_settings(menu_mp, policy_scenario):
         policy_scenario (str): Policy scenario.
 
     Returns:
-        Tuple: (scenario_prefix, cambium_scenario, emis_fossil_fuel_lookup, emis_climate_electricity_lookup, damages_health_electricity_lookup)
+        Tuple: (scenario_prefix, cambium_scenario, lookup_emis_fossil_fuel, lookup_co2e_emis_electricity, lookup_health_damages_electricity)
     """
         
     if menu_mp == 0:
         print(f"""-- Scenario: Baseline -- 
-              scenario_prefix: 'baseline_', cambium_scenario: 'MidCase', emis_fossil_fuel_lookup: 'emis_fossil_fuel_lookup', 
-              emis_climate_electricity_lookup: 'emis_preIRA_co2e_cambium21_lookup', damages_health_electricity_lookup: 'damages_preIRA_health_damages_lookup'
+              scenario_prefix: 'baseline_', cambium_scenario: 'MidCase', lookup_emis_fossil_fuel: 'lookup_emis_fossil_fuel', 
+              lookup_co2e_emis_electricity: 'emis_preIRA_co2e_cambium21_lookup', lookup_health_damages_electricity: 'damages_preIRA_health_damages_lookup'
               """)
-        return "baseline_", "MidCase", emis_fossil_fuel_lookup, emis_preIRA_co2e_cambium21_lookup, damages_preIRA_health_damages_lookup
+        return "baseline_", "MidCase", lookup_emis_fossil_fuel, lookup_co2e_emis_electricity_preIRA, lookup_health_damages_electricity_preIRA
 
     if policy_scenario == 'No Inflation Reduction Act':
         print(f"""-- Scenario: No Inflation Reduction Act -- 
-              scenario_prefix: f'preIRA_mp{menu_mp}_', cambium_scenario: 'MidCase', emis_fossil_fuel_lookup: 'emis_fossil_fuel_lookup', 
-              emis_climate_electricity_lookup: 'emis_preIRA_co2e_cambium21_lookup', damages_health_electricity_lookup: 'damages_preIRA_health_damages_lookup'
+              scenario_prefix: f'preIRA_mp{menu_mp}_', cambium_scenario: 'MidCase', lookup_emis_fossil_fuel: 'lookup_emis_fossil_fuel', 
+              lookup_co2e_emis_electricity: 'emis_preIRA_co2e_cambium21_lookup', lookup_health_damages_electricity: 'damages_preIRA_health_damages_lookup'
               """)
-        return f"preIRA_mp{menu_mp}_", "MidCase", emis_fossil_fuel_lookup, emis_preIRA_co2e_cambium21_lookup, damages_preIRA_health_damages_lookup
+        return f"preIRA_mp{menu_mp}_", "MidCase", lookup_emis_fossil_fuel, lookup_co2e_emis_electricity_preIRA, lookup_health_damages_electricity_preIRA
 
     if policy_scenario == 'AEO2023 Reference Case':
         print(f"""-- Scenario: Inflation Reduction Act (IRA) Reference -- 
-              scenario_prefix: 'iraRef_mp{menu_mp}_', cambium_scenario: 'MidCase', emis_fossil_fuel_lookup: 'emis_fossil_fuel_lookup', 
-              emis_climate_electricity_lookup: 'emis_IRA_co2e_cambium22_lookup', damages_health_electricity_lookup: 'damages_iraRef_health_damages_lookup'
+              scenario_prefix: 'iraRef_mp{menu_mp}_', cambium_scenario: 'MidCase', lookup_emis_fossil_fuel: 'lookup_emis_fossil_fuel', 
+              lookup_co2e_emis_electricity: 'emis_IRA_co2e_cambium22_lookup', lookup_health_damages_electricity: 'damages_iraRef_health_damages_lookup'
               """)
-        return f"iraRef_mp{menu_mp}_", "MidCase", emis_fossil_fuel_lookup, emis_IRA_co2e_cambium22_lookup, damages_iraRef_health_damages_lookup
+        return f"iraRef_mp{menu_mp}_", "MidCase", lookup_emis_fossil_fuel, lookup_co2e_emis_electricity_IRA, lookup_health_damages_electricity_iraRef
 
     raise ValueError("Invalid Policy Scenario! Choose 'No Inflation Reduction Act' or 'AEO2023 Reference Case'.")
     # Return the appropriate variables (assuming these lookups are defined elsewhere)
@@ -142,13 +146,13 @@ def precompute_hdd_factors(df):
 
     for year_label in years:
         hdd_factors_df[year_label] = df['census_division'].map(
-            lambda x: hdd_factor_lookup.get(x, hdd_factor_lookup['National']).get(year_label, 1.0)
+            lambda x: lookup_hdd_factor.get(x, lookup_hdd_factor['National']).get(year_label, 1.0)
         )
 
     return hdd_factors_df
 
-def calculate_damages_grid_scenario(df_copy, df_baseline_damages_copy, df_detailed_damages, menu_mp, td_losses_multiplier, emis_climate_electricity_lookup, cambium_scenario, scenario_prefix, 
-                                    hdd_factors_df, emis_fossil_fuel_lookup, damages_health_electricity_lookup, EPA_SCC_USD2023_PER_TON, equipment_specs):
+def calculate_damages_grid_scenario(df_copy, df_baseline_damages_copy, df_detailed_damages, menu_mp, td_losses_multiplier, lookup_co2e_emis_electricity, cambium_scenario, scenario_prefix, 
+                                    hdd_factors_df, lookup_emis_fossil_fuel, lookup_health_damages_electricity, EPA_SCC_USD2023_PER_TON, equipment_specs):
     """
     Calculate damages for the specified electricity grid scenario using helper functions.
 
@@ -179,20 +183,20 @@ def calculate_damages_grid_scenario(df_copy, df_baseline_damages_copy, df_detail
 
             # Calculate fossil fuel emissions
             total_fossil_emissions = calculate_fossil_fuel_emissions(
-                df_copy, category, adjusted_hdd_factor, emis_fossil_fuel_lookup, menu_mp
+                df_copy, category, adjusted_hdd_factor, lookup_emis_fossil_fuel, menu_mp
             )
 
             # Calculate climate data (annual)
             climate_results, annual_climate_emissions, annual_climate_damages = calculate_climate_emissions_and_damages(
                 df=df_copy, category=category, year_label=year_label, adjusted_hdd_factor=adjusted_hdd_factor, td_losses_multiplier=td_losses_multiplier,
-                emis_climate_electricity_lookup=emis_climate_electricity_lookup, cambium_scenario=cambium_scenario, EPA_SCC_USD2023_PER_TON=EPA_SCC_USD2023_PER_TON,
+                lookup_co2e_emis_electricity=lookup_co2e_emis_electricity, cambium_scenario=cambium_scenario, EPA_SCC_USD2023_PER_TON=EPA_SCC_USD2023_PER_TON,
                 total_fossil_emissions=total_fossil_emissions, scenario_prefix=scenario_prefix, menu_mp=menu_mp
             )
 
             # Calculate health data (annual)
             health_results, annual_health_damages = calculate_health_damages(
                 df=df_copy, category=category, year_label=year_label, adjusted_hdd_factor=adjusted_hdd_factor, td_losses_multiplier=td_losses_multiplier,
-                damages_health_electricity_lookup=damages_health_electricity_lookup, cambium_scenario=cambium_scenario, 
+                lookup_health_damages_electricity=lookup_health_damages_electricity, cambium_scenario=cambium_scenario, 
                 total_fossil_emissions=total_fossil_emissions, scenario_prefix=scenario_prefix, POLLUTANTS=POLLUTANTS, menu_mp=menu_mp
             )
 
@@ -268,7 +272,7 @@ def calculate_damages_grid_scenario(df_copy, df_baseline_damages_copy, df_detail
     # Return both the new lifetime columns and the updated df_detailed_damages
     return df_new_columns, df_detailed_damages
 
-def calculate_fossil_fuel_emissions(df, category, adjusted_hdd_factor, emis_fossil_fuel_lookup, menu_mp):
+def calculate_fossil_fuel_emissions(df, category, adjusted_hdd_factor, lookup_emis_fossil_fuel, menu_mp):
     """
     Calculate fossil fuel emissions for a given row and category.
     """
@@ -285,12 +289,12 @@ def calculate_fossil_fuel_emissions(df, category, adjusted_hdd_factor, emis_foss
             fuel_consumption = df.get(consumption_col, pd.Series(0.0, index=df.index)).fillna(0) * adjusted_hdd_factor
 
             for pollutant in total_fossil_emissions.keys():
-                emis_factor = emis_fossil_fuel_lookup.get((fuel, pollutant), 0)
+                emis_factor = lookup_emis_fossil_fuel.get((fuel, pollutant), 0)
                 total_fossil_emissions[pollutant] += fuel_consumption * emis_factor
 
     return total_fossil_emissions
 
-def calculate_climate_emissions_and_damages(df, category, year_label, adjusted_hdd_factor, td_losses_multiplier, emis_climate_electricity_lookup, cambium_scenario, 
+def calculate_climate_emissions_and_damages(df, category, year_label, adjusted_hdd_factor, td_losses_multiplier, lookup_co2e_emis_electricity, cambium_scenario, 
                                             EPA_SCC_USD2023_PER_TON, total_fossil_emissions, scenario_prefix, menu_mp):
     """
     Calculate climate-related emissions and damages for a given row, category, and year.
@@ -305,12 +309,12 @@ def calculate_climate_emissions_and_damages(df, category, year_label, adjusted_h
 
     # Define functions for vectorized lookup of emission factors
     def get_emission_factor_lrmer(region):
-        return emis_climate_electricity_lookup.get(
+        return lookup_co2e_emis_electricity.get(
             (cambium_scenario, region), {}
         ).get(year_label, {}).get('lrmer_ton_per_kWh_co2e', 0)
 
     def get_emission_factor_srmer(region):
-        return emis_climate_electricity_lookup.get(
+        return lookup_co2e_emis_electricity.get(
             (cambium_scenario, region), {}
         ).get(year_label, {}).get('srmer_ton_per_kWh_co2e', 0)
 
@@ -344,7 +348,7 @@ def calculate_climate_emissions_and_damages(df, category, year_label, adjusted_h
     return climate_results, annual_climate_emissions, annual_climate_damages
 
 
-def calculate_health_damages(df, category, year_label, adjusted_hdd_factor, td_losses_multiplier, damages_health_electricity_lookup, cambium_scenario, 
+def calculate_health_damages(df, category, year_label, adjusted_hdd_factor, td_losses_multiplier, lookup_health_damages_electricity, cambium_scenario, 
                              scenario_prefix, POLLUTANTS, total_fossil_emissions, menu_mp):
     """
     Calculate health-related damages for a given row, category, and year.
@@ -368,7 +372,7 @@ def calculate_health_damages(df, category, year_label, adjusted_hdd_factor, td_l
             # Define a function for vectorized lookup
             def get_electricity_damage_factor(region):
                 pollutant_damage_key = f'{pollutant}_dollarPerkWh_adjustVSL'
-                return damages_health_electricity_lookup.get(
+                return lookup_health_damages_electricity.get(
                     (cambium_scenario, region), {}
                 ).get(year_label, {}).get(pollutant_damage_key, 0)
 

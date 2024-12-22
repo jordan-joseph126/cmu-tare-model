@@ -26,20 +26,20 @@ print(f"Retrieved data for filename: {filename}")
 print(f"Located at filepath: {file_path}")
 
 # Convert the factors dataframe into a lookup dictionary
-hdd_factor_lookup = df_hdd_projection_factors.set_index(['census_division']).to_dict('index')
-hdd_factor_lookup
+lookup_hdd_factor = df_hdd_projection_factors.set_index(['census_division']).to_dict('index')
+lookup_hdd_factor
 
 # LAST UPDATED ON DECEMBER 5, 2024 @ 6:50 PM
 # UPDATED TO RETURN BOTH DF_COPY AND DF_CONSUMPTION
 # THIS FIXES THE ISSUE WITH MP_SCENARIO_DAMAGES AND PUBLIC NPV NOT BEING CALCULATED CORRECTLY
 # df_consumption contains only the projected consumption data. df_copy contains all columns including the projected consumption data.
-def project_future_consumption(df, hdd_factor_lookup, menu_mp):
+def project_future_consumption(df, lookup_hdd_factor, menu_mp):
     """
     Projects future energy consumption based on baseline or upgraded equipment specifications.
     
     Parameters:
     df (pd.DataFrame): The input DataFrame containing baseline consumption data.
-    hdd_factor_lookup (dict): A dictionary with Heating Degree Day (HDD) factors for different census divisions and years.
+    lookup_hdd_factor (dict): A dictionary with Heating Degree Day (HDD) factors for different census divisions and years.
     menu_mp (int): Indicates the measure package to apply. 0 for baseline, 8/9/10 for retrofit scenarios.
     
     Returns:
@@ -73,7 +73,7 @@ def project_future_consumption(df, hdd_factor_lookup, menu_mp):
 
                 # Adjust consumption based on HDD factors for heating and water heating
                 if category in ['heating', 'waterHeating']:
-                    hdd_factor = df_copy['census_division'].map(lambda x: hdd_factor_lookup.get(x, {}).get(year_label, hdd_factor_lookup['National'][year_label]))
+                    hdd_factor = df_copy['census_division'].map(lambda x: lookup_hdd_factor.get(x, {}).get(year_label, lookup_hdd_factor['National'][year_label]))
                     new_columns[f'baseline_{year_label}_{category}_consumption'] = (df_copy[f'baseline_{category}_consumption'] * hdd_factor).round(2)
 
                 else:
@@ -88,7 +88,7 @@ def project_future_consumption(df, hdd_factor_lookup, menu_mp):
 
                 # Adjust consumption based on HDD factors for heating and water heating
                 if category in ['heating', 'waterHeating']:
-                    hdd_factor = df_copy['census_division'].map(lambda x: hdd_factor_lookup.get(x, {}).get(year_label, hdd_factor_lookup['National'][year_label]))
+                    hdd_factor = df_copy['census_division'].map(lambda x: lookup_hdd_factor.get(x, {}).get(year_label, lookup_hdd_factor['National'][year_label]))
                     new_columns[f'mp{menu_mp}_{year_label}_{category}_consumption'] = (df_copy[f'mp{menu_mp}_{category}_consumption'] * hdd_factor).round(2)
 
                     # Calculate the reduction in annual energy consumption

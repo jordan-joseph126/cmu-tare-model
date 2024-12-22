@@ -1,7 +1,6 @@
 import pandas as pd
-
-project_root = "C:\\Users\\14128\\Research\\cmu-tare-model"
-
+# from config import PROJECT_ROOT
+from cmu_tare_model.functions.process_fuel_price_data import lookup_fuel_prices_preIRA, lookup_fuel_prices_iraRef
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -27,14 +26,14 @@ def calculate_annual_fuelCost(df, menu_mp, policy_scenario, drop_fuel_cost_colum
     # Determine the scenario prefix and fuel price lookup based on menu_mp and policy_scenario
     if menu_mp == 0:
         scenario_prefix = "baseline_"
-        fuel_price_lookup = preIRA_fuel_price_lookup
+        fuel_price_lookup = lookup_fuel_prices_preIRA
     else:
         if policy_scenario == 'No Inflation Reduction Act':
             scenario_prefix = f"preIRA_mp{menu_mp}_"
-            fuel_price_lookup = preIRA_fuel_price_lookup
+            fuel_price_lookup = lookup_fuel_prices_preIRA
         elif policy_scenario == 'AEO2023 Reference Case':
             scenario_prefix = f"iraRef_mp{menu_mp}_"
-            fuel_price_lookup = iraRef_fuel_price_lookup
+            fuel_price_lookup = lookup_fuel_prices_iraRef
         else:
             raise ValueError("Invalid Policy policy_scenario! Please choose from 'No Inflation Reduction Act' or 'AEO2023 Reference Case'.")
 

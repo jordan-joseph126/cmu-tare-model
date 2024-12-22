@@ -123,11 +123,11 @@ df_marg_emis_factors = df_marg_emis_factors.assign(state="National")
 df_marg_emis_factors = df_marg_emis_factors[["state", "fuel_type", "pollutant", "value", "unit"]]
 
 # Create lookup dictionary for fossil fuel emissions factors
-emis_fossil_fuel_lookup = {}
+lookup_emis_fossil_fuel = {}
 fuel_types = df_marg_emis_factors["fuel_type"].unique()
 
 for fuel in fuel_types:
-    emis_fossil_fuel_lookup[fuel] = {
+    lookup_emis_fossil_fuel[fuel] = {
         pollutant: df_marg_emis_factors[
             (df_marg_emis_factors["fuel_type"] == fuel) & 
             (df_marg_emis_factors["pollutant"] == pollutant)
@@ -145,6 +145,6 @@ for fuel in fuel_types:
 
 # LOOKUP DICTIONARY: Fossil Fuel Emissions
 
-# {emis_fossil_fuel_lookup}
+# {lookup_emis_fossil_fuel}
 
 # """)

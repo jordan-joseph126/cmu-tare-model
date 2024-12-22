@@ -1,0 +1,28 @@
+Metadata-Version: 2.1
+Name: cmu-tare-model
+Version: 2.0
+Summary: Tradeoff Analysis of Residential retrofits for Energy equity (TARE) Model
+Home-page: https://github.com/jordanjoseph/cmu-tare-model
+Author: Jordan Joseph
+Author-email: jordanjo@andrew.cmu.edu
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Programming Language :: Python :: 3.8
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Scientific/Engineering
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: scipy
+Requires-Dist: matplotlib
+Requires-Dist: seaborn
+
+# cmu-tare
+The Tradeoff Analysis of residential Retrofits for energy Equity (TARE) Model
+
+
+![simplified_TARE_model](https://github.com/jordan-joseph126/cmu-tare/assets/98115380/87833697-e9a6-40ce-803f-7ebb2460bc36)
+
+![data_timeline](https://github.com/user-attachments/assets/d35c3b5b-f40a-4283-a74a-172c27e2be8d)

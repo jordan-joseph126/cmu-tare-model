@@ -199,10 +199,10 @@ df_cambium21_processed = calculate_electricity_co2e_cambium(df_cambium21_margEmi
 # df_cambium21_processed
 
 # Create the lookup dictionary using the create_cambium_emission_factor_lookup function
-emis_preIRA_co2e_cambium21_lookup = create_cambium_co2e_lookup(df_cambium21_processed)
+lookup_co2e_emis_electricity_preIRA = create_cambium_co2e_lookup(df_cambium21_processed)
 
 # Display the lookup dictionary
-emis_preIRA_co2e_cambium21_lookup
+lookup_co2e_emis_electricity_preIRA
 
 print("""
 -------------------------------------------------------------------------------------------------------
@@ -233,7 +233,7 @@ df_cambium22_processed = calculate_electricity_co2e_cambium(df_cambium22_margEmi
 # df_cambium22_processed
 
 # Create the lookup dictionary using the create_cambium_co2e_lookup function
-emis_IRA_co2e_cambium22_lookup = create_cambium_co2e_lookup(df_cambium22_processed)
+lookup_co2e_emis_electricity_IRA = create_cambium_co2e_lookup(df_cambium22_processed)
 
 # Display the lookup dictionary
-emis_IRA_co2e_cambium22_lookup
+lookup_co2e_emis_electricity_IRA
