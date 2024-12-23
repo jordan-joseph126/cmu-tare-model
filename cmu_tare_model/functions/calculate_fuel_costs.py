@@ -8,7 +8,7 @@ ANNUAL FUEL COST
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 """
 
-# LAST UPDATED SEPTEMBER 5, 2024 @ 9:37 PM
+# LAST UPDATED DECEMBER 22, 2024 @ 3 PM
 def calculate_annual_fuelCost(df, menu_mp, policy_scenario, drop_fuel_cost_columns):
     """
     Calculate the annual fuel cost for baseline and measure packages.
@@ -46,63 +46,102 @@ def calculate_annual_fuelCost(df, menu_mp, policy_scenario, drop_fuel_cost_colum
 
     # If baseline calculations are required
     if menu_mp == 0:
+        # Map each baseline fuel to its lower-case version
         for category in equipment_specs:
             df_copy[f'fuel_type_{category}'] = df_copy[f'base_{category}_fuel'].map(fuel_mapping)
 
         for category, lifetime in equipment_specs.items():
             print(f"Calculating BASELINE (no retrofit) fuel costs from 2024 to {2024 + lifetime} for {category}")
+
+            # Create a boolean mask indicating which rows use 'state' vs. 'census_division'
+            is_elec_or_gas = df_copy[f'fuel_type_{category}'].isin(['electricity', 'naturalGas'])
+
             for year in range(1, lifetime + 1):
                 year_label = year + 2023
 
-                fuel_costs = df_copy.apply(lambda row: round(
-                    row[f'baseline_{year_label}_{category}_consumption'] *
-                    fuel_price_lookup.get(
-                        row['state'] if row[f'fuel_type_{category}'] in ['electricity', 'naturalGas'] else row['census_division'],
-                        {}
-                    ).get(row[f'fuel_type_{category}'], {}).get(policy_scenario, {}).get(year_label, 0), 2),
-                    axis=1
+                # Build a list/Series of per-row prices
+                df_copy['_temp_price'] = [
+                    fuel_price_lookup
+                        .get(
+                            # Use 'state' if electric/natural gas, else use 'census_division'
+                            state_val if use_state else cdiv_val,
+                            {}
+                        )
+                        .get(fueltype_val, {})
+                        .get(policy_scenario, {})
+                        .get(year_label, 0)
+                    for state_val, cdiv_val, fueltype_val, use_state in zip(
+                        df_copy['state'],
+                        df_copy['census_division'],
+                        df_copy[f'fuel_type_{category}'],
+                        is_elec_or_gas
+                    )
+                ]
+
+                # Multiply consumption by the temp price in a vectorized manner
+                fuel_costs = round(
+                    df_copy[f'baseline_{year_label}_{category}_consumption'] * df_copy['_temp_price'],
+                    2
                 )
 
+                # Add resulting fuel cost column to the dictionary
                 new_columns[f'baseline_{year_label}_{category}_fuelCost'] = fuel_costs
 
+            # Drop the temporary column after finishing this category
+            if '_temp_price' in df_copy.columns:
+                df_copy.drop(columns=['_temp_price'], inplace=True)
+
     else:
+        # For measure packages, everything is mapped to electricity (via 'state')
         for category, lifetime in equipment_specs.items():
             print(f"Calculating POST-RETROFIT (MP{menu_mp}) fuel costs from 2024 to {2024 + lifetime} for {category}")
+
             for year in range(1, lifetime + 1):
                 year_label = year + 2023
 
-                fuel_costs = df_copy.apply(lambda row: round(
-                    row[f'mp{menu_mp}_{year_label}_{category}_consumption'] *
-                    fuel_price_lookup.get(row['state'], {}).get('electricity', {}).get(policy_scenario, {}).get(year_label, 0), 2),
-                    axis=1
+                # Build a list/Series of per-row prices for electricity
+                df_copy['_temp_price'] = [
+                    fuel_price_lookup
+                        .get(state_name, {})
+                        .get('electricity', {})
+                        .get(policy_scenario, {})
+                        .get(year_label, 0)
+                    for state_name in df_copy['state']
+                ]
+
+                # Multiply consumption by the temp price in a vectorized manner
+                fuel_costs = round(
+                    df_copy[f'mp{menu_mp}_{year_label}_{category}_consumption'] * df_copy['_temp_price'],
+                    2
                 )
 
-                # Store all new columns in the dictionary first
+                # Store the new columns
                 new_columns[f'{scenario_prefix}{year_label}_{category}_fuelCost'] = fuel_costs
-                
+
                 new_columns[f'{scenario_prefix}{year_label}_{category}_savings_fuelCost'] = (
                     df_copy[f'baseline_{year_label}_{category}_fuelCost'] - fuel_costs
                 )
 
+            # Drop the temporary column after finishing this category
+            if '_temp_price' in df_copy.columns:
+                df_copy.drop(columns=['_temp_price'], inplace=True)
+
         # Only drop if annual fuel cost savings have already been calculated
-        # Drop fuel cost columns if the flag is True
         if drop_fuel_cost_columns:
             print("Dropping Annual Fuel Costs for Baseline Scenario and Retrofit. Storing Fuel Savings for Private NPV Calculation.")
             fuel_cost_columns = [col for col in df_copy.columns if '_fuelCost' in col and '_savings_fuelCost' not in col]
             df_copy.drop(columns=fuel_cost_columns, inplace=True)
 
-    # Calculate the new columns based on policy scenario and create dataframe based on df_copy index
+    # Create a DataFrame from new columns based on df_copy index
     df_new_columns = pd.DataFrame(new_columns, index=df_copy.index)
 
     # Identify overlapping columns between the new and existing DataFrame.
     overlapping_columns = df_new_columns.columns.intersection(df_copy.columns)
-
-    # Drop overlapping columns from df_copy.
     if not overlapping_columns.empty:
         df_copy.drop(columns=overlapping_columns, inplace=True)
 
-    # Merge new columns into df_copy, ensuring no duplicates or overwrites occur.
+    # Merge new columns into df_copy
     df_copy = df_copy.join(df_new_columns, how='left')
 
-    # Return the updated DataFrame.
+    # Return the updated DataFrame
     return df_copy

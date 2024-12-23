@@ -2,6 +2,9 @@ import pandas as pd
 import os
 
 from config import PROJECT_ROOT
+print(f"Project root directory: {PROJECT_ROOT}")
+
+from cmu_tare_model.functions.inflation_adjustment import *
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -31,3 +34,18 @@ df_rsMeans_cityCostIndex = pd.DataFrame({
     'Average': (df_rsMeans_cityCostIndex['Average']).round(2),
 })
 print(df_rsMeans_cityCostIndex)
+
+# Assuming df_rsMeans_cityCostIndex is your DataFrame with average costs
+# Accounts for the costs of materials, labor and equipment and compares it to a national average of 30 major U.S. cities
+average_cost_map = df_rsMeans_cityCostIndex.set_index('City')['Average'].to_dict()
+rsMeans_national_avg = round((3.00 * (cpi_ratio_2023_2019)), 2)
+
+# Use CCI to adjust for cost differences when compared to the national average
+# Function to map city to its average cost
+def map_average_cost(city):
+    if city in average_cost_map:
+        return average_cost_map[city]
+    elif city == 'Not in a census Place' or city == 'In another census Place':
+        return average_cost_map.get('+30 City Average')
+    else:
+        return average_cost_map.get('+30 City Average')

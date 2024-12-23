@@ -1,5 +1,6 @@
-import pandas as pd
 import os
+import pandas as pd
+import numpy as np
 
 # import functions.tare_setup as tare_setup
 from cmu_tare_model.functions.inflation_adjustment import cpi_ratio_2023_2020
