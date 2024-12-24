@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import re
 
-from config import PROJECT_ROOT
+# from config import PROJECT_ROOT
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -51,6 +51,10 @@ def get_city_choice(df_copy, input_state):
             return input_cityFilter
         print("Invalid city name. Please try again.")
 
+import pandas as pd
+import numpy as np
+import re
+
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 LOAD EUSS/RESSTOCK DATA AND APPLY FILTERS
@@ -80,63 +84,111 @@ def preprocess_fuel_data(df, column_name):
     print(f"Processing column: {column_name}")
     print(f"Initial data types: {df[column_name].dtype}")
     
-    # Updated this portion of the code to prevent the setting with copy warning
+    # Updated to prevent the SettingWithCopyWarning by using .loc
     df.loc[:, column_name] = df[column_name].apply(standardize_fuel_name)
     
     print(f"Data types after processing: {df[column_name].dtype}")
     return df
 
 def apply_fuel_filter(df, category, enable):
+    """
+    Instead of dropping rows that do not match the selected fuel types,
+    we set consumption for that end use to NaN (keeping the row intact).
+    """
     if enable == 'Yes':
-        fuel_list = ['Natural Gas', 'Electricity', 'Propane', 'Fuel Oil']
-        df_filtered = df[df[f'base_{category}_fuel'].isin(fuel_list)]
-        print(f"Filtered for the following fuels: {fuel_list}")
-        return df_filtered
+        valid_fuels = ['Natural Gas', 'Electricity', 'Propane', 'Fuel Oil']
+        
+        # Identify rows that match the valid fuel list
+        mask = df[f'base_{category}_fuel'].isin(valid_fuels)
+        
+        # For any row that does NOT match (mask == False),
+        # set the relevant end-use consumption columns to NaN
+        consumption_cols = [
+            c for c in df.columns 
+            if c.startswith('base_') and c.endswith(f'_{category}_consumption')
+        ]
+        
+        # Also set the aggregated baseline_<category>_consumption to NaN
+        baseline_col = f'baseline_{category}_consumption'
+        
+        df.loc[~mask, consumption_cols] = np.nan
+        if baseline_col in df.columns:
+            df.loc[~mask, baseline_col] = np.nan
+
     return df
 
 def apply_technology_filter(df, category, enable):
     """
-    Applies technology filters to the dataframe based on the category and whether filtering is enabled.
-    
-    Parameters:
-    - df: The DataFrame to filter.
-    - category: The category of consumption (e.g., 'heating', 'waterHeating').
-    - enable: String flag ('Yes' or 'No') indicating whether to apply the filter.
+    Instead of dropping rows that do not match the selected technologies,
+    we set consumption for that end use to NaN (keeping the row intact).
     """
     if enable == 'Yes':
+        
+        # Category-to-column mapping for technology
+        tech_col_map = {
+            'heating': 'heating_type',
+            'waterHeating': 'waterHeating_type',
+            'clothesDrying': 'clothesDrying_type',
+            'cooking': 'cooking_type'
+        }
+        tech_col = tech_col_map.get(category, None)
+        
         if category == 'heating':
             tech_list = [
-                'Electricity ASHP', 'Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace',
-                'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace', 'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
+                'Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace',
+                'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace', 
+                'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
                 'Propane Fuel Boiler', 'Propane Fuel Furnace'
             ]
-            df_filtered = df[df['heating_type'].isin(tech_list)]
-            print(f"Filtered for the following Heating technologies: {tech_list}")    
-            return df_filtered
-        
         elif category == 'waterHeating':
             tech_list = [
-                'Electric Heat Pump, 80 gal', 'Electric Premium', 'Electric Standard',
-                'Fuel Oil Premium', 'Fuel Oil Standard', 'Natural Gas Premium', 'Natural Gas Standard',
+                'Electric Premium', 'Electric Standard',
+                'Fuel Oil Premium', 'Fuel Oil Standard', 
+                'Natural Gas Premium', 'Natural Gas Standard',
                 'Propane Premium', 'Propane Standard'
             ]
-            df_filtered = df[df['waterHeating_type'].isin(tech_list)]
-            print(f"Filtered for the following Water Heating technologies: {tech_list}")
-            return df_filtered
-    
+        elif category == 'clothesDrying':
+            tech_list = [
+                "Electric, 100% Usage", "Electric, 120% Usage", "Electric, 80% Usage",
+                "Gas, 100% Usage", "Gas, 120% Usage", "Gas, 80% Usage", 
+                "Propane, 100% Usage", "Propane, 120% Usage", "Propane, 80% Usage"
+            ]
+        elif category == 'cooking':
+            tech_list = [
+                "Gas, 100% Usage", "Gas, 120% Usage", "Gas, 80% Usage", 
+                "Propane, 100% Usage", "Propane, 120% Usage", "Propane, 80% Usage"
+            ]
+        else:
+            return df  # no filtering done
+        
+        if tech_col is not None:
+            mask = df[tech_col].isin(tech_list)
+            
+            # Identify relevant consumption columns for this category
+            consumption_cols = [
+                c for c in df.columns 
+                if c.startswith('base_') and c.endswith(f'_{category}_consumption')
+            ]
+            
+            # Also set the aggregated baseline_<category>_consumption to NaN
+            baseline_col = f'baseline_{category}_consumption'
+            
+            df.loc[~mask, consumption_cols] = np.nan
+            if baseline_col in df.columns:
+                df.loc[~mask, baseline_col] = np.nan
+
     return df
 
 def debug_filters(df, filter_name):
-    if df.empty:
-        print(f"No rows left after applying {filter_name}")
-    else:
-        print(f"{len(df)} rows remain after applying {filter_name}")
+    # For debugging only
+    num_non_nan_rows = df.shape[0]
+    print(f"{num_non_nan_rows} total rows in df after applying {filter_name} (rows are NOT dropped, columns may be set to NaN).")
 
 # Function to extract city name
 def extract_city_name(row):
     match = re.match(r'^[A-Z]{2}, (.+)$', row)
     return match.group(1) if match else row
-        
+
 def df_enduse_refactored(df_baseline, fuel_filter='Yes', tech_filter='Yes'):
     # Initial check
     if df_baseline.empty:
@@ -152,11 +204,7 @@ def df_enduse_refactored(df_baseline, fuel_filter='Yes', tech_filter='Yes'):
     df_baseline['base_cooking_fuel'] = df_baseline['in.cooking_range']
     
     # Initialize df_enduse from df_baseline with all required columns
-    # (assuming columns are correctly listed here)
-    # Create a new DataFrame named df_enduse
-    # using pd.DataFrame constructor and initialize it with columns from df_baseline
     df_enduse = pd.DataFrame({
-        # 'bldg_id': df_baseline['bldg_id'],
         'square_footage': df_baseline['in.sqft'],
         'census_region': df_baseline['in.census_region'],
         'census_division': df_baseline['in.census_division'],
@@ -178,60 +226,70 @@ def df_enduse_refactored(df_baseline, fuel_filter='Yes', tech_filter='Yes'):
         'occupancy': df_baseline['in.occupants'],
         'tenure': df_baseline['in.tenure'],
         'vacancy_status': df_baseline['in.vacancy_status'],
+        
         'base_heating_fuel': df_baseline['in.heating_fuel'],
         'heating_type': df_baseline['in.hvac_heating_type_and_fuel'],
         'hvac_cooling_type': df_baseline['in.hvac_cooling_type'],
         'vintage': df_baseline['in.vintage'],
         'base_heating_efficiency': df_baseline['in.hvac_heating_efficiency'],
+        
         'base_electricity_heating_consumption': df_baseline['out.electricity.heating.energy_consumption.kwh'],
         'base_fuelOil_heating_consumption': df_baseline['out.fuel_oil.heating.energy_consumption.kwh'],
         'base_naturalGas_heating_consumption': df_baseline['out.natural_gas.heating.energy_consumption.kwh'],
         'base_propane_heating_consumption': df_baseline['out.propane.heating.energy_consumption.kwh'],
+        
         'base_waterHeating_fuel': df_baseline['in.water_heater_fuel'],
         'waterHeating_type': df_baseline['in.water_heater_efficiency'],
         'base_electricity_waterHeating_consumption': df_baseline['out.electricity.hot_water.energy_consumption.kwh'],
         'base_fuelOil_waterHeating_consumption': df_baseline['out.fuel_oil.hot_water.energy_consumption.kwh'],
         'base_naturalGas_waterHeating_consumption': df_baseline['out.natural_gas.hot_water.energy_consumption.kwh'],
         'base_propane_waterHeating_consumption': df_baseline['out.propane.hot_water.energy_consumption.kwh'],
+        
         'base_clothesDrying_fuel': df_baseline['in.clothes_dryer'],
+        'clothesDrying_type': df_baseline['in.clothes_dryer'],
         'base_electricity_clothesDrying_consumption': df_baseline['out.electricity.clothes_dryer.energy_consumption.kwh'],
         'base_naturalGas_clothesDrying_consumption': df_baseline['out.natural_gas.clothes_dryer.energy_consumption.kwh'],
         'base_propane_clothesDrying_consumption': df_baseline['out.propane.clothes_dryer.energy_consumption.kwh'],
+        
         'base_cooking_fuel': df_baseline['in.cooking_range'],
+        'cooking_type': df_baseline['in.cooking_range'],
         'base_electricity_cooking_consumption': df_baseline['out.electricity.range_oven.energy_consumption.kwh'],
         'base_naturalGas_cooking_consumption': df_baseline['out.natural_gas.range_oven.energy_consumption.kwh'],
         'base_propane_cooking_consumption': df_baseline['out.propane.range_oven.energy_consumption.kwh']
     })
     
     categories = ['heating', 'waterHeating', 'clothesDrying', 'cooking']
+    
     for category in categories:
-        if category == 'heating' or category == 'waterHeating':
+        # Identify the relevant fuel columns for each category
+        if category in ['heating', 'waterHeating']:
             fuel_types = ['electricity', 'fuelOil', 'naturalGas', 'propane']
-            # Calculate and update total consumption
-            total_consumption = sum(df_enduse.get(f'base_{fuel}_{category}_consumption', pd.Series([], dtype=float)).fillna(0) for fuel in fuel_types)
-            df_enduse[f'baseline_{category}_consumption'] = total_consumption.replace(0, np.nan)
-
-            debug_filters(df_enduse, f"total {category} consumption calculation")
-
-            # Apply filters
-            df_enduse = apply_fuel_filter(df_enduse, category, fuel_filter)
-            debug_filters(df_enduse, f"{category} fuel filter")
-
-            df_enduse = apply_technology_filter(df_enduse, category, tech_filter)
-            debug_filters(df_enduse, f"{category} technology filter")
-
-        else:
+        elif category == 'clothesDrying':
             fuel_types = ['electricity', 'naturalGas', 'propane']
-            # Calculate and update total consumption
-            total_consumption = sum(df_enduse.get(f'base_{fuel}_{category}_consumption', pd.Series([], dtype=float)).fillna(0) for fuel in fuel_types)
-            df_enduse[f'baseline_{category}_consumption'] = total_consumption.replace(0, np.nan)
+        else:  # cooking
+            fuel_types = ['naturalGas', 'propane']
+        
+        # Sum up the consumption from all relevant fuel columns
+        consumption_sum = 0
+        for fuel in fuel_types:
+            colname = f'base_{fuel}_{category}_consumption'
+            if colname in df_enduse.columns:
+                consumption_sum += df_enduse[colname].fillna(0)
+        
+        # Replace 0 with NaN to avoid artificially counting zero consumption
+        df_enduse[f'baseline_{category}_consumption'] = consumption_sum.replace(0, np.nan)
 
-            debug_filters(df_enduse, f"total {category} consumption calculation")
+        # Debug
+        debug_filters(df_enduse, f"total {category} consumption calculation")
 
-            # Apply filters
-            df_enduse = apply_fuel_filter(df_enduse, category, fuel_filter)
-            debug_filters(df_enduse, f"{category} fuel filter")
-            
+        # Apply the updated fuel filter (sets consumption to NaN if fuel is not recognized)
+        df_enduse = apply_fuel_filter(df_enduse, category, fuel_filter)
+        debug_filters(df_enduse, f"{category} fuel filter")
+
+        # Apply the updated technology filter (sets consumption to NaN if tech is not recognized)
+        df_enduse = apply_technology_filter(df_enduse, category, tech_filter)
+        debug_filters(df_enduse, f"{category} technology filter")
+
     return df_enduse
 
 def df_enduse_compare(df_mp, input_mp, menu_mp, df_baseline, df_cooking_range):
@@ -352,3 +410,4 @@ def df_enduse_compare(df_mp, input_mp, menu_mp, df_baseline, df_cooking_range):
     # Make sure df_baseline and df_compare both have bldg_id as their index before doing this.
 
     return df_compare
+

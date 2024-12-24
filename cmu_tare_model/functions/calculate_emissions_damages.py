@@ -109,14 +109,14 @@ def define_scenario_settings(menu_mp, policy_scenario):
     if menu_mp == 0:
         print(f"""-- Scenario: Baseline -- 
               scenario_prefix: 'baseline_', cambium_scenario: 'MidCase', lookup_emis_fossil_fuel: 'lookup_emis_fossil_fuel', 
-              lookup_co2e_emis_electricity: 'emis_preIRA_co2e_cambium21_lookup', lookup_health_damages_electricity: 'damages_preIRA_health_damages_lookup'
+              lookup_co2e_emis_electricity: 'lookup_co2e_emis_electricity_preIRA', lookup_health_damages_electricity: 'lookup_health_damages_electricity_preIRA'
               """)
         return "baseline_", "MidCase", lookup_emis_fossil_fuel, lookup_co2e_emis_electricity_preIRA, lookup_health_damages_electricity_preIRA
 
     if policy_scenario == 'No Inflation Reduction Act':
         print(f"""-- Scenario: No Inflation Reduction Act -- 
               scenario_prefix: f'preIRA_mp{menu_mp}_', cambium_scenario: 'MidCase', lookup_emis_fossil_fuel: 'lookup_emis_fossil_fuel', 
-              lookup_co2e_emis_electricity: 'emis_preIRA_co2e_cambium21_lookup', lookup_health_damages_electricity: 'damages_preIRA_health_damages_lookup'
+              lookup_co2e_emis_electricity: 'lookup_co2e_emis_electricity_preIRA', lookup_health_damages_electricity: 'lookup_health_damages_electricity_preIRA'
               """)
         return f"preIRA_mp{menu_mp}_", "MidCase", lookup_emis_fossil_fuel, lookup_co2e_emis_electricity_preIRA, lookup_health_damages_electricity_preIRA
 
