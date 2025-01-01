@@ -5,45 +5,43 @@
 # pd.reset_option('display.max_rows')
 
 # %% [markdown]
-# # Baseline Scenario
+# Baseline Scenario
 # - Uncomment Code Below For Individual scenario runs (rather than full model MP8-Basic, MP9-Moderate, MP10-Advanced)
 
-# # %%
-# from config import PROJECT_ROOT
-# # from cmu_tare_model.tare_baseline_v2 import *
-# import os
+# %%
+from config import PROJECT_ROOT
+import os
 
-# # Measure Package 0: Baseline
-# menu_mp = 0
-# input_mp = 'baseline'
+# Measure Package 0: Baseline
+menu_mp = 0
+input_mp = 'baseline'
 
-# print(f"PROJECT_ROOT (from config.py): {PROJECT_ROOT}")
+print(f"PROJECT_ROOT (from config.py): {PROJECT_ROOT}")
 
-# # Construct the absolute path to the .py file
-# relative_path = os.path.join("cmu_tare_model", "tare_baseline_v2.py")
-# file_path = os.path.join(PROJECT_ROOT, relative_path)
+# Construct the absolute path to the .py file
+relative_path = os.path.join("cmu_tare_model", "tare_baseline_v2.py")
+file_path = os.path.join(PROJECT_ROOT, relative_path)
 
-# # On Windows, to avoid any path-escape quirks, convert backslashes to forward slashes
-# file_path = file_path.replace("\\", "/")
+# On Windows, to avoid any path-escape quirks, convert backslashes to forward slashes
+file_path = file_path.replace("\\", "/")
 
-# print(f"Running file: {file_path}")
+print(f"Running file: {file_path}")
 
-# # # %run magic command to run a .py file and import variables into the current IPython session
-# # # If your path has spaces, wrap it in quotes:
-# # %run -i {file_path} # If your path has NO spaces, no quotes needed.
+# # %run magic command to run a .py file and import variables into the current IPython session
+# # If your path has spaces, wrap it in quotes:
+# %run -i {file_path} # If your path has NO spaces, no quotes needed.
 
-# # iPthon magic command to run a .py file and import variables into the current IPython session
-# # Now run it, importing variables into your current IPython session
-# from IPython import get_ipython
-# get_ipython().run_line_magic('run', f'-i {file_path}')  # If your path has NO spaces, no quotes needed.
+# iPthon magic command to run a .py file and import variables into the current IPython session
+# Now run it, importing variables into your current IPython session
+from IPython import get_ipython
+get_ipython().run_line_magic('run', f'-i {file_path}')  # If your path has NO spaces, no quotes needed.
 
-# # # exec() function to run a .py file and import variables into the current IPython session
-# # with open(file_path) as f:
-# #     code = compile(f.read(), file_path, 'exec')
-# #     exec(code)
+# # exec() function to run a .py file and import variables into the current IPython session
+# with open(file_path) as f:
+#     code = compile(f.read(), file_path, 'exec')
+#     exec(code)
 
-
-# print("Baseline Scenario - Model Run Complete")
+print("Baseline Scenario - Model Run Complete")
 
 # %% [markdown]
 # ## Dataframe for Electric Resistance Cooking (MP7)

@@ -24,6 +24,7 @@ def calculate_private_NPV(df, df_fuelCosts, interest_rate, input_mp, menu_mp, po
 
     Parameters:
         df (DataFrame): Input DataFrame with installation costs, fuel savings, and potential rebates.
+        df_fuelCosts (DataFrame): DataFrame containing fuel cost savings data.
         interest_rate (float): Annual discount rate used for NPV calculation.
         menu_mp (str): Prefix for columns in the DataFrame.
         input_mp (str): Input policy_scenario for calculating costs.

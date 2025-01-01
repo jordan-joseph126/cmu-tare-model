@@ -1,9 +1,12 @@
 import os
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 from config import PROJECT_ROOT
 print(f"Project root directory: {PROJECT_ROOT}")
+
+# from cmu_tare_model.functions.calculate_emissions_damages import EPA_SCC_USD2023_PER_TON
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -11,7 +14,147 @@ FUNCTION: ADOPTION POTENTIAL
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 """
 
-# UPDATED SEPTEMBER 20, 2024 @ 12:30 AM
+# # UPDATED DECEMBER 26, 2024 @ 9:10 PM
+# def adoption_decision(df, menu_mp, policy_scenario, include_health_benefits, health_damages_method, tier3_adoption_logic):
+#     """
+#     Updates the provided DataFrame with new columns that reflect decisions about equipment adoption
+#     and public impacts based on net present values (NPV). The function handles different scenarios
+#     based on input flags for incentives and grid decarbonization.
+
+#     Parameters:
+#         df (pandas.DataFrame): The DataFrame containing home equipment data.
+#         policy_scenario (str): Policy policy_scenario that determines electricity grid projections. 
+#                                 Accepted values: 'AEO2023 Reference Case'.
+#         include_health_benefits (bool): A flag to include health benefits in the adoption logic. If False, essecntially same as ERL Paper 1.
+#                                 Accepted values: True, False.
+#         health_damages_method (str): The method used to calculate health damages.
+#                                 Accepted values: CEDM with Coal Projection, , 
+#         tier3_adoption_logic (str): The method used to determine Tier 3 adoption decisions.
+#                                 Accepted values: True, False.
+
+#     Returns:
+#         pandas.DataFrame: The modified DataFrame with additional columns for decisions and impacts.
+
+#     UPDATES:
+#         - Code now calculates the cost effectiveness of CO2e abatement for each equipment category. (previously done in create_df_adoption)
+#         - Additional Public Benefit is no longer clipped at 0 for no negative values.
+#         - Total NPV columns are now calculated by summing private and public NPVs. (previously used additional public benefit)
+#         - Adoption decision now depends on Public NPV rather than Additional Public Benefit.
+#     """
+#     df_copy = df.copy()
+    
+#     # Define the lifetimes of different equipment categories
+#     upgrade_columns = {
+#         'heating': 'upgrade_hvac_heating_efficiency',
+#         'waterHeating': 'upgrade_water_heater_efficiency',
+#         'clothesDrying': 'upgrade_clothes_dryer',
+#         'cooking': 'upgrade_cooking_range'
+#     }
+    
+#     df_new_columns = pd.DataFrame(index=df_copy.index)  # DataFrame to hold new or modified columns
+
+#     # Determine the policy_scenario prefix based on the policy policy_scenario
+#     if policy_scenario == 'No Inflation Reduction Act':
+#         scenario_prefix = f"preIRA_mp{menu_mp}_"
+#     elif policy_scenario == 'AEO2023 Reference Case':
+#         scenario_prefix = f"iraRef_mp{menu_mp}_"
+#     else:
+#         raise ValueError("Invalid Policy Scenario! Please choose from 'No Inflation Reduction Act' or 'AEO2023 Reference Case'.")
+
+#     # Iterate over each equipment category and its respective upgrade column
+#     for category, upgrade_column in upgrade_columns.items():
+#         print(f"\nCalculating Adoption Potential for {category} under '{policy_scenario}' Scenario...")
+
+#         # For LRMER and SRMER
+#         for mer_type in ['lrmer', 'srmer']:
+#             print(f"Type of Marginal Emissions Rate Factor: {mer_type}")
+
+#             # Column names for net NPV, private NPV, and public NPV
+#             lessWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_lessWTP' # LESS WTP: BREAK EVEN ON TOTAL CAPITAL COSTS
+#             moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP' # MORE WTP: BREAK EVEN ON NET CAPITAL COSTS (BETTER THAN ALTERNATIVE)
+
+#             public_npv_col = f'{scenario_prefix}{category}_public_npv_{mer_type}'
+#             rebate_col = f'mp{menu_mp}_{category}_rebate_amount'
+#             addition_public_benefit = f'{scenario_prefix}{category}_additional_public_benefit_{mer_type}'
+#             avoided_tons_co2e_col = f'{scenario_prefix}{category}_avoided_tons_co2e_{mer_type}'
+#             cost_eff_co2e_abatement_col = f'{scenario_prefix}{category}_usd2023_per_mtCO2e_{mer_type}'
+            
+#             lessWTP_total_npv_col = f'{scenario_prefix}{category}_total_npv_lessWTP_{mer_type}' # LESS WTP: BREAK EVEN ON TOTAL CAPITAL COSTS
+#             moreWTP_total_npv_col = f'{scenario_prefix}{category}_total_npv_moreWTP_{mer_type}' # MORE WTP: BREAK EVEN ON NET CAPITAL COSTS (BETTER THAN ALTERNATIVE)
+            
+#             # Ensure columns are numeric if they exist and convert them
+#             for col in [lessWTP_private_npv_col, moreWTP_private_npv_col, public_npv_col, rebate_col, avoided_tons_co2e_col]:
+#                 if col in df_copy.columns:
+#                     df_copy[col] = pd.to_numeric(df_copy[col], errors='coerce')
+#                 else:
+#                     print(f"Warning: {col} does not exist in the DataFrame.")
+
+#             # Ensure the columns are present after conversion
+#             if lessWTP_private_npv_col in df_copy.columns and moreWTP_private_npv_col in df_copy.columns and public_npv_col in df_copy.columns and rebate_col in df_copy.columns and avoided_tons_co2e_col in df_copy.columns:
+#                 # No IRA Rebate so no "Additional Public Benefit"
+#                 if policy_scenario == 'No Inflation Reduction Act':
+#                     df_new_columns[addition_public_benefit] = np.nan
+#                     df_new_columns[rebate_col] = np.nan
+#                     df_new_columns[cost_eff_co2e_abatement_col] = np.nan
+#                 else:
+#                     # Calculate Additional Public Benefit with IRA Rebates Accounted For
+#                     df_new_columns[addition_public_benefit] = round((df_copy[public_npv_col] - df_copy[rebate_col]), 2) # Previously clipped at 0 for no negative values: ().clip(lower=0)
+#                     df_new_columns[cost_eff_co2e_abatement_col] = round((df_copy[rebate_col] / df_copy[avoided_tons_co2e_col]), 2)
+
+#                 # Initialize columns for adoption decisions and public impact
+#                 adoption_col_name = f'{scenario_prefix}{category}_adoption_{mer_type}'
+#                 retrofit_col_name = f'{scenario_prefix}{category}_retrofit_publicImpact_{mer_type}'
+#                 df_new_columns[adoption_col_name] = 'Tier 4: Averse'  # Default value for all rows
+#                 df_new_columns[retrofit_col_name] = 'No Retrofit'  # Default public impact
+
+#                 if not include_health_benefits:
+                    
+#                     if health_method == 'ERL: Include Health Benefits'
+
+#                 if health_method == 'ERL: Exclude Health Benefits, Additional Public Benefit in Adoption Logic':
+
+#                 elif health_method == 'ERL: Include Health Benefits':
+#                 # Calculate Total NPV by summing private and public NPVs (no longer uses additional public benefit)
+#                 df_new_columns[lessWTP_total_npv_col] = df_copy[lessWTP_private_npv_col] + df_copy[public_npv_col] # LESS WTP: BREAK EVEN ON TOTAL CAPITAL COSTS
+#                 df_new_columns[moreWTP_total_npv_col] = df_copy[moreWTP_private_npv_col] + df_copy[public_npv_col] # MORE WTP: BREAK EVEN ON NET CAPITAL COSTS (BETTER THAN ALTERNATIVE)
+
+
+#                 # Conditions for determining adoption decisions
+#                 conditions = [
+#                     df_copy[upgrade_column].isna(),
+#                     df_copy[lessWTP_private_npv_col] > 0,
+#                     (df_copy[lessWTP_private_npv_col] < 0) & (df_copy[moreWTP_private_npv_col] > 0),
+#                     (df_copy[lessWTP_private_npv_col] < 0) & (df_copy[moreWTP_private_npv_col] <= 0) & (df_new_columns[moreWTP_total_npv_col] > 0) & (df_copy[public_npv_col] > 0), # Ensures only Tier 3 for IRA Scenario
+#                 ]
+
+#                 choices = ['Existing Equipment', 'Tier 1: Feasible', 'Tier 2: Feasible vs. Alternative', 'Tier 3: Subsidy-Dependent Feasibility']
+#                 df_new_columns[adoption_col_name] = np.select(conditions, choices, default='Tier 4: Averse')
+
+#                 # Conditions and choices for public impacts
+#                 public_conditions = [
+#                     df_copy[public_npv_col] > 0,
+#                     df_copy[public_npv_col] < 0
+#                 ]
+                
+#                 public_choices = ['Public Benefit', 'Public Detriment']
+#                 df_new_columns[retrofit_col_name] = np.select(public_conditions, public_choices, default='No Retrofit')
+#             else:
+#                 print(f"Warning: One or more columns ({lessWTP_private_npv_col}, {moreWTP_private_npv_col}, {public_npv_col}) are missing or not numeric.")
+    
+#     # Identify overlapping columns between the new and existing DataFrame.
+#     overlapping_columns = df_new_columns.columns.intersection(df_copy.columns)
+
+#     # Drop overlapping columns from df_copy.
+#     if not overlapping_columns.empty:
+#         df_copy.drop(columns=overlapping_columns, inplace=True)
+
+#     # Merge new columns into df_copy, ensuring no duplicates or overwrites occur.
+#     df_copy = df_copy.join(df_new_columns, how='left')
+
+#     # Return the updated DataFrame.
+#     return df_copy
+
+# UPDATED DECEMBER 30, 2024 @ 5:30 PM
 def adoption_decision(df, menu_mp, policy_scenario):
     """
     Updates the provided DataFrame with new columns that reflect decisions about equipment adoption
@@ -19,7 +162,7 @@ def adoption_decision(df, menu_mp, policy_scenario):
     based on input flags for incentives and grid decarbonization.
 
     Parameters:
-        df (pandas.DataFrame): The DataFrame containing home equipment data.
+        df_copy (pandas.DataFrame): The DataFrame containing home equipment data.
         policy_scenario (str): Policy policy_scenario that determines electricity grid projections. 
                                Accepted values: 'AEO2023 Reference Case'.
 
@@ -70,23 +213,23 @@ def adoption_decision(df, menu_mp, policy_scenario):
             moreWTP_total_npv_col = f'{scenario_prefix}{category}_total_npv_moreWTP_{mer_type}' # MORE WTP: BREAK EVEN ON NET CAPITAL COSTS (BETTER THAN ALTERNATIVE)
             # Ensure columns are numeric if they exist and convert them
             for col in [lessWTP_private_npv_col, moreWTP_private_npv_col, public_npv_col, rebate_col]:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                if col in df_copy.columns:
+                    df_copy[col] = pd.to_numeric(df_copy[col], errors='coerce')
                 else:
                     print(f"Warning: {col} does not exist in the DataFrame.")
 
             # Ensure the columns are present after conversion
-            if lessWTP_private_npv_col in df.columns and moreWTP_private_npv_col in df.columns and public_npv_col in df.columns:
+            if lessWTP_private_npv_col in df_copy.columns and moreWTP_private_npv_col in df_copy.columns and public_npv_col in df_copy.columns:
                 # No IRA Rebate so no "Additional Public Benefit"
                 if policy_scenario == 'No Inflation Reduction Act':
                     df_new_columns[addition_public_benefit] = 0.0
                 else:
                     # Calculate Additional Public Benefit with IRA Rebates Accounted For and clip at 0
-                    df_new_columns[addition_public_benefit] = (df[public_npv_col] - df[rebate_col]).clip(lower=0)
+                    df_new_columns[addition_public_benefit] = (df_copy[public_npv_col] - df_copy[rebate_col]).clip(lower=0)
                 
                 # Calculate Total NPV by summing private and public NPVs
-                df_new_columns[lessWTP_total_npv_col] = df[lessWTP_private_npv_col] + df_new_columns[addition_public_benefit] # LESS WTP: BREAK EVEN ON TOTAL CAPITAL COSTS
-                df_new_columns[moreWTP_total_npv_col] = df[moreWTP_private_npv_col] + df_new_columns[addition_public_benefit] # MORE WTP: BREAK EVEN ON NET CAPITAL COSTS (BETTER THAN ALTERNATIVE)
+                df_new_columns[lessWTP_total_npv_col] = df_copy[lessWTP_private_npv_col] + df_copy[public_npv_col] # LESS WTP: BREAK EVEN ON TOTAL CAPITAL COSTS
+                df_new_columns[moreWTP_total_npv_col] = df_copy[moreWTP_private_npv_col] + df_copy[public_npv_col] # MORE WTP: BREAK EVEN ON NET CAPITAL COSTS (BETTER THAN ALTERNATIVE)
 
                 # Initialize columns for adoption decisions and public impact
                 adoption_col_name = f'{scenario_prefix}{category}_adoption_{mer_type}'
@@ -96,10 +239,10 @@ def adoption_decision(df, menu_mp, policy_scenario):
 
                 # Conditions for determining adoption decisions
                 conditions = [
-                    df[upgrade_column].isna(),
-                    df[lessWTP_private_npv_col] > 0,
-                    (df[lessWTP_private_npv_col] < 0) & (df[moreWTP_private_npv_col] > 0),
-                    (df[lessWTP_private_npv_col] < 0) & (df[moreWTP_private_npv_col] <= 0) & (df_new_columns[moreWTP_total_npv_col] > 0) & (df_new_columns[addition_public_benefit] > 0), # Ensures only Tier 3 for IRA Scenario
+                    df_copy[upgrade_column].isna(),
+                    df_copy[lessWTP_private_npv_col] > 0,
+                    (df_copy[lessWTP_private_npv_col] < 0) & (df_copy[moreWTP_private_npv_col] > 0),
+                    (df_copy[lessWTP_private_npv_col] < 0) & (df_copy[moreWTP_private_npv_col] < 0) & (df_new_columns[moreWTP_total_npv_col] > 0), # Ensures only Tier 3 for IRA Scenario
                 ]
 
                 choices = ['Existing Equipment', 'Tier 1: Feasible', 'Tier 2: Feasible vs. Alternative', 'Tier 3: Subsidy-Dependent Feasibility']
@@ -107,8 +250,8 @@ def adoption_decision(df, menu_mp, policy_scenario):
 
                 # Conditions and choices for public impacts
                 public_conditions = [
-                    df[public_npv_col] > 0,
-                    df[public_npv_col] < 0
+                    df_copy[public_npv_col] > 0,
+                    df_copy[public_npv_col] < 0
                 ]
                 
                 public_choices = ['Public Benefit', 'Public Detriment']
@@ -135,7 +278,7 @@ FUNCTIONS: VISUALIZATION USING DATAFRAMES AND SUBPLOTS
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 """
 
-# LAST UPDATED SEPTEMBER 20, 2024 @ 1:30 AM
+# LAST UPDATED DECEMBER 26, 2024 @ 9:10 PM
 def create_df_adoption(df, menu_mp, category):
     """
     Generates a new DataFrame with specific adoption columns based on provided parameters.
@@ -146,17 +289,17 @@ def create_df_adoption(df, menu_mp, category):
 
     Returns:
     pd.DataFrame: A DataFrame with the selected columns.
+
+    UPDATES:
+    - Removed reference to EPA_SCC_USD2023_PER_TON as it is a constant and doesnt need to be a dataframe column.
+    - Removed code that calculates the cost effectiveness of CO2e abatement for each equipment category. (now done in adoption_decision)
+
     """    
     # Create a copy of the dataframe
     df_copy = df.copy()
 
     # Begin df with these cols
-    df_copy['scc_usd2023_per_ton'] = np.round(epa_scc_usd2023_per_ton, 2)
-
-    summary_cols = ['bldg_id', 'state', 'city', 'county', 'puma', 'percent_AMI', 'lowModerateIncome_designation', 'scc_usd2023_per_ton']
-
-    df_copy[f'iraRef_mp{menu_mp}_{category}_usd2023_per_mtCO2e_lrmer'] = round((df_copy[f'mp{menu_mp}_{category}_rebate_amount'] / df_copy[f'iraRef_mp{menu_mp}_{category}_avoided_tons_co2e_lrmer']), 2)
-    df_copy[f'iraRef_mp{menu_mp}_{category}_usd2023_per_mtCO2e_srmer'] = round((df_copy[f'mp{menu_mp}_{category}_rebate_amount'] / df_copy[f'iraRef_mp{menu_mp}_{category}_avoided_tons_co2e_srmer']), 2)
+    summary_cols = ['state', 'city', 'county', 'puma', 'percent_AMI', 'lowModerateIncome_designation']
 
     cols_to_add = [f'base_{category}_fuel',
                    f'preIRA_mp{menu_mp}_{category}_private_npv_lessWTP', # PRE-IRA PRIVATE

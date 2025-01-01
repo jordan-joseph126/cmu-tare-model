@@ -9,10 +9,10 @@
 # - Uncomment Code Below For Individual scenario runs (rather than full model MP8-Basic, MP9-Moderate, MP10-Advanced)
 
 # %%
-# # Baseline Scenario
+# Baseline Scenario
 # - Uncomment Code Below For Individual scenario runs (rather than full model MP8-Basic, MP9-Moderate, MP10-Advanced)
 
-# # %%
+# %%
 # from config import PROJECT_ROOT
 # # from cmu_tare_model.tare_baseline_v2 import *
 # import os
