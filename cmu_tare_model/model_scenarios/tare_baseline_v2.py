@@ -17,27 +17,20 @@ import os
 menu_mp = 0
 input_mp = 'baseline'
 
+# import from cmu-tare-model package
 from config import PROJECT_ROOT
 
 import pandas as pd
-import numpy as np
-
-# `plt` is an alias for the `matplotlib.pyplot` module
-import matplotlib.pyplot as plt
 
 # import seaborn library (wrapper of matplotlib)
 import seaborn as sns
-sns.set(style="darkgrid")
-
-# For regex, import re
-import re
+sns.set_theme(style="darkgrid")
 
 from datetime import datetime
 
 # Get the current datetime
 # Start the timer
 start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
 
 # Storing Result Outputs in output_results folder
 relative_path = os.path.join("cmu_tare_model", "output_results")
@@ -61,7 +54,7 @@ Result outputs will be exported here: {output_folder_path}
 # # Simulate Residential Energy Consumption using NREL End-Use Savings Shapes
 
 # %%
-from cmu_tare_model.utils.load_and_filter_euss_data import *
+from cmu_tare_model.energy_consumption_and_metadata.load_and_filter_euss_data import *
 
 # Measure Package 0: Baseline
 menu_mp = 0
@@ -187,7 +180,7 @@ DATAFRAME: df_euss_am_baseline_home
 # ## Project Future Energy Consumption Using EIA Heating Degree Day (HDD) Forecasted Data (Factors)
 
 # %%
-from cmu_tare_model.utils.project_future_energy_consumption import *
+from cmu_tare_model.energy_consumption_and_metadata.project_future_energy_consumption import *
 
 # Make a copy of the dataframe
 df_baseline_scenario_consumption = df_euss_am_baseline_home.copy()
@@ -239,7 +232,7 @@ Fossil Fuels (Natural Gas, Fuel Oil, Propane):
     - Source: https://www3.epa.gov/ttnchie1/conference/ei12/area/haneke.pdf
 """
 
-from cmu_tare_model.utils.create_lookup_emissions_fossil_fuel import *
+from cmu_tare_model.public_impact.create_lookup_emissions_fossil_fuel import *
 
 print(f"""
 --------------------------------------------------------------------------------------------------------------------------------------
@@ -428,7 +421,7 @@ LOOKUP DICTIONARY: Health Damages from Fossil Fuel Emissions
 # ### Includes pre-combustion (fugitive) and combustion
 
 # %%
-from cmu_tare_model.utils.create_lookup_climate_damages_electricity import *
+from cmu_tare_model.public_impact.create_lookup_climate_damages_electricity import *
 """
 -------------------------------------------------------------------------------------------------------
 CLIMATE DAMAGES FROM CAMBIUM
@@ -497,7 +490,7 @@ SCC Value used in analysis is: ${round(EPA_SCC_USD2023_PER_TON, 2)} per mt CO2e
 # ### PROJECTION FACTORS FOR FUTURE GRID EMISSIONS INTENSITY (Coal Generation Reduction)
 
 # %%
-from cmu_tare_model.utils.coal_projection_factors import *
+from cmu_tare_model.public_impact.coal_projection_factors import *
 print(f"""
 =======================================================================================================
 COAL USED IN ELECTRICITY GENERATION (Data Sources)
@@ -578,7 +571,7 @@ DATAFRAME: IRA-Reference Health Projection Factors 2018-2050
 
 # %%
 #
-from cmu_tare_model.utils.create_lookup_health_damages_electricity import *
+from cmu_tare_model.public_impact.create_lookup_health_damages_electricity import *
 
 print(f"""
 ===========================================================================================================================================================
@@ -636,7 +629,7 @@ LOOKUP: IRA-Reference Health Damages 2018-2050
 # ### Baseline Marginal Damages: WHOLE-HOME
 
 # %%
-from cmu_tare_model.utils.calculate_emissions_damages import *
+from cmu_tare_model.public_impact.calculate_emissions_damages import *
 print("""
 -------------------------------------------------------------------------------------------------------
 Step 5: Calculate End-use specific marginal damages
@@ -665,7 +658,7 @@ df_baseline_scenario_damages
 # ## Private Perspective: Annual Energy Costs
 
 # %%
-from cmu_tare_model.utils.process_fuel_price_data import *
+from cmu_tare_model.private_impact.process_fuel_price_data import *
 print(f"""
 ===========================================================================================================================================================
 PROCESS FUEL PRICE DATA AND PREPARE FOR PROJECTION: 
@@ -729,7 +722,7 @@ DATAFRAME: IRA-Reference Projection Factors
 # ### Baseline Fuel Cost: WHOLE-HOME
 
 # %%
-from cmu_tare_model.utils.calculate_fuel_costs import *
+from cmu_tare_model.private_impact.calculate_fuel_costs import *
 
 print("""
 -------------------------------------------------------------------------------------------------------

@@ -9,8 +9,10 @@
 # - Uncomment Code Below For Individual scenario runs (rather than full model MP8-Basic, MP9-Moderate, MP10-Advanced)
 
 # %%
-from config import PROJECT_ROOT
 import os
+
+# import from cmu-tare-model package
+from config import PROJECT_ROOT
 
 # Measure Package 0: Baseline
 menu_mp = 0
@@ -109,8 +111,8 @@ print(f"DATAFRAME SIZE after applying geographic filter: {df_euss_am_mp7.shape}"
 print(df_euss_am_mp7)
 
 # %%
-# # from cmu_tare_model.tare_baseline_v2 import menu_state, menu_city, input_state, input_cityFilter
-# from cmu_tare_model.functions.mp7_electric_resistance_range import df_euss_am_mp7
+# # from cmu_tare_model.model_scenarios.tare_baseline_v2 import menu_state, menu_city, input_state, input_cityFilter
+# from cmu_tare_model.energy_consumption_and_metadata.mp7_electric_resistance_range import df_euss_am_mp7
 
 # print(f"""
 # ====================================================================================================================================================================
@@ -200,7 +202,7 @@ print(df_euss_am_mp8)
 # # Project Future Energy Consumption
 
 # %%
-# from cmu_tare_model.tare_baseline_v2 import df_euss_am_baseline_home
+# from cmu_tare_model.model_scenario.tare_baseline_v2 import df_euss_am_baseline_home
 print(f"""
 ====================================================================================================================================================================
 Resulting Baseline Home Dataframe from running tare_baseline_v2.py file
@@ -238,7 +240,7 @@ df_euss_am_mp8_home = df_enduse_compare(df_mp = df_euss_am_mp8,
 # print(df_euss_am_mp8_home)
 
 # %%
-# from cmu_tare_model.functions.project_future_energy_consumption import *
+# from cmu_tare_model.energy_consumption_and_metadata.project_future_energy_consumption import *
 
 df_mp8_scenario_consumption = df_euss_am_mp8_home.copy()
 
@@ -298,7 +300,7 @@ Step 5: Calculate End-use specific marginal damages
 """)
 
 # %%
-# from cmu_tare_model.functions.calculate_emissions_damages import *
+# from cmu_tare_model.public_impact.calculate_emissions_damages import *
 # calculate_marginal_damages(df, menu_mp, policy_scenario, df_baseline_damages, df_detailed_damages)
 print("\n", "Modeling Scenario: No Inflation Reduction Act")
 df_euss_am_mp8_home, df_mp8_scenario_damages = calculate_marginal_damages(df=df_euss_am_mp8_home, menu_mp=menu_mp, policy_scenario='No Inflation Reduction Act', df_baseline_damages=df_baseline_scenario_damages, df_detailed_damages=df_mp8_scenario_damages)
@@ -414,8 +416,8 @@ Capital Costs: Space Heating
 Obtaining Capital Cost Data from Retrofit Cost Spreadsheet ...
 """)
 
-from cmu_tare_model.utils.calculate_equipment_installation_costs import *
-from cmu_tare_model.utils.calculate_equipment_replacement_costs import *
+from cmu_tare_model.private_impact.calculate_equipment_installation_costs import *
+from cmu_tare_model.private_impact.calculate_equipment_replacement_costs import *
 
 # Columns to update
 cost_columns = [
@@ -601,7 +603,7 @@ print(df_euss_am_mp8_home)
 #  ## Calculate Rebate Amounts (Applicable to IRA-Reference)
 
 # %%
-from cmu_tare_model.utils.determine_rebate_eligibility_and_amount import *
+from cmu_tare_model.private_impact.determine_rebate_eligibility_and_amount import *
 
 # Determine Percent AMI and Rebate Amounts
 # This needs to be done before running the calculate_percent_AMI function
@@ -667,7 +669,7 @@ Basic Retrofit: Measure Package {menu_mp}
 """)
 
 # %%
-from cmu_tare_model.utils.calculate_lifetime_public_impact import *
+from cmu_tare_model.public_impact.calculate_lifetime_public_impact import *
 
 # calculate_public_npv(df, df_baseline_damages, df_mp_damages, menu_mp, policy_scenario, equipment_specs, interest_rate=0.02)
 df_euss_am_mp8_home = calculate_public_npv(df=df_euss_am_mp8_home,
@@ -692,7 +694,7 @@ DATAFRAME FOR MP8 AFTER CALCULATING PUBLIC NPV: df_euss_am_mp8_home
 """)
 
 # %%
-from cmu_tare_model.utils.calculate_lifetime_private_impact import *
+from cmu_tare_model.private_impact.calculate_lifetime_private_impact import *
 
 # calculate_private_npv(df, df_fuelCosts, menu_mp, policy_scenario, equipment_specs, interest_rate=0.07)
 df_euss_am_mp8_home = calculate_private_NPV(df=df_euss_am_mp8_home,
@@ -761,7 +763,7 @@ Basic Retrofit: Measure Package {menu_mp}
 """)
 
 # %%
-# from cmu_tare_model.functions.calculate_lifetime_public_impact import *
+# from cmu_tare_model.public_impact.calculate_lifetime_public_impact import *
 
 # calculate_public_npv(df, df_baseline_damages, df_mp_damages, menu_mp, policy_scenario, equipment_specs, interest_rate=0.02)
 df_euss_am_mp8_home = calculate_public_npv(df=df_euss_am_mp8_home,
@@ -786,7 +788,7 @@ DATAFRAME FOR MP8 AFTER CALCULATING PUBLIC NPV: df_euss_am_mp8_home
 """)
 
 # %%
-# from cmu_tare_model.functions.calculate_lifetime_private_impact import *
+# from cmu_tare_model.private_impact.calculate_lifetime_private_impact import *
 
 # calculate_private_npv(df, df_fuelCosts, menu_mp, policy_scenario, equipment_specs, interest_rate=0.07)
 df_euss_am_mp8_home = calculate_private_NPV(df=df_euss_am_mp8_home,
@@ -811,7 +813,7 @@ DATAFRAME FOR MP8 AFTER CALCULATING PRIVATE NPV: df_euss_am_mp8_home
 """)
 
 # %%
-# from cmu_tare_model.functions.determine_adoption_potential import *
+# from cmu_tare_model.adoption_potential.determine_adoption_potential import *
 
 # adoption_decision(df, policy_scenario)
 df_euss_am_mp8_home = adoption_decision(df=df_euss_am_mp8_home,

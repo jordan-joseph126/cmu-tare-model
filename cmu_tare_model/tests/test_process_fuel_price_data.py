@@ -19,7 +19,7 @@ Author: Jordan Joseph
 import pytest
 import pandas as pd
 from typing import Dict, Any
-from cmu_tare_model.utils.process_fuel_price_data import (
+from cmu_tare_model.private_impact.process_fuel_price_data import (
     project_future_prices,
     create_lookup_fuel_price,
     map_location_to_census_division

@@ -1,5 +1,4 @@
 import pandas as pd
-import os
 
 from config import PROJECT_ROOT
 print(f"Project root directory: {PROJECT_ROOT}")

@@ -1,10 +1,9 @@
-import pandas as pd
 import os
+import pandas as pd
 
-# Get the current working directory of the project
-# project_root = os.path.abspath(os.getcwd())
-project_root = "C:\\Users\\14128\\Research\\cmu-tare-model"
-print(f"Project root directory: {project_root}")
+# import from cmu-tare-model package
+from config import PROJECT_ROOT 
+print(f"Project root directory: {PROJECT_ROOT}")
 
 print("""
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -77,7 +76,7 @@ def process_Schmitt_emissions_data(df_grid_mix=None, df_grid_emis_factors=None):
 
 filename = "grid_mix_reg_full_delta.csv"
 relative_path = os.path.join(r"projections\schmitt_ev_study", filename)
-file_path = os.path.join(project_root, relative_path)
+file_path = os.path.join(PROJECT_ROOT, relative_path)
 
 print(f"Retrieved data for filename: {filename}")
 print(f"Located at filepath: {file_path}")
@@ -97,7 +96,7 @@ df_grid_mix
 # Adjust for regional cost differences with RSMeans
 filename = "ef_pollutants_egrid.csv"
 relative_path = os.path.join(r"projections\schmitt_ev_study", filename)
-file_path = os.path.join(project_root, relative_path)
+file_path = os.path.join(PROJECT_ROOT, relative_path)
 
 print(f"Retrieved data for filename: {filename}")
 print(f"Located at filepath: {file_path}")

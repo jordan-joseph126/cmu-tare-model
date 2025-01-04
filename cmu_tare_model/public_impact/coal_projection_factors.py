@@ -1,8 +1,10 @@
-from config import PROJECT_ROOT
 import os
 import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d
+
+# import from cmu-tare-model package
+from config import PROJECT_ROOT
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

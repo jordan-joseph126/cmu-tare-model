@@ -1,6 +1,7 @@
-import pandas as pd
 import os
+import pandas as pd
 
+# import from cmu-tare-model
 from config import PROJECT_ROOT
 print(f"Project root directory: {PROJECT_ROOT}")
 

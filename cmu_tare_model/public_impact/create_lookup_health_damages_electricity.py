@@ -1,9 +1,11 @@
 
-from config import PROJECT_ROOT
 import os
 import pandas as pd
+
+# import from cmu-tare-model package
+from config import PROJECT_ROOT
 from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2023_2010, cpi_ratio_2023_2020, cpi_ratio_2023_2021
-from cmu_tare_model.utils.coal_projection_factors import mapping, df_preIRA_coal_projection_factors, df_iraRef_coal_projection_factors
+from cmu_tare_model.public_impact.coal_projection_factors import mapping, df_preIRA_coal_projection_factors, df_iraRef_coal_projection_factors
 
 """
 DAMAGES FROM CLIMATE RELATED EMISSIONS (CO2e):
