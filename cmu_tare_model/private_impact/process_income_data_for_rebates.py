@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from cmu_tare_model.functions.inflation_adjustment import cpi_ratio_2023_2022
+from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2023_2022
 
 from config import PROJECT_ROOT
 print(f"Project root directory: {PROJECT_ROOT}")

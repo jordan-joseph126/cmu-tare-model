@@ -1,6 +1,4 @@
 import pandas as pd
-import os
-# from cmu_tare_model.functions.tare_setup import project_root
 
 # print("""
 # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -11,27 +9,30 @@ import os
 # LAST UPDATED DECEMBER 4, 2024
 def calculate_fossil_fuel_emission_factor(fuel_type, so2_factor, nox_factor, pm25_factor, conversion_factor1, conversion_factor2):
     """
-    Calculate Emission Factors for Fossil Fuels.
+    Calculates emission factors for a specified fossil fuel, including SO2, NOx, PM2.5, and CO2e.
 
-    Parameters:
-    -----------
-    fuel_type : str
-        Type of fuel (e.g., "naturalGas", "fuelOil", "propane").
-    so2_factor : float
-        SO2 emission factor in lb/Mbtu.
-    nox_factor : float
-        NOx emission factor in lb/Mbtu.
-    pm25_factor : float
-        PM2.5 emission factor in lb per volume unit (varies by fuel).
-    conversion_factor1 : int
-        Conversion factor for volume units to gallons/thousand gallons.
-    conversion_factor2 : int
-        Conversion factor for energy content (e.g., BTU per gallon/cf).
-    
+    Args:
+        fuel_type (str):
+            Type of fuel (e.g., "naturalGas", "fuelOil", "propane").
+        so2_factor (float):
+            SO2 emission factor in lb/Mbtu.
+        nox_factor (float):
+            NOx emission factor in lb/Mbtu.
+        pm25_factor (float):
+            PM2.5 emission factor in lb per volume unit (varies by fuel).
+        conversion_factor1 (int):
+            Conversion factor for volume units to gallons/thousand gallons.
+        conversion_factor2 (int):
+            Conversion factor for energy content (e.g., BTU per gallon/cf).
+
     Returns:
-    --------
-    dict
-        Dictionary containing emission factors for the given fuel type in lb/kWh or mt/kWh.
+        emission_factors (dict):
+            Dictionary containing emission factors for the given fuel type.  
+            Keys include <fuelType>_so2, <fuelType>_nox, <fuelType>_pm25, and optionally <fuelType>_co2e,
+            each with values in lb/kWh or metric tons/kWh (for CO2e).
+
+    Raises:
+        None: This function does not explicitly raise any exceptions.
     """
 
     # Correct conversion factor from Mbtu to kWh
@@ -42,8 +43,9 @@ def calculate_fossil_fuel_emission_factor(fuel_type, so2_factor, nox_factor, pm2
 
     # Emission factors in lb/kWh
     emission_factors = {
-        f"{fuel_type}_so2": so2_factor * (1/mbtu_to_kwh),
+        f"{fuel_type}_so2": so2_factor * (1 / mbtu_to_kwh),
         f"{fuel_type}_nox": nox_factor * (1 / mbtu_to_kwh),
+        # Convert from lb per volume to lb/kWh using conversion_factor1, conversion_factor2, then multiply by 3412 (Btu/kWh)
         f"{fuel_type}_pm25": pm25_factor * (1 / conversion_factor1) * (1 / conversion_factor2) * 3412,
     }
 
@@ -53,11 +55,11 @@ def calculate_fossil_fuel_emission_factor(fuel_type, so2_factor, nox_factor, pm2
     naturalGas_leakage_mtCO2e_perkWh = 0.043 * (1 / 1000)
 
     if fuel_type == "naturalGas":
-        # Convert units from kg/MWh to ton/MWh to ton/kWh
+        # Convert units from kg/MWh to metric tons/kWh, then add leakage
         emission_factors[f"{fuel_type}_co2e"] = (228.5 * (1 / 1000) * (1 / 1000)) + naturalGas_leakage_mtCO2e_perkWh
 
     # CO2e for propane and fuel oil
-    # Convert units from kg/MWh to ton/MWh to ton/kWh
+    # Convert units from kg/MWh to metric tons/kWh
     elif fuel_type == "propane":
         emission_factors[f"{fuel_type}_co2e"] = 275.8 * (1 / 1000) * (1 / 1000)
     elif fuel_type == "fuelOil":

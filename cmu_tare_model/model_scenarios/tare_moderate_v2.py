@@ -386,8 +386,8 @@ df_cooking_retrofit_costs = pd.read_excel(io=file_path, sheet_name='cooking_cost
 df_enclosure_retrofit_costs = pd.read_excel(io=file_path, sheet_name='enclosure_upgrade_costs')
 
 # %%
-from cmu_tare_model.functions.rsMeans_adjustment import *
-from cmu_tare_model.functions.inflation_adjustment import *
+from cmu_tare_model.utils.rsMeans_adjustment import *
+from cmu_tare_model.utils.inflation_adjustment import *
 
 # Use CCI to adjust for cost differences when compared to the national average
 # Call the function and map the values for CCI adjustment
@@ -409,8 +409,8 @@ Capital Costs: Space Heating
 Obtaining Capital Cost Data from Retrofit Cost Spreadsheet ...
 """)
 
-from cmu_tare_model.functions.calculate_equipment_installation_costs import *
-from cmu_tare_model.functions.calculate_equipment_replacement_costs import *
+from cmu_tare_model.utils.calculate_equipment_installation_costs import *
+from cmu_tare_model.utils.calculate_equipment_replacement_costs import *
 
 # Columns to update
 cost_columns = [
@@ -463,7 +463,7 @@ print(df_euss_am_mp9_home)
 # #### Weatherization (MP1: Basic Enclosure Upgrade) Capital Costs
 
 # %%
-from cmu_tare_model.functions.calculate_enclosure_upgrade_costs import *
+from cmu_tare_model.utils.calculate_enclosure_upgrade_costs import *
 
 print("""
 ====================================================================================================================================================================
@@ -698,7 +698,7 @@ print(df_euss_am_mp9_home)
 #  ## Calculate Rebate Amounts (Applicable to IRA-Reference)
 
 # %%
-from cmu_tare_model.functions.determine_rebate_eligibility_and_amount import *
+from cmu_tare_model.utils.determine_rebate_eligibility_and_amount import *
 
 # Determine Percent AMI and Rebate Amounts
 # This needs to be done before running the calculate_percent_AMI function
@@ -764,7 +764,7 @@ Moderate Retrofit: Measure Package {menu_mp}
 """)
 
 # %%
-from cmu_tare_model.functions.calculate_lifetime_public_impact import *
+from cmu_tare_model.utils.calculate_lifetime_public_impact import *
 
 # calculate_public_npv(df, df_baseline_damages, df_mp_damages, menu_mp, policy_scenario, equipment_specs, interest_rate=0.02)
 df_euss_am_mp9_home = calculate_public_npv(df=df_euss_am_mp9_home,
@@ -789,7 +789,7 @@ DATAFRAME FOR MP9 AFTER CALCULATING PUBLIC NPV: df_euss_am_mp9_home
 """)
 
 # %%
-from cmu_tare_model.functions.calculate_lifetime_private_impact import *
+from cmu_tare_model.utils.calculate_lifetime_private_impact import *
 
 # calculate_private_npv(df, df_fuelCosts, menu_mp, policy_scenario, equipment_specs, interest_rate=0.07)
 df_euss_am_mp9_home = calculate_private_NPV(df=df_euss_am_mp9_home,
@@ -814,7 +814,7 @@ DATAFRAME FOR MP9 AFTER CALCULATING PRIVATE NPV: df_euss_am_mp9_home
 """)
 
 # %%
-from cmu_tare_model.functions.determine_adoption_potential import *
+from cmu_tare_model.adoption_potential.determine_adoption_potential import *
 
 # adoption_decision(df, policy_scenario)
 df_euss_am_mp9_home = adoption_decision(df=df_euss_am_mp9_home,

@@ -61,7 +61,7 @@ Result outputs will be exported here: {output_folder_path}
 # # Simulate Residential Energy Consumption using NREL End-Use Savings Shapes
 
 # %%
-from cmu_tare_model.functions.load_and_filter_euss_data import *
+from cmu_tare_model.utils.load_and_filter_euss_data import *
 
 # Measure Package 0: Baseline
 menu_mp = 0
@@ -187,7 +187,7 @@ DATAFRAME: df_euss_am_baseline_home
 # ## Project Future Energy Consumption Using EIA Heating Degree Day (HDD) Forecasted Data (Factors)
 
 # %%
-from cmu_tare_model.functions.project_future_energy_consumption import *
+from cmu_tare_model.utils.project_future_energy_consumption import *
 
 # Make a copy of the dataframe
 df_baseline_scenario_consumption = df_euss_am_baseline_home.copy()
@@ -239,7 +239,7 @@ Fossil Fuels (Natural Gas, Fuel Oil, Propane):
     - Source: https://www3.epa.gov/ttnchie1/conference/ei12/area/haneke.pdf
 """
 
-from cmu_tare_model.functions.create_lookup_emissions_fossil_fuel import *
+from cmu_tare_model.utils.create_lookup_emissions_fossil_fuel import *
 
 print(f"""
 --------------------------------------------------------------------------------------------------------------------------------------
@@ -270,7 +270,7 @@ inflation_adjustment.py does the following:
 Additional information concerning the BLS CPI for All Urban Consumers (CPI-U) is provided the inflation_adjustment.py file.
 """
 
-from cmu_tare_model.functions.inflation_adjustment import *
+from cmu_tare_model.utils.inflation_adjustment import *
 print(f"""
 --------------------------------------------------------------------------------------------------------------------------------------
 Inflate Marginal Social Cost (Damage) Factors using BLS CPI for All Urban Consumers (CPI-U)
@@ -428,7 +428,7 @@ LOOKUP DICTIONARY: Health Damages from Fossil Fuel Emissions
 # ### Includes pre-combustion (fugitive) and combustion
 
 # %%
-from cmu_tare_model.functions.create_lookup_climate_damages_electricity import *
+from cmu_tare_model.utils.create_lookup_climate_damages_electricity import *
 """
 -------------------------------------------------------------------------------------------------------
 CLIMATE DAMAGES FROM CAMBIUM
@@ -497,7 +497,7 @@ SCC Value used in analysis is: ${round(EPA_SCC_USD2023_PER_TON, 2)} per mt CO2e
 # ### PROJECTION FACTORS FOR FUTURE GRID EMISSIONS INTENSITY (Coal Generation Reduction)
 
 # %%
-from cmu_tare_model.functions.coal_projection_factors import *
+from cmu_tare_model.utils.coal_projection_factors import *
 print(f"""
 =======================================================================================================
 COAL USED IN ELECTRICITY GENERATION (Data Sources)
@@ -578,7 +578,7 @@ DATAFRAME: IRA-Reference Health Projection Factors 2018-2050
 
 # %%
 #
-from cmu_tare_model.functions.create_lookup_health_damages_electricity import *
+from cmu_tare_model.utils.create_lookup_health_damages_electricity import *
 
 print(f"""
 ===========================================================================================================================================================
@@ -636,7 +636,7 @@ LOOKUP: IRA-Reference Health Damages 2018-2050
 # ### Baseline Marginal Damages: WHOLE-HOME
 
 # %%
-from cmu_tare_model.functions.calculate_emissions_damages import *
+from cmu_tare_model.utils.calculate_emissions_damages import *
 print("""
 -------------------------------------------------------------------------------------------------------
 Step 5: Calculate End-use specific marginal damages
@@ -665,7 +665,7 @@ df_baseline_scenario_damages
 # ## Private Perspective: Annual Energy Costs
 
 # %%
-from cmu_tare_model.functions.process_fuel_price_data import *
+from cmu_tare_model.utils.process_fuel_price_data import *
 print(f"""
 ===========================================================================================================================================================
 PROCESS FUEL PRICE DATA AND PREPARE FOR PROJECTION: 
@@ -729,7 +729,7 @@ DATAFRAME: IRA-Reference Projection Factors
 # ### Baseline Fuel Cost: WHOLE-HOME
 
 # %%
-from cmu_tare_model.functions.calculate_fuel_costs import *
+from cmu_tare_model.utils.calculate_fuel_costs import *
 
 print("""
 -------------------------------------------------------------------------------------------------------

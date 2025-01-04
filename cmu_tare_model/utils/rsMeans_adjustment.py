@@ -4,7 +4,7 @@ import os
 from config import PROJECT_ROOT
 print(f"Project root directory: {PROJECT_ROOT}")
 
-from cmu_tare_model.functions.inflation_adjustment import *
+from cmu_tare_model.utils.inflation_adjustment import *
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

@@ -1,4 +1,3 @@
-
 from config import PROJECT_ROOT
 import os
 import pandas as pd
@@ -15,47 +14,56 @@ FUNCTIONS
 # LAST UPDATED/TESTED NOV 24, 2024 @ 5 PM
 def calculate_coal_projection_factors(df_cambium):
     """
-    Interpolates coal_MWh and calculates coal projection factors for each region from 2018 to 2050,
+    Interpolates coal_MWh and computes coal projection factors for each region from 2018 to 2050,
     using 2018 coal generation as the reference point.
 
-    Parameters
-    ----------
-    df_cambium : pandas.DataFrame
-        DataFrame containing Cambium coal generation data with the following columns:
-        - 'scenario': Scenario name or identifier.
-        - 'gea_region': GEA region identifier.
-        - 'year': Year of the data.
-        - 'coal_MWh': Coal generation in MWh.
+    Args:
+        df_cambium (pandas.DataFrame):
+            Input DataFrame containing Cambium coal generation data. Must include:
+            - 'scenario': (str) Scenario identifier.
+            - 'gea_region': (str) GEA region identifier.
+            - 'year': (int) Year of the data (e.g., 2018, 2019, etc.).
+            - 'coal_MWh': (float) Coal generation in MWh.
 
-    Returns
-    -------
-    df_coal_factors : pandas.DataFrame
-        DataFrame with interpolated coal_MWh values and a new column 'coal_projection_factors'.
+    Returns:
+        pandas.DataFrame:
+            DataFrame with interpolated 'coal_MWh' values for each year (2018 to 2050)
+            and a new column 'coal_projection_factors' representing the ratio
+            of coal_MWh to the 2018 baseline value. For 'CAMX' region, factors
+            are set to 1.
+
+    Raises:
+        KeyError: If any of the required columns ('scenario', 'gea_region', 'year', 'coal_MWh') are missing in df_cambium.
     """
-    # Create a copy of the dataframe
+    # Create a copy of the dataframe for safe manipulation
     df_cambium_copy = df_cambium.copy()
 
-    # Create a new DataFrame to store interpolated results
+    # Create a list to store DataFrames containing interpolation results
     interpolated_data = []
 
-    # Group by 'scenario' and 'gea_region'
+    # Group the data by 'scenario' and 'gea_region'
     grouped = df_cambium_copy.groupby(['scenario', 'gea_region'])
 
     for (scenario, gea_region), group in grouped:
-        # Extract existing years and coal_MWh values
         years = group['year'].values
         coal_MWh_values = group['coal_MWh'].values
 
-        # Create interpolation function, allowing extrapolation
-        coal_MWh_interp_func = interp1d(years, coal_MWh_values, kind='linear', bounds_error=False, fill_value="extrapolate")
+        # Create an interpolation function that allows extrapolation outside known data
+        coal_MWh_interp_func = interp1d(
+            years,
+            coal_MWh_values,
+            kind='linear',
+            bounds_error=False,
+            fill_value="extrapolate"
+        )
 
-        # Generate years from 2018 to 2050
+        # Generate a sequence of years from 2018 to 2050
         all_years = np.arange(2018, 2051)
 
         # Interpolate the coal_MWh values for these years
         interpolated_values = coal_MWh_interp_func(all_years)
 
-        # Store the results in a DataFrame
+        # Build a DataFrame with the interpolated results
         interpolated_group = pd.DataFrame({
             'scenario': scenario,
             'gea_region': gea_region,
@@ -72,28 +80,32 @@ def calculate_coal_projection_factors(df_cambium):
     coal_MWh_2018 = df_interpolated[df_interpolated['year'] == 2018][['scenario', 'gea_region', 'coal_MWh']]
     coal_MWh_2018 = coal_MWh_2018.set_index(['scenario', 'gea_region'])['coal_MWh']
 
-    # Map the 2018 coal_MWh values to the DataFrame
+    # Map the 2018 coal_MWh values to the corresponding rows
+    # This ensures each row can reference the baseline 2018 coal_MWh
     df_interpolated['coal_MWh_2018'] = df_interpolated.set_index(['scenario', 'gea_region']).index.map(coal_MWh_2018)
 
-    # Avoid division by zero by replacing zero coal_MWh_2018 with NaN
+    # Replace zero baseline values with NaN to avoid division by zero
     df_interpolated['coal_MWh_2018'] = df_interpolated['coal_MWh_2018'].replace(0, np.nan)
 
-    # Conditions for regions other than CAMX
+    # Identify rows that are not in the CAMX region
     condition_regions = (df_interpolated['gea_region'] != 'CAMX')
 
-    # Calculate coal projection factors for regions other than CAMX
+    # Calculate projection factors for non-CAMX regions by dividing by the 2018 baseline
     df_interpolated.loc[condition_regions, 'coal_projection_factors'] = (
         df_interpolated.loc[condition_regions, 'coal_MWh'] / df_interpolated.loc[condition_regions, 'coal_MWh_2018']
     )
 
-    # For CAMX region, assign coal_projection_factors as 1
+    # For the CAMX region, set coal_projection_factors to 1
     condition_CAMX = (df_interpolated['gea_region'] == 'CAMX')
     df_interpolated.loc[condition_CAMX, 'coal_projection_factors'] = 1
 
-    # Replace any NaN or infinite values resulting from division by zero with 0
-    df_interpolated['coal_projection_factors'] = df_interpolated['coal_projection_factors'].replace([np.inf, -np.inf, np.nan], 0)
+    # Replace NaN or infinite values (e.g., from division by zero) with 0
+    df_interpolated['coal_projection_factors'] = df_interpolated['coal_projection_factors'].replace(
+        [np.inf, -np.inf, np.nan],
+        0
+    )
 
-    # Drop temporary columns
+    # Remove the temporary 'coal_MWh_2018' column used for calculations
     df_interpolated.drop(columns=['coal_MWh_2018'], inplace=True)
 
     return df_interpolated
@@ -216,6 +228,7 @@ df_melted = pd.melt(
 
 # Step 2: Extract the Year from Column Names
 df_melted['year'] = df_melted['year'].str.extract('(\d{4})').astype(int)
+
 # Pre-IRA Scenario
 # Step 3: Create Columns to Match the Target DataFrame
 df_preIRA_transformed = pd.DataFrame({
@@ -229,9 +242,8 @@ df_preIRA_transformed = pd.DataFrame({
 
 # Step 4: Combine the DataFrames
 df_preIRA_coal_generation = pd.concat([df_preIRA_transformed, df_cambium21_COAL_processed], ignore_index=True)
-# df_preIRA_coal_generation
 
-# Calculate Coal Generation Projection Factors
+# Step 5: Calculate Coal Generation Projection Factors
 df_preIRA_coal_projection_factors = calculate_coal_projection_factors(df_preIRA_coal_generation)
 
 print(f"""
@@ -255,10 +267,10 @@ df_iraRef_transformed = pd.DataFrame({
 
 # Step 4: Combine the DataFrames
 df_iraRef_coal_generation = pd.concat([df_iraRef_transformed, df_cambium22_COAL_processed], ignore_index=True)
-# df_iraRef_coal_generation
 
-# Calculate Coal Generation Projection Factors
+# Step 5: Calculate Coal Generation Projection Factors
 df_iraRef_coal_projection_factors = calculate_coal_projection_factors(df_iraRef_coal_generation)
+
 print(f"""
 =======================================================================================================
 Projection Factors for Coal Generation Reduction (IRA-Reference Scenario):

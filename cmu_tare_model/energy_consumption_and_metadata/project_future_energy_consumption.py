@@ -1,7 +1,5 @@
 import os
 import pandas as pd
-import numpy as np
-import re
 
 from config import PROJECT_ROOT
 
@@ -29,21 +27,27 @@ print(f"Located at filepath: {file_path}")
 lookup_hdd_factor = df_hdd_projection_factors.set_index(['census_division']).to_dict('index')
 lookup_hdd_factor
 
-# LAST UPDATED ON DECEMBER 5, 2024 @ 6:50 PM
+# LAST UPDATED ON DECEMBER 31, 2024 @ 7:20 PM
 # UPDATED TO RETURN BOTH DF_COPY AND DF_CONSUMPTION
 # THIS FIXES THE ISSUE WITH MP_SCENARIO_DAMAGES AND PUBLIC NPV NOT BEING CALCULATED CORRECTLY
 # df_consumption contains only the projected consumption data. df_copy contains all columns including the projected consumption data.
 def project_future_consumption(df, lookup_hdd_factor, menu_mp):
     """
     Projects future energy consumption based on baseline or upgraded equipment specifications.
-    
-    Parameters:
-    df (pd.DataFrame): The input DataFrame containing baseline consumption data.
-    lookup_hdd_factor (dict): A dictionary with Heating Degree Day (HDD) factors for different census divisions and years.
-    menu_mp (int): Indicates the measure package to apply. 0 for baseline, 8/9/10 for retrofit scenarios.
-    
+
+    Args:
+        df (pd.DataFrame): The input DataFrame containing baseline consumption data.
+        lookup_hdd_factor (dict): A dictionary with Heating Degree Day (HDD) factors for different census divisions and years.
+        menu_mp (int): Indicates the measure package to apply. 0 for baseline, 8/9/10 for retrofit scenarios.
+
     Returns:
-    pd.DataFrame: A DataFrame with projected future energy consumption and reductions.
+        Tuple[pd.DataFrame, pd.DataFrame]:
+            A tuple containing two DataFrames:
+                - df_copy: The updated DataFrame with all columns including the projected consumption data.
+                - df_consumption: The DataFrame containing only the projected consumption data.
+
+    Raises:
+        KeyError: Raised if the 'census_division' column is missing from the input DataFrame.
     """
 
     # Equipment lifetime specifications in years
@@ -73,11 +77,17 @@ def project_future_consumption(df, lookup_hdd_factor, menu_mp):
 
                 # Adjust consumption based on HDD factors for heating and water heating
                 if category in ['heating', 'waterHeating']:
-                    hdd_factor = df_copy['census_division'].map(lambda x: lookup_hdd_factor.get(x, {}).get(year_label, lookup_hdd_factor['National'][year_label]))
-                    new_columns[f'baseline_{year_label}_{category}_consumption'] = (df_copy[f'baseline_{category}_consumption'] * hdd_factor).round(2)
-
+                    # Retrieve the HDD factor for each row based on census division; default to 'National' if not found
+                    hdd_factor = df_copy['census_division'].map(
+                        lambda x: lookup_hdd_factor.get(x, {}).get(year_label, lookup_hdd_factor['National'][year_label])
+                    )
+                    new_columns[f'baseline_{year_label}_{category}_consumption'] = (
+                        df_copy[f'baseline_{category}_consumption'] * hdd_factor
+                    ).round(2)
                 else:
-                    new_columns[f'baseline_{year_label}_{category}_consumption'] = df_copy[f'baseline_{category}_consumption'].round(2)
+                    new_columns[f'baseline_{year_label}_{category}_consumption'] = (
+                        df_copy[f'baseline_{category}_consumption']
+                    ).round(2)
 
     # Retrofit policy_scenario: Upgraded Equipment (Measure Packages 8, 9, 10)
     else:
@@ -88,36 +98,51 @@ def project_future_consumption(df, lookup_hdd_factor, menu_mp):
 
                 # Adjust consumption based on HDD factors for heating and water heating
                 if category in ['heating', 'waterHeating']:
-                    hdd_factor = df_copy['census_division'].map(lambda x: lookup_hdd_factor.get(x, {}).get(year_label, lookup_hdd_factor['National'][year_label]))
-                    new_columns[f'mp{menu_mp}_{year_label}_{category}_consumption'] = (df_copy[f'mp{menu_mp}_{category}_consumption'] * hdd_factor).round(2)
+                    # Retrieve the HDD factor for each row based on census division; default to 'National' if not found
+                    hdd_factor = df_copy['census_division'].map(
+                        lambda x: lookup_hdd_factor.get(x, {}).get(year_label, lookup_hdd_factor['National'][year_label])
+                    )
+                    new_columns[f'mp{menu_mp}_{year_label}_{category}_consumption'] = (
+                        df_copy[f'mp{menu_mp}_{category}_consumption'] * hdd_factor
+                    ).round(2)
 
                     # Calculate the reduction in annual energy consumption
-                    new_columns[f'mp{menu_mp}_{year_label}_{category}_reduction_consumption'] = df_copy[f'baseline_{year_label}_{category}_consumption'].sub(
-                        new_columns[f'mp{menu_mp}_{year_label}_{category}_consumption'], axis=0, fill_value=0
+                    new_columns[f'mp{menu_mp}_{year_label}_{category}_reduction_consumption'] = df_copy[
+                        f'baseline_{year_label}_{category}_consumption'
+                    ].sub(
+                        new_columns[f'mp{menu_mp}_{year_label}_{category}_consumption'], 
+                        axis=0, 
+                        fill_value=0
                     ).round(2)
                 else:
-                    new_columns[f'mp{menu_mp}_{year_label}_{category}_consumption'] = df_copy[f'mp{menu_mp}_{category}_consumption'].round(2)
+                    new_columns[f'mp{menu_mp}_{year_label}_{category}_consumption'] = (
+                        df_copy[f'mp{menu_mp}_{category}_consumption']
+                    ).round(2)
 
                     # Calculate the reduction in annual energy consumption
-                    new_columns[f'mp{menu_mp}_{year_label}_{category}_reduction_consumption'] = df_copy[f'baseline_{year_label}_{category}_consumption'].sub(
-                        new_columns[f'mp{menu_mp}_{year_label}_{category}_consumption'], axis=0, fill_value=0
+                    new_columns[f'mp{menu_mp}_{year_label}_{category}_reduction_consumption'] = df_copy[
+                        f'baseline_{year_label}_{category}_consumption'
+                    ].sub(
+                        new_columns[f'mp{menu_mp}_{year_label}_{category}_consumption'], 
+                        axis=0, 
+                        fill_value=0
                     ).round(2)
 
     # Calculate the new columns based on policy scenario and create dataframe based on df_copy index
     df_new_columns = pd.DataFrame(new_columns, index=df_copy.index)
 
-    # Identify overlapping columns between the new and existing DataFrame.
+    # Identify overlapping columns between the new and existing DataFrame
     overlapping_columns = df_new_columns.columns.intersection(df_copy.columns)
 
-    # Drop overlapping columns from df_copy.
+    # Remove any columns that overlap with the newly generated columns from df_new_columns
     if not overlapping_columns.empty:
         df_copy.drop(columns=overlapping_columns, inplace=True)
 
-    # Merge new columns into df_copy, ensuring no duplicates or overwrites occur.
+    # Merge new columns into df_copy, aligning rows by index
     df_copy = df_copy.join(df_new_columns, how='left')
 
     df_consumption = df_copy.copy()
 
-    # Return the updated DataFrames. df_consumption contains only the projected consumption data. df_copy contains all columns including the projected consumption data.
+    # Return the updated DataFrames. df_consumption contains only the projected consumption data. 
+    # df_copy contains all columns including the projected consumption data.
     return df_copy, df_consumption
-

@@ -4,8 +4,8 @@ from scipy.stats import norm
 from config import PROJECT_ROOT
 print(f"Project root directory: {PROJECT_ROOT}")
 
-from cmu_tare_model.functions.inflation_adjustment import cpi_ratio_2023_2022
-from cmu_tare_model.functions.process_income_data_for_rebates import *
+from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2023_2022
+from cmu_tare_model.utils.process_income_data_for_rebates import *
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

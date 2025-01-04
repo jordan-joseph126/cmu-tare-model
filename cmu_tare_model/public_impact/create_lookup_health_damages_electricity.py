@@ -2,10 +2,8 @@
 from config import PROJECT_ROOT
 import os
 import pandas as pd
-import numpy as np
-from scipy.interpolate import interp1d
-from cmu_tare_model.functions.inflation_adjustment import cpi_ratio_2023_2010, cpi_ratio_2023_2020, cpi_ratio_2023_2021
-from cmu_tare_model.functions.coal_projection_factors import mapping, df_preIRA_coal_projection_factors, df_iraRef_coal_projection_factors
+from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2023_2010, cpi_ratio_2023_2020, cpi_ratio_2023_2021
+from cmu_tare_model.utils.coal_projection_factors import mapping, df_preIRA_coal_projection_factors, df_iraRef_coal_projection_factors
 
 """
 DAMAGES FROM CLIMATE RELATED EMISSIONS (CO2e):
@@ -86,7 +84,7 @@ df_margDamages_EASIUR_health
 Projection Factors
 1. Create dictionaries mapping 'gea_region' to marginal damage factors for each pollutant
 2. Map to the projection factors dataframe
-3. Calculate the new columns by multiplying coal projection factors with marginal damages
+3. Calculate the new columns by multiplying coal projection factors with marginal damages (THESE HAVE ALREADY BEEN INTERPOLATED)
 4. Drop the intermediate marginal damage columns if they're no longer needed
 5. Group the projection factors df by scenario and gea_region
 6. Create a nested dictionary to serve as the lookup dictionary for pollutant damage factors ({pollutant}_dollarsPerKWh_adjustVSL)

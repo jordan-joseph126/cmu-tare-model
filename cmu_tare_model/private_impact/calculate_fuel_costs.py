@@ -1,6 +1,6 @@
 import pandas as pd
 # from config import PROJECT_ROOT
-from cmu_tare_model.functions.process_fuel_price_data import lookup_fuel_prices_preIRA, lookup_fuel_prices_iraRef
+from cmu_tare_model.utils.process_fuel_price_data import lookup_fuel_prices_preIRA, lookup_fuel_prices_iraRef
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -13,13 +13,19 @@ def calculate_annual_fuelCost(df, menu_mp, policy_scenario, drop_fuel_cost_colum
     """
     Calculate the annual fuel cost for baseline and measure packages.
 
-    Parameters:
-    df (pd.DataFrame): DataFrame containing baseline fuel consumption data.
-    menu_mp (int): Measure package identifier
-    policy_scenario (str): Name of EIA AEO policy_scenario used to project fuel prices
+    Args:
+        df (pd.DataFrame): DataFrame containing baseline fuel consumption data.
+        menu_mp (int): Measure package identifier.
+        policy_scenario (str): Name of EIA AEO policy_scenario used to project fuel prices.
+        drop_fuel_cost_columns (bool): Flag indicating whether to drop annual fuel cost columns 
+            after calculating savings.
 
     Returns:
-    pd.DataFrame: DataFrame with additional columns for annual fuel costs, savings, and changes.
+        pd.DataFrame: DataFrame with additional columns for annual fuel costs, savings, and changes.
+
+    Raises:
+        ValueError: If an invalid policy_scenario is provided. Must be one of:
+            'No Inflation Reduction Act' or 'AEO2023 Reference Case'.
     """
     df_copy = df.copy()
 
@@ -59,7 +65,7 @@ def calculate_annual_fuelCost(df, menu_mp, policy_scenario, drop_fuel_cost_colum
             for year in range(1, lifetime + 1):
                 year_label = year + 2023
 
-                # Build a list/Series of per-row prices
+                # Build a list/Series of per-row prices using a dictionary lookup based on state/census_division
                 df_copy['_temp_price'] = [
                     fuel_price_lookup
                         .get(
@@ -118,6 +124,7 @@ def calculate_annual_fuelCost(df, menu_mp, policy_scenario, drop_fuel_cost_colum
                 # Store the new columns
                 new_columns[f'{scenario_prefix}{year_label}_{category}_fuelCost'] = fuel_costs
 
+                # Calculate the difference between baseline and measure package fuel costs
                 new_columns[f'{scenario_prefix}{year_label}_{category}_savings_fuelCost'] = (
                     df_copy[f'baseline_{year_label}_{category}_fuelCost'] - fuel_costs
                 )
@@ -126,7 +133,7 @@ def calculate_annual_fuelCost(df, menu_mp, policy_scenario, drop_fuel_cost_colum
             if '_temp_price' in df_copy.columns:
                 df_copy.drop(columns=['_temp_price'], inplace=True)
 
-        # Only drop if annual fuel cost savings have already been calculated
+        # Optionally drop the annual fuel cost columns if savings alone are needed
         if drop_fuel_cost_columns:
             print("Dropping Annual Fuel Costs for Baseline Scenario and Retrofit. Storing Fuel Savings for Private NPV Calculation.")
             fuel_cost_columns = [col for col in df_copy.columns if '_fuelCost' in col and '_savings_fuelCost' not in col]
@@ -135,13 +142,14 @@ def calculate_annual_fuelCost(df, menu_mp, policy_scenario, drop_fuel_cost_colum
     # Create a DataFrame from new columns based on df_copy index
     df_new_columns = pd.DataFrame(new_columns, index=df_copy.index)
 
-    # Identify overlapping columns between the new and existing DataFrame.
+    # Identify overlapping columns between the new and existing DataFrame
     overlapping_columns = df_new_columns.columns.intersection(df_copy.columns)
     if not overlapping_columns.empty:
+        # Drop overlapping columns from df_copy to avoid duplication
         df_copy.drop(columns=overlapping_columns, inplace=True)
 
     # Merge new columns into df_copy
     df_copy = df_copy.join(df_new_columns, how='left')
 
-    # Return the updated DataFrame
+    # Return the updated DataFrame with calculated costs and optional savings
     return df_copy

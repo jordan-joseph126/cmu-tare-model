@@ -58,6 +58,19 @@ LOAD EUSS/RESSTOCK DATA AND APPLY FILTERS
 """
 
 def standardize_fuel_name(fuel_desc):
+    """
+    Standardizes the input fuel description to a known set of categories.
+
+    Args:
+        fuel_desc (str or NaN): The input fuel description, which may be a string or NaN.
+
+    Returns:
+        str: The standardized fuel name. Possible values include 'Electricity', 'Natural Gas',
+            'Propane', 'Fuel Oil', or 'Other'.
+
+    Raises:
+        None: This function does not raise any exceptions.
+    """
     # Ensure that the input is a string
     if pd.isna(fuel_desc):
         return 'Other'  # Return 'Other' for NaN values
@@ -75,18 +88,47 @@ def standardize_fuel_name(fuel_desc):
     else:
         return 'Other'  # Non-string, non-NaN values are categorized as 'Other'
 
+
 def preprocess_fuel_data(df, column_name):
-    """Applies standardization to a specified column in the DataFrame."""
+    """
+    Applies a standardization process to the specified column in the DataFrame.
+
+    Args:
+        df (pd.DataFrame): The input pandas DataFrame containing fuel data.
+        column_name (str): The name of the column to standardize.
+
+    Returns:
+        pd.DataFrame: The updated DataFrame with standardized fuel names in the specified column.
+
+    Raises:
+        None: This function does not raise any exceptions.
+    """
     print(f"Processing column: {column_name}")
     print(f"Initial data types: {df[column_name].dtype}")
     
     # Updated this portion of the code to prevent the setting with copy warning
-    df.loc[:, column_name] = df[column_name].apply(standardize_fuel_name)
-    
+    df.loc[:, column_name] = df[column_name].apply(standardize_fuel_name)  # Use .loc to avoid SettingWithCopyWarning
+
     print(f"Data types after processing: {df[column_name].dtype}")
     return df
 
+
 def apply_fuel_filter(df, category, enable):
+    """
+    Filters the DataFrame rows based on a predefined list of allowed fuels 
+    if filtering is enabled.
+
+    Args:
+        df (pd.DataFrame): The DataFrame to be filtered.
+        category (str): The fuel usage category (e.g., 'heating', 'waterHeating').
+        enable (str): 'Yes' to enable the filter, 'No' to disable it.
+
+    Returns:
+        pd.DataFrame: The filtered DataFrame if enable=='Yes', otherwise returns the original DataFrame.
+
+    Raises:
+        None: This function does not raise any exceptions.
+    """
     if enable == 'Yes':
         fuel_list = ['Natural Gas', 'Electricity', 'Propane', 'Fuel Oil']
         df_filtered = df[df[f'base_{category}_fuel'].isin(fuel_list)]
@@ -94,14 +136,22 @@ def apply_fuel_filter(df, category, enable):
         return df_filtered
     return df
 
+
 def apply_technology_filter(df, category, enable):
     """
-    Applies technology filters to the dataframe based on the category and whether filtering is enabled.
-    
-    Parameters:
-    - df: The DataFrame to filter.
-    - category: The category of consumption (e.g., 'heating', 'waterHeating').
-    - enable: String flag ('Yes' or 'No') indicating whether to apply the filter.
+    Applies a technology filter to the DataFrame based on the specified category 
+    and a 'Yes' or 'No' filter flag.
+
+    Args:
+        df (pd.DataFrame): The DataFrame to filter.
+        category (str): The category of consumption (e.g., 'heating', 'waterHeating').
+        enable (str): Indicates whether to apply the filter ('Yes' to filter, 'No' otherwise).
+
+    Returns:
+        pd.DataFrame: The filtered DataFrame if enable=='Yes', otherwise returns the original DataFrame.
+
+    Raises:
+        None: This function does not raise any exceptions.
     """
     if enable == 'Yes':
         if category == 'heating':
@@ -111,7 +161,7 @@ def apply_technology_filter(df, category, enable):
                 'Propane Fuel Boiler', 'Propane Fuel Furnace'
             ]
             df_filtered = df[df['heating_type'].isin(tech_list)]
-            print(f"Filtered for the following Heating technologies: {tech_list}")    
+            print(f"Filtered for the following Heating technologies: {tech_list}")
             return df_filtered
         
         elif category == 'waterHeating':
@@ -123,21 +173,66 @@ def apply_technology_filter(df, category, enable):
             df_filtered = df[df['waterHeating_type'].isin(tech_list)]
             print(f"Filtered for the following Water Heating technologies: {tech_list}")
             return df_filtered
-    
+
     return df
 
+
 def debug_filters(df, filter_name):
+    """
+    Prints a debugging statement about the number of rows remaining in the DataFrame 
+    after a filter is applied.
+
+    Args:
+        df (pd.DataFrame): The DataFrame after a filter operation.
+        filter_name (str): The name of the filter or description of the filter operation.
+
+    Returns:
+        None
+
+    Raises:
+        None: This function does not raise any exceptions.
+    """
     if df.empty:
         print(f"No rows left after applying {filter_name}")
     else:
         print(f"{len(df)} rows remain after applying {filter_name}")
 
-# Function to extract city name
+
 def extract_city_name(row):
-    match = re.match(r'^[A-Z]{2}, (.+)$', row)
+    """
+    Extracts the city name from a string containing state abbreviation and city 
+    in the format 'ST, CityName'.
+
+    Args:
+        row (str): A string of the format 'ST, CityName'.
+
+    Returns:
+        str: The extracted city name if the format matches, otherwise returns the original string.
+
+    Raises:
+        None: This function does not raise any exceptions.
+    """
+    match = re.match(r'^[A-Z]{2}, (.+)$', row)  # Regex to match two uppercase letters, a comma, and space
     return match.group(1) if match else row
-        
+
+
 def df_enduse_refactored(df_baseline, fuel_filter='Yes', tech_filter='Yes'):
+    """
+    Creates and returns a DataFrame named df_enduse based on a baseline DataFrame,
+    optionally applying fuel and technology filters.
+
+    Args:
+        df_baseline (pd.DataFrame): The baseline DataFrame from which df_enduse is created.
+        fuel_filter (str, optional): 'Yes' to apply the fuel filter, defaults to 'Yes'.
+        tech_filter (str, optional): 'Yes' to apply the technology filter, defaults to 'Yes'.
+
+    Returns:
+        pd.DataFrame: A new DataFrame (df_enduse) with standardized fuel columns, 
+            total consumption columns, and optional filters applied.
+
+    Raises:
+        None: This function does not raise any exceptions.
+    """
     # Initial check
     if df_baseline.empty:
         print("Warning: Input DataFrame is empty")
@@ -153,10 +248,8 @@ def df_enduse_refactored(df_baseline, fuel_filter='Yes', tech_filter='Yes'):
     
     # Initialize df_enduse from df_baseline with all required columns
     # (assuming columns are correctly listed here)
-    # Create a new DataFrame named df_enduse
-    # using pd.DataFrame constructor and initialize it with columns from df_baseline
+    # Create a new DataFrame named df_enduse using pd.DataFrame constructor
     df_enduse = pd.DataFrame({
-        # 'bldg_id': df_baseline['bldg_id'],
         'square_footage': df_baseline['in.sqft'],
         'census_region': df_baseline['in.census_region'],
         'census_division': df_baseline['in.census_division'],
@@ -207,13 +300,16 @@ def df_enduse_refactored(df_baseline, fuel_filter='Yes', tech_filter='Yes'):
     for category in categories:
         if category == 'heating' or category == 'waterHeating':
             fuel_types = ['electricity', 'fuelOil', 'naturalGas', 'propane']
-            # Calculate and update total consumption
-            total_consumption = sum(df_enduse.get(f'base_{fuel}_{category}_consumption', pd.Series([], dtype=float)).fillna(0) for fuel in fuel_types)
+            # Calculate and update total consumption by summing across possible fuel columns
+            total_consumption = sum(
+                df_enduse.get(f'base_{fuel}_{category}_consumption', pd.Series([], dtype=float)).fillna(0)
+                for fuel in fuel_types
+            )
             df_enduse[f'baseline_{category}_consumption'] = total_consumption.replace(0, np.nan)
 
             debug_filters(df_enduse, f"total {category} consumption calculation")
 
-            # Apply filters
+            # Apply fuel and technology filters
             df_enduse = apply_fuel_filter(df_enduse, category, fuel_filter)
             debug_filters(df_enduse, f"{category} fuel filter")
 
@@ -222,23 +318,43 @@ def df_enduse_refactored(df_baseline, fuel_filter='Yes', tech_filter='Yes'):
 
         else:
             fuel_types = ['electricity', 'naturalGas', 'propane']
-            # Calculate and update total consumption
-            total_consumption = sum(df_enduse.get(f'base_{fuel}_{category}_consumption', pd.Series([], dtype=float)).fillna(0) for fuel in fuel_types)
+            # Calculate and update total consumption by summing across possible fuel columns
+            total_consumption = sum(
+                df_enduse.get(f'base_{fuel}_{category}_consumption', pd.Series([], dtype=float)).fillna(0)
+                for fuel in fuel_types
+            )
             df_enduse[f'baseline_{category}_consumption'] = total_consumption.replace(0, np.nan)
 
             debug_filters(df_enduse, f"total {category} consumption calculation")
 
-            # Apply filters
+            # Apply fuel filter
             df_enduse = apply_fuel_filter(df_enduse, category, fuel_filter)
             debug_filters(df_enduse, f"{category} fuel filter")
             
     return df_enduse
 
+
 def df_enduse_compare(df_mp, input_mp, menu_mp, df_baseline, df_cooking_range):
-    # Create a new DataFrame named df_compare
-    # using pd.DataFrame constructor and initialize it with columns from df_mp
+    """
+    Creates and returns a comparison DataFrame (df_compare) by merging data from multiple
+    input DataFrames (df_mp, df_baseline, df_cooking_range) based on a set of measure packages.
+
+    Args:
+        df_mp (pd.DataFrame): The main DataFrame containing modeling parameters and outputs.
+        input_mp (str): The input measure package ID (e.g., 'upgrade09', 'upgrade10').
+        menu_mp (int): The menu measure package number.
+        df_baseline (pd.DataFrame): The baseline DataFrame to merge with df_compare.
+        df_cooking_range (pd.DataFrame): Additional DataFrame for cooking range parameters/outputs.
+
+    Returns:
+        pd.DataFrame: A merged DataFrame (df_compare) that includes relevant columns for 
+            baseline and measure packages comparison.
+
+    Raises:
+        None: This function does not raise any exceptions.
+    """
+    # Create a new DataFrame named df_compare using columns from df_mp and df_cooking_range
     df_compare = pd.DataFrame({
-        # 'bldg_id':df_mp['bldg_id'],
         'hvac_has_ducts': df_mp['in.hvac_has_ducts'],
         'baseline_heating_type': df_mp['in.hvac_heating_type_and_fuel'],
         'hvac_heating_efficiency': df_mp['in.hvac_heating_efficiency'],
@@ -261,27 +377,22 @@ def df_enduse_compare(df_mp, input_mp, menu_mp, df_baseline, df_cooking_range):
     categories = ['heating', 'waterHeating', 'clothesDrying', 'cooking']
     for category in categories:
         if category == 'heating':
-            # Heating Dataframe
             # MP9 = MP8 (Electrification, High Efficiency) + MP1 (Basic Enclosure)
             if input_mp == 'upgrade09':
                 menu_mp = 9
                 df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp['out.electricity.heating.energy_consumption.kwh'].round(2)
 
                 # Measure Package 1: Basic Enclosure Package
-                # Attic floor insulation (upgrade.insulation_ceiling)
                 df_compare['base_insulation_atticFloor'] = df_mp['in.insulation_ceiling']
                 df_compare['upgrade_insulation_atticFloor'] = df_mp['upgrade.insulation_ceiling']
                 df_compare['out_params_floor_area_attic_ft_2'] = df_mp['out.params.floor_area_attic_ft_2']
 
-                # Air leakage reduction (upgrade.infiltration_reduction == '30%')
                 df_compare['upgrade_infiltration_reduction'] = df_mp['upgrade.infiltration_reduction']
 
-                # Duct sealing (upgrade.ducts == '10% Leakage, R-8')            
                 df_compare['base_ducts'] = df_mp['in.ducts']
                 df_compare['upgrade_duct_sealing'] = df_mp['upgrade.ducts']
                 df_compare['out_params_duct_unconditioned_surface_area_ft_2'] = df_mp['out.params.duct_unconditioned_surface_area_ft_2']
 
-                # Drill-and-fill wall insulation (upgrade.insulation_wall == 'Wood Stud, R-13')
                 df_compare['base_insulation_wall'] = df_mp['in.insulation_wall']
                 df_compare['upgrade_insulation_wall'] = df_mp['upgrade.insulation_wall']
                 df_compare['out_params_wall_area_above_grade_exterior_ft_2'] = df_mp['out.params.wall_area_above_grade_exterior_ft_2']
@@ -292,63 +403,45 @@ def df_enduse_compare(df_mp, input_mp, menu_mp, df_baseline, df_cooking_range):
                 df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp['out.electricity.heating.energy_consumption.kwh'].round(2)
 
                 # Measure Package 1: Basic Enclosure Package
-                # Attic floor insulation (upgrade.insulation_ceiling)
                 df_compare['base_insulation_atticFloor'] = df_mp['in.insulation_ceiling']
                 df_compare['upgrade_insulation_atticFloor'] = df_mp['upgrade.insulation_ceiling']
                 df_compare['out_params_floor_area_attic_ft_2'] = df_mp['out.params.floor_area_attic_ft_2']
 
-                # Air leakage reduction (upgrade.infiltration_reduction == '30%')
                 df_compare['upgrade_infiltration_reduction'] = df_mp['upgrade.infiltration_reduction']
 
-                # Duct sealing (upgrade.ducts == '10% Leakage, R-8')                        
                 df_compare['base_ducts'] = df_mp['in.ducts']
                 df_compare['upgrade_duct_sealing'] = df_mp['upgrade.ducts']
                 df_compare['out_params_duct_unconditioned_surface_area_ft_2'] = df_mp['out.params.duct_unconditioned_surface_area_ft_2']
 
-                # Drill-and-fill wall insulation (upgrade.insulation_wall == 'Wood Stud, R-13')
                 df_compare['base_insulation_wall'] = df_mp['in.insulation_wall']
                 df_compare['upgrade_insulation_wall'] = df_mp['upgrade.insulation_wall']
                 df_compare['out_params_wall_area_above_grade_exterior_ft_2'] = df_mp['out.params.wall_area_above_grade_exterior_ft_2']
 
                 # Measure Package 2: Enhanced Enclosure Package
-                # Foundation wall insulation and rim joist insulation
                 df_compare['base_foundation_type'] = df_mp['in.geometry_foundation_type']
                 df_compare['base_insulation_foundation_wall'] = df_mp['in.insulation_foundation_wall']
                 df_compare['base_insulation_rim_joist'] = df_mp['in.insulation_rim_joist']
-
-                # Only upgrade column for foundation wall insulation, but we will assume technical documentation and modeling consistent
                 df_compare['upgrade_insulation_foundation_wall'] = df_mp['upgrade.insulation_foundation_wall']
                 df_compare['out_params_floor_area_foundation_ft_2'] = df_mp['out.params.floor_area_foundation_ft_2']
-                df_compare['out_params_rim_joist_area_above_grade_exterior_ft_2'] = df_mp['out.params.rim_joist_area_above_grade_exterior_ft_2']                        
+                df_compare['out_params_rim_joist_area_above_grade_exterior_ft_2'] = df_mp['out.params.rim_joist_area_above_grade_exterior_ft_2']
 
-                # Seal Vented Crawl Space
                 df_compare['upgrade_seal_crawlspace'] = df_mp['upgrade.geometry_foundation_type']
-
-                # Insulate finished attics and cathedral ceilings
                 df_compare['base_insulation_roof'] = df_mp['in.insulation_roof']
                 df_compare['upgrade_insulation_roof'] = df_mp['upgrade.insulation_roof']
                 df_compare['out_params_roof_area_ft_2'] = df_mp['out.params.roof_area_ft_2']
-            
+
             else:
                 df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp['out.electricity.heating.energy_consumption.kwh'].round(2)
-        # Water Heating Dataframe    
+
         elif category == 'waterHeating':
             df_compare[f'mp{menu_mp}_waterHeating_consumption'] = df_mp['out.electricity.hot_water.energy_consumption.kwh'].round(2)
 
-        # Clothes Drying Dataframe
         elif category == 'clothesDrying':
             df_compare[f'mp{menu_mp}_clothesDrying_consumption'] = df_mp['out.electricity.clothes_dryer.energy_consumption.kwh'].round(2)
 
-        # Cooking Dataframe
         elif category == 'cooking':
             df_compare[f'mp{menu_mp}_cooking_consumption'] = df_cooking_range['out.electricity.range_oven.energy_consumption.kwh'].round(2)
             
-    # Merge dataframes on bldg id column so everything is lined up
-    # df_compare = pd.merge(df_baseline, df_compare, how='inner', on = 'bldg_id')
-    # calculate_consumption_reduction(df_compare, category)    
-
-    # If both df_baseline and df_compare now have bldg_id set as their index, modify it as:
+    # Merge the baseline DataFrame and df_compare on their index
     df_compare = pd.merge(df_baseline, df_compare, how='inner', left_index=True, right_index=True)
-    # Make sure df_baseline and df_compare both have bldg_id as their index before doing this.
-
     return df_compare
