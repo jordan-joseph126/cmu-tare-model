@@ -125,7 +125,7 @@ input_mp = 'baseline'
 print(f"PROJECT_ROOT (from config.py): {PROJECT_ROOT}")
 
 # Construct the absolute path to the .py file
-relative_path = os.path.join("cmu_tare_model", "tare_baseline_v2.py")
+relative_path = os.path.join("cmu_tare_model", "model_scenarios", "tare_baseline_v2.py")
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 
 # On Windows, to avoid any path-escape quirks, convert backslashes to forward slashes
@@ -187,7 +187,7 @@ input_mp = 'upgrade08'
 print(f"PROJECT_ROOT (from config.py): {PROJECT_ROOT}")
 
 # Construct the absolute path to the .py file
-relative_path = os.path.join("cmu_tare_model", "tare_basic_v2.py")
+relative_path = os.path.join("cmu_tare_model", "model_scenarios", "tare_basic_v2.py")
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 
 # On Windows, to avoid any path-escape quirks, convert backslashes to forward slashes
@@ -249,7 +249,7 @@ input_mp = 'upgrade09'
 print(f"PROJECT_ROOT (from config.py): {PROJECT_ROOT}")
 
 # Construct the absolute path to the .py file
-relative_path = os.path.join("cmu_tare_model", "tare_moderate_v2.py")
+relative_path = os.path.join("cmu_tare_model", "model_scenarios", "tare_moderate_v2.py")
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 
 # On Windows, to avoid any path-escape quirks, convert backslashes to forward slashes
@@ -311,7 +311,7 @@ input_mp = 'upgrade10'
 print(f"PROJECT_ROOT (from config.py): {PROJECT_ROOT}")
 
 # Construct the absolute path to the .py file
-relative_path = os.path.join("cmu_tare_model", "tare_advanced_v2.py")
+relative_path = os.path.join("cmu_tare_model", "model_scenarios", "tare_advanced_v2.py")
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 
 # On Windows, to avoid any path-escape quirks, convert backslashes to forward slashes

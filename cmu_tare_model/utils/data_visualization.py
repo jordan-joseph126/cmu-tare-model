@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -14,38 +15,82 @@ FUNCTIONS FOR DATA VISUALIZATION
 # FORMAT DATA USING .DESCRIBE() METHODS
 # ======================================================================================================================
 
-def summarize_stats_table(df, data_columns, column_name_mapping, number_formatting, include_zero=True):
+def summarize_stats_table(
+    df: pd.DataFrame, 
+    data_columns: list[str], 
+    column_name_mapping: dict[str, str], 
+    number_formatting: str, 
+    include_zero: bool = True,
+    category: str | None = None,        
+    enable_fuel_filter: bool = False,
+    included_fuel_list: list[str] | None = None
+) -> pd.DataFrame:
     """
     Generate a formatted summary statistics table for specified columns in a DataFrame.
 
-    Parameters:
-    - df (DataFrame): The input DataFrame from which to compute statistics.
-    - data_columns (list of str): The columns to include in the summary statistics.
-    - column_name_mapping (dict): A dictionary to rename the columns in the summary statistics output.
-    - number_formatting (str): The format string to use for numeric values in the output.
-    - include_zero (bool, optional): Whether to include zero values in the statistics. Defaults to True.
-      If False, zeros are replaced with NaN, which are then ignored in the computations.
+    Args:
+        df (pd.DataFrame): The input DataFrame from which to compute statistics.
+        data_columns (list[str]): The columns to include in the summary statistics.
+        column_name_mapping (dict[str, str]): Mapping from original column names to desired display names.
+        number_formatting (str): The Python format string (e.g. ".2f") to format numeric values in the output.
+        include_zero (bool, optional): Whether to include zero values in the statistics. Defaults to True.
+        category (str | None, optional): Category name for filtering fuel types (e.g., 'heating', 'waterHeating', etc.).
+        enable_fuel_filter (bool, optional): Whether to filter the DataFrame based on specific fuel types. Defaults to False.
+        included_fuel_list (list[str] | None, optional): List of fuels to include if filtering is enabled.
 
     Returns:
-    - DataFrame: A DataFrame containing the summary statistics, with formatted numeric values
-      and renamed columns according to the input specifications.
+        pd.DataFrame: A DataFrame containing the summary statistics with formatted numeric values 
+            and renamed columns according to the input specifications.
+
+    Raises:
+        ValueError: If any of the specified data_columns are missing from df, or if the required fuel column is not present 
+            when fuel filtering is enabled.
     """
 
-    # Create a copy of the DataFrame to avoid modifying the original data
-    df_copy = df.copy()
+    # Validate that all specified data_columns exist in the DataFrame
+    missing_cols = [c for c in data_columns if c not in df.columns]
+    if missing_cols:
+        raise ValueError(f"The following columns are not in the DataFrame: {missing_cols}")
 
-    # Replace 0 values with NaN in the selected columns if include_zero is set to False
+    # Make a copy to avoid modifying the original data
+    df_copy = df.copy()
+    
+    # Apply fuel filter if enabled and if category and included_fuel_list are provided
+    if enable_fuel_filter and category is not None and included_fuel_list:
+        fuel_col = f'base_{category}_fuel'
+        # Check if the expected fuel column for filtering is present
+        if fuel_col not in df_copy.columns:
+            raise ValueError(
+                f"Fuel column '{fuel_col}' is not present in the DataFrame, cannot filter."
+            )
+        df_copy = df_copy[df_copy[fuel_col].isin(included_fuel_list)]
+        print(f"Filtered for the following fuels: {included_fuel_list}")
+    
+    # Replace 0 with NaN if include_zero is False so these values are ignored in stats
     if not include_zero:
         df_copy[data_columns] = df_copy[data_columns].replace(0, np.nan)
+    
+    # If the DataFrame becomes empty after filtering/zero removal, return an empty DataFrame
+    if df_copy.empty:
+        print("Warning: DataFrame is empty after filtering and/or zero removal.")
+        return pd.DataFrame()
+    
+    # Calculate the summary statistics using pandas' describe()
+    summary_stats = df_copy[data_columns].describe()
+    
+    # Helper function to format numeric values according to the specified format string
+    def format_func(value):
+        try:
+            return f"{float(value):{number_formatting}}"
+        except (ValueError, TypeError):
+            return str(value)
 
-    # Compute summary statistics for the selected columns
-    # The 'describe' function returns summary statistics including count, mean, std, min, 25%, 50%, 75%, max
-    # Apply formatting to each number in these statistics according to the given format
-    summary_stats = df_copy[data_columns].describe().apply(lambda col: col.map(lambda x: f"{x:{number_formatting}}"))
-
-    # Rename the columns in the summary statistics DataFrame according to the provided mapping
+    # Apply the formatting function to all entries in the summary_stats DataFrame
+    summary_stats = summary_stats.map(format_func)
+    
+    # Rename columns according to the user-specified mapping
     summary_stats.rename(columns=column_name_mapping, inplace=True)
-
+    
     return summary_stats
 
 # ======================================================================================================================

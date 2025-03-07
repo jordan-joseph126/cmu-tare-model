@@ -3,6 +3,23 @@ import pandas as pd
 from config import PROJECT_ROOT
 print(f"Project root directory: {PROJECT_ROOT}")
 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        # - Health Methods:
+        #     - deetjen2021 (SRMER): 
+        #             Improves upon Deetjen et al (2021) by using CEDM Marginal Emissions Factors with Cambium Coal Generation
+        #             as a proxy instead of an annual decline that is uniform every year and across the US 
+        #             Validation: Compare Cambium CO2/CO2e emissions rates (Cambium has AER, SRMER, LRMER)
+        #     - schmitt2024 (LRMER): 
+        #             Approximated LRMER Health Factors for the MidCase Scenario
+        #             Marginal Generation = High Electrification Generation - MidCase Generation
+        #             Validation: Compare Cambium CO2/CO2e emissions rates (Cambium has AER, SRMER, LRMER)
+        #     - rewiringAmerica2024 (AER): 
+        #             Follows the methods outlined in the Appendix of Rewiring America's Breathe Easy Report.
+        #             Breathe Easy Report: https://a-us.storyblok.com/f/1021068/x/3c121cf7ec/breathe-easy-health-benefits-from-electrification.pdf
+        #             Appendix: https://a-us.storyblok.com/f/1021068/x/c517c9f5fa/appendix-breathe-easy-report-rewiring-america.pdf?cv=1733432228178
+        #             Validation: Compare Cambium CO2/CO2e emissions rates (Cambium has AER, SRMER, LRMER)
+# ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 LIFETIME PUBLIC IMPACT: NPV OF LIFETIME MONETIZED DAMAGES (CLIMATE AND HEALTH)

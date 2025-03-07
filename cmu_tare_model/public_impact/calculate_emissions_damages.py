@@ -8,6 +8,23 @@ from cmu_tare_model.public_impact.create_lookup_emissions_fossil_fuel import loo
 from cmu_tare_model.public_impact.create_lookup_climate_damages_electricity import lookup_co2e_emis_electricity_preIRA, lookup_co2e_emis_electricity_IRA
 from cmu_tare_model.public_impact.create_lookup_health_damages_electricity import lookup_health_damages_electricity_preIRA, lookup_health_damages_electricity_iraRef
 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        # - Health Methods:
+        #     - deetjen2021 (SRMER): 
+        #             Improves upon Deetjen et al (2021) by using CEDM Marginal Emissions Factors with Cambium Coal Generation
+        #             as a proxy instead of an annual decline that is uniform every year and across the US 
+        #             Validation: Compare Cambium CO2/CO2e emissions rates (Cambium has AER, SRMER, LRMER)
+        #     - schmitt2024 (LRMER): 
+        #             Approximated LRMER Health Factors for the MidCase Scenario
+        #             Marginal Generation = High Electrification Generation - MidCase Generation
+        #             Validation: Compare Cambium CO2/CO2e emissions rates (Cambium has AER, SRMER, LRMER)
+        #     - rewiringAmerica2024 (AER): 
+        #             Follows the methods outlined in the Appendix of Rewiring America's Breathe Easy Report.
+        #             Breathe Easy Report: https://a-us.storyblok.com/f/1021068/x/3c121cf7ec/breathe-easy-health-benefits-from-electrification.pdf
+        #             Appendix: https://a-us.storyblok.com/f/1021068/x/c517c9f5fa/appendix-breathe-easy-report-rewiring-america.pdf?cv=1733432228178
+        #             Validation: Compare Cambium CO2/CO2e emissions rates (Cambium has AER, SRMER, LRMER)
+# ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 # Constants (Assuming these are defined elsewhere in your code)
 TD_LOSSES = 0.06
 TD_LOSSES_MULTIPLIER = 1 / (1 - TD_LOSSES)
