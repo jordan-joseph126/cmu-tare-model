@@ -280,14 +280,14 @@ DATAFRAME: Annual CPI-U for 2005-2023 used for cpi_ratio constants and inflation
 # %%
 # Current VSL is $11.3 M USD2021
 # INFLATE TO USD2022, PREVIOUSLY USD2021
-current_VSL_USD2022 = 11.3 * cpi_ratio_2023_2021
+current_VSL_USD2023 = 11.3 * cpi_ratio_2023_2021
 
 # Easiur uses a VSL of $8.8 M USD2010
 # INFLATE TO USD2022, PREVIOUSLY USD2021
-easiur_VSL_USD2022 = 8.8 * (cpi_ratio_2023_2010)
+rcm_VSL_USD2023 = 8.8 * (cpi_ratio_2023_2010)
 
 # Calculate VSL adjustment factor
-vsl_adjustment_factor = current_VSL_USD2022 / easiur_VSL_USD2022
+vsl_adjustment_factor = current_VSL_USD2023 / rcm_VSL_USD2023
 
 print(f"""
 --------------------------------------------------------------------------------------------------------------------------------------
@@ -297,10 +297,10 @@ For Health-Related Emissions Adjust for different Value of a Statistical Life (V
     - INFLATE TO $USD-2023
 --------------------------------------------------------------------------------------------------------------------------------------
 Current VSL: 
-{current_VSL_USD2022} USD-2023
-      
+{current_VSL_USD2023} USD-2023
+   
 EASIUR VSL:
-{easiur_VSL_USD2022} USD-2023
+{rcm_VSL_USD2023} USD-2023
 
 VSL Adjustment Factor:
 {vsl_adjustment_factor}
@@ -325,39 +325,26 @@ VSL Adjustment Factor:
 
 # %%
 # Create a dataframe containing just the longitude and Latitude
-df_EASIUR_batchConversion = pd.DataFrame({
-    'Longitude':df_euss_am_baseline['in.weather_file_longitude'],
-    'Latitude':df_euss_am_baseline['in.weather_file_latitude'],
+df_CACES_batchConversion = pd.DataFrame({
+    'fips':df_euss_am_baseline['in.county'],
 })
 
-# Drop duplicate rows based on 'Longitude' and 'Latitude' columns
-df_EASIUR_batchConversion.drop_duplicates(subset=['Longitude', 'Latitude'], keep='first', inplace=True)
+# 1) Drop duplicate rows
+df_CACES_batchConversion.drop_duplicates(subset='fips', inplace=True)
 
-# Create a location ID for the name of the batch conversion file
-while True:
-    if menu_state == 'N':
-        location_id = 'National'
-        print("You chose to analyze all of the United States.")
-        break
-    elif menu_state == 'Y':
-        if menu_city == 'N':
-            try:
-                location_id = str(input_state)
-                print(f"Location ID is: {location_id}")
-                break
-            except ValueError:
-                print("Invalid input for state!")
-        elif menu_city == 'Y':
-            try:
-                location_id = input_cityFilter.replace(', ', '_').strip()
-                print(f"Location ID is: {location_id}")
-                break
-            except AttributeError:
-                print("Invalid input for city filter!")
-        else:
-            print("Incorrect state or city filter assignment!")
-    else:
-        print("Invalid data location. Check your inputs at the beginning of this notebook!")
+# 2) Convert GISJOIN code (e.g. 'G0100010') to 5-digit county FIPS (e.g. '01001')
+df_CACES_batchConversion['fips'] = df_CACES_batchConversion['fips'].apply(lambda x: x[1:6])
+
+# 3) Export the dataframe to a CSV file
+filename = 'rcm_marginal_social_cost_CACES.csv'
+relative_path = os.path.join("cmu_tare_model", "data", "margDamages_EASIUR", filename)
+file_path = os.path.join(PROJECT_ROOT, relative_path)
+df_CACES_batchConversion.to_csv(file_path, index=False, header=True)
+
+print(df_CACES_batchConversion)
+
+# %%
+
 
 # Updated GitHub code has EASIUR file with all unique latitude, longitude coordinates in the US
 filename = 'easiur_National2024-06-1421-22.csv'
@@ -484,140 +471,14 @@ Inflate 190 $USD-2020 Social Cost of Carbon to $USD-2023
 SCC Value used in analysis is: ${round(EPA_SCC_USD2023_PER_TON, 2)} per mt CO2e
 """)
 
-# %% [markdown]
-# ## HEALTH-RELATED EMISSIONS: Grid Emissions Intensity Projections
-
-# %% [markdown]
-# ### PROJECTION FACTORS FOR FUTURE GRID EMISSIONS INTENSITY (Coal Generation Reduction)
-
 # %%
-from cmu_tare_model.public_impact.coal_projection_factors import *
 print(f"""
-=======================================================================================================
-COAL USED IN ELECTRICITY GENERATION (Data Sources)
-=======================================================================================================
-Pre-process Coal Generation Data from EPA eGRID and Cambium 2021/2022
-      - EPA eGRID Coal Generation data is used for 2018-2022
-      - Map eGRID subregion to Cambium GEA region
-      - Drop eGRID subregions not in Cambium GEA region (PR, AK, HI, etc)
-      - Coal generation is aggregated by Cambium GEA region ('NYCW', 'NYLI', 'NYUP' --> 'NYSTc')
-
-The coal_projection_factors.py file contains the following dataframes and lookup dictionaries:
+===========================================================================================================================================================
+LOOKUP MARGINAL SOCIAL COSTS FOR HEALTH-RELATED EMISSIONS
+===========================================================================================================================================================
+No Electricity Grid Uncertainty (Just Current Grid and Future Grid Projections)
       
-DATAFRAME: EPA eGRID Coal Generation Data
-{df_epa_eGRID_COAL_processed}
 
-DARAFRAME: Cambium 2021
-{df_cambium21_COAL_processed}
-      
-DATAFRAME: Cambium 2022
-{df_cambium22_COAL_processed}
-
-""")
-
-# %%
-print(f"""
-=======================================================================================================
-COAL USED IN ELECTRICITY GENERATION (Combined 2018-2050 Data Pre-IRA and IRA-Ref)
-=======================================================================================================
-For all other years up until 2050, Cambium 2021 and Cambium 2022 data is used
-      - Combine with EPA eGRID data
-            - Pre-IRA: EPA eGRID 2018-2022 + Cambium 2021
-            - IRA-Reference: EPA eGRID 2018-2022 + Cambium 2022
-      - Interpolate between years for missing data
-
-The coal_projection_factors.py file contains the following dataframes and lookup dictionaries:
-
-DATAFRAME: Pre-IRA Coal Generation 2018-2050
-{df_preIRA_coal_generation}
-
-DARAFRAME: IRA-Reference Coal Generation 2018-2050
-{df_iraRef_coal_generation}
-""")
-
-
-# %%
-print(f"""
-=======================================================================================================
-HEALTH-RELATED EMISSIONS PROJECTION FACTORS (Pre-IRA and IRA-Reference)
-=======================================================================================================
-Normalize projection factors relative to 2018. This is the last year of available data from CEDM Marginal Damages Factors (EASIUR Marginal Social Costs)
-
-The coal_projection_factors.py file contains the following dataframes and lookup dictionaries:
-    
-DATAFRAME: Pre-IRA Health Projection Factors 2018-2050
-{df_preIRA_coal_projection_factors}
-
-DATAFRAME: IRA-Reference Health Projection Factors 2018-2050
-{df_iraRef_coal_projection_factors}
-
-""")
-
-
-# %% [markdown]
-# ## ADJUSTED Electricity CEDM-EASIUR Marginal Damages: Pre-IRA and IRA-Reference
-# - Factor Type: Marginal
-# - Calculation Method: Regression
-# - Metric: Marginal Damages EASIUR [USD per MWh or kWh]
-# - Year: 2018
-# - Regional Aggregation: eGRID subregion (all regions)
-# - Pollutants: SO2, NOx, PM2.5 CO2
-# 
-# SCC Adjustment: We use the EPA suggested 190 USD-2020 value for the social cost of carbon and inflate to 2022 USD. **PREVIOUSLY USED 2021 USD**
-# 
-# VSL: "We use a value of a statistical life (VSL) of USD 8.8 million (in 2010 dollars) for both our AP2 and EASIUR calculations. EASIUR reports damage intensities in USD/metric ton using this VSL and dollar year."
-
-# %% [markdown]
-# ### Pre-IRA Projections
-
-# %%
-#
-from cmu_tare_model.public_impact.create_lookup_health_damages_electricity import *
-
-print(f"""
-===========================================================================================================================================================
-PROJECT ELECTRICITY CEDM MARGINAL FACTORS (Adjust for VSL and Use Coal Projection Factors thru 2050)
-===========================================================================================================================================================
-1. Create a dataframe using the 2018 CEDM Marginal Damage Factors data
-2. Create dictionaries mapping 'gea_region' to marginal damage factors for each pollutant
-3. Map to the projection factors dataframe
-4. Calculate the new columns by multiplying coal projection factors with marginal damages
-5. Drop the intermediate marginal damage columns if they're no longer needed
-6. Group the projection factors df by scenario and gea_region
-7. Create a nested dictionary to serve as the lookup dictionary for pollutant damage factors (pollutant_dollarsPerKWh_adjustVSL)
-===========================================================================================================================================================
-Pre-IRA Scenario
-The create_lookup_health_damages_electricity.py file contains the following dataframes and lookup dictionaries:
-
-DATAFRAME: Adjusted CEDM Marginal Damage Factors with Updated VSL and Inflate to $USD2023
-{df_margDamages_EASIUR_health}
-
-LOOKUP: Pre-IRA Health Damages 2018-2050
-{df_preIRA_health_damages_factors}
-
-LOOKUP: Pre-IRA Health Damages 2018-2050
-{lookup_health_damages_electricity_preIRA}
-""")
-
-# %% [markdown]
-# ### IRA-Reference Projections
-
-# %%
-print(f"""
-===========================================================================================================================================================
-PROJECT ELECTRICITY CEDM MARGINAL FACTORS (Adjust for VSL and Use Coal Projection Factors thru 2050)
-===========================================================================================================================================================
-IRA-Reference Scenario
-The create_lookup_health_damages_electricity.py file contains the following dataframes and lookup dictionaries:
-
-DATAFRAME: Adjusted CEDM Marginal Damage Factors with Updated VSL and Inflate to $USD2023
-{df_margDamages_EASIUR_health}
-
-LOOKUP: IRA-Reference Health Damages 2018-2050
-{df_iraRef_health_damages_factors}
-
-LOOKUP: IRA-Reference Health Damages 2018-2050
-{lookup_health_damages_electricity_iraRef}
 """)
 
 # %% [markdown]

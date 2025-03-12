@@ -33,6 +33,7 @@ df_bls_cpiu = pd.DataFrame({
 print(df_bls_cpiu)
 
 # Obtain the Annual CPIU values for the years of interest
+bls_cpi_annual_2006 = df_bls_cpiu['cpiu_annual'].loc[(df_bls_cpiu['year'] == 2006)].item()
 bls_cpi_annual_2008 = df_bls_cpiu['cpiu_annual'].loc[(df_bls_cpiu['year'] == 2008)].item()
 bls_cpi_annual_2010 = df_bls_cpiu['cpiu_annual'].loc[(df_bls_cpiu['year'] == 2010)].item()
 bls_cpi_annual_2013 = df_bls_cpiu['cpiu_annual'].loc[(df_bls_cpiu['year'] == 2013)].item()
@@ -53,3 +54,4 @@ cpi_ratio_2023_2018 = bls_cpi_annual_2023 / bls_cpi_annual_2018
 cpi_ratio_2023_2013 = bls_cpi_annual_2023 / bls_cpi_annual_2013
 cpi_ratio_2023_2010 = bls_cpi_annual_2023 / bls_cpi_annual_2010
 cpi_ratio_2023_2008 = bls_cpi_annual_2023 / bls_cpi_annual_2008  # For EPA VSL and SCC
+cpi_ratio_2023_2006 = bls_cpi_annual_2023 / bls_cpi_annual_2006  # For CACES RCM Marginal Social Costs 

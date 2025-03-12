@@ -27,8 +27,8 @@ def adoption_decision(df, menu_mp, policy_scenario, include_health_benefits, hea
                                 Accepted values: 'AEO2023 Reference Case'.
         include_health_benefits (bool): A flag to include health benefits in the adoption logic. If False, essecntially same as ERL Paper 1.
                                 Accepted values: True, False.
-        health_damages_method (str): The method used to calculate health damages.
-                                Accepted values: deetjen2021, schmitt2024, rewiringAmerica2024.
+        emissions_factor_type (str): The method used to calculate emissions and damages.
+                                Accepted values: aer, srmer, lrmer.
     Returns:
         pandas.DataFrame: The modified DataFrame with additional columns for decisions and impacts.
 
@@ -37,16 +37,16 @@ def adoption_decision(df, menu_mp, policy_scenario, include_health_benefits, hea
         - Additional Public Benefit is no longer clipped at 0 for no negative values.
         - Total NPV columns are now calculated by summing private and public NPVs. (previously used additional public benefit)
         - Adoption decision now depends on Public NPV rather than Additional Public Benefit.
-        - Health Methods:
-            - deetjen2021 (SRMER): 
+        - Emissions Estimation Methods:
+            - srmer (deetjen2021): 
                     Improves upon Deetjen et al (2021) by using CEDM Marginal Emissions Factors with Cambium Coal Generation
                     as a proxy instead of an annual decline that is uniform every year and across the US 
                     Validation: Compare Cambium CO2/CO2e emissions rates (Cambium has AER, SRMER, LRMER)
-            - schmitt2024 (LRMER): 
+            - lrmer (schmitt2024): 
                     Approximated LRMER Factors for the MidCase Scenario
                     Marginal Generation = High Electrification Generation - MidCase Generation
                     Validation: Compare Cambium CO2/CO2e emissions rates (Cambium has AER, SRMER, LRMER)
-            - rewiringAmerica2024 (AER): 
+            - aer (rewiringAmerica2024): 
                     Follows the methods outlined in the Appendix of Rewiring America's Breathe Easy Report.
                     Breathe Easy Report: https://a-us.storyblok.com/f/1021068/x/3c121cf7ec/breathe-easy-health-benefits-from-electrification.pdf
                     Appendix: https://a-us.storyblok.com/f/1021068/x/c517c9f5fa/appendix-breathe-easy-report-rewiring-america.pdf?cv=1733432228178
@@ -78,6 +78,7 @@ def adoption_decision(df, menu_mp, policy_scenario, include_health_benefits, hea
         print(f"\nCalculating Adoption Potential for {category} under '{policy_scenario}' Scenario...")
 
         # For LRMER and SRMER
+        for health_damages_method in ['deetjen2021', 'schmitt2024', 'rewiringAmerica2024']:
         for mer_type in ['lrmer', 'srmer']:
             print(f"Type of Marginal Emissions Rate Factor: {mer_type}")
 
@@ -85,14 +86,14 @@ def adoption_decision(df, menu_mp, policy_scenario, include_health_benefits, hea
             lessWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_lessWTP' # LESS WTP: BREAK EVEN ON TOTAL CAPITAL COSTS
             moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP' # MORE WTP: BREAK EVEN ON NET CAPITAL COSTS (BETTER THAN ALTERNATIVE)
 
-            public_npv_col = f'{scenario_prefix}{category}_public_npv_{health_damages_method}_{mer_type}'
+            public_npv_col = f'{scenario_prefix}{category}_public_npv_{emissions_factor_type}'
             rebate_col = f'mp{menu_mp}_{category}_rebate_amount'
-            addition_public_benefit = f'{scenario_prefix}{category}_additional_public_benefit_{mer_type}'
+            addition_public_benefit = f'{scenario_prefix}{category}_additional_public_benefit_{emissions_factor_type}'
             avoided_tons_co2e_col = f'{scenario_prefix}{category}_avoided_tons_co2e_{mer_type}'
             cost_eff_co2e_abatement_col = f'{scenario_prefix}{category}_usd2023_per_mtCO2e_{mer_type}'
             
-            lessWTP_total_npv_col = f'{scenario_prefix}{category}_total_npv_lessWTP_{mer_type}' # LESS WTP: BREAK EVEN ON TOTAL CAPITAL COSTS
-            moreWTP_total_npv_col = f'{scenario_prefix}{category}_total_npv_moreWTP_{mer_type}' # MORE WTP: BREAK EVEN ON NET CAPITAL COSTS (BETTER THAN ALTERNATIVE)
+            lessWTP_total_npv_col = f'{scenario_prefix}{category}_total_npv_lessWTP_{health_damages_method}_{mer_type}' # LESS WTP: BREAK EVEN ON TOTAL CAPITAL COSTS
+            moreWTP_total_npv_col = f'{scenario_prefix}{category}_total_npv_moreWTP_{health_damages_method}_{mer_type}' # MORE WTP: BREAK EVEN ON NET CAPITAL COSTS (BETTER THAN ALTERNATIVE)
             
             # Ensure columns are numeric if they exist and convert them
             for col in [lessWTP_private_npv_col, moreWTP_private_npv_col, public_npv_col, rebate_col, avoided_tons_co2e_col]:
@@ -119,17 +120,9 @@ def adoption_decision(df, menu_mp, policy_scenario, include_health_benefits, hea
                 df_new_columns[adoption_col_name] = 'Tier 4: Averse'  # Default value for all rows
                 df_new_columns[retrofit_col_name] = 'No Retrofit'  # Default public impact
 
-                if not include_health_benefits:
-                    
-                    if health_method == 'ERL: Include Health Benefits'
-
-                if health_method == 'ERL: Exclude Health Benefits, Additional Public Benefit in Adoption Logic':
-
-                elif health_method == 'ERL: Include Health Benefits':
                 # Calculate Total NPV by summing private and public NPVs (no longer uses additional public benefit)
                 df_new_columns[lessWTP_total_npv_col] = df_copy[lessWTP_private_npv_col] + df_copy[public_npv_col] # LESS WTP: BREAK EVEN ON TOTAL CAPITAL COSTS
                 df_new_columns[moreWTP_total_npv_col] = df_copy[moreWTP_private_npv_col] + df_copy[public_npv_col] # MORE WTP: BREAK EVEN ON NET CAPITAL COSTS (BETTER THAN ALTERNATIVE)
-
 
                 # Conditions for determining adoption decisions
                 conditions = [

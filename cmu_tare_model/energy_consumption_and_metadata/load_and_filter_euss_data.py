@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 import numpy as np
 import re
@@ -59,35 +58,47 @@ LOAD EUSS/RESSTOCK DATA AND APPLY FILTERS
 
 def standardize_fuel_name(fuel_desc):
     """
-    Standardizes the input fuel description to a known set of categories.
-
+    Standardizes a fuel description into a recognized category or None.
+    
+    This function inspects an input fuel description (e.g., "Electric Heater",
+    "Gas Furnace", "Propane Heater") and maps it to one of the following strings:
+    "Electricity", "Natural Gas", "Propane", or "Fuel Oil". If the input is NaN,
+    not a string, or does not contain any recognizable fuel keyword, the function
+    returns None.
+    
     Args:
-        fuel_desc (str or NaN): The input fuel description, which may be a string or NaN.
-
+        fuel_desc (Any): 
+            A value representing the fuel description. It can be a string
+            containing words like "Electric," "Gas," "Propane," or "Oil." It may
+            also be NaN (pandas missing value) or another data type.
+    
     Returns:
-        str: The standardized fuel name. Possible values include 'Electricity', 'Natural Gas',
-            'Propane', 'Fuel Oil', or 'Other'.
-
+        str or None: 
+            One of the strings {"Electricity", "Natural Gas", "Propane", "Fuel Oil"}
+            if a match is found, or None otherwise.
+    
     Raises:
         None: This function does not raise any exceptions.
     """
-    # Ensure that the input is a string
-    if pd.isna(fuel_desc):
-        return 'Other'  # Return 'Other' for NaN values
-    elif isinstance(fuel_desc, str):
-        if 'Electric' in fuel_desc:
-            return 'Electricity'
-        elif 'Gas' in fuel_desc:
-            return 'Natural Gas'
-        elif 'Propane' in fuel_desc:
-            return 'Propane'
-        elif 'Oil' in fuel_desc:
-            return 'Fuel Oil'
-        else:
-            return 'Other'  # For any unexpected types, categorize as 'Other'
+    # Check if fuel_desc is NaN or not a string; return None if so
+    if pd.isna(fuel_desc) or not isinstance(fuel_desc, str):
+        return None
+    
+    # Convert the string to uppercase for case-insensitive matching
+    fuel_desc_upper = fuel_desc.upper()
+    
+    # Match substrings for known fuel types
+    if 'ELECTRIC' in fuel_desc_upper:
+        return 'Electricity'
+    elif 'GAS' in fuel_desc_upper:
+        return 'Natural Gas'
+    elif 'PROPANE' in fuel_desc_upper:
+        return 'Propane'
+    elif 'OIL' in fuel_desc_upper:
+        return 'Fuel Oil'
     else:
-        return 'Other'  # Non-string, non-NaN values are categorized as 'Other'
-
+        # If no match is found, return None
+        return None
 
 def preprocess_fuel_data(df, column_name):
     """
@@ -157,7 +168,8 @@ def apply_technology_filter(df, category, enable):
         if category == 'heating':
             tech_list = [
                 'Electricity ASHP', 'Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace',
-                'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace', 'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
+                'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace', 
+                'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
                 'Propane Fuel Boiler', 'Propane Fuel Furnace'
             ]
             df_filtered = df[df['heating_type'].isin(tech_list)]
@@ -167,7 +179,8 @@ def apply_technology_filter(df, category, enable):
         elif category == 'waterHeating':
             tech_list = [
                 'Electric Heat Pump, 80 gal', 'Electric Premium', 'Electric Standard',
-                'Fuel Oil Premium', 'Fuel Oil Standard', 'Natural Gas Premium', 'Natural Gas Standard',
+                'Fuel Oil Premium', 'Fuel Oil Standard', 
+                'Natural Gas Premium', 'Natural Gas Standard',
                 'Propane Premium', 'Propane Standard'
             ]
             df_filtered = df[df['waterHeating_type'].isin(tech_list)]
