@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 from scipy.stats import norm
@@ -10,7 +11,7 @@ print(f"Project root directory: {PROJECT_ROOT}")
 FUNCTIONS: CALCULATE COST OF ENCLOSURE UPGRADES
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 """
-# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
+# UPDATED AUGUST 22, 2024 @ 7:00 PM
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
@@ -108,8 +109,8 @@ def get_enclosure_parameters(df, retrofit_col):
     
     return {'conditions': conditions, 'tech_eff_pairs': tech_eff_pairs}
 
-# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
-def calculate_enclosure_retrofit_upgradeCosts(df, cost_dict, retrofit_col, params_col):
+# UPDATED AUGUST 22, 2024 @ 7:00 PM
+def calculate_enclosure_retrofit_upgradeCosts(df, cost_dict, retrofit_col, params_col, rsMeans_national_avg):
     """
     Calculate the enclosure retrofit upgrade costs based on given parameters and conditions.
 
@@ -119,6 +120,7 @@ def calculate_enclosure_retrofit_upgradeCosts(df, cost_dict, retrofit_col, param
     retrofit_col (str): Column name for the retrofit cost.
         - NaN value indicates that the retrofit was not performed.
     params_col (str): Column name for the parameter to use in the cost calculation.
+    rsMeans_national_avg (float): National average value for cost adjustment.
 
     Returns:
     pd.DataFrame: Updated DataFrame with calculated retrofit costs.
@@ -182,7 +184,8 @@ def calculate_enclosure_retrofit_upgradeCosts(df, cost_dict, retrofit_col, param
 
     # Calculate the retrofit cost for each row
     retrofit_cost = (
-        sampled_costs_dict['normalized_cost'] * df_valid[params_col])
+        sampled_costs_dict['normalized_cost'] * df_valid[params_col]
+    ) * (df_valid['rsMeans_CCI_avg'] / rsMeans_national_avg)
 
     # Add the calculated costs to a new DataFrame, rounded to 2 decimal places
     df_new_columns = pd.DataFrame({retrofit_col: np.round(retrofit_cost, 2)}, index=df_valid.index)

@@ -377,6 +377,9 @@ PRIVATE PERSPECTIVE COSTS AND BENEFITS
 """)
 
 # %%
+# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
+from cmu_tare_model.utils.inflation_adjustment import *
+
 # Collect Capital Cost Data for different End-uses
 filename = "tare_retrofit_costs_cpi.xlsx"
 relative_path = os.path.join("cmu_tare_model", "data", "retrofit_costs", filename)
@@ -392,15 +395,6 @@ df_clothesDrying_retrofit_costs = pd.read_excel(io=file_path, sheet_name='clothe
 df_cooking_retrofit_costs = pd.read_excel(io=file_path, sheet_name='cooking_costs')
 df_enclosure_retrofit_costs = pd.read_excel(io=file_path, sheet_name='enclosure_upgrade_costs')
 
-# %%
-from cmu_tare_model.utils.rsMeans_adjustment import *
-from cmu_tare_model.utils.inflation_adjustment import *
-
-# Use CCI to adjust for cost differences when compared to the national average
-# Call the function and map the values for CCI adjustment
-df_euss_am_mp8_home['rsMeans_CCI_avg'] = df_euss_am_mp8_home['city'].apply(map_average_cost)
-df_euss_am_mp8_home
-
 # %% [markdown]
 # ### Space Heating and No Enclosure Upgrade
 
@@ -415,7 +409,7 @@ Capital Costs: Space Heating
 
 Obtaining Capital Cost Data from Retrofit Cost Spreadsheet ...
 """)
-
+# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
 from cmu_tare_model.private_impact.calculate_equipment_installation_costs import *
 from cmu_tare_model.private_impact.calculate_equipment_replacement_costs import *
 
@@ -439,28 +433,25 @@ dict_heating_equipment_cost = df_heating_retrofit_costs.set_index(['technology',
 print("Obtaining system specs ...")
 df_euss_am_mp8_home = obtain_heating_system_specs(df=df_euss_am_mp8_home)
 
-# calculate_installation_cost(df, cost_dict, rsMeans_national_avg, menu_mp, end_use)
+# calculate_installation_cost(df, cost_dict, menu_mp, end_use)
 print("Calculating Cost of Retrofit Upgrade: Heat Pump for Space Heating (No Enclosure Upgrade) ...")
 df_euss_am_mp8_home = calculate_installation_cost(df=df_euss_am_mp8_home,
                                                   cost_dict=dict_heating_equipment_cost,
-                                                  rsMeans_national_avg=rsMeans_national_avg,
                                                   menu_mp=menu_mp,
                                                   end_use='heating')
 
-# calculate_replacement_cost(df, cost_dict, rsMeans_national_avg, menu_mp, end_use)
+# calculate_replacement_cost(df, cost_dict, menu_mp, end_use)
 print("Calculating Cost of Replacing Existing Equipment with Similar Model/Efficiency ...")
 df_euss_am_mp8_home = calculate_replacement_cost(df=df_euss_am_mp8_home,
                                                  cost_dict=dict_heating_equipment_cost,
-                                                 rsMeans_national_avg=rsMeans_national_avg,
                                                  menu_mp=menu_mp,
                                                  end_use='heating')
 
 # Call the function and calculate installation premium based on existing housing characteristics
-# calculate_heating_installation_premium(df, menu_mp, rsMeans_national_avg, cpi_ratio_2023_2013)
+# calculate_heating_installation_premium(df, menu_mp, cpi_ratio_2023_2013)
 print("Calculating Space Heating Specific Premiums (Ex: Removing Hydronic Boiler) ...")
 df_euss_am_mp8_home = calculate_heating_installation_premium(df=df_euss_am_mp8_home,
                                                              menu_mp=menu_mp,
-                                                             rsMeans_national_avg=rsMeans_national_avg,
                                                              cpi_ratio_2023_2013=cpi_ratio_2023_2013)
 
 # Display the df
@@ -491,19 +482,17 @@ for column in cost_columns:
 dict_waterHeating_equipment_cost = df_waterHeating_retrofit_costs.set_index(['technology', 'efficiency']).to_dict(orient='index')
 # dict_waterHeating_equipment_cost
 
-# calculate_installation_cost(df, cost_dict, rsMeans_national_avg, menu_mp, end_use)
+# calculate_installation_cost(df, cost_dict, menu_mp, end_use)
 print("Calculating Cost of Retrofit Upgrade: Electric Heat Pump Water Heater ...")
 df_euss_am_mp8_home = calculate_installation_cost(df=df_euss_am_mp8_home,
                                                   cost_dict=dict_waterHeating_equipment_cost,
-                                                  rsMeans_national_avg=rsMeans_national_avg,
                                                   menu_mp=menu_mp,
                                                   end_use='waterHeating')
 
-# calculate_replacement_cost(df, cost_dict, rsMeans_national_avg, menu_mp, end_use)
+# calculate_replacement_cost(df, cost_dict, menu_mp, end_use)
 print("Calculating Cost of Replacing Existing Equipment with Similar Model/Efficiency ...")
 df_euss_am_mp8_home = calculate_replacement_cost(df=df_euss_am_mp8_home,
                                                  cost_dict=dict_waterHeating_equipment_cost,
-                                                 rsMeans_national_avg=rsMeans_national_avg,
                                                  menu_mp=menu_mp,
                                                  end_use='waterHeating')
 
@@ -535,20 +524,18 @@ for column in cost_columns:
 dict_clothesDrying_equipment_cost = df_clothesDrying_retrofit_costs.set_index(['technology', 'efficiency']).to_dict(orient='index')
 # dict_clothesDrying_equipment_cost
 
-# calculate_installation_cost(df, cost_dict, rsMeans_national_avg, menu_mp, end_use)
+# calculate_installation_cost(df, cost_dict, menu_mp, end_use)
 print("Calculating Cost of Retrofit Upgrade: Ventless Heat Pump Clothes Dryer ...")
 df_euss_am_mp8_home = calculate_installation_cost(df=df_euss_am_mp8_home,
                                                   cost_dict=dict_clothesDrying_equipment_cost,
-                                                  rsMeans_national_avg=rsMeans_national_avg,
                                                   menu_mp=menu_mp,
                                                   end_use='clothesDrying')
 
 
-# calculate_replacement_cost(df, cost_dict, rsMeans_national_avg, menu_mp, end_use)
+# calculate_replacement_cost(df, cost_dict, menu_mp, end_use)
 print("Calculating Cost of Replacing Existing Equipment with Similar Model/Efficiency ...")
 df_euss_am_mp8_home = calculate_replacement_cost(df=df_euss_am_mp8_home,
                                                  cost_dict=dict_clothesDrying_equipment_cost,
-                                                 rsMeans_national_avg=rsMeans_national_avg,
                                                  menu_mp=menu_mp,
                                                  end_use='clothesDrying')
 
@@ -580,19 +567,17 @@ for column in cost_columns:
 dict_cooking_equipment_cost = df_cooking_retrofit_costs.set_index(['technology', 'efficiency']).to_dict(orient='index')
 # dict_cooking_equipment_cost
 
-# calculate_installation_cost(df, cost_dict, rsMeans_national_avg, menu_mp, end_use)
+# calculate_installation_cost(df, cost_dict, menu_mp, end_use)
 print("Calculating Cost of Retrofit Upgrade: Electric Resistance Range ...")
 df_euss_am_mp8_home = calculate_installation_cost(df=df_euss_am_mp8_home,
                                                   cost_dict=dict_cooking_equipment_cost,
-                                                  rsMeans_national_avg=rsMeans_national_avg,
                                                   menu_mp=menu_mp,
                                                   end_use='cooking')
 
-# calculate_replacement_cost(df, cost_dict, rsMeans_national_avg, menu_mp, end_use)
+# calculate_replacement_cost(df, cost_dict, menu_mp, end_use)
 print("Calculating Cost of Replacing Existing Equipment with Similar Model/Efficiency ...")
 df_euss_am_mp8_home = calculate_replacement_cost(df=df_euss_am_mp8_home,
                                                  cost_dict=dict_cooking_equipment_cost,
-                                                 rsMeans_national_avg=rsMeans_national_avg,
                                                  menu_mp=menu_mp,
                                                  end_use='cooking')
 

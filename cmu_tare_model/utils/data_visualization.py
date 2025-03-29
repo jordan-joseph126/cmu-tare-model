@@ -250,7 +250,7 @@ def subplot_grid_co2_abatement(dataframes, subplot_positions, epa_scc_values, x_
 
     plt.show()
 
-def plot_co2_abatement(df, x_col, y_col, hue, EPA_SCC_USD2023_PER_TON, ax=None):
+def plot_co2_abatement(df, x_col, y_col, hue, EPA_SCC_USD2023_PER_MT, ax=None):
     """
     Plots a boxplot of CO2 abatement cost effectiveness.
 
@@ -259,7 +259,7 @@ def plot_co2_abatement(df, x_col, y_col, hue, EPA_SCC_USD2023_PER_TON, ax=None):
     - x_col: Column name for the x-axis.
     - y_col: Column name for the y-axis.
     - hue: Column name for the hue (categorical variable for color).
-    - EPA_SCC_USD2023_PER_TON: Value for the red dashed line indicating SCC.
+    - EPA_SCC_USD2023_PER_MT: Value for the red dashed line indicating SCC.
     - ax: Axis object to plot on. If None, creates a new plot.
     
     Returns:
@@ -296,8 +296,8 @@ def plot_co2_abatement(df, x_col, y_col, hue, EPA_SCC_USD2023_PER_TON, ax=None):
         ax=ax
     )
 
-    # Add a red dashed line at the value of EPA_SCC_USD2023_PER_TON
-    ax.axhline(y=EPA_SCC_USD2023_PER_TON, color='red', linestyle='--', linewidth=2, label=f'SCC (USD2023): ${int(round((EPA_SCC_USD2023_PER_TON), 0))}/mtCO2e')
+    # Add a red dashed line at the value of EPA_SCC_USD2023_PER_MT
+    ax.axhline(y=EPA_SCC_USD2023_PER_MT, color='red', linestyle='--', linewidth=2, label=f'SCC (USD2023): ${int(round((EPA_SCC_USD2023_PER_MT), 0))}/mtCO2e')
 
     # Remove the individual legend for each subplot
     ax.legend_.remove()

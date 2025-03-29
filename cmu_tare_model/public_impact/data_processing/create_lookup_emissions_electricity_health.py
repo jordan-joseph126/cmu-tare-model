@@ -17,27 +17,38 @@ HEALTH RELATED EMISSIONS:
 - The regional emissions factor (eGRID subregion/Cambium GEA Region) can then be multiplied by the EASIUR marginal social costs (Latitude/Longitude specific)
 """)
 
-# LAST UPDATED NOVEMBER 24 @ 5 PM
-# HEALTH RELATED EMISSIONS VALIDATION
-def process_Schmitt_emissions_data(df_grid_mix=None, df_grid_emis_factors=None):
+# LAST UPDATED MARCH 26, 2025 @ 6:45 PM
+def process_Schmitt_emissions_data(
+    df_grid_mix: pd.DataFrame = None, 
+    df_grid_emis_factors: pd.DataFrame = None
+) -> pd.DataFrame:
     """
-    Processes and merges grid mix data with emissions factors, then calculates
-    the total emissions contribution by region and pollutant.
+    Merges grid mix data with emissions factors to compute total emissions contribution by region and pollutant.
+
+    This function multiplies the fraction of each fuel source in a region's grid by the 
+    emission rate of that fuel source, then sums these contributions across pollutants.
 
     Args:
-        df_grid_mix (pandas.DataFrame, optional): DataFrame containing grid mix
-            information with columns such as 'year', 'cambium_gea_region',
-            'fuel_source', and 'fraction_generation'. Defaults to an empty
-            DataFrame if None is provided.
-        df_grid_emis_factors (pandas.DataFrame, optional): DataFrame containing
-            emissions factor information with columns such as
-            'cambium_gea_region', 'fuel_source', 'pollutant', and 'emis_rate'.
+        df_grid_mix (pd.DataFrame, optional): 
+            DataFrame containing grid mix information with columns such as:
+            - 'year'
+            - 'cambium_gea_region'
+            - 'fuel_source'
+            - 'fraction_generation'
+            Defaults to an empty DataFrame if None is provided.
+
+        df_grid_emis_factors (pd.DataFrame, optional): 
+            DataFrame containing emissions factor information with columns such as:
+            - 'cambium_gea_region'
+            - 'fuel_source'
+            - 'pollutant'
+            - 'emis_rate'
             Defaults to an empty DataFrame if None is provided.
 
     Returns:
-        pandas.DataFrame: A pivoted DataFrame indexed by 'year' and
-        'cambium_gea_region', with each pollutant's total emissions contribution
-        in separate columns (e.g., 'delta_egrid_nh3', 'delta_egrid_nox', etc.).
+        pd.DataFrame: 
+            A pivoted DataFrame indexed by 'year' and 'cambium_gea_region', with each pollutant's
+            total emissions contribution in separate columns (e.g., 'delta_egrid_nh3', 'delta_egrid_nox').
 
     Raises:
         KeyError: If expected columns are missing from either DataFrame.
@@ -55,13 +66,13 @@ def process_Schmitt_emissions_data(df_grid_mix=None, df_grid_emis_factors=None):
             'emis_rate': []
         })
 
-    # Identify unique fuel sources for verification
+    # Identify unique fuel sources in each dataset
     fuel_sources_mix = set(df_grid_mix['fuel_source'].unique())
     fuel_sources_emis = set(df_grid_emis_factors['fuel_source'].unique())
     print("Fuel sources in df_grid_mix:", fuel_sources_mix)
     print("Fuel sources in df_grid_emis_factors:", fuel_sources_emis)
 
-    # Merge the dataframes on region and fuel source
+    # Merge on region and fuel source to align generation fractions with emission rates
     df_combined = pd.merge(
         df_grid_mix,
         df_grid_emis_factors,
@@ -69,22 +80,22 @@ def process_Schmitt_emissions_data(df_grid_mix=None, df_grid_emis_factors=None):
         how='inner'
     )
 
-    # Calculate emissions contribution (fraction_generation * emis_rate)
+    # Multiply fraction_generation by emis_rate for each row
     df_combined['emis_contribution'] = df_combined['fraction_generation'] * df_combined['emis_rate']
 
-    # Group by year, region, and pollutant to sum total contributions
+    # Sum the emissions contribution by year, region, and pollutant
     df_emis_factors = df_combined.groupby(
         ['year', 'cambium_gea_region', 'pollutant']
     )['emis_contribution'].sum().reset_index()
 
-    # Pivot so that each pollutant's emissions become separate columns
+    # Pivot the data so each pollutant becomes its own column
     df_emis_factors_pivot = df_emis_factors.pivot_table(
         index=['year', 'cambium_gea_region'],
         columns='pollutant',
         values='emis_contribution'
     ).reset_index()
 
-    # Rename columns for clarity and consistency
+    # Rename columns to clearly indicate they are deltas from eGRID
     df_emis_factors_pivot.rename(columns={
         'NH3': 'delta_egrid_nh3',
         'NOx': 'delta_egrid_nox',
@@ -101,7 +112,6 @@ def process_Schmitt_emissions_data(df_grid_mix=None, df_grid_emis_factors=None):
 # For example: Region ___ uses ___% Coal, ___% NG, ___% Renewables
 # ======================================================================================================================
 
-# Construct the absolute path to the .py file
 filename = "grid_mix_reg_full_delta.csv"
 relative_path = os.path.join("cmu_tare_model", "data", "projections", "schmitt_ev_study", filename)
 file_path = os.path.join(PROJECT_ROOT, relative_path)
@@ -126,12 +136,6 @@ DATAFRAME: df_grid_mix
 
 {df_grid_mix}
 """)
-
-
-# ======================================================================================================================
-# Load the data for grid mix fuel sources and emissions factors
-# For example: Using Fuel Source X in Region Y results in ___ mt/kWh of Pollutant Z
-# ======================================================================================================================
 
 filename = "ef_pollutants_egrid.csv"
 relative_path = os.path.join("cmu_tare_model", "data", "projections", "schmitt_ev_study", filename)
@@ -180,17 +184,17 @@ mapping = {
     'SRVC': 'SRVCc',    # SERC Reliability Corporation Virginia/Carolina
 }
 
-# Apply the mapping to transform eGRID_subregion to Cambium GEA region
+# Apply the mapping from eGRID to GEA regions
 df_grid_emis_factors['cambium_gea_region'] = df_grid_emis_factors['cambium_gea_region'].map(mapping)
 
-# Drop rows where 'cambium_gea_region' is None (regions not included in the mapping)
+# Drop rows where 'cambium_gea_region' is None (not included in mapping)
 df_grid_emis_factors = df_grid_emis_factors.dropna(subset=['cambium_gea_region']).reset_index(drop=True)
 
 # Conversion constants
 lb_to_mt = 0.00045359237      # pounds to metric tons
 perMWh_to_perkWh = 1 / 1000   # MWh to kWh
 
-# Convert 'emis_rate' from lb/MWh to mt/kWh when needed
+# Convert 'emis_rate' from lb/MWh to mt/kWh
 df_grid_emis_factors.loc[df_grid_emis_factors['unit'] == 'lb/MWh', 'emis_rate'] *= (lb_to_mt * perMWh_to_perkWh)
 df_grid_emis_factors.loc[df_grid_emis_factors['unit'] == 'lb/MWh', 'unit'] = 'mt/kWh'
 
@@ -198,7 +202,7 @@ df_grid_emis_factors.loc[df_grid_emis_factors['unit'] == 'lb/MWh', 'unit'] = 'mt
 df_emis_factors_epa_egrid = process_Schmitt_emissions_data(df_grid_mix, df_grid_emis_factors)
 
 # Create a lookup dictionary indexed by (year, region) for quick reference
-lookup_electricity_emissions_egrid = df_emis_factors_epa_egrid.set_index(
+lookup_emissions_electricity_health = df_emis_factors_epa_egrid.set_index(
     ['year', 'cambium_gea_region']
 ).to_dict('index')
 
@@ -209,20 +213,14 @@ Load the data for grid mix fuel sources and emissions factors
 For example: Using Fuel Source X in Region Y results in ___ mt/kWh of Pollutant Z
 ======================================================================================================================
 DATAFRAME: df_grid_emis_factors
-- Map eGRID subregions to Cambium GEA regions (some are excluded)
-- Convert 'emis_rate' from lb/MWh to mt/kWh when needed
 
 {df_grid_emis_factors}
 
 DATAFRAME: df_emis_factors_epa_egrid
-- Processed data using the process_Schmitt_emissions_data function
-- Calculates emissions factors by region and pollutant
 
 {df_emis_factors_epa_egrid}
 
-LOOKUP DICTIONARY: lookup_electricity_emissions_egrid
-- A lookup dictionary is created from df_emis_factors_epa_egrid
-- Indexed by (year, region)
+LOOKUP DICTIONARY: lookup_emissions_electricity_health
 
-{lookup_electricity_emissions_egrid}
+{lookup_emissions_electricity_health}
 """)

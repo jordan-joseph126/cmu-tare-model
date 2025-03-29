@@ -21,11 +21,11 @@ Below are some potential edge cases to consider and additional information that 
 1. **Empty or Minimal DataFrame**  
    - If the DataFrame is empty or has only one row, the nested dictionary should be handled gracefully.
 2. **Missing Required Columns**  
-   - If columns such as `scenario`, `gea_region`, `year`, `lrmer_co2e_ton_per_kWh`, or `srmer_co2e_ton_per_kWh` are missing, a `KeyError` is possible.
+   - If columns such as `scenario`, `gea_region`, `year`, `lrmer_co2e_mt_per_kWh`, or `srmer_co2e_mt_per_kWh` are missing, a `KeyError` is possible.
 3. **Duplicate Rows**  
    - Multiple entries with the same `(scenario, gea_region, year)` combination might lead to the last one overwriting the previous values or unwanted collisions in the lookup dictionary.
 4. **Non-Numeric or Invalid Data**  
-   - If the emission factors in `lrmer_co2e_ton_per_kWh` or `srmer_co2e_ton_per_kWh` contain non-numeric values or negative numbers, it might represent invalid states that should be tested.
+   - If the emission factors in `lrmer_co2e_mt_per_kWh` or `srmer_co2e_mt_per_kWh` contain non-numeric values or negative numbers, it might represent invalid states that should be tested.
 
 ## Additional Information to Generate Pytest Tests
 

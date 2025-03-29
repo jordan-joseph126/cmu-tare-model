@@ -9,18 +9,13 @@ LIFETIME PRIVATE IMPACT: NPV OF CAPITAL COST INVESTMENT AND LIFETIME FUEL COSTS
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 """
 
-# LAST UPDATE AUGUST 21, 2024 @ 11:40 PM
-
-# POTENTIALLY UPDATE CODE IN THE FUTURE TO ACCOUNT FOR CHANGES IN CAPITAL COSTS BASED ON SCENARIOS (BESIDES IRA REBATES)
-# Note: CURRENT MODELING ASSUMES EQUIPMENT PRICES ARE THE SAME UNDER IRA REF AND IRA HIGH
-# THIS MAY BE UPDATED IN THE FUTURE, SO WE STILL USE policy_scenario PREFIXES FOR TOTAL AND NET CAPITAL COSTS
-# COSTS ARE DIFFERENT FOR PRE-IRA BECAUSE NO REBATES ARE APPLIED
+# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
 def calculate_private_NPV(df, df_fuelCosts, interest_rate, input_mp, menu_mp, policy_scenario):
     """
     Calculate the private net present value (NPV) for various equipment categories,
-    considering different cost assumptions and potential IRA rebates. The function adjusts
-    equipment costs for inflation and regional cost differences, and calculates NPV based
-    on cost savings between baseline and retrofit scenarios.
+    considering different cost assumptions and potential IRA rebates. 
+    The function adjusts equipment costs for inflation and calculates NPV based on 
+    cost savings between baseline and retrofit scenarios.
 
     Parameters:
         df (DataFrame): Input DataFrame with installation costs, fuel savings, and potential rebates.

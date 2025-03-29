@@ -279,15 +279,13 @@ DATAFRAME: Annual CPI-U for 2005-2023 used for cpi_ratio constants and inflation
 
 # %%
 # Current VSL is $11.3 M USD2021
-# INFLATE TO USD2022, PREVIOUSLY USD2021
-current_VSL_USD2022 = 11.3 * cpi_ratio_2023_2021
+current_VSL_USD2023 = 11.3 * cpi_ratio_2023_2021
 
 # Easiur uses a VSL of $8.8 M USD2010
-# INFLATE TO USD2022, PREVIOUSLY USD2021
-easiur_VSL_USD2022 = 8.8 * (cpi_ratio_2023_2010)
+easiur_VSL_USD2023 = 8.8 * (cpi_ratio_2023_2010)
 
 # Calculate VSL adjustment factor
-vsl_adjustment_factor = current_VSL_USD2022 / easiur_VSL_USD2022
+vsl_adjustment_factor = current_VSL_USD2023 / easiur_VSL_USD2023
 
 print(f"""
 --------------------------------------------------------------------------------------------------------------------------------------
@@ -297,10 +295,10 @@ For Health-Related Emissions Adjust for different Value of a Statistical Life (V
     - INFLATE TO $USD-2023
 --------------------------------------------------------------------------------------------------------------------------------------
 Current VSL: 
-{current_VSL_USD2022} USD-2023
+{current_VSL_USD2023} USD-2023
       
 EASIUR VSL:
-{easiur_VSL_USD2022} USD-2023
+{easiur_VSL_USD2023} USD-2023
 
 VSL Adjustment Factor:
 {vsl_adjustment_factor}
@@ -422,7 +420,7 @@ LOOKUP DICTIONARY: Health Damages from Fossil Fuel Emissions
 # ### Includes pre-combustion (fugitive) and combustion
 
 # %%
-from cmu_tare_model.public_impact.create_lookup_climate_damages_electricity import *
+from cmu_tare_model.public_impact.create_lookup_emissions_electricity_climate import *
 """
 -------------------------------------------------------------------------------------------------------
 CLIMATE DAMAGES FROM CAMBIUM
@@ -450,7 +448,7 @@ DATAFRAME: LRMER and SRMER for ELECTRICITY CO2e [mtCO2e/kWh]
 
 LOOKUP DICTIONARY: LRMER and SRMER for ELECTRICITY CO2e [mtCO2e/kWh]
 
-{lookup_co2e_emis_electricity_preIRA}
+{lookup_emissions_electricity_climate_preIRA}
 
 =======================================================================================================
 IRA-REFERENCE:
@@ -462,7 +460,7 @@ DATAFRAME: LRMER and SRMER for ELECTRICITY CO2e [mtCO2e/kWh]
 
 LOOKUP DICTIONARY: LRMER and SRMER for ELECTRICITY CO2e [mtCO2e/kWh]
 
-{lookup_co2e_emis_electricity_IRA}
+{lookup_emissions_electricity_climate_IRA}
 """)
 
 # %% [markdown]
@@ -473,7 +471,7 @@ LOOKUP DICTIONARY: LRMER and SRMER for ELECTRICITY CO2e [mtCO2e/kWh]
 
 # %%
 # For co2e adjust SCC
-EPA_SCC_USD2023_PER_TON = 190 * cpi_ratio_2023_2020
+EPA_SCC_USD2023_PER_MT = 190 * cpi_ratio_2023_2020
 
 print(f"""
 Steps 3 and 4: Obtain BLS CPI-U Data and Inflate Current Social Cost of Carbon (SCC) to USD2023
@@ -481,7 +479,7 @@ Steps 3 and 4: Obtain BLS CPI-U Data and Inflate Current Social Cost of Carbon (
 EPA Median for 2% near term discount rate and most commonly mentioned value is 190 USD-2020 using the GIVE model.
 Inflate 190 $USD-2020 Social Cost of Carbon to $USD-2023
 
-SCC Value used in analysis is: ${round(EPA_SCC_USD2023_PER_TON, 2)} per mt CO2e
+SCC Value used in analysis is: ${round(EPA_SCC_USD2023_PER_MT, 2)} per mt CO2e
 """)
 
 # %% [markdown]

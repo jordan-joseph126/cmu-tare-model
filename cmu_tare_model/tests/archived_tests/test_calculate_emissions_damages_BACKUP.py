@@ -1,46 +1,42 @@
 # Filename: test_calculate_emissions_damages.py
 """
-Pytest suite for testing the refactored emissions and damages calculation functions.
-Covers:
+Pytest suite for testing the emissions and damages calculation functions.
+It covers:
 - Successful end-to-end calculations on typical data.
 - Edge cases (empty DataFrame, missing columns, negative/large values, invalid scenarios, etc.).
+- Exception handling and boundary conditions.
 """
 
 import pytest
 import pandas as pd
 import numpy as np
 
-# 1) Import from the refactored modules
+# Primary code under test
 from cmu_tare_model.public_impact.calculate_emissions_damages import (
     calculate_marginal_damages,
-    calculate_damages_grid_scenario
-)
-
-from cmu_tare_model.public_impact.precompute_hdd_factors import precompute_hdd_factors
-from cmu_tare_model.public_impact.calculate_fossil_fuel_emissions import calculate_fossil_fuel_emissions
-from cmu_tare_model.public_impact.calculate_electricity_emissions import (
+    define_scenario_settings,
+    precompute_hdd_factors,
+    calculate_damages_grid_scenario,
+    calculate_fossil_fuel_emissions,
     calculate_climate_emissions_and_damages,
-    calculate_health_damages
+    calculate_health_damages,
+    EPA_SCC_USD2023_PER_MT,
+    POLLUTANTS
 )
-from cmu_tare_model.public_impact.emissions_scenario_settings import define_scenario_settings
 
-# 2) Import constants and global lookups (to patch)
-from cmu_tare_model.constants import EPA_SCC_USD2023_PER_MT, POLLUTANTS
-
-# Suppose these are the real global dictionaries your code imports
-from cmu_tare_model.public_impact.create_lookup_emissions_fossil_fuel import lookup_emissions_fossil_fuel as dummy_fossil
+# Import the global lookups we want to patch
+from cmu_tare_model.public_impact.create_lookup_emissions_fossil_fuel import lookup_emis_fossil_fuel as dummy_fossil
 from cmu_tare_model.public_impact.create_lookup_emissions_electricity_climate import (
     lookup_emissions_electricity_climate_preIRA as dummy_co2e_preIRA,
     lookup_emissions_electricity_climate_IRA as dummy_co2e_IRA
 )
-from cmu_tare_model.public_impact.lookup_emissions_electricity_health import (
+from cmu_tare_model.public_impact.create_lookup_health_damages_electricity import (
     lookup_health_damages_electricity_preIRA as dummy_health_preIRA,
     lookup_health_damages_electricity_iraRef as dummy_health_iraRef
 )
 from cmu_tare_model.energy_consumption_and_metadata.project_future_energy_consumption import (
     lookup_hdd_factor as dummy_hdd
 )
-
 
 @pytest.fixture
 def mock_lookup_emis_fossil_fuel():
@@ -136,6 +132,7 @@ def mock_lookup_hdd_factor():
     """
     Returns a minimal dictionary for HDD adjustments by region and year.
     """
+    # "National" acts as a fallback
     return {
         'National': {
             2024: 1.0,
@@ -146,7 +143,6 @@ def mock_lookup_hdd_factor():
             2025: 1.1
         }
     }
-
 
 @pytest.fixture
 def patch_global_lookups(
@@ -162,34 +158,40 @@ def patch_global_lookups(
     with our mock data. This ensures each test that depends on these lookups
     gets consistent data without manually updating them.
     """
+    # Save originals so we can restore after test completes
     old_fossil = dummy_fossil.copy()
     old_co2e_preIRA = dummy_co2e_preIRA.copy()
     old_co2e_IRA = dummy_co2e_IRA.copy()
     old_health_preIRA = dummy_health_preIRA.copy()
     old_health_iraRef = dummy_health_iraRef.copy()
     old_hdd = dummy_hdd.copy()
-    
-    # Overwrite with mock data
+
+    # Update with mock data
     dummy_fossil.update(mock_lookup_emis_fossil_fuel)
     dummy_co2e_preIRA.update(mock_lookup_co2e_emis_electricity_preIRA)
     dummy_co2e_IRA.update(mock_lookup_co2e_emis_electricity_IRA)
     dummy_health_preIRA.update(mock_lookup_health_damages_electricity_preIRA)
     dummy_health_iraRef.update(mock_lookup_health_damages_electricity_iraRef)
     dummy_hdd.update(mock_lookup_hdd_factor)
-    
-    yield  # Let the test(s) run
-    
-    # Restore originals
+
+    yield  # Let the test run
+
+    # Restore original data
     dummy_fossil.clear()
     dummy_fossil.update(old_fossil)
+
     dummy_co2e_preIRA.clear()
     dummy_co2e_preIRA.update(old_co2e_preIRA)
+
     dummy_co2e_IRA.clear()
     dummy_co2e_IRA.update(old_co2e_IRA)
+
     dummy_health_preIRA.clear()
     dummy_health_preIRA.update(old_health_preIRA)
+
     dummy_health_iraRef.clear()
     dummy_health_iraRef.update(old_health_iraRef)
+
     dummy_hdd.clear()
     dummy_hdd.update(old_hdd)
 
@@ -198,7 +200,7 @@ def patch_global_lookups(
 def sample_df():
     """
     Returns a typical DataFrame with minimal columns needed
-    for calculations, representing two rows (households).
+    for calculations, representing two rows/households.
     """
     data = {
         'gea_region': ['R1', 'R1'],
@@ -232,14 +234,17 @@ def test_define_scenario_settings_valid():
     Test that define_scenario_settings returns expected tuple
     for baseline, pre-IRA, and IRA scenarios.
     """
-    prefix, scenario, _, _, _ = define_scenario_settings(0, 'No IRA')
-    assert prefix == "baseline_"
-    assert scenario == "MidCase"
+    # Baseline case
+    prefix, scenario, _, _, _ = define_scenario_settings(0, 'No Inflation Reduction Act')
+    assert prefix == "baseline_", "Expected baseline prefix when menu_mp=0"
+    assert scenario == "MidCase", "Expected 'MidCase' scenario for baseline"
 
-    prefix, scenario, _, _, _ = define_scenario_settings(1, 'No IRA')
+    # Pre-IRA case
+    prefix, scenario, _, _, _ = define_scenario_settings(1, 'No Inflation Reduction Act')
     assert prefix.startswith("preIRA_mp1_")
     assert scenario == "MidCase"
 
+    # IRA case
     prefix, scenario, _, _, _ = define_scenario_settings(2, 'AEO2023 Reference Case')
     assert prefix.startswith("iraRef_mp2_")
     assert scenario == "MidCase"
@@ -257,42 +262,46 @@ def test_define_scenario_settings_invalid():
 def test_precompute_hdd_factors_minimal(sample_df):
     """
     Test precompute_hdd_factors with a minimal sample df
-    to ensure columns are as expected.
+    to ensure we get correct columns and not break with normal usage.
     """
     result = precompute_hdd_factors(sample_df)
-    assert not result.empty
-    # Should have columns for 2024, 2025, etc. 
-    assert 2024 in result.columns
-    assert 2025 in result.columns
+    assert not result.empty, "Expected non-empty HDD factors"
+    # Should have columns 2024..(2024+maxLifetime). We'll just check partial.
+    assert 2024 in result.columns, "HDD Factor year 2024 column is missing"
+    assert 2025 in result.columns, "HDD Factor year 2025 column is missing"
 
 
 def test_fossil_fuel_emissions_basic(sample_df, mock_lookup_emis_fossil_fuel):
     """
-    Test calculate_fossil_fuel_emissions for baseline (menu_mp=0).
+    Test calculate_fossil_fuel_emissions with basic data to confirm
+    correctness of fossil fuel calculation for baseline scenario.
     """
+    # Baseline scenario => menu_mp=0
     adjusted_hdd_factor = pd.Series(1.0, index=sample_df.index)
     result = calculate_fossil_fuel_emissions(
         df=sample_df,
         category='heating',
         adjusted_hdd_factor=adjusted_hdd_factor,
-        lookup_emissions_fossil_fuel=mock_lookup_emis_fossil_fuel,
+        lookup_emis_fossil_fuel=mock_lookup_emis_fossil_fuel,
         menu_mp=0
     )
+    # Expect result to be a dict with keys 'so2','nox','pm25','co2e'
     assert set(result.keys()) == {'so2', 'nox', 'pm25', 'co2e'}
-    # Natural gas consumption: [100,200] -> so2 factor=0.0001
-    #  => row0 so2=0.01, row1 so2=0.02
+    # Spot check that at least the sums are as expected
+    # Natural gas: consumption = [100, 200], so2 factor=0.0001 => total so2 => [0.01, 0.02]
+    # Summation across rows is 0.03, let's just check the second row
     assert abs(result['so2'].iloc[1] - 0.02) < 1e-8
 
 
 def test_climate_emissions_and_damages_preIRA(sample_df, mock_lookup_co2e_emis_electricity_preIRA):
     """
     Verify that calculate_climate_emissions_and_damages
-    produces correct columns and values for a normal scenario (pre-IRA).
+    produces correct columns and values in a normal scenario (pre-IRA).
     """
     category = 'heating'
     year_label = 2024
-    adjusted_hdd_factor = pd.Series(1.2, index=sample_df.index)
-    td_losses_multiplier = 1.06
+    adjusted_hdd_factor = pd.Series(1.2, index=sample_df.index)  # example
+    td_losses_multiplier = 1.06  # example T&D
     total_fossil_emissions = {'co2e': pd.Series([10.0, 20.0], index=sample_df.index)}
 
     results, annual_climate_emissions, annual_climate_damages = calculate_climate_emissions_and_damages(
@@ -301,32 +310,38 @@ def test_climate_emissions_and_damages_preIRA(sample_df, mock_lookup_co2e_emis_e
         year_label=year_label,
         adjusted_hdd_factor=adjusted_hdd_factor,
         td_losses_multiplier=td_losses_multiplier,
-        lookup_emissions_electricity_climate=mock_lookup_co2e_emis_electricity_preIRA,
+        lookup_co2e_emis_electricity=mock_lookup_co2e_emis_electricity_preIRA,
         cambium_scenario='MidCase',
         EPA_SCC_USD2023_PER_MT=EPA_SCC_USD2023_PER_MT,
         total_fossil_emissions=total_fossil_emissions,
         scenario_prefix='preIRA_mp1_',
         menu_mp=1
     )
-    # We expect columns like 'preIRA_mp1_2024_heating_tons_co2e_lrmer', etc.
+    # Check dictionary keys for correct naming:
+    # e.g., 'preIRA_mp1_2024_heating_mt_co2e_lrmer'
     expected_cols = [
-        'preIRA_mp1_2024_heating_tons_co2e_lrmer',
-        'preIRA_mp1_2024_heating_tons_co2e_srmer',
+        'preIRA_mp1_2024_heating_mt_co2e_lrmer',
+        'preIRA_mp1_2024_heating_mt_co2e_srmer',
         'preIRA_mp1_2024_heating_damages_climate_lrmer',
         'preIRA_mp1_2024_heating_damages_climate_srmer'
     ]
     for col in expected_cols:
-        assert col in results
+        assert col in results, f"Missing expected column: {col}"
+    # Basic check on return shapes
+    assert len(annual_climate_emissions) == 2  # 'lrmer','srmer'
+    assert len(annual_climate_damages) == 2
 
 
 def test_health_damages_basic(sample_df, mock_lookup_health_damages_electricity_preIRA):
     """
-    Test calculate_health_damages to ensure pollutant damages and total are computed.
+    Test calculate_health_damages to ensure
+    pollutant damages and total are computed correctly.
     """
     category = 'heating'
     year_label = 2024
     adjusted_hdd_factor = pd.Series(1.0, index=sample_df.index)
     td_losses_multiplier = 1.06
+    # Suppose total fossil emissions of 5 for each pollutant
     total_fossil_emissions = {
         'so2': pd.Series([5.0, 5.0], index=sample_df.index),
         'nox': pd.Series([5.0, 5.0], index=sample_df.index),
@@ -339,21 +354,23 @@ def test_health_damages_basic(sample_df, mock_lookup_health_damages_electricity_
         year_label=year_label,
         adjusted_hdd_factor=adjusted_hdd_factor,
         td_losses_multiplier=td_losses_multiplier,
-        lookup_emissions_electricity_health=mock_lookup_health_damages_electricity_preIRA,
+        lookup_health_damages_electricity=mock_lookup_health_damages_electricity_preIRA,
         cambium_scenario='MidCase',
         scenario_prefix='baseline_',
+        POLLUTANTS=POLLUTANTS,
         total_fossil_emissions=total_fossil_emissions,
         menu_mp=0
     )
-    # Check columns
+    # Check some columns in results
     assert f'baseline_{year_label}_heating_damages_so2' in results
     assert f'baseline_{year_label}_heating_damages_health' in results
-    assert annual_health_damages.sum() > 0
 
+    # annual_health_damages should be > 0
+    assert annual_health_damages.sum() > 0
 
 def test_calculate_damages_grid_scenario_empty_df():
     """
-    Test that calculate_damages_grid_scenario fails with empty df.
+    Test that calculate_damages_grid_scenario fails gracefully when an empty df is provided.
     """
     empty_df = pd.DataFrame()
     df_baseline = pd.DataFrame()
@@ -366,20 +383,19 @@ def test_calculate_damages_grid_scenario_empty_df():
             df_detailed_damages=df_details,
             menu_mp=0,
             td_losses_multiplier=1.06,
-            lookup_emissions_electricity_climate={},
+            lookup_co2e_emis_electricity={},
             cambium_scenario='MidCase',
             scenario_prefix='baseline_',
             hdd_factors_df=pd.DataFrame(),
-            lookup_emissions_fossil_fuel={},
-            lookup_emissions_electricity_health={},
+            lookup_emis_fossil_fuel={},
+            lookup_health_damages_electricity={},
             EPA_SCC_USD2023_PER_MT=100.0,
             equipment_specs={'heating': 15}
         )
 
-
 def test_calculate_marginal_damages_invalid_scenario(sample_df):
     """
-    Test that calculate_marginal_damages raises ValueError
+    Test that calculate_marginal_damages raises a ValueError
     for an invalid policy_scenario.
     """
     with pytest.raises(ValueError):
@@ -394,61 +410,72 @@ def test_calculate_marginal_damages_invalid_scenario(sample_df):
 def test_calculate_marginal_damages_valid(sample_df, sample_baseline_damages):
     """
     End-to-end test of calculate_marginal_damages with valid data
-    for a pre-IRA scenario. 
+    for a pre-IRA scenario, ensuring that the detailed dataframe includes
+    the lifetime columns (e.g. for heating) as documented.
     """
     df_out, df_details = calculate_marginal_damages(
         df=sample_df.copy(),
         menu_mp=1,
-        policy_scenario='No IRA',
+        policy_scenario='No Inflation Reduction Act',
         df_baseline_damages=sample_baseline_damages.copy()
     )
-    # Check for a lifetime column in df_details
+    # Check that the detailed dataframe contains a lifetime column,
+    # for example, for heating emissions using LRMER.
     expected_col_substring = 'preIRA_mp1_heating_lifetime_mt_co2e_lrmer'
     matched_cols = [c for c in df_details.columns if expected_col_substring in c]
-    assert matched_cols, "Expected new lifetime columns with preIRA_mp1_ prefix in df_details"
-    assert not df_details.empty
+    assert len(matched_cols) > 0, (
+        "Expected new lifetime columns with 'preIRA_mp1_' prefix to be in the detailed dataframe (df_details)"
+    )
+    # Also verify that the detailed dataframe is not empty.
+    assert not df_details.empty, "Expected annual details to be computed"
 
 
 @pytest.mark.usefixtures("patch_global_lookups")
 def test_calculate_marginal_damages_missing_baseline_cols(sample_df):
     """
     Tests handling of missing baseline columns in df_baseline_damages,
-    ensuring no avoided columns are added.
+    ensuring that no avoided columns are computed in the joined output.
     """
+    # Construct a partial baseline missing most columns
     partial_baseline = pd.DataFrame({'baseline_heating_lifetime_damages_health': [10.0, 12.0]})
     df_out, df_details = calculate_marginal_damages(
         df=sample_df.copy(),
         menu_mp=1,
-        policy_scenario='No IRA',
+        policy_scenario='No Inflation Reduction Act',
         df_baseline_damages=partial_baseline
     )
+    assert not df_out.empty, "df_out should still be returned even with partial baseline info"
+    # Since the baseline is incomplete, no avoided columns should be added.
     avoided_cols = [c for c in df_out.columns if '_avoided_' in c]
-    assert not avoided_cols, "No avoided columns should be computed if baseline is incomplete"
+    assert len(avoided_cols) == 0, "Expected no avoided columns due to missing baseline columns"
 
 
 def test_negative_consumption(sample_df):
     """
     Tests negative consumption values, verifying the code can handle them
-    without crashing.
+    (although physically unrealistic) without crashing.
     """
     sample_df['base_naturalGas_heating_consumption'] = [-50.0, -10.0]
+    # We won't pass baseline or real lookups, just ensure no crash
     df_out, df_details = calculate_marginal_damages(
         df=sample_df,
         menu_mp=0,
-        policy_scenario='No IRA'
+        policy_scenario='No Inflation Reduction Act'
     )
-    assert not df_out.empty
-
+    assert not df_out.empty, "Should still produce output"
+    # Emissions might be negative (nonsensical), but the code shouldn't crash.
 
 def test_large_consumption(sample_df):
     """
-    Test very large consumption values to check function handles
+    Test very large consumption values to check the function handles
     large-scale data without overflow or performance issues.
     """
     sample_df['base_naturalGas_heating_consumption'] = [1e9, 2e9]
     df_out, df_details = calculate_marginal_damages(
         df=sample_df,
         menu_mp=0,
-        policy_scenario='No IRA'
+        policy_scenario='No Inflation Reduction Act'
     )
-    assert not df_out.empty
+    assert not df_out.empty, "Should handle large numeric values"
+    # Check if results are extremely large but computed
+    # e.g., no immediate overflow or crash

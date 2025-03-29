@@ -10,7 +10,7 @@ input_mp = 'baseline'
 
 # import from cmu-tare-model package
 from config import PROJECT_ROOT
-
+from cmu_tare_model.constants import EPA_SCC_USD2023_PER_MT
 import pandas as pd
 
 # Set columns in display
@@ -221,7 +221,7 @@ to calculate the emission factors for fossil fuels. The function returns a dataf
 
 The create_lookup_emissions_fossil_fuel.py file contains the following dataframes and lookup dictionaries:
     - df_marg_emis_factors: Marginal Emission Factors for Fossil Fuels
-    - lookup_emis_fossil_fuel: Lookup Dictionary for Fossil Fuel Emissions
+    - lookup_emissions_fossil_fuel: Lookup Dictionary for Fossil Fuel Emissions
 
 Fossil Fuels (Natural Gas, Fuel Oil, Propane):
 - NOx, SO2, CO2: 
@@ -233,7 +233,7 @@ Fossil Fuels (Natural Gas, Fuel Oil, Propane):
     - Source: https://www3.epa.gov/ttnchie1/conference/ei12/area/haneke.pdf
 """
 
-from cmu_tare_model.public_impact.create_lookup_emissions_fossil_fuel import *
+from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_fossil_fuel import *
 
 print(f"""
 --------------------------------------------------------------------------------------------------------------------------------------
@@ -245,7 +245,7 @@ DATAFRAME: Marginal Emission Factors for Fossil Fuels
 
 LOOKUP DICTIONARY: Fossil Fuel Emissions
 
-{lookup_emis_fossil_fuel}
+{lookup_emissions_fossil_fuel}
 """)
 
 # %% [markdown]
@@ -277,129 +277,17 @@ DATAFRAME: Annual CPI-U for 2005-2023 used for cpi_ratio constants and inflation
 # %% [markdown]
 # ### For Health-Related Emissions Adjust for different Value of a Statistical Life (VSL) values
 
-# %%
-# Current VSL is $11.3 M USD2021
-# INFLATE TO USD2022, PREVIOUSLY USD2021
-current_VSL_USD2023 = 11.3 * cpi_ratio_2023_2021
+# # %%
+# # Current VSL is $11.3 M USD2021
+# # INFLATE TO USD2022, PREVIOUSLY USD2021
+# current_VSL_USD2023 = 11.3 * cpi_ratio_2023_2021
 
-# Easiur uses a VSL of $8.8 M USD2010
-# INFLATE TO USD2022, PREVIOUSLY USD2021
-rcm_VSL_USD2023 = 8.8 * (cpi_ratio_2023_2010)
+# # Easiur uses a VSL of $8.8 M USD2010
+# # INFLATE TO USD2022, PREVIOUSLY USD2021
+# rcm_VSL_USD2023 = 8.8 * (cpi_ratio_2023_2010)
 
-# Calculate VSL adjustment factor
-vsl_adjustment_factor = current_VSL_USD2023 / rcm_VSL_USD2023
-
-print(f"""
---------------------------------------------------------------------------------------------------------------------------------------
-For Health-Related Emissions Adjust for different Value of a Statistical Life (VSL) values
-    - EASIUR uses a VSL of 8.8M USD-2010 
-    - New EPA VSL is 11.3M USD-2021
-    - INFLATE TO $USD-2023
---------------------------------------------------------------------------------------------------------------------------------------
-Current VSL: 
-{current_VSL_USD2023} USD-2023
-   
-EASIUR VSL:
-{rcm_VSL_USD2023} USD-2023
-
-VSL Adjustment Factor:
-{vsl_adjustment_factor}
-"""
-)
-
-# %% [markdown]
-# ### Quantify monitized HEALTH damages using EASIUR Marginal Social Cost Factors
-# #### THE STEPS BELOW SUMMARIZE WHAT WAS DONE TO OBTAIN ALL NATIONAL EASIUR VALUES INCLUDED ON GITHUB
-# - Obtain all of the dwelling unit latitude and longitude values from the metadata columns
-# - Make a new dataframe of just the longitude and latitude values 
-#     - Make sure that the order is (longitude, latitude)
-#     - Do not include the index or column name when exporting 
-# - Export the CSV
-# - **Upload csv to EASIUR Website:**
-#     - Website: https://barney.ce.cmu.edu/~jinhyok/easiur/online/
-#     - See inputs in respective sections
-# - Download the file and put it in the 'easiur_batchConversion_download' folder
-# - Copy and paste the name of the file EASIUR generated when prompted
-# - Copy and paste the name of the filepath for the 'easiur_batchConversion_download' folder when prompted
-# - Match up the longitude and latitudes for each dwelling unit with the selected damages
-
-# %%
-# Create a dataframe containing just the longitude and Latitude
-df_CACES_batchConversion = pd.DataFrame({
-    'fips':df_euss_am_baseline['in.county'],
-})
-
-# 1) Drop duplicate rows
-df_CACES_batchConversion.drop_duplicates(subset='fips', inplace=True)
-
-# 2) Convert GISJOIN code (e.g. 'G0100010') to 5-digit county FIPS (e.g. '01001')
-df_CACES_batchConversion['fips'] = df_CACES_batchConversion['fips'].apply(lambda x: x[1:6])
-
-# 3) Export the dataframe to a CSV file
-filename = 'rcm_marginal_social_cost_CACES.csv'
-relative_path = os.path.join("cmu_tare_model", "data", "margDamages_EASIUR", filename)
-file_path = os.path.join(PROJECT_ROOT, relative_path)
-df_CACES_batchConversion.to_csv(file_path, index=False, header=True)
-
-print(df_CACES_batchConversion)
-
-# %%
-
-
-# Updated GitHub code has EASIUR file with all unique latitude, longitude coordinates in the US
-filename = 'easiur_National2024-06-1421-22.csv'
-# filename = 'easiur_National_14June2024_2024IncPop2010Dollar.csv'
-relative_path = os.path.join("cmu_tare_model", "data", "margDamages_EASIUR", "easiur_batchConversion_download", filename)
-file_path = os.path.join(PROJECT_ROOT, relative_path)
-
-print(f"Retrieved data for filename: {filename}")
-print(f"Located at filepath: {file_path}")
-
-df_margSocialCosts = pd.read_csv(file_path)
-
-# Convert from kg/MWh to lb/kWh
-# Obtain value from the CSV file and convert to lbs pollutant per kWh 
-
-# Define df_marg_social_costs_EASIUR DataFrame first
-df_marg_social_costs_EASIUR = pd.DataFrame({
-    'Longitude': df_margSocialCosts['Longitude'],
-    'Latitude': df_margSocialCosts['Latitude'],
-})
-
-# Use df_marg_social_costs_EASIUR in the calculation of other columns
-# Also adjust the VSL
-# df_marg_social_costs_EASIUR['marg_social_costs_pm25'] = round((df_margSocialCosts['PM25 Annual Ground'] * (1/2204.6) * vsl_adjustment_factor), 2)
-# df_marg_social_costs_EASIUR['marg_social_costs_so2'] = round((df_margSocialCosts['SO2 Annual Ground'] * (1/2204.6) * vsl_adjustment_factor), 2)
-# df_marg_social_costs_EASIUR['marg_social_costs_nox'] = round((df_margSocialCosts['NOX Annual Ground'] * (1/2204.6) * vsl_adjustment_factor), 2)
-# df_marg_social_costs_EASIUR['unit'] = '[$USD2023/lb]'
-
-df_marg_social_costs_EASIUR['pm25_usd2023_per_mt'] = round((df_margSocialCosts['PM25 Annual Ground'] * vsl_adjustment_factor), 2)
-df_marg_social_costs_EASIUR['so2_usd2023_per_mt'] = round((df_margSocialCosts['SO2 Annual Ground'] * vsl_adjustment_factor), 2)
-df_marg_social_costs_EASIUR['nox_usd2023_per_mt'] = round((df_margSocialCosts['NOX Annual Ground'] * vsl_adjustment_factor), 2)
-df_marg_social_costs_EASIUR['unit'] = '[$USD2023/mt]'
-
-# Create a damages_fossil_fuel_lookup dictionary from df_marg_social_costs_EASIUR
-# First drop the 'unit' column
-lookup_health_damages_fossil_fuel = df_marg_social_costs_EASIUR.drop(columns=['unit']).groupby(['Longitude', 'Latitude']).first().to_dict()
-lookup_health_damages_fossil_fuel
-
-# Dispalay the EASIUR marginal social costs df
-print(f"""
---------------------------------------------------------------------------------------------------------------------------------------
-EASIUR Marginal Social Costs for HEALTH-RELATED EMISSIONS (PM2.5, SO2, and NOx)
-    - UPDATED  
-    - New EPA VSL is 11.3M USD-2021
-    - INFLATE TO $USD-2023
---------------------------------------------------------------------------------------------------------------------------------------
-DATAFRAME: EASIUR Marginal Social Costs for HEALTH-RELATED EMISSIONS
-      
-{df_marg_social_costs_EASIUR}
-
-LOOKUP DICTIONARY: Health Damages from Fossil Fuel Emissions
-
-{lookup_health_damages_fossil_fuel}
-"""
-)
+# # Calculate VSL adjustment factor
+# vsl_adjustment_factor = current_VSL_USD2023 / rcm_VSL_USD2023
 
 # %% [markdown]
 # ## Emissions from Electricity Generation
@@ -409,7 +297,7 @@ LOOKUP DICTIONARY: Health Damages from Fossil Fuel Emissions
 # ### Includes pre-combustion (fugitive) and combustion
 
 # %%
-from cmu_tare_model.public_impact.create_lookup_climate_damages_electricity import *
+from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_electricity_climate import *
 """
 -------------------------------------------------------------------------------------------------------
 CLIMATE DAMAGES FROM CAMBIUM
@@ -437,7 +325,7 @@ DATAFRAME: LRMER and SRMER for ELECTRICITY CO2e [mtCO2e/kWh]
 
 LOOKUP DICTIONARY: LRMER and SRMER for ELECTRICITY CO2e [mtCO2e/kWh]
 
-{lookup_co2e_emis_electricity_preIRA}
+{lookup_emissions_electricity_climate_preIRA}
 
 =======================================================================================================
 IRA-REFERENCE:
@@ -449,7 +337,7 @@ DATAFRAME: LRMER and SRMER for ELECTRICITY CO2e [mtCO2e/kWh]
 
 LOOKUP DICTIONARY: LRMER and SRMER for ELECTRICITY CO2e [mtCO2e/kWh]
 
-{lookup_co2e_emis_electricity_IRA}
+{lookup_emissions_electricity_climate_IRA}
 """)
 
 # %% [markdown]
@@ -460,7 +348,6 @@ LOOKUP DICTIONARY: LRMER and SRMER for ELECTRICITY CO2e [mtCO2e/kWh]
 
 # %%
 # For co2e adjust SCC
-EPA_SCC_USD2023_PER_TON = 190 * cpi_ratio_2023_2020
 
 print(f"""
 Steps 3 and 4: Obtain BLS CPI-U Data and Inflate Current Social Cost of Carbon (SCC) to USD2023
@@ -468,7 +355,7 @@ Steps 3 and 4: Obtain BLS CPI-U Data and Inflate Current Social Cost of Carbon (
 EPA Median for 2% near term discount rate and most commonly mentioned value is 190 USD-2020 using the GIVE model.
 Inflate 190 $USD-2020 Social Cost of Carbon to $USD-2023
 
-SCC Value used in analysis is: ${round(EPA_SCC_USD2023_PER_TON, 2)} per mt CO2e
+SCC Value used in analysis is: ${round(EPA_SCC_USD2023_PER_MT, 2)} per mt CO2e
 """)
 
 # %%
@@ -509,7 +396,8 @@ df_baseline_scenario_damages = df_euss_am_baseline_home.copy()
 df_euss_am_baseline_home, df_baseline_scenario_damages = calculate_marginal_damages(df=df_euss_am_baseline_home,
                                                                                     menu_mp=menu_mp,
                                                                                     policy_scenario='No Inflation Reduction Act',
-                                                                                    df_detailed_damages=df_baseline_scenario_damages
+                                                                                    df_detailed_damages=df_baseline_scenario_damages,
+                                                                                    
                                                                                     )
 df_euss_am_baseline_home
 

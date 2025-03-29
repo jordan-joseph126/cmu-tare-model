@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 from scipy.stats import norm
@@ -40,8 +41,8 @@ def obtain_heating_system_specs(df):
     
     return df
 
-def calculate_heating_installation_premium(df, menu_mp, cpi_ratio_2023_2013):
-    necessary_columns = ['hvac_cooling_type', 'heating_type']
+def calculate_heating_installation_premium(df, menu_mp, rsMeans_national_avg, cpi_ratio_2023_2013):
+    necessary_columns = ['hvac_cooling_type', 'heating_type', 'rsMeans_CCI_avg']
     if not all(column in df.columns for column in necessary_columns):
         raise ValueError("DataFrame does not contain all necessary columns.")
     
@@ -64,8 +65,8 @@ def calculate_heating_installation_premium(df, menu_mp, cpi_ratio_2023_2013):
         elif 'Boiler' in row['heating_type']:
             premium_cost = 1500 * cpi_ratio_2023_2013
         
-        # Apply CPI adjustment above
-        adjusted_cost = round(premium_cost, 2)
+        # Apply CPI adjustment above and regional cost index adjustment below
+        adjusted_cost = round(premium_cost * (row['rsMeans_CCI_avg'] / rsMeans_national_avg), 2)
         df.at[index, f'mp{menu_mp}_heating_installation_premium'] = adjusted_cost
         
     return df
@@ -76,7 +77,7 @@ FUNCTIONS: CALCULATE COST OF INSTALLING NEW EQUIPMENT (RETROFIT/UPGRADES)
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 """
 
-# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
+# UPDATED AUGUST 22, 2024 @ 9:30 PM (~ENSURE COLS UPDATE WHEN FUNCTION RE-RUN. DROP OLD OVERLAPPING COLS~)
 
 # Installation Cost Function and Helper Functions (Parametes, Formula)
 # Helper function to get parameters based on end use
@@ -137,14 +138,15 @@ def get_end_use_installation_parameters(df, end_use, menu_mp):
         raise ValueError(f"Invalid end_use specified: {end_use}")
     return parameters[end_use]
 
-# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
-def calculate_installation_cost_per_row(df_valid, sampled_costs_dict, menu_mp, end_use):
+# UPDATED AUGUST 22, 2024 @ 9:30 PM (~ENSURE COLS UPDATE WHEN FUNCTION RE-RUN. DROP OLD OVERLAPPING COLS~)
+def calculate_installation_cost_per_row(df_valid, sampled_costs_dict, rsMeans_national_avg, menu_mp, end_use):
     """
     Helper function to calculate the installation cost for each row based on the end use.
 
     Parameters:
     df_valid (pd.DataFrame): Filtered DataFrame containing valid rows.
     sampled_costs_dict (dict): Dictionary with sampled costs for each component.
+    rsMeans_national_avg (float): National average value for cost adjustment.
     menu_mp (int): Menu option identifier.
     end_use (str): Type of end-use to calculate installation cost for ('heating', 'waterHeating', 'clothesDrying', 'cooking').
 
@@ -155,27 +157,30 @@ def calculate_installation_cost_per_row(df_valid, sampled_costs_dict, menu_mp, e
         installation_cost = (
             sampled_costs_dict['unitCost'] +
             sampled_costs_dict['otherCost'] +
-            (df_valid['total_heating_load_kBtuh'] * sampled_costs_dict['cost_per_kBtuh']))
+            (df_valid['total_heating_load_kBtuh'] * sampled_costs_dict['cost_per_kBtuh'])
+        ) * (df_valid['rsMeans_CCI_avg'] / rsMeans_national_avg)
         cost_column_name = f'mp{menu_mp}_heating_installationCost'
     elif end_use == 'waterHeating':
         installation_cost = (
             sampled_costs_dict['unitCost'] +
-            (sampled_costs_dict['cost_per_gallon'] * df_valid['size_water_heater_gal']))
+            (sampled_costs_dict['cost_per_gallon'] * df_valid['size_water_heater_gal'])
+        ) * (df_valid['rsMeans_CCI_avg'] / rsMeans_national_avg)
         cost_column_name = f'mp{menu_mp}_waterHeating_installationCost'
     else:
-        installation_cost = sampled_costs_dict['unitCost']
+        installation_cost = sampled_costs_dict['unitCost'] * (df_valid['rsMeans_CCI_avg'] / rsMeans_national_avg)
         cost_column_name = f'mp{menu_mp}_{end_use}_installationCost'
     
     return installation_cost, cost_column_name
 
-# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
-def calculate_installation_cost(df, cost_dict, menu_mp, end_use):
+# UPDATED AUGUST 22, 2024 @ 9:30 PM (~ENSURE COLS UPDATE WHEN FUNCTION RE-RUN. DROP OLD OVERLAPPING COLS~)
+def calculate_installation_cost(df, cost_dict, rsMeans_national_avg, menu_mp, end_use):
     """
     General function to calculate installation costs for various end-uses based on fuel types, costs, and efficiency.
 
     Parameters:
     df (pd.DataFrame): DataFrame containing data for different scenarios.
     cost_dict (dict): Dictionary with cost information for different technology and efficiency combinations.
+    rsMeans_national_avg (float): National average value for cost adjustment.
     menu_mp (int): Menu option identifier.
     end_use (str): Type of end-use to calculate installation cost for ('heating', 'waterHeating', 'clothesDrying', 'cooking').
 
@@ -237,7 +242,7 @@ def calculate_installation_cost(df, cost_dict, menu_mp, end_use):
         sampled_costs_dict[cost_component] = sampled_costs
 
     # Calculate the installation cost for each row
-    installation_cost, cost_column_name = calculate_installation_cost_per_row(df_valid, sampled_costs_dict, menu_mp, end_use)
+    installation_cost, cost_column_name = calculate_installation_cost_per_row(df_valid, sampled_costs_dict, rsMeans_national_avg, menu_mp, end_use)
 
     # Add the calculated costs to a new DataFrame, rounded to 2 decimal places
     df_new_columns = pd.DataFrame({cost_column_name: np.round(installation_cost, 2)}, index=df_valid.index)
