@@ -25,7 +25,7 @@ Constraints/Requirements:
 
 import pytest
 import pandas as pd
-from pandas.testing import assert_frame_equal
+# from pandas.testing import assert_frame_equal
 
 # Import functions to test (adjust import paths as needed)
 from cmu_tare_model.public_impact.calculate_lifetime_health_impacts import (
@@ -43,14 +43,14 @@ def sample_df():
     """
     Create a minimal valid DataFrame with required columns.
     Required columns include:
-      - 'fips', 'state_abbr', 'year', 'cambium_gea_region', 'census_division'
+      - 'fips', 'state', 'year', 'gea_region', 'census_division'
       - Consumption columns for category 'heating': 'base_electricity_heating_consumption'
     """
     data = {
         'fips': ['12345'],
-        'state_abbr': ['XX'],
+        'state': ['XX'],
         'year': [2023],
-        'cambium_gea_region': ['Region1'],
+        'gea_region': ['Region1'],
         'census_division': ['National'],  # precompute_hdd_factors uses this
         'base_electricity_heating_consumption': [100.0],
         # For non-baseline case:

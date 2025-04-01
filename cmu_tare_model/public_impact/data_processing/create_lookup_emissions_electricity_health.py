@@ -32,14 +32,14 @@ def process_Schmitt_emissions_data(
         df_grid_mix (pd.DataFrame, optional): 
             DataFrame containing grid mix information with columns such as:
             - 'year'
-            - 'cambium_gea_region'
+            - 'gea_region'
             - 'fuel_source'
             - 'fraction_generation'
             Defaults to an empty DataFrame if None is provided.
 
         df_grid_emis_factors (pd.DataFrame, optional): 
             DataFrame containing emissions factor information with columns such as:
-            - 'cambium_gea_region'
+            - 'gea_region'
             - 'fuel_source'
             - 'pollutant'
             - 'emis_rate'
@@ -47,7 +47,7 @@ def process_Schmitt_emissions_data(
 
     Returns:
         pd.DataFrame: 
-            A pivoted DataFrame indexed by 'year' and 'cambium_gea_region', with each pollutant's
+            A pivoted DataFrame indexed by 'year' and 'gea_region', with each pollutant's
             total emissions contribution in separate columns (e.g., 'delta_egrid_nh3', 'delta_egrid_nox').
 
     Raises:
@@ -55,13 +55,13 @@ def process_Schmitt_emissions_data(
     """
     if df_grid_mix is None:
         df_grid_mix = pd.DataFrame({
-            'cambium_gea_region': [],
+            'gea_region': [],
             'fuel_source': [],
             'fraction_generation': []
         })
     if df_grid_emis_factors is None:
         df_grid_emis_factors = pd.DataFrame({
-            'cambium_gea_region': [],
+            'gea_region': [],
             'fuel_source': [],
             'emis_rate': []
         })
@@ -76,7 +76,7 @@ def process_Schmitt_emissions_data(
     df_combined = pd.merge(
         df_grid_mix,
         df_grid_emis_factors,
-        on=['cambium_gea_region', 'fuel_source'],
+        on=['gea_region', 'fuel_source'],
         how='inner'
     )
 
@@ -85,12 +85,12 @@ def process_Schmitt_emissions_data(
 
     # Sum the emissions contribution by year, region, and pollutant
     df_emis_factors = df_combined.groupby(
-        ['year', 'cambium_gea_region', 'pollutant']
+        ['year', 'gea_region', 'pollutant']
     )['emis_contribution'].sum().reset_index()
 
     # Pivot the data so each pollutant becomes its own column
     df_emis_factors_pivot = df_emis_factors.pivot_table(
-        index=['year', 'cambium_gea_region'],
+        index=['year', 'gea_region'],
         columns='pollutant',
         values='emis_contribution'
     ).reset_index()
@@ -121,7 +121,7 @@ df_grid_mix = pd.read_csv(file_path)
 
 df_grid_mix = pd.DataFrame({
     'year': df_grid_mix['Year'],
-    'cambium_gea_region': df_grid_mix['Cambium.GEA'],
+    'gea_region': df_grid_mix['Cambium.GEA'],
     'fuel_source': df_grid_mix['Source'],
     'fraction_generation': df_grid_mix['Fraction'],
 })
@@ -146,7 +146,7 @@ df_grid_emis_factors = pd.read_csv(file_path)
 
 df_grid_emis_factors = pd.DataFrame({
     'eGRID_subregion': df_grid_emis_factors['eGRID_subregion'],
-    'cambium_gea_region': df_grid_emis_factors['eGRID_subregion'],
+    'gea_region': df_grid_emis_factors['eGRID_subregion'], # Assuming this is the mapping to Cambium GEA regions
     'fuel_source': df_grid_emis_factors['Fuel'],
     'pollutant': df_grid_emis_factors['Pollutant'],
     'emis_rate': df_grid_emis_factors['Emission_rate'],
@@ -185,10 +185,10 @@ mapping = {
 }
 
 # Apply the mapping from eGRID to GEA regions
-df_grid_emis_factors['cambium_gea_region'] = df_grid_emis_factors['cambium_gea_region'].map(mapping)
+df_grid_emis_factors['gea_region'] = df_grid_emis_factors['gea_region'].map(mapping)
 
-# Drop rows where 'cambium_gea_region' is None (not included in mapping)
-df_grid_emis_factors = df_grid_emis_factors.dropna(subset=['cambium_gea_region']).reset_index(drop=True)
+# Drop rows where 'gea_region' is None (not included in mapping)
+df_grid_emis_factors = df_grid_emis_factors.dropna(subset=['gea_region']).reset_index(drop=True)
 
 # Conversion constants
 lb_to_mt = 0.00045359237      # pounds to metric tons
@@ -203,7 +203,7 @@ df_emis_factors_epa_egrid = process_Schmitt_emissions_data(df_grid_mix, df_grid_
 
 # Create a lookup dictionary indexed by (year, region) for quick reference
 lookup_emissions_electricity_health = df_emis_factors_epa_egrid.set_index(
-    ['year', 'cambium_gea_region']
+    ['year', 'gea_region']
 ).to_dict('index')
 
 

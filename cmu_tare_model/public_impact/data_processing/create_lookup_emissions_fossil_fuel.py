@@ -52,6 +52,10 @@ def calculate_fossil_fuel_emission_factor(
         - PM2.5: 
             - A National Methodology and Emission Inventory for Residential Fuel Combustion
             - Source: https://www3.epa.gov/ttnchie1/conference/ei12/area/haneke.pdf
+            - PM2.5 emission factors are given in lb per volume unit (varies by fuel).
+                PM2.5 - FUEL OIL: 0.83 lb/thousand gallons * (1 thousand gallons / 1000 gallons) * (1 gallon heating oil/138,500 BTU) * (3412 BTU/1 kWh)
+                PM2.5 - NATURAL GAS: 1.9 lb/million cf * (million cf/1000000 cf) * (1 cf natural gas/1039 BTU) * (3412 BTU/1 kWh)
+                PM2.5 - PROPANE: 0.17 lb/thousand gallons * (1 thousand gallons / 1000 gallons) * (1 gallon propane/91,452 BTU) * (3412 BTU/1 kWh)
 
     Raises:
         None: This function does not explicitly raise any exceptions.
@@ -85,17 +89,32 @@ def calculate_fossil_fuel_emission_factor(
     return emission_factors
 
 # Calculate emission factors for each fuel type
+# Fuel Oil
 fuel_oil_factors = calculate_fossil_fuel_emission_factor(
-    fuel_type="fuelOil", so2_factor=0.0015, nox_factor=0.1300, pm25_factor=0.83,
-    conversion_factor1=1000, conversion_factor2=138500
+    fuel_type="fuelOil",
+    so2_factor=0.0015,
+    nox_factor=0.1300,
+    pm25_factor=0.83,
+    conversion_factor1=1000,
+    conversion_factor2=138500
 )
+# Natural Gas
 natural_gas_factors = calculate_fossil_fuel_emission_factor(
-    fuel_type="naturalGas", so2_factor=0.0006, nox_factor=0.0922, pm25_factor=1.9,
-    conversion_factor1=1_000_000, conversion_factor2=1039
+    fuel_type="naturalGas",
+    so2_factor=0.0006,
+    nox_factor=0.0922,
+    pm25_factor=1.9,
+    conversion_factor1=1_000_000,
+    conversion_factor2=1039
 )
+# Propane
 propane_factors = calculate_fossil_fuel_emission_factor(
-    fuel_type="propane", so2_factor=0.0002, nox_factor=0.1421, pm25_factor=0.17,
-    conversion_factor1=1000, conversion_factor2=91452
+    fuel_type="propane",
+    so2_factor=0.0002,
+    nox_factor=0.1421,
+    pm25_factor=0.17,
+    conversion_factor1=1000,
+    conversion_factor2=91452
 )
 
 # Combine all factors

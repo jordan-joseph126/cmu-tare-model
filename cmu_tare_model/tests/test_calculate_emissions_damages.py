@@ -308,10 +308,10 @@ def test_climate_emissions_and_damages_preIRA(sample_df, mock_lookup_co2e_emis_e
         scenario_prefix='preIRA_mp1_',
         menu_mp=1
     )
-    # We expect columns like 'preIRA_mp1_2024_heating_tons_co2e_lrmer', etc.
+    # We expect columns like 'preIRA_mp1_2024_heating_mt_co2e_lrmer', etc.
     expected_cols = [
-        'preIRA_mp1_2024_heating_tons_co2e_lrmer',
-        'preIRA_mp1_2024_heating_tons_co2e_srmer',
+        'preIRA_mp1_2024_heating_mt_co2e_lrmer',
+        'preIRA_mp1_2024_heating_mt_co2e_srmer',
         'preIRA_mp1_2024_heating_damages_climate_lrmer',
         'preIRA_mp1_2024_heating_damages_climate_srmer'
     ]

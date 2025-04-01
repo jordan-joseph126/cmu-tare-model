@@ -48,9 +48,7 @@ def calculate_climate_impacts(df, menu_mp, policy_scenario, df_baseline_damages=
     hdd_factors_per_year = precompute_hdd_factors(df_copy)
 
     # Loop over each equipment category and its lifetime
-    for category, lifetime in EQUIPMENT_SPECS.items():
-        print(f"Calculating Climate Emissions and Damages from 2024 to {2024 + lifetime} for {category}")
-        
+    for category, lifetime in EQUIPMENT_SPECS.items():        
         # Reinitialize lifetime climate impacts for this category for each (mer, scc_assumption) pair
         lifetime_climate_emissions = {mer: pd.Series(0.0, index=df_copy.index) for mer in MER_TYPES}
         

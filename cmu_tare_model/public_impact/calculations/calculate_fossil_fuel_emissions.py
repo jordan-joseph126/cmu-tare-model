@@ -25,6 +25,17 @@ def calculate_fossil_fuel_emissions(
 
     Raises:
         None
+
+    Note 03/31/2025:
+    Fixed TARE.V2 code now uses the nested dictionary structure and properly retrieves emission factors based on the fuel type and pollutant.
+    Previously, the code was trying to access the emissions factors using a tuple
+        (fuel, pollutant) as a single key, which would not work thus returning 0.
+
+    Structure of the lookup_emissions_fossil_fuel dictionary: lookup_emissions_fossil_fuel[fuel][pollutant]
+
+    So: lookup_emissions_fossil_fuel.get(fuel, {}).get(pollutant, 0)
+        - first key is the fuel type (e.g., 'naturalGas', 'fuelOil', 'propane')
+        - second key is the pollutant (e.g., 'so2', 'nox', 'pm25', 'co2e').
     """
     total_fossil_emissions = {p: pd.Series(0.0, index=df.index) for p in POLLUTANTS}
 
@@ -37,30 +48,9 @@ def calculate_fossil_fuel_emissions(
             consumption_col = f'base_{fuel}_{category}_consumption'
             fuel_consumption = df.get(consumption_col, pd.Series(0.0, index=df.index)).fillna(0) * adjusted_hdd_factor
 
+            # Fixed issue with the emissions factor lookup
             for pollutant in POLLUTANTS:
-                emis_factor = lookup_emissions_fossil_fuel.get((fuel, pollutant), 0)
+                emis_factor = lookup_emissions_fossil_fuel.get(fuel, {}).get(pollutant, 0)
                 total_fossil_emissions[pollutant] += fuel_consumption * emis_factor
 
     return total_fossil_emissions
-
-# def calculate_fossil_fuel_emissions(df, category, adjusted_hdd_factor, lookup_emissions_fossil_fuel, menu_mp):
-#     """
-#     Calculate fossil fuel emissions for a given row and category.
-#     """
-
-#     total_fossil_emissions = {pollutant: pd.Series(0.0, index=df.index) for pollutant in POLLUTANTS}
-
-#     if menu_mp == 0:
-#         fuels = ['naturalGas', 'propane']
-#         if category not in ['cooking', 'clothesDrying']:
-#             fuels.append('fuelOil')
-
-#         for fuel in fuels:
-#             consumption_col = f'base_{fuel}_{category}_consumption'
-#             fuel_consumption = df.get(consumption_col, pd.Series(0.0, index=df.index)).fillna(0) * adjusted_hdd_factor
-
-#             for pollutant in total_fossil_emissions.keys():
-#                 emis_factor = lookup_emissions_fossil_fuel.get((fuel, pollutant), 0)
-#                 total_fossil_emissions[pollutant] += fuel_consumption * emis_factor
-
-#     return total_fossil_emissions

@@ -14,6 +14,57 @@ from cmu_tare_model.public_impact.data_processing.create_lookup_msc_health_count
     lookup_health_electricity_h6c,
 )
 
+"""
+======================================================================================================================
+# Project VSL Estimates for Future Years
+Future years are estimated using the following formula:
+VSL_future = VSL_base * (1.01)^(year - base_year)
+
+Where: 
+VSL_base and VSL_future are both in constant 2023 dollars. (VSL_base is 11.0M in 2022 dollars, adjusted to 2023 dollars)
+VSL_base = 11.0M * (CPI_2023 / CPI_2022) = ___ in 2023 dollars.
+We assume a 1% annual growth rate for real earnings, consistent with the HHS VSL Guidance.
+
+Additional details are given below
+======================================================================================================================
+From Federal Register, Notice by the Consumer Product Safety Commission (CPSC) on 2024-04-18:
+Notice of Availability of Final Guidance for Estimating Value per Statistical Life
+https://www.federalregister.gov/documents/2024/04/18/2024-08300/notice-of-availability-of-final-guidance-for-estimating-value-per-statistical-life
+
+We start with the EPA VSL of $11.0M in USD2022 because much air quality regulation work is based on this value.
+We then adjust it to 2023 dollars using the CPI-U (Consumer Price Index for All Urban Consumers) inflation rate.
+
+CPSC suggests: 
+"When estimating VSL for future years, CPSC will increase the VSL by the expected growth in real earnings
+and discount the resulting benefit values to reflect the time value of money, consistent with its approach 
+for all cost and benefits estimates."
+    - Inflation: Inflate to year where full annual data is available for changes in prices (inflation). Use data and formula in HHS VSL guidance
+    - Income Elasticity: Using value from HHS VSL Guidance
+======================================================================================================================
+
+HHS VSL Guidance: HHS Standard Values for Regulatory Analysis, 2024
+https://aspe.hhs.gov/sites/default/files/documents/cd2a1348ea0777b1aa918089e4965b8c/standard-ria-values.pdf
+
+The VSL estimates reported in the literature review correspond to a 2013 base year.(6) We update these values
+to a 2023 base year by adjusting for inflation(7) and changes in real income.(8) These adjustments increase the VSL
+estimates in nominal terms by about 44% compared to 2013. From the 2023 base-year VSL estimates, we
+report estimates for 2024 and future years. These estimates increase over time in real terms, consistent with a
+long-term annual growth rate for real earnings of 1.0%(9) and an assumption that the VSL income elasticity is
+1.0. For mortality risk changes occurring in 2024, we adopt $6.1 million, $13.1 million, and $19.9 million for the
+low, central, and high estimates of VSL, respectively. For impacts in other years, including the base year, please
+refer to Table 1 or the unrounded estimates available in a supplemental table to this Data Point.
+
+    7 U.S. Bureau of Labor Statistics. CPI for all Urban Consumers (CPI-U), Not Seasonally Adjusted,
+    https://data.bls.gov/timeseries/CUUR0000SA0. Annual figures for 2013 to 2023. Accessed January 11, 2024.
+
+    8 U.S. Bureau of Labor Statistics. Weekly and hourly earnings data from the Current Population Survey, Not Seasonally Adjusted.
+    https://data.bls.gov/timeseries/LEU0252881600. Annual figures for 2013 to 2023. Accessed January 18, 2024.
+
+    9 Congressional Budget Office. June 2023. “The 2023 Long-Term Budget Outlook.” Table C-1. Average Annual Values for Additional
+    Economic Variables That Underlie CBO’s Extended Baseline Projections: Growth of Real Earnings per Worker, Overall, 2023-2053.
+    https://www.cbo.gov/publication/59014.
+"""
+
 def calculate_health_impacts(df, menu_mp, policy_scenario, df_baseline_damages=None):
     """
     Calculate lifetime health impacts for each equipment category over all (rcm, cr) combinations.
@@ -30,14 +81,19 @@ def calculate_health_impacts(df, menu_mp, policy_scenario, df_baseline_damages=N
     
     Returns:
         tuple: (df_main, df_detailed)
-            - df_main contains the aggregated lifetime health impacts (and avoided damages, if available).
+            - df_main contains the aggregated lifetime health impacts: lifetime damages and avoided damages (if applicable).
             - df_detailed contains the detailed annual health damages results.
     """
+    # Create a copy of the input df
+    # Then initialize the detailed dataframe (df_copy will become df_main)
     df_copy = df.copy()
     df_detailed = pd.DataFrame(index=df_copy.index)
-    lifetime_columns_data = {}  # To accumulate lifetime health damages columns for each category
+
+    # Initialize a dictionary to hold lifetime health impacts columns for each category
+    lifetime_columns_data = {}
 
     # Retrieve scenario-specific settings for electricity/fossil-fuel emissions
+    # Ignored (underscored) the climate lookup and cambium scenario as it's not used in this function
     scenario_prefix, _, lookup_emissions_fossil_fuel, _, lookup_emissions_electricity_health = define_scenario_settings(menu_mp, policy_scenario)
 
     # Precompute HDD adjustment factors by region and year
@@ -123,13 +179,13 @@ def calculate_health_damages_for_pair(df, category, year_label, adjusted_hdd_fac
     Returns a dictionary mapping column names to computed Series.
     """
     def get_emissions_factor(row, pollutant, lookup_dict):
-        key = (row['year'], row['cambium_gea_region'])
+        key = (row['year'], row['gea_region'])
         if not pollutant.startswith("delta_egrid_"):
             pollutant = "delta_egrid_" + pollutant.lower()
         return lookup_dict.get(key, {}).get(pollutant, 0.0)
     
     def get_msc_value(row, pollutant, lookup_dict, rcm):
-        return lookup_dict.get((row['fips'], row['state_abbr']), {}).get(rcm, {}).get(pollutant.upper(), 0.0)
+        return lookup_dict.get((row['county_fips'], row['state']), {}).get(rcm, {}).get(pollutant.upper(), 0.0)
     
     # Select lookup dictionaries based on the concentration-response function
     if cr == 'acs':

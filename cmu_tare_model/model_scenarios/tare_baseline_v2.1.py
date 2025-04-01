@@ -10,7 +10,7 @@ input_mp = 'baseline'
 
 # import from cmu-tare-model package
 from config import PROJECT_ROOT
-from cmu_tare_model.constants import EPA_SCC_USD2023_PER_MT
+from cmu_tare_model.constants import EPA_SCC_USD2023_PER_MT_LOW, EPA_SCC_USD2023_PER_MT_BASE, EPA_SCC_USD2023_PER_MT_HIGH
 import pandas as pd
 
 # Set columns in display
@@ -215,41 +215,6 @@ DATAFRAME: df_baseline_scenario_consumption
 # ## Fossil Fuels: Climate and Health-Related Pollutants
 
 # %%
-"""
-create_lookup_emissions_fossil_fuel.py uses the calculate_fossil_fuel_emission_factor function and RESNET data sources
-to calculate the emission factors for fossil fuels. The function returns a dataframe of marginal emission factors
-
-The create_lookup_emissions_fossil_fuel.py file contains the following dataframes and lookup dictionaries:
-    - df_marg_emis_factors: Marginal Emission Factors for Fossil Fuels
-    - lookup_emissions_fossil_fuel: Lookup Dictionary for Fossil Fuel Emissions
-
-Fossil Fuels (Natural Gas, Fuel Oil, Propane):
-- NOx, SO2, CO2: 
-    - RESNET Table 7.1.2 Emissions Factors for Household Combustion Fuels
-    - Source: https://www.resnet.us/wp-content/uploads/ANSIRESNETICC301-2022_resnetpblshd.pdf
-    - All factors are in units of lb/Mbtu; energy consumption in kWh needs conversion.
-- PM2.5: 
-    - A National Methodology and Emission Inventory for Residential Fuel Combustion
-    - Source: https://www3.epa.gov/ttnchie1/conference/ei12/area/haneke.pdf
-"""
-
-from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_fossil_fuel import *
-
-print(f"""
---------------------------------------------------------------------------------------------------------------------------------------
-Fossil Fuels: Climate and Health-Related Pollutants
---------------------------------------------------------------------------------------------------------------------------------------
-DATAFRAME: Marginal Emission Factors for Fossil Fuels
-      
-{df_marg_emis_factors}  
-
-LOOKUP DICTIONARY: Fossil Fuel Emissions
-
-{lookup_emissions_fossil_fuel}
-""")
-
-# %% [markdown]
-# ### Inflate Marginal Social Cost (Damage) Factors using BLS CPI for All Urban Consumers (CPI-U)
 
 # %%
 """"
@@ -277,77 +242,6 @@ DATAFRAME: Annual CPI-U for 2005-2023 used for cpi_ratio constants and inflation
 # %% [markdown]
 # ### For Health-Related Emissions Adjust for different Value of a Statistical Life (VSL) values
 
-# # %%
-# # Current VSL is $11.3 M USD2021
-# # INFLATE TO USD2022, PREVIOUSLY USD2021
-# current_VSL_USD2023 = 11.3 * cpi_ratio_2023_2021
-
-# # Easiur uses a VSL of $8.8 M USD2010
-# # INFLATE TO USD2022, PREVIOUSLY USD2021
-# rcm_VSL_USD2023 = 8.8 * (cpi_ratio_2023_2010)
-
-# # Calculate VSL adjustment factor
-# vsl_adjustment_factor = current_VSL_USD2023 / rcm_VSL_USD2023
-
-# %% [markdown]
-# ## Emissions from Electricity Generation
-
-# %% [markdown]
-# ### Climate-Related Emissions from CAMBIUM LRMER/SRMER 
-# ### Includes pre-combustion (fugitive) and combustion
-
-# %%
-from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_electricity_climate import *
-"""
--------------------------------------------------------------------------------------------------------
-CLIMATE DAMAGES FROM CAMBIUM
--------------------------------------------------------------------------------------------------------
-- Load CSV
-- Convert MWh --> kWh and kg --> metric tons (mt)
-- Inflate updated Social Cost of Carbon from $190 USD2020 to $USD2023
-- Convert SCC to $USD2023/lb
-- Calculate damage factors for CO2e: LRMER/SRMER [lb/kWh] * SCC[$USD2023/lb] = $USD2023/kWh
--------------------------------------------------------------------------------------------------------
-
-Additional details and documentation:
-      - LRMER/SRMER data can be found in the Cambium documentation here:
-      - Functions and methods to process and create lookup dictionary can be found in the create_lookup_climate_damages_electricity.py file.
-"""
-
-print(f"""
-=======================================================================================================
-PRE-IRA:
-LONG RUN AND SHORT RUN MARGINAL EMISSIONS RATES (LRMER, SRMER) FROM CAMBIUM 2021 RELEASE
-=======================================================================================================
-DATAFRAME: LRMER and SRMER for ELECTRICITY CO2e [mtCO2e/kWh]
-      
-{df_cambium21_processed}  
-
-LOOKUP DICTIONARY: LRMER and SRMER for ELECTRICITY CO2e [mtCO2e/kWh]
-
-{lookup_emissions_electricity_climate_preIRA}
-
-=======================================================================================================
-IRA-REFERENCE:
-LONG RUN AND SHORT RUN MARGINAL EMISSIONS RATES (LRMER, SRMER) FROM CAMBIUM 2022 RELEASE
-=======================================================================================================
-DATAFRAME: LRMER and SRMER for ELECTRICITY CO2e [mtCO2e/kWh]
-      
-{df_cambium22_processed}  
-
-LOOKUP DICTIONARY: LRMER and SRMER for ELECTRICITY CO2e [mtCO2e/kWh]
-
-{lookup_emissions_electricity_climate_IRA}
-""")
-
-# %% [markdown]
-# ### Use the updated Social Cost of Carbon (190 USD-2020/ton co2e) and inflate to USD-2023
-# - EPA Median for 2% near term discount rate and most commonly mentioned value is 190 USD-2020 using the GIVE model.
-# - 190 USD-2020 has some inconsistency with the VSL being used. An old study and 2008 VSL is noted
-# - 190 USD value and inflate to USD 2023 because there is a clear source and ease of replicability.
-
-# %%
-# For co2e adjust SCC
 
 print(f"""
 Steps 3 and 4: Obtain BLS CPI-U Data and Inflate Current Social Cost of Carbon (SCC) to USD2023
@@ -355,7 +249,10 @@ Steps 3 and 4: Obtain BLS CPI-U Data and Inflate Current Social Cost of Carbon (
 EPA Median for 2% near term discount rate and most commonly mentioned value is 190 USD-2020 using the GIVE model.
 Inflate 190 $USD-2020 Social Cost of Carbon to $USD-2023
 
-SCC Value used in analysis is: ${round(EPA_SCC_USD2023_PER_MT, 2)} per mt CO2e
+SCC Values used in analysis are:
+      LOW: ${round(EPA_SCC_USD2023_PER_MT_LOW, 2)} per mt CO2e
+      BASE: ${round(EPA_SCC_USD2023_PER_MT_BASE, 2)} per mt CO2e
+      HIGH: ${round(EPA_SCC_USD2023_PER_MT_HIGH, 2)} per mt CO2e
 """)
 
 # %%
@@ -378,7 +275,8 @@ No Electricity Grid Uncertainty (Just Current Grid and Future Grid Projections)
 # ### Baseline Marginal Damages: WHOLE-HOME
 
 # %%
-from cmu_tare_model.public_impact.calculate_emissions_damages import *
+from cmu_tare_model.public_impact.calculate_lifetime_climate_impacts import *
+from cmu_tare_model.public_impact.calculate_lifetime_health_impacts import *
 print("""
 -------------------------------------------------------------------------------------------------------
 Step 5: Calculate End-use specific marginal damages
@@ -392,13 +290,24 @@ Baseline Marginal Damages: WHOLE-HOME
 print("\n", "Creating dataframe to store marginal damages calculations ...")
 df_baseline_scenario_damages = df_euss_am_baseline_home.copy()
 
-# calculate_marginal_damages(df, menu_mp, policy_scenario)
-df_euss_am_baseline_home, df_baseline_scenario_damages = calculate_marginal_damages(df=df_euss_am_baseline_home,
-                                                                                    menu_mp=menu_mp,
-                                                                                    policy_scenario='No Inflation Reduction Act',
-                                                                                    df_detailed_damages=df_baseline_scenario_damages,
-                                                                                    
-                                                                                    )
+# calculate_climate_impacts(df, menu_mp, policy_scenario, df_baseline_damages=None)
+df_euss_am_baseline_home, df_baseline_scenario_damages = calculate_climate_impacts(df=df_euss_am_baseline_home,
+                                                                                   menu_mp=menu_mp,
+                                                                                   policy_scenario='No Inflation Reduction Act',
+                                                                                   df_baseline_damages=df_baseline_scenario_damages,
+                                                                                   )
+df_euss_am_baseline_home
+
+# %%
+df_baseline_scenario_damages
+
+# %%
+# calculate_climate_impacts(df, menu_mp, policy_scenario, df_baseline_damages=None)
+df_euss_am_baseline_home, df_baseline_scenario_damages = calculate_health_impacts(df=df_euss_am_baseline_home,
+                                                                                  menu_mp=menu_mp,
+                                                                                  policy_scenario='No Inflation Reduction Act',
+                                                                                  df_baseline_damages=df_baseline_scenario_damages,
+                                                                                  )
 df_euss_am_baseline_home
 
 # %%
