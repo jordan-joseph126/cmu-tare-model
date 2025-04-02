@@ -57,6 +57,18 @@ def calculate_fossil_fuel_emission_factor(
                 PM2.5 - NATURAL GAS: 1.9 lb/million cf * (million cf/1000000 cf) * (1 cf natural gas/1039 BTU) * (3412 BTU/1 kWh)
                 PM2.5 - PROPANE: 0.17 lb/thousand gallons * (1 thousand gallons / 1000 gallons) * (1 gallon propane/91,452 BTU) * (3412 BTU/1 kWh)
 
+        - ResStock Carbon Emissions Associated With On-Site Fossil Fuel Combustion (No need for leakage factor):
+            For calculating carbon emissions related to the on-site consumption of natural gas, propane, and
+            fuel oil, this dataset uses emission factor values from Table 7.1.2(1) of draft PDS-01 of
+            BSR/RESNET/ICCC 301 Addendum B, CO2 Index. 
+            
+            These values include both combustion and pre-combustion (e.g., methane leakage from natural gas) CO2e emissions:
+            • 147.3 lb/MMBtu (228.5 kg/MWh) for natural gas
+            • 177.8 lb/MMBtu (275.8 kg/MWh) for propane
+            • 195.9 lb/MMBtu (303.9 kg/MWh) for fuel oil.
+
+            Source: https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/resstock_tmy3_release_2/resstock_documentation_2024_release_2.pdf
+            
     Raises:
         None: This function does not explicitly raise any exceptions.
     """
@@ -74,13 +86,10 @@ def calculate_fossil_fuel_emission_factor(
         f"{fuel_type}_pm25": pm25_factor * (1 / conversion_factor1) * (1 / conversion_factor2) * 3412,
     }
 
-    # For natural gas, add leakage-based CO2e calculation
-    # 1 Therm = 29.30 kWh --> 1.27 kg CO2e/therm --> ~0.043 kg CO2e/kWh = 0.095 lb CO2e/kWh
-    naturalGas_leakage_mtCO2e_perkWh = 0.043 * (1 / 1000)
-
+    # All 
     if fuel_type == "naturalGas":
         # Convert from kg/MWh to metric tons/kWh, then add the leakage
-        emission_factors[f"{fuel_type}_co2e"] = (228.5 * (1 / 1000) * (1 / 1000)) + naturalGas_leakage_mtCO2e_perkWh
+        emission_factors[f"{fuel_type}_co2e"] = (228.5 * (1 / 1000) * (1 / 1000))
     elif fuel_type == "propane":
         emission_factors[f"{fuel_type}_co2e"] = 275.8 * (1 / 1000) * (1 / 1000)
     elif fuel_type == "fuelOil":
@@ -96,7 +105,7 @@ fuel_oil_factors = calculate_fossil_fuel_emission_factor(
     nox_factor=0.1300,
     pm25_factor=0.83,
     conversion_factor1=1000,
-    conversion_factor2=138500
+    conversion_factor2=138_500
 )
 # Natural Gas
 natural_gas_factors = calculate_fossil_fuel_emission_factor(
@@ -114,7 +123,7 @@ propane_factors = calculate_fossil_fuel_emission_factor(
     nox_factor=0.1421,
     pm25_factor=0.17,
     conversion_factor1=1000,
-    conversion_factor2=91452
+    conversion_factor2=91_452
 )
 
 # Combine all factors
