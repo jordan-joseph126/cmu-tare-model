@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from typing import Dict
 
 # import from cmu-tare-model package
 from config import PROJECT_ROOT
@@ -10,14 +11,27 @@ CLIMATE CHANGE IMPACT SENSITIVITY: SCC LOOKUP
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 """
 
-def create_scc_lookup(df: pd.DataFrame) -> dict:
+def create_scc_lookup(df: pd.DataFrame) -> Dict[str, Dict[int, float]]:
     """
-    Reads the CSV/Excel of SCC data and returns a nested dictionary:
-      lookup_climate_impact_scc["lower"][year]   -> float
-      lookup_climate_impact_scc["central"][year] -> float
-      lookup_climate_impact_scc["upper"][year]   -> float
+    Create a nested dictionary that maps SCC assumptions ('lower', 'central', 'upper')
+    to a year-based lookup of the Social Cost of Carbon (USD 2023).
+
+    Args:
+        df (pd.DataFrame): DataFrame containing columns:
+            'emissions_year', 'scc_lower_usd2023', 'scc_central_usd2023', 'scc_upper_usd2023'.
+
+    Returns:
+        Dict[str, Dict[int, float]]:
+            Nested dictionary:
+                {
+                  "lower":   {year: scc_value, ...},
+                  "central": {year: scc_value, ...},
+                  "upper":   {year: scc_value, ...}
+                }
+
+    Raises:
+        KeyError: If required columns are missing from df.
     """
-    
     # Initialize top-level keys for each SCC bound
     lookup_climate_impact_scc = {
         "lower": {},
@@ -26,6 +40,7 @@ def create_scc_lookup(df: pd.DataFrame) -> dict:
     }
     
     # Fill in year-specific values under each key
+    # Non-trivial iteration that ensures each row is inserted into the correct assumption dict
     for _, row in df.iterrows():
         year = int(row["emissions_year"])
         lookup_climate_impact_scc["lower"][year] = row["scc_lower_usd2023"]
@@ -43,7 +58,6 @@ CENTRAL ESTIMATE: IWG 2021, 3% Discount Rate (Obama Administration, Pre-2017)
 UPPER BOUND: Recent EPA Central Estimate (Biden Administration), Commonly Cited
 """)
 
-# CAMBIUM 2022 FOR IRA SCENARIO
 filename = 'scc_climate_impact_sensitivity.xlsx'
 relative_path = os.path.join("cmu_tare_model", "public_impact", "data_processing", filename)
 file_path = os.path.join(PROJECT_ROOT, relative_path)
