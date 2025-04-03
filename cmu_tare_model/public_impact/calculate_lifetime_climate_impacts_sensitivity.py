@@ -7,14 +7,6 @@ from cmu_tare_model.public_impact.emissions_scenario_settings import define_scen
 from cmu_tare_model.public_impact.calculations.precompute_hdd_factors import precompute_hdd_factors
 from cmu_tare_model.public_impact.data_processing.create_lookup_climate_impact_scc import lookup_climate_impact_scc
 
-"""
-Consider updating so that the future scc_value values considered rather than a fixed set of 3 based on 2020 emission year.
-- Spreadsheet with year, lower, central, upper values
-
-scc_value lower and central: https://www.energy.gov/sites/default/files/2023-04/57.%20Social%20Cost%20of%20Carbon%202021.pdf
-scc_value upper: https://www.epa.gov/system/files/documents/2023-12/epa_scghg_2023_report_final.pdf
-"""
-
 def calculate_climate_impacts(
     df: pd.DataFrame,
     menu_mp: int,
@@ -245,7 +237,7 @@ def calculate_climate_emissions_and_damages(
         Raises:
             KeyError: If the specified year is not in the lookup for that assumption.
         
-        Notes:
+        Notes: 
             In the older code, it clamps to the maximum available year if the exact year is not found in the lookup.
 
         """

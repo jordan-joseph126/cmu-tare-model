@@ -1,4 +1,4 @@
-# from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2023_2020, cpi_ratio_2023_2022
+from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2023_2021, cpi_ratio_2023_2022
 
 # Example constants (copied from the original code).
 # Adjust or remove them as needed, or move them to a separate config file.
@@ -18,5 +18,5 @@ RCM_MODELS = ['AP2', 'EASIUR', 'InMAP']
 # EPA_SCC_USD2023_PER_MT_BASE = 51 * cpi_ratio_2023_2020      # Pre-2017 Obama Administration SCC (3% constant discount rate)
 # EPA_SCC_USD2023_PER_MT_HIGH = 190 * cpi_ratio_2023_2020     # Biden Administration SCC (2% near-term Ramsey discount rate)
 
-# print(f"CPI Ratio for 2020 to 2023: {cpi_ratio_2023_2020}")
+print(f"CPI Ratio for 2021 to 2023: {cpi_ratio_2023_2021}")
 # print(f"CPI Ratio for 2022 to 2023: {cpi_ratio_2023_2022}")
