@@ -1,9 +1,5 @@
 # Description: This script processes the RCM data for use in creating a health-related emissions marginal social cost lookup dictionary.
 # Marginal Social Costs for Health-Related Emissions
-# UPDATE TO USE THE 2023USD INPUT CUSTOM VSL VALUES INSTEAD OF THE 2006USD VALUES INFLATED TO 2023USD!!!
-# VSL: 12.71M (Inflated from 11.3M USD2021 to 12.71M USD2023)
-#   CPI Ratio for 2021 to 2023: 1.1244861054729305
-#   VSL2023 = VSL2021 * 1.1244861054729305 = 11.3M * 1.1244861054729305 = 12.71 M
 # ======================================================================================================================
 import os
 import pandas as pd
@@ -38,8 +34,6 @@ def process_rcm_data(filename: str, PROJECT_ROOT: str) -> pd.DataFrame:
             If the CSV file is not found at the specified path.
         KeyError: 
             If expected columns (like 'season' or 'damage') are missing.
-
-    
     """
     # Construct the absolute path to the CSV file
     relative_path = os.path.join("cmu_tare_model", "data", "marginal_social_costs", filename)
@@ -64,10 +58,9 @@ def process_rcm_data(filename: str, PROJECT_ROOT: str) -> pd.DataFrame:
 
 def create_lookup_nested(df_rcm_msc_data: pd.DataFrame) -> dict:
     """
-    Creates a nested lookup dictionary keyed by (county_fips, state), then model, then pollutant.
-
-    The structure allows quick retrieval of marginal social cost (in USD2023) for a specific 
-    county (county_fips), model, and pollutant.
+    Creates a nested lookup dictionary keyed by (county_fips, state), 
+    then model, then pollutant. Everything stored in lowercase
+    for pollutant keys.
 
     Args:
         df_rcm_msc_data (pd.DataFrame):
@@ -96,18 +89,21 @@ def create_lookup_nested(df_rcm_msc_data: pd.DataFrame) -> dict:
     for _, row in df_rcm_msc_data.iterrows():
         county_key = (row['county_fips'], row['state'])
         model = row['model']
-        pollutant = row['pollutant']
-        damage = row['damage_usd2023']
+
+        # Make sure pollutant is stored as lowercase
+        pollutant = row['pollutant'].lower()
         
-        # Ensure a dict exists for the given county
+        damage = row['damage_usd2023']
+
+        # Ensure nested dictionaries exist
         if county_key not in lookup_health_rcm_msc:
             lookup_health_rcm_msc[county_key] = {}
-        # Ensure a dict exists for the given model
         if model not in lookup_health_rcm_msc[county_key]:
             lookup_health_rcm_msc[county_key][model] = {}
-        # Map pollutant to damage
+
+        # Store with lowercase pollutant
         lookup_health_rcm_msc[county_key][model][pollutant] = damage
-        
+
     return lookup_health_rcm_msc
 
 # ======================================================================================================================
@@ -118,6 +114,10 @@ def create_lookup_nested(df_rcm_msc_data: pd.DataFrame) -> dict:
 
 df_health_rcm_ground_acs = process_rcm_data("rcm_msc_county_vsl1271_usd2023_ground_acs.csv", PROJECT_ROOT)
 df_health_rcm_ground_h6c = process_rcm_data("rcm_msc_county_vsl1271_usd2023_ground_h6c.csv", PROJECT_ROOT)
+
+# Create lookup dictionaries for fossil fuel (ground-level stack)
+lookup_health_fossil_fuel_acs = create_lookup_nested(df_health_rcm_ground_acs)
+lookup_health_fossil_fuel_h6c = create_lookup_nested(df_health_rcm_ground_h6c)
 
 print(f"""
 ======================================================================================================================
@@ -145,26 +145,11 @@ DATAFRAME: Ground Level, H6C C-R Function
 
 {df_health_rcm_ground_h6c}
       
+=======================================================================================================================
+CREATES LOOKUP DICTIONARY: HEALTH IMPACTS (MSC) FROM FOSSIL FUELS
+======================================================================================================================
 """)
 
-# Create lookup dictionaries for fossil fuel (ground-level stack)
-lookup_health_fossil_fuel_acs = create_lookup_nested(df_health_rcm_ground_acs)
-lookup_health_fossil_fuel_h6c = create_lookup_nested(df_health_rcm_ground_h6c)
-
-print(f"""
-======================================================================================================================
-LOOKUP DICTIONARY: HEALTH IMPACTS (MSC) FROM FOSSIL FUELS
-======================================================================================================================
-
-LOOKUP: Ground Level, ACS C-R Function
-      
-{lookup_health_fossil_fuel_acs}
-      
-LOOKUP: Ground Level, H6C C-R Function
-
-{lookup_health_fossil_fuel_h6c}
-
-""")
 
 # ======================================================================================================================
 # HEALTH IMPACTS (MARGINAL SOCIAL COSTS): ELECTRICITY GENERATION
@@ -174,6 +159,10 @@ LOOKUP: Ground Level, H6C C-R Function
 
 df_health_rcm_elevated_acs = process_rcm_data("rcm_msc_county_vsl1271_usd2023_elevated_acs.csv", PROJECT_ROOT)
 df_health_rcm_elevated_h6c = process_rcm_data("rcm_msc_county_vsl1271_usd2023_elevated_h6c.csv", PROJECT_ROOT)
+
+# Create lookup dictionaries for electricity generation (elevated/high-stack)
+lookup_health_electricity_acs = create_lookup_nested(df_health_rcm_elevated_acs)
+lookup_health_electricity_h6c = create_lookup_nested(df_health_rcm_elevated_h6c)
 
 print(f"""
 ======================================================================================================================
@@ -201,23 +190,7 @@ DATAFRAME: Elevated (High Stack), H6C C-R Function
 
 {df_health_rcm_elevated_h6c}
       
-""")
-
-# Create lookup dictionaries for electricity generation (elevated/high-stack)
-lookup_health_electricity_acs = create_lookup_nested(df_health_rcm_elevated_acs)
-lookup_health_electricity_h6c = create_lookup_nested(df_health_rcm_elevated_h6c)
-
-print(f"""
+=======================================================================================================================
+CREATES LOOKUP DICTIONARY: HEALTH IMPACTS (MSC) FROM ELECTRICITY GENERATION
 ======================================================================================================================
-LOOKUP DICTIONARY: HEALTH IMPACTS (MSC) FROM ELECTRICITY GENERATION
-======================================================================================================================
-
-LOOKUP: Elevated (High Stack), ACS C-R Function
-      
-{lookup_health_electricity_acs}
-      
-LOOKUP: Elevated (High Stack), H6C C-R Function
-
-{lookup_health_electricity_h6c}
-
 """)

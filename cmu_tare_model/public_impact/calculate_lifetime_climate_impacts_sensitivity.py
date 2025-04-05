@@ -7,7 +7,7 @@ from cmu_tare_model.public_impact.emissions_scenario_settings import define_scen
 from cmu_tare_model.public_impact.calculations.precompute_hdd_factors import precompute_hdd_factors
 from cmu_tare_model.public_impact.data_processing.create_lookup_climate_impact_scc import lookup_climate_impact_scc
 
-def calculate_climate_impacts(
+def calculate_lifetime_climate_impacts(
     df: pd.DataFrame,
     menu_mp: int,
     policy_scenario: str,

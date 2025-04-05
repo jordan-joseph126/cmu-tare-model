@@ -343,7 +343,7 @@ def df_enduse_refactored(df_baseline, fuel_filter='Yes', tech_filter='Yes', inva
         'state': df_baseline['in.state'],
         'city': df_baseline['in.city'].apply(extract_city_name),
         'county': df_baseline['in.county'],
-        'county_fips': df_baseline['in.county'].apply(lambda x: x[1:-1]),
+        'county_fips': df_baseline['in.county'].apply(lambda x: x[1:3] + x[4:7]),
         'puma': df_baseline['in.puma'],
         'county_and_puma': df_baseline['in.county_and_puma'],
         'weather_file_city': df_baseline['in.weather_file_city'],
