@@ -3,8 +3,8 @@ from typing import Dict, Tuple, List, Optional
 
 # Constants
 from cmu_tare_model.constants import EQUIPMENT_SPECS, CR_FUNCTIONS, RCM_MODELS, SCC_ASSUMPTIONS
-from cmu_tare_model.constants import define_scenario_params
 from cmu_tare_model.utils.discounting import calculate_discount_factor
+from cmu_tare_model.utils.modeling_params import define_scenario_params
 
 print(f"""
 ===================================================================================

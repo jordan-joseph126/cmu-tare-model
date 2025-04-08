@@ -168,9 +168,8 @@ def test_calculate_health_impacts_success(sample_df, dummy_define_scenario_setti
     This test overrides define_scenario_params to return dummy lookup dictionaries and scenario prefix.
     """
     # Monkeypatch define_scenario_params with our dummy function.
-    from cmu_tare_model.constants import define_scenario_params
-    monkeypatch.setattr(
-        "cmu_tare_model.constants.define_scenario_params",
+    from cmu_tare_model.utils.modeling_params import define_scenario_params    monkeypatch.setattr(
+        "cmu_tare_model.utils.modeling_params.define_scenario_params",
         dummy_define_scenario_settings
     )
     
@@ -200,7 +199,7 @@ def test_calculate_health_impacts_empty_df(dummy_define_scenario_settings, monke
     """
     empty_df = pd.DataFrame()
     monkeypatch.setattr(
-        "cmu_tare_model.constants.define_scenario_params",
+        "cmu_tare_model.utils.modeling_params.define_scenario_params",
         dummy_define_scenario_settings
     )
     with pytest.raises(Exception) as excinfo:
@@ -219,7 +218,7 @@ def test_calculate_health_impacts_missing_column(sample_df, dummy_define_scenari
     """
     df_missing = sample_df.drop(columns=['fips'])
     monkeypatch.setattr(
-        "cmu_tare_model.constants.define_scenario_params",
+        "cmu_tare_model.utils.modeling_params.define_scenario_params",
         dummy_define_scenario_settings
     )
     with pytest.raises(KeyError):
@@ -240,7 +239,7 @@ def test_calculate_health_impacts_boundary_lifetime(sample_df, dummy_define_scen
         EQUIPMENT_SPECS.clear()
         EQUIPMENT_SPECS.update({test_category: 1})
         monkeypatch.setattr(
-            "cmu_tare_model.constants.define_scenario_params",
+            "cmu_tare_model.utils.modeling_params.define_scenario_params",
             dummy_define_scenario_settings
         )
         df_main, df_detailed = calculate_health_impacts(

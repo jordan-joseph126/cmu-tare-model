@@ -3,7 +3,7 @@ from typing import Optional, Tuple, Dict
 
 from cmu_tare_model.constants import EQUIPMENT_SPECS, TD_LOSSES_MULTIPLIER, MER_TYPES, SCC_ASSUMPTIONS
 from cmu_tare_model.public_impact.calculations.calculate_fossil_fuel_emissions import calculate_fossil_fuel_emissions
-from cmu_tare_model.constants import define_scenario_params
+from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.public_impact.calculations.precompute_hdd_factors import precompute_hdd_factors
 from cmu_tare_model.public_impact.data_processing.create_lookup_climate_impact_scc import lookup_climate_impact_scc
 

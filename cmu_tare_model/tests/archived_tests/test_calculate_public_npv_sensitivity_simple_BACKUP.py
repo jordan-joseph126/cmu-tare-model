@@ -173,7 +173,7 @@ def test_vectorized_lookup_missing_value(sample_df, dummy_define_scenario_settin
     # Set county_fips to a value that is not in the dummy lookup
     sample_df['county_fips'] = ['00000']
     monkeypatch.setattr(
-        "cmu_tare_model.constants.define_scenario_params",
+        "cmu_tare_model.utils.modeling_params.define_scenario_params",
         dummy_define_scenario_settings
     )
     df_main, _ = calculate_lifetime_health_impacts(
@@ -237,9 +237,8 @@ def test_calculate_lifetime_health_impacts_success(sample_df, dummy_define_scena
     This test overrides define_scenario_params to return dummy lookup dictionaries and scenario prefix.
     """
     # Monkeypatch define_scenario_params with our dummy function.
-    from cmu_tare_model.constants import define_scenario_params
-    monkeypatch.setattr(
-        "cmu_tare_model.constants.define_scenario_params",
+    from cmu_tare_model.utils.modeling_params import define_scenario_params    monkeypatch.setattr(
+        "cmu_tare_model.utils.modeling_params.define_scenario_params",
         dummy_define_scenario_settings
     )
     
@@ -270,7 +269,7 @@ def test_calculate_lifetime_health_impacts_empty_df(dummy_define_scenario_settin
     """
     empty_df = pd.DataFrame()
     monkeypatch.setattr(
-        "cmu_tare_model.constants.define_scenario_params",
+        "cmu_tare_model.utils.modeling_params.define_scenario_params",
         dummy_define_scenario_settings
     )
     with pytest.raises(Exception) as excinfo:
@@ -290,7 +289,7 @@ def test_calculate_lifetime_health_impacts_missing_column(sample_df, dummy_defin
     """
     df_missing = sample_df.drop(columns=['county_fips'])
     monkeypatch.setattr(
-        "cmu_tare_model.constants.define_scenario_params",
+        "cmu_tare_model.utils.modeling_params.define_scenario_params",
         dummy_define_scenario_settings
     )
     # Set up the test to expect a RuntimeError due to missing 'county_fips' column.
@@ -320,7 +319,7 @@ def test_calculate_lifetime_health_impacts_boundary_lifetime(sample_df, dummy_de
         EQUIPMENT_SPECS.update({test_category: 1})  # Set the test category's lifetime to 1
 
         monkeypatch.setattr(
-            "cmu_tare_model.constants.define_scenario_params",
+            "cmu_tare_model.utils.modeling_params.define_scenario_params",
             dummy_define_scenario_settings
         )
 

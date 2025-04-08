@@ -22,8 +22,7 @@ from cmu_tare_model.public_impact.calculate_electricity_emissions import (
     calculate_climate_emissions_and_damages,
     calculate_health_damages
 )
-from cmu_tare_model.constants import define_scenario_params
-
+from cmu_tare_model.utils.modeling_params import define_scenario_params
 # 2) Import constants and global lookups (to patch)
 from cmu_tare_model.constants import EPA_SCC_USD2023_PER_MT, POLLUTANTS
 

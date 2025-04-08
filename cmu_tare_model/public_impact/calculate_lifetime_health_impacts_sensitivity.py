@@ -7,7 +7,7 @@ from cmu_tare_model.constants import EQUIPMENT_SPECS, POLLUTANTS, TD_LOSSES_MULT
 
 # Imports for lookup dictionaries, functions, and calculations
 from cmu_tare_model.public_impact.calculations.calculate_fossil_fuel_emissions import calculate_fossil_fuel_emissions
-from cmu_tare_model.constants import define_scenario_params
+from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.public_impact.calculations.precompute_hdd_factors import precompute_hdd_factors
 from cmu_tare_model.public_impact.data_processing.create_lookup_health_impact_county import (
     lookup_health_fossil_fuel_acs,
