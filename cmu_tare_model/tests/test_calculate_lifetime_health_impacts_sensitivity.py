@@ -221,7 +221,7 @@ def test_calculate_lifetime_health_impacts_success(sample_df, dummy_define_scena
     This test overrides define_scenario_params to return dummy lookup dictionaries and scenario prefix.
     """
     # Monkeypatch define_scenario_params with our dummy function.
-    from cmu_tare_model.constants import define_scenario_params
+    from cmu_tare_model.utils.modeling_params import define_scenario_params
     monkeypatch.setattr(
         "cmu_tare_model.utils.modeling_params.define_scenario_params",
         dummy_define_scenario_settings
