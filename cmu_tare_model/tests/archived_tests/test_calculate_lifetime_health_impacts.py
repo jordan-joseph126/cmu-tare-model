@@ -1,23 +1,23 @@
 """
 Test file for the updated health impacts functions in calculate_lifetime_health_impacts.py,
-with scenario settings updated to reflect real naming conventions.
+with scenario params updated to reflect real naming conventions.
 
 Context:
     The functions calculate_health_impacts and calculate_health_damages_for_pair compute lifetime and
-    annual health damages from fossil fuel and electricity consumption. They rely on the define_scenario_settings
+    annual health damages from fossil fuel and electricity consumption. They rely on the define_scenario_params
     function to determine scenario-specific lookup dictionaries and a scenario prefix, and on precompute_hdd_factors
     to obtain HDD adjustment factors. The main function returns a tuple of two DataFrames:
       - df_main: the input DataFrame updated with aggregated (lifetime) health damage columns.
       - df_detailed: a detailed DataFrame with annual breakdowns.
 
 Objectives:
-    - Test successful execution with valid input using dummy scenario settings.
+    - Test successful execution with valid input using dummy scenario params.
     - Test edge cases: empty DataFrame, missing required columns.
     - Test boundary conditions (e.g., equipment with minimal lifetime).
     - Verify proper exception handling using pytest.raises.
 
 Constraints/Requirements:
-    - Use monkeypatch to override define_scenario_settings with a dummy function.
+    - Use monkeypatch to override define_scenario_params with a dummy function.
     - Use pytest.raises for exception testing.
     - No actual I/O (all data is created in-memory).
     - Follow naming conventions: "electricity" and "fossil fuel" (not "elec"/"fossil") are used.
@@ -35,7 +35,7 @@ from cmu_tare_model.public_impact.calculate_lifetime_health_impacts import (
 from cmu_tare_model.constants import EQUIPMENT_SPECS, POLLUTANTS, CR_FUNCTIONS, RCM_MODELS
 
 # --------------------------
-# Fixtures for sample inputs and dummy scenario settings
+# Fixtures for sample inputs and dummy scenario params
 # --------------------------
 
 @pytest.fixture
@@ -61,7 +61,7 @@ def sample_df():
 @pytest.fixture
 def dummy_define_scenario_settings():
     """
-    Dummy replacement for define_scenario_settings.
+    Dummy replacement for define_scenario_params.
 
     Returns a function that, given menu_mp and policy_scenario, returns a tuple:
       (scenario_prefix, cambium_scenario, dummy_lookup_emissions_fossil_fuel, 
@@ -131,7 +131,7 @@ def test_calculate_health_damages_for_pair_success(sample_df, dummy_define_scena
     total_fossil_fuel_emissions = {p: pd.Series(0.0, index=sample_df.index) for p in POLLUTANTS}
     rcm = RCM_MODELS[0]  # e.g., 'AP2'
     cr = CR_FUNCTIONS[0]  # e.g., 'acs'
-    # Get dummy scenario settings.
+    # Get dummy scenario params.
     scenario_prefix, _, _, _, dummy_lookup_electricity_health = dummy_define_scenario_settings(0, "No Inflation Reduction Act")
     
     result = calculate_health_damages_for_pair(
@@ -165,12 +165,12 @@ def test_calculate_health_damages_for_pair_success(sample_df, dummy_define_scena
 def test_calculate_health_impacts_success(sample_df, dummy_define_scenario_settings, monkeypatch, menu_mp, policy_scenario):
     """
     Test that calculate_health_impacts returns a tuple of DataFrames with correct lifetime columns.
-    This test overrides define_scenario_settings to return dummy lookup dictionaries and scenario prefix.
+    This test overrides define_scenario_params to return dummy lookup dictionaries and scenario prefix.
     """
-    # Monkeypatch define_scenario_settings with our dummy function.
-    from cmu_tare_model.public_impact.emissions_scenario_settings import define_scenario_settings
+    # Monkeypatch define_scenario_params with our dummy function.
+    from cmu_tare_model.constants import define_scenario_params
     monkeypatch.setattr(
-        "cmu_tare_model.public_impact.emissions_scenario_settings.define_scenario_settings",
+        "cmu_tare_model.constants.define_scenario_params",
         dummy_define_scenario_settings
     )
     
@@ -200,7 +200,7 @@ def test_calculate_health_impacts_empty_df(dummy_define_scenario_settings, monke
     """
     empty_df = pd.DataFrame()
     monkeypatch.setattr(
-        "cmu_tare_model.public_impact.emissions_scenario_settings.define_scenario_settings",
+        "cmu_tare_model.constants.define_scenario_params",
         dummy_define_scenario_settings
     )
     with pytest.raises(Exception) as excinfo:
@@ -219,7 +219,7 @@ def test_calculate_health_impacts_missing_column(sample_df, dummy_define_scenari
     """
     df_missing = sample_df.drop(columns=['fips'])
     monkeypatch.setattr(
-        "cmu_tare_model.public_impact.emissions_scenario_settings.define_scenario_settings",
+        "cmu_tare_model.constants.define_scenario_params",
         dummy_define_scenario_settings
     )
     with pytest.raises(KeyError):
@@ -240,7 +240,7 @@ def test_calculate_health_impacts_boundary_lifetime(sample_df, dummy_define_scen
         EQUIPMENT_SPECS.clear()
         EQUIPMENT_SPECS.update({test_category: 1})
         monkeypatch.setattr(
-            "cmu_tare_model.public_impact.emissions_scenario_settings.define_scenario_settings",
+            "cmu_tare_model.constants.define_scenario_params",
             dummy_define_scenario_settings
         )
         df_main, df_detailed = calculate_health_impacts(

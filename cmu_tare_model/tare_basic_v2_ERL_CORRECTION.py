@@ -394,7 +394,7 @@ df_enclosure_retrofit_costs = pd.read_excel(io=file_path, sheet_name='enclosure_
 
 # %%
 from cmu_tare_model.utils.rsMeans_adjustment import *
-from cmu_tare_model.utils.inflation_adjustment import *
+from cmu_tare_model.utils.create_lookup_cpi_ratio import *
 
 # Use CCI to adjust for cost differences when compared to the national average
 # Call the function and map the values for CCI adjustment

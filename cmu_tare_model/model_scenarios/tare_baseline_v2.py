@@ -3,6 +3,10 @@
 
 # %%
 import os
+import pandas as pd
+import seaborn as sns           # import seaborn library (wrapper of matplotlib)
+sns.set_theme(style="darkgrid")
+from datetime import datetime
 
 # Measure Package 0: Baseline
 menu_mp = 0
@@ -10,8 +14,7 @@ input_mp = 'baseline'
 
 # import from cmu-tare-model package
 from config import PROJECT_ROOT
-
-import pandas as pd
+from cmu_tare_model.constants import INFLATION_ADJUSTED_USD
 
 # Set columns in display
 # pd.set_option('display.max_columns', None)
@@ -20,12 +23,6 @@ import pandas as pd
 # Set rows in display
 # pd.set_option('display.max_rows', None)
 # pd.reset_option('display.max_rows') # Reset options to default
-
-# import seaborn library (wrapper of matplotlib)
-import seaborn as sns
-sns.set_theme(style="darkgrid")
-
-from datetime import datetime
 
 # Get the current datetime
 # Start the timer
@@ -264,7 +261,7 @@ inflation_adjustment.py does the following:
 Additional information concerning the BLS CPI for All Urban Consumers (CPI-U) is provided the inflation_adjustment.py file.
 """
 
-from cmu_tare_model.utils.inflation_adjustment import *
+from cmu_tare_model.utils.create_lookup_cpi_ratio import *
 print(f"""
 --------------------------------------------------------------------------------------------------------------------------------------
 Inflate Marginal Social Cost (Damage) Factors using BLS CPI for All Urban Consumers (CPI-U)
@@ -295,10 +292,10 @@ For Health-Related Emissions Adjust for different Value of a Statistical Life (V
     - INFLATE TO $USD-2023
 --------------------------------------------------------------------------------------------------------------------------------------
 Current VSL: 
-{current_VSL_USD2023} USD-2023
+{current_VSL_USD2023} {INFLATION_ADJUSTED_USD}
       
 EASIUR VSL:
-{easiur_VSL_USD2023} USD-2023
+{easiur_VSL_USD2023} {INFLATION_ADJUSTED_USD}
 
 VSL Adjustment Factor:
 {vsl_adjustment_factor}

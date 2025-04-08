@@ -229,7 +229,7 @@ inflation_adjustment.py does the following:
 Additional information concerning the BLS CPI for All Urban Consumers (CPI-U) is provided the inflation_adjustment.py file.
 """
 
-from cmu_tare_model.utils.inflation_adjustment import *
+from cmu_tare_model.utils.create_lookup_cpi_ratio import *
 print(f"""
 --------------------------------------------------------------------------------------------------------------------------------------
 Inflate Marginal Social Cost (Damage) Factors using BLS CPI for All Urban Consumers (CPI-U)

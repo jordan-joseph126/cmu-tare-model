@@ -15,11 +15,11 @@ import pandas as pd
 
 # Import functions from the updated script
 from cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity import (
-    calculate_climate_impacts,
+    calculate_lifetime_climate_impacts,
     calculate_climate_emissions_and_damages,
 )
 from cmu_tare_model.public_impact.calculations.calculate_fossil_fuel_emissions import calculate_fossil_fuel_emissions
-from cmu_tare_model.constants import MER_TYPES, EQUIPMENT_SPECS
+from cmu_tare_model.constants import MER_TYPES, EQUIPMENT_SPECS, SCC_ASSUMPTIONS
 
 # =========================================================================
 # Fixtures
@@ -32,7 +32,7 @@ def sample_df():
     consumption columns for each category and year up to its lifetime.
     """
     data = {
-        'fips': ['12345'],
+        'county_fips': ['12345'],
         'state': ['XX'],
         'year': [2023],
         'cambium_gea_region': ['Region1'],
@@ -51,7 +51,6 @@ def sample_df():
         consumption_col = f"baseline_{category}_consumption"
         df[consumption_col] = 15.0  # dummy value
 
-
     # 2) Provide measure-package columns for each year from 2024..(2024 + lifetime)
     #    This ensures we have mp8_<year>_<category>_consumption for each year.
     for category, lifetime in EQUIPMENT_SPECS.items():
@@ -66,7 +65,7 @@ def sample_df():
 @pytest.fixture
 def dummy_define_scenario_settings():
     """
-    Dummy replacement for define_scenario_settings.
+    Dummy replacement for define_scenario_params.
     Returns a function that, given menu_mp and policy_scenario, returns a tuple:
       (scenario_prefix, cambium_scenario,
        dummy_lookup_emissions_fossil_fuel,
@@ -113,12 +112,15 @@ def dummy_define_scenario_settings():
 
         dummy_lookup_emissions_electricity_health = {}
 
+        dummy_lookup_fuel_prices = {}
+
         return (
             scenario_prefix,
             cambium_scenario,
             dummy_lookup_emissions_fossil_fuel,
             dummy_lookup_emissions_electricity_climate,
             dummy_lookup_emissions_electricity_health,
+            dummy_lookup_fuel_prices
         )
 
     return dummy
@@ -169,7 +171,7 @@ def test_calculate_climate_emissions_and_damages_success(sample_df, dummy_define
     year_label = 2024
     adjusted_hdd_factor = pd.Series(1.0, index=sample_df.index)
 
-    scenario_prefix, cambium_scenario, dummy_lookup_emissions_fossil_fuel, dummy_lookup_emissions_electricity_climate, _ = dummy_define_scenario_settings(0, "No Inflation Reduction Act")
+    scenario_prefix, cambium_scenario, dummy_lookup_emissions_fossil_fuel, dummy_lookup_emissions_electricity_climate, _, _ = dummy_define_scenario_settings(0, "No Inflation Reduction Act")
 
     total_fossil_fuel_emissions = calculate_fossil_fuel_emissions(
         sample_df, category, adjusted_hdd_factor, dummy_lookup_emissions_fossil_fuel, 0
@@ -191,7 +193,7 @@ def test_calculate_climate_emissions_and_damages_success(sample_df, dummy_define
         emissions_key = f"{scenario_prefix}{year_label}_{category}_mt_co2e_{mer_type}"
         assert emissions_key in climate_results, f"Missing {emissions_key}"
 
-        for scc_assumption in ['lower', 'central', 'upper']:
+        for scc_assumption in SCC_ASSUMPTIONS:
             damages_key = f"{scenario_prefix}{year_label}_{category}_damages_climate_{mer_type}_{scc_assumption}"
             assert damages_key in climate_results, f"Missing {damages_key}"
 
@@ -204,22 +206,22 @@ def test_calculate_climate_emissions_and_damages_success(sample_df, dummy_define
 
 
 # =========================================================================
-# Tests for calculate_climate_impacts
+# Tests for calculate_lifetime_climate_impacts
 # =========================================================================
 
 @pytest.mark.parametrize("menu_mp", [0, 8])
 @pytest.mark.parametrize("policy_scenario", ["No Inflation Reduction Act", "AEO2023 Reference Case"])
 def test_calculate_climate_impacts_success(sample_df, dummy_define_scenario_settings, monkeypatch, menu_mp, policy_scenario):
     """
-    Test that calculate_climate_impacts returns two DataFrames with the lifetime
+    Test that calculate_lifetime_climate_impacts returns two DataFrames with the lifetime
     climate impact columns for each equipment category, scenario, and SCC assumption.
     """
     monkeypatch.setattr(
-        "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_settings",
+        "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_params",
         dummy_define_scenario_settings
     )
 
-    df_main, df_detailed = calculate_climate_impacts(
+    df_main, df_detailed = calculate_lifetime_climate_impacts(
         df=sample_df,
         menu_mp=menu_mp,
         policy_scenario=policy_scenario,
@@ -236,7 +238,7 @@ def test_calculate_climate_impacts_success(sample_df, dummy_define_scenario_sett
         for mer in MER_TYPES:
             emissions_col = f"{scenario_prefix}{category}_lifetime_mt_co2e_{mer}"
             assert emissions_col in df_main.columns, f"Missing col {emissions_col}"
-            for scc_assumption in ['lower', 'central', 'upper']:
+            for scc_assumption in SCC_ASSUMPTIONS:
                 damages_col = f"{scenario_prefix}{category}_lifetime_damages_climate_{mer}_{scc_assumption}"
                 assert damages_col in df_main.columns, f"Missing col {damages_col}"
 
@@ -245,17 +247,17 @@ def test_calculate_climate_impacts_success(sample_df, dummy_define_scenario_sett
 
 def test_calculate_climate_impacts_empty_df(dummy_define_scenario_settings, monkeypatch):
     """
-    Test that an empty DataFrame triggers an exception when passed to calculate_climate_impacts.
+    Test that an empty DataFrame triggers an exception when passed to calculate_lifetime_climate_impacts.
     """
     empty_df = pd.DataFrame()
 
     monkeypatch.setattr(
-        "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_settings",
+        "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_params",
         dummy_define_scenario_settings
     )
 
     with pytest.raises(Exception):
-        calculate_climate_impacts(
+        calculate_lifetime_climate_impacts(
             df=empty_df,
             menu_mp=0,
             policy_scenario="No Inflation Reduction Act",
@@ -270,12 +272,12 @@ def test_calculate_climate_impacts_missing_column(sample_df, dummy_define_scenar
     df_missing = sample_df.drop(columns=['census_division'])
 
     monkeypatch.setattr(
-        "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_settings",
+        "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_params",
         dummy_define_scenario_settings
     )
 
     with pytest.raises(Exception):
-        calculate_climate_impacts(
+        calculate_lifetime_climate_impacts(
             df=df_missing,
             menu_mp=0,
             policy_scenario="No Inflation Reduction Act",
@@ -301,11 +303,11 @@ def test_calculate_climate_impacts_boundary_lifetime(sample_df, dummy_define_sce
         EQUIPMENT_SPECS.update({test_category: 1})  # Set the test category's lifetime to 1
 
         monkeypatch.setattr(
-            "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_settings",
+            "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_params",
             dummy_define_scenario_settings
         )
 
-        df_main, df_detailed = calculate_climate_impacts(
+        df_main, _ = calculate_lifetime_climate_impacts(
             df=sample_df,
             menu_mp=0,
             policy_scenario="No Inflation Reduction Act",
@@ -329,15 +331,15 @@ def test_calculate_climate_impacts_boundary_lifetime(sample_df, dummy_define_sce
 @pytest.mark.parametrize("invalid_scenario", ["SomeUnknownPolicy", "InvalidScenario"])
 def test_calculate_climate_impacts_invalid_policy_scenario(sample_df, dummy_define_scenario_settings, monkeypatch, invalid_scenario):
     """
-    Test that an invalid or unrecognized policy_scenario raises ValueError from define_scenario_settings.
+    Test that an invalid or unrecognized policy_scenario raises ValueError from define_scenario_params.
     """
     monkeypatch.setattr(
-        "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_settings",
+        "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_params",
         dummy_define_scenario_settings
     )
 
     with pytest.raises(ValueError, match="Invalid Policy Scenario"):
-        calculate_climate_impacts(
+        calculate_lifetime_climate_impacts(
             df=sample_df,
             menu_mp=8,
             policy_scenario=invalid_scenario,
@@ -354,13 +356,13 @@ def test_calculate_climate_impacts_missing_region_factor(sample_df, dummy_define
     sample_df['gea_region'] = "UnlistedRegion"
 
     monkeypatch.setattr(
-        "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_settings",
+        "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_params",
         dummy_define_scenario_settings
     )
 
     # We expect a KeyError from the emission factor retrieval
     with pytest.raises(Exception):
-        calculate_climate_impacts(
+        calculate_lifetime_climate_impacts(
             df=sample_df,
             menu_mp=0,
             policy_scenario="No Inflation Reduction Act",
@@ -385,12 +387,12 @@ def test_calculate_climate_impacts_missing_hdd_factor_year(sample_df, dummy_defi
         mock_precompute_hdd_factors
     )
     monkeypatch.setattr(
-        "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_settings",
+        "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_params",
         dummy_define_scenario_settings
     )
 
     with pytest.raises(RuntimeError, match="Error processing year 2024"):
-        calculate_climate_impacts(
+        calculate_lifetime_climate_impacts(
             df=sample_df,
             menu_mp=0,
             policy_scenario="No Inflation Reduction Act",
@@ -410,16 +412,16 @@ def test_calculate_climate_impacts_with_baseline_damages(sample_df, dummy_define
     for category in EQUIPMENT_SPECS.keys():
         for mer in MER_TYPES:
             baseline_data[f'baseline_{category}_lifetime_mt_co2e_{mer}'] = [10.0]
-            for scc in ['lower', 'central', 'upper']:
+            for scc in SCC_ASSUMPTIONS:
                 baseline_data[f'baseline_{category}_lifetime_damages_climate_{mer}_{scc}'] = [100.0]
     df_baseline = pd.DataFrame(baseline_data, index=sample_df.index)
 
     monkeypatch.setattr(
-        "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_settings",
+        "cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_params",
         dummy_define_scenario_settings
     )
 
-    df_main, df_detailed = calculate_climate_impacts(
+    df_main, df_detailed = calculate_lifetime_climate_impacts(
         df=sample_df,
         menu_mp=8,
         policy_scenario="No Inflation Reduction Act",
@@ -433,7 +435,7 @@ def test_calculate_climate_impacts_with_baseline_damages(sample_df, dummy_define
         for mer in MER_TYPES:
             avoided_emissions_col = f"{scenario_prefix}{category}_avoided_mt_co2e_{mer}"
             assert avoided_emissions_col in df_main.columns, f"Missing {avoided_emissions_col}"
-            for scc in ['lower', 'central', 'upper']:
+            for scc in SCC_ASSUMPTIONS:
                 avoided_damages_col = f"{scenario_prefix}{category}_avoided_damages_climate_{mer}_{scc}"
                 assert avoided_damages_col in df_main.columns, f"Missing {avoided_damages_col}"
 

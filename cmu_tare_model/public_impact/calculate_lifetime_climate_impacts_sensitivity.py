@@ -1,9 +1,9 @@
 import pandas as pd
 from typing import Optional, Tuple, Dict
 
-from cmu_tare_model.constants import MER_TYPES, EQUIPMENT_SPECS, TD_LOSSES_MULTIPLIER
+from cmu_tare_model.constants import EQUIPMENT_SPECS, TD_LOSSES_MULTIPLIER, MER_TYPES, SCC_ASSUMPTIONS
 from cmu_tare_model.public_impact.calculations.calculate_fossil_fuel_emissions import calculate_fossil_fuel_emissions
-from cmu_tare_model.public_impact.emissions_scenario_settings import define_scenario_settings
+from cmu_tare_model.constants import define_scenario_params
 from cmu_tare_model.public_impact.calculations.precompute_hdd_factors import precompute_hdd_factors
 from cmu_tare_model.public_impact.data_processing.create_lookup_climate_impact_scc import lookup_climate_impact_scc
 
@@ -15,7 +15,7 @@ def calculate_lifetime_climate_impacts(
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Calculate lifetime climate impacts (CO2e emissions and climate damages) for each
-    equipment category across all (mer, scc_value) combinations.
+    equipment category across all (mer_type, scc_value) combinations.
 
     This function processes each equipment category over its lifetime, computing annual
     and lifetime climate emissions/damages. Results are combined into two DataFrames:
@@ -43,9 +43,9 @@ def calculate_lifetime_climate_impacts(
     # Initialize a dictionary to store lifetime climate impacts columns
     lifetime_columns_data = {}
 
-    # Retrieve scenario-specific settings for electricity/fossil-fuel emissions
+    # Retrieve scenario-specific params for electricity/fossil-fuel emissions
     # Ignored (underscored) the health lookup as it's not used in this function
-    scenario_prefix, cambium_scenario, lookup_emissions_fossil_fuel, lookup_emissions_electricity_climate, _ = define_scenario_settings(menu_mp, policy_scenario)
+    scenario_prefix, cambium_scenario, lookup_emissions_fossil_fuel, lookup_emissions_electricity_climate, _, _ = define_scenario_params(menu_mp, policy_scenario)
 
     # Precompute HDD adjustment factors by region and year
     hdd_factors_per_year = precompute_hdd_factors(df_copy)
@@ -57,12 +57,12 @@ def calculate_lifetime_climate_impacts(
         try:
             print(f"Calculating Climate Emissions and Damages from 2024 to {2024 + lifetime} for {category}")
                     
-            # Reinitialize lifetime climate impacts for this category for each (mer, scc_assumption) pair
-            lifetime_climate_emissions = {mer: pd.Series(0.0, index=df_copy.index) for mer in MER_TYPES}
+            # Reinitialize lifetime climate impacts for this category for each (mer_type, scc_assumption) pair
+            lifetime_climate_emissions = {mer_type: pd.Series(0.0, index=df_copy.index) for mer_type in MER_TYPES}
             lifetime_climate_damages = {
-                (mer, scc_value): pd.Series(0.0, index=df_copy.index)
-                for mer in MER_TYPES
-                for scc_value in ['lower', 'central', 'upper']
+                (mer_type, scc_value): pd.Series(0.0, index=df_copy.index)
+                for mer_type in MER_TYPES
+                for scc_value in SCC_ASSUMPTIONS
             }
 
             # Loop over each year in the equipment's lifetime
@@ -99,8 +99,8 @@ def calculate_lifetime_climate_impacts(
                     )
                     
                     # Accumulate annual emissions (scc_value-independent)
-                    for mer in MER_TYPES:
-                        lifetime_climate_emissions[mer] += annual_emissions.get(mer, 0.0)
+                    for mer_type in MER_TYPES:
+                        lifetime_climate_emissions[mer_type] += annual_emissions.get(mer_type, 0.0)
 
                     # Accumulate annual damages for each scc_value assumption
                     for key, value in annual_damages.items():
@@ -115,25 +115,25 @@ def calculate_lifetime_climate_impacts(
 
             # Prepare lifetime columns
             lifetime_dict = {}
-            for mer in MER_TYPES:
-                emissions_col = f'{scenario_prefix}{category}_lifetime_mt_co2e_{mer}'
-                lifetime_dict[emissions_col] = lifetime_climate_emissions[mer]
+            for mer_type in MER_TYPES:
+                emissions_col = f'{scenario_prefix}{category}_lifetime_mt_co2e_{mer_type}'
+                lifetime_dict[emissions_col] = lifetime_climate_emissions[mer_type]
                 
-                for scc_assumption in ['lower', 'central', 'upper']:
-                    damages_col = f'{scenario_prefix}{category}_lifetime_damages_climate_{mer}_{scc_assumption}'
-                    lifetime_dict[damages_col] = lifetime_climate_damages[(mer, scc_assumption)]
+                for scc_assumption in SCC_ASSUMPTIONS:
+                    damages_col = f'{scenario_prefix}{category}_lifetime_damages_climate_{mer_type}_{scc_assumption}'
+                    lifetime_dict[damages_col] = lifetime_climate_damages[(mer_type, scc_assumption)]
                     
                     # Calculate avoided damages if baseline data is provided
                     if menu_mp != 0 and df_baseline_damages is not None:
-                        baseline_damages_col = f'baseline_{category}_lifetime_damages_climate_{mer}_{scc_assumption}'
-                        avoided_damages_col = f'{scenario_prefix}{category}_avoided_damages_climate_{mer}_{scc_assumption}'
+                        baseline_damages_col = f'baseline_{category}_lifetime_damages_climate_{mer_type}_{scc_assumption}'
+                        avoided_damages_col = f'{scenario_prefix}{category}_avoided_damages_climate_{mer_type}_{scc_assumption}'
                         # Subtract measure package damages from baseline
                         lifetime_dict[avoided_damages_col] = df_baseline_damages[baseline_damages_col] - lifetime_dict[damages_col]
                 
                 # Calculate avoided emissions if baseline data is provided
                 if menu_mp != 0 and df_baseline_damages is not None:
-                    baseline_emissions_col = f'baseline_{category}_lifetime_mt_co2e_{mer}'
-                    avoided_emissions_col = f'{scenario_prefix}{category}_avoided_mt_co2e_{mer}'
+                    baseline_emissions_col = f'baseline_{category}_lifetime_mt_co2e_{mer_type}'
+                    avoided_emissions_col = f'{scenario_prefix}{category}_avoided_mt_co2e_{mer_type}'
                     # Subtract measure package emissions from baseline
                     lifetime_dict[avoided_emissions_col] = df_baseline_damages[baseline_emissions_col] - lifetime_dict[emissions_col]
 
@@ -188,8 +188,8 @@ def calculate_climate_emissions_and_damages(
     Returns:
         Tuple[dict, dict, dict]:
             - dict: Annual columns of climate emissions/damages, keyed by output column names.
-            - dict: Annual climate emissions by MER type (for aggregation).
-            - dict: Annual climate damages by (MER type, SCC assumption).
+            - dict: Annual climate emissions by mer_type type (for aggregation).
+            - dict: Annual climate damages by (mer_type type, SCC assumption).
 
     Raises:
         KeyError: If emission factors for a specific region/year are missing.
@@ -267,7 +267,7 @@ def calculate_climate_emissions_and_damages(
     # Adjust electricity consumption by the HDD factor for heating/waterHeating
     electricity_consumption = df[consumption_col].fillna(0) * adjusted_hdd_factor
 
-    # Calculate annual emissions for each MER type
+    # Calculate annual emissions for each mer_type type
     for mer_type in MER_TYPES:
         # Multiply by transmission/distribution losses
         annual_emissions_electricity = electricity_consumption * TD_LOSSES_MULTIPLIER * mer_factors[mer_type]

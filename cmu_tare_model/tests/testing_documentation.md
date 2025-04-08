@@ -10,9 +10,10 @@ file.py uses {}, {}, and other imports from the cmu_tare_model package. Some fun
     - Return descriptions with type.
     - Any exceptions raised.
     2. Add inline comments only for non-trivial or complex lines to clarify logic.
-    3. Do not rename any functions, parameters, or variables.
-    4. Do not change or remove any existing lines of code.
-    5. Do not rearrange or refactor the code structure.
+    3. Add typehints to all functions
+    4. Do not rename any functions, parameters, or variables.
+    5. Do not change or remove any existing lines of code.
+    6. Do not rearrange or refactor the code structure.
 
 
 
@@ -205,3 +206,79 @@ def test_map_location_to_census_division_invalid_input(sample_census_division_ma
     """
     Test that map_location_to_census_division handles invalid input types gracefully.
     """
+
+
+GENERAL PROMPT
+
+### **Files for Review:**
+- Main script: `[INSERT_MAIN_FILE_NAME_HERE.py]`
+- Additional module/script(s) imported:
+  - Module: `[MODULE_NAME_HERE.py]` – Imported as `[alias or module name in main script]`
+  - Module: `[ADDITIONAL_MODULE_NAME_HERE.py]` – Imported as `[alias or module name in main script]`
+
+### **Task Description:**
+Carefully review the provided main script and the additional imported module(s). Ensure a comprehensive understanding of their logic, functionality, and interactions. Pay particular attention to the creation of lookup dictionaries within the attached scripts, ensuring you understand fully:
+- The input data structure.
+- The transformation logic and algorithms applied.
+- The resulting output structures.
+- Functional differences, if any, between the scripts.
+
+### **Review and Analysis Objectives:**
+- Confirm your complete understanding of all attached code (main file and modules).
+- Clearly note and document:
+  - Any similarities or differences between multiple scripts performing similar functions.
+  - Potential redundancies, optimization points, or areas of confusion.
+
+### **Document Changes Clearly:**
+- Clearly highlight every change made to the code since the version from `[INSERT_PREVIOUS_VERSION_DATE]`.
+- Provide a detailed changelog including:
+  - Specific descriptions of modifications, additions, and removals.
+  - Explicit code snippets where relevant to clearly indicate what has changed.
+
+**Example Changelog Format:**
+```
+CHANGELOG
+----------
+
+Date: [Insert Date Here]
+- Modified function `[function_name]()`:
+  - Changed [brief description of change]
+  - Reason: [explain why this change was necessary]
+
+- Added new variable `[variable_name]`:
+  - Purpose: [describe the function or purpose of this variable]
+
+- Removed redundant loop in `[section or function]`:
+  - Reason: [justify the removal clearly and concisely]
+```
+
+### **Naming Conventions:**
+- Verify that all naming conventions precisely match those used in the original codebase. Identify and document any discrepancies or inconsistencies.
+
+### **Deliverable:**
+Provide a comprehensive report structured as follows:
+
+- **Understanding and Summary:**
+  - Clear overview and summary of the logic, functionality, and purpose of all provided scripts and their interactions.
+
+- **Detailed Script Comparison:**
+  - Table or structured comparison clearly indicating differences and similarities between scripts, especially around lookup dictionary creation logic.
+
+- **Documented Changes:**
+  - Comprehensive changelog documenting every modification since `[INSERT_PREVIOUS_VERSION_DATE]`.
+
+- **Naming Convention Consistency Report:**
+  - Explicitly document any naming convention inconsistencies or confirm consistency.
+
+---
+
+### **Future Tasks Placeholder:**
+
+Clearly indicate here the tasks you'd like to accomplish in the next iteration:
+
+- `[INSERT TASK 1 HERE]`
+- `[INSERT TASK 2 HERE]`
+- `[INSERT TASK 3 HERE]`
+
+---
+

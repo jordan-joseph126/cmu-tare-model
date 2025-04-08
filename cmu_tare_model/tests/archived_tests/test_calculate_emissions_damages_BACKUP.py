@@ -14,7 +14,7 @@ import numpy as np
 # Primary code under test
 from cmu_tare_model.public_impact.calculate_emissions_damages import (
     calculate_marginal_damages,
-    define_scenario_settings,
+    define_scenario_params,
     precompute_hdd_factors,
     calculate_damages_grid_scenario,
     calculate_fossil_fuel_emissions,
@@ -231,32 +231,32 @@ def sample_baseline_damages():
 
 def test_define_scenario_settings_valid():
     """
-    Test that define_scenario_settings returns expected tuple
+    Test that define_scenario_params returns expected tuple
     for baseline, pre-IRA, and IRA scenarios.
     """
     # Baseline case
-    prefix, scenario, _, _, _ = define_scenario_settings(0, 'No Inflation Reduction Act')
+    prefix, scenario, _, _, _ = define_scenario_params(0, 'No Inflation Reduction Act')
     assert prefix == "baseline_", "Expected baseline prefix when menu_mp=0"
     assert scenario == "MidCase", "Expected 'MidCase' scenario for baseline"
 
     # Pre-IRA case
-    prefix, scenario, _, _, _ = define_scenario_settings(1, 'No Inflation Reduction Act')
+    prefix, scenario, _, _, _ = define_scenario_params(1, 'No Inflation Reduction Act')
     assert prefix.startswith("preIRA_mp1_")
     assert scenario == "MidCase"
 
     # IRA case
-    prefix, scenario, _, _, _ = define_scenario_settings(2, 'AEO2023 Reference Case')
+    prefix, scenario, _, _, _ = define_scenario_params(2, 'AEO2023 Reference Case')
     assert prefix.startswith("iraRef_mp2_")
     assert scenario == "MidCase"
 
 
 def test_define_scenario_settings_invalid():
     """
-    Test that define_scenario_settings raises ValueError
+    Test that define_scenario_params raises ValueError
     for invalid policy scenario strings.
     """
     with pytest.raises(ValueError):
-        define_scenario_settings(1, 'Invalid Policy')
+        define_scenario_params(1, 'Invalid Policy')
 
 
 def test_precompute_hdd_factors_minimal(sample_df):
