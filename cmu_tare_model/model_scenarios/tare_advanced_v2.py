@@ -368,7 +368,7 @@ PRIVATE PERSPECTIVE COSTS AND BENEFITS
 
 # %%
 # UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
-from cmu_tare_model.utils.create_lookup_cpi_ratio import *
+from cmu_tare_model.utils.inflation_adjustment import *
 
 # Collect Capital Cost Data for different End-uses
 filename = "tare_retrofit_costs_cpi.xlsx"

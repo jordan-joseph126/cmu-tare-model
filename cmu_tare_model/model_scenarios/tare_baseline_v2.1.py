@@ -229,7 +229,7 @@ inflation_adjustment.py does the following:
 Additional information concerning the BLS CPI for All Urban Consumers (CPI-U) is provided the inflation_adjustment.py file.
 """
 
-from cmu_tare_model.utils.create_lookup_cpi_ratio import *
+from cmu_tare_model.utils.inflation_adjustment import *
 print(f"""
 --------------------------------------------------------------------------------------------------------------------------------------
 Inflate Marginal Social Cost (Damage) Factors using BLS CPI for All Urban Consumers (CPI-U)
@@ -275,8 +275,8 @@ No Electricity Grid Uncertainty (Just Current Grid and Future Grid Projections)
 # ### Baseline Marginal Damages: WHOLE-HOME
 
 # %%
-from cmu_tare_model.public_impact.calculate_lifetime_climate_impacts import *
-from cmu_tare_model.public_impact.calculate_lifetime_health_impacts import *
+from cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity import *
+from cmu_tare_model.public_impact.calculate_lifetime_health_impacts_sensitivity import *
 print("""
 -------------------------------------------------------------------------------------------------------
 Step 5: Calculate End-use specific marginal damages
@@ -290,8 +290,8 @@ Baseline Marginal Damages: WHOLE-HOME
 print("\n", "Creating dataframe to store marginal damages calculations ...")
 df_baseline_scenario_damages = df_euss_am_baseline_home.copy()
 
-# calculate_climate_impacts(df, menu_mp, policy_scenario, df_baseline_damages=None)
-df_euss_am_baseline_home, df_baseline_scenario_damages = calculate_climate_impacts(df=df_euss_am_baseline_home,
+# calculate_lifetime_climate_impacts(df, menu_mp, policy_scenario, df_baseline_damages=None)
+df_euss_am_baseline_home, df_baseline_scenario_damages = calculate_lifetime_climate_impacts(df=df_euss_am_baseline_home,
                                                                                    menu_mp=menu_mp,
                                                                                    policy_scenario='No Inflation Reduction Act',
                                                                                    df_baseline_damages=df_baseline_scenario_damages,
@@ -302,8 +302,8 @@ df_euss_am_baseline_home
 df_baseline_scenario_damages
 
 # %%
-# calculate_climate_impacts(df, menu_mp, policy_scenario, df_baseline_damages=None)
-df_euss_am_baseline_home, df_baseline_scenario_damages = calculate_health_impacts(df=df_euss_am_baseline_home,
+# calculate_lifetime_climate_impacts(df, menu_mp, policy_scenario, df_baseline_damages=None)
+df_euss_am_baseline_home, df_baseline_scenario_damages = calculate_lifetime_health_impacts(df=df_euss_am_baseline_home,
                                                                                   menu_mp=menu_mp,
                                                                                   policy_scenario='No Inflation Reduction Act',
                                                                                   df_baseline_damages=df_baseline_scenario_damages,

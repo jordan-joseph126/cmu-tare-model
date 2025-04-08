@@ -218,7 +218,7 @@ to calculate the emission factors for fossil fuels. The function returns a dataf
 
 The create_lookup_emissions_fossil_fuel.py file contains the following dataframes and lookup dictionaries:
     - df_marg_emis_factors: Marginal Emission Factors for Fossil Fuels
-    - lookup_emis_fossil_fuel: Lookup Dictionary for Fossil Fuel Emissions
+    - lookup_emissions_fossil_fuel: Lookup Dictionary for Fossil Fuel Emissions
 
 Fossil Fuels (Natural Gas, Fuel Oil, Propane):
 - NOx, SO2, CO2: 
@@ -230,7 +230,7 @@ Fossil Fuels (Natural Gas, Fuel Oil, Propane):
     - Source: https://www3.epa.gov/ttnchie1/conference/ei12/area/haneke.pdf
 """
 
-from cmu_tare_model.public_impact.create_lookup_emissions_fossil_fuel import *
+from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_fossil_fuel import *
 
 print(f"""
 --------------------------------------------------------------------------------------------------------------------------------------
@@ -242,7 +242,7 @@ DATAFRAME: Marginal Emission Factors for Fossil Fuels
 
 LOOKUP DICTIONARY: Fossil Fuel Emissions
 
-{lookup_emis_fossil_fuel}
+{lookup_emissions_fossil_fuel}
 """)
 
 # %% [markdown]
@@ -261,7 +261,7 @@ inflation_adjustment.py does the following:
 Additional information concerning the BLS CPI for All Urban Consumers (CPI-U) is provided the inflation_adjustment.py file.
 """
 
-from cmu_tare_model.utils.create_lookup_cpi_ratio import *
+from cmu_tare_model.utils.inflation_adjustment import *
 print(f"""
 --------------------------------------------------------------------------------------------------------------------------------------
 Inflate Marginal Social Cost (Damage) Factors using BLS CPI for All Urban Consumers (CPI-U)

@@ -211,7 +211,7 @@ def test_calculate_climate_emissions_and_damages_success(sample_df, dummy_define
 
 @pytest.mark.parametrize("menu_mp", [0, 8])
 @pytest.mark.parametrize("policy_scenario", ["No Inflation Reduction Act", "AEO2023 Reference Case"])
-def test_calculate_climate_impacts_success(sample_df, dummy_define_scenario_settings, monkeypatch, menu_mp, policy_scenario):
+def test_calculate_lifetime_climate_impacts_success(sample_df, dummy_define_scenario_settings, monkeypatch, menu_mp, policy_scenario):
     """
     Test that calculate_lifetime_climate_impacts returns two DataFrames with the lifetime
     climate impact columns for each equipment category, scenario, and SCC assumption.
@@ -245,7 +245,7 @@ def test_calculate_climate_impacts_success(sample_df, dummy_define_scenario_sett
     assert not df_detailed.empty, "df_detailed should contain annual/lifetime detail"
 
 
-def test_calculate_climate_impacts_empty_df(dummy_define_scenario_settings, monkeypatch):
+def test_calculate_lifetime_climate_impacts_empty_df(dummy_define_scenario_settings, monkeypatch):
     """
     Test that an empty DataFrame triggers an exception when passed to calculate_lifetime_climate_impacts.
     """
@@ -265,7 +265,7 @@ def test_calculate_climate_impacts_empty_df(dummy_define_scenario_settings, monk
         )
 
 
-def test_calculate_climate_impacts_missing_column(sample_df, dummy_define_scenario_settings, monkeypatch):
+def test_calculate_lifetime_climate_impacts_missing_column(sample_df, dummy_define_scenario_settings, monkeypatch):
     """
     Test that a missing required column (e.g., 'census_division') triggers an exception.
     """
@@ -285,7 +285,7 @@ def test_calculate_climate_impacts_missing_column(sample_df, dummy_define_scenar
         )
 
 
-def test_calculate_climate_impacts_boundary_lifetime(sample_df, dummy_define_scenario_settings, monkeypatch):
+def test_calculate_lifetime_climate_impacts_boundary_lifetime(sample_df, dummy_define_scenario_settings, monkeypatch):
     """
     Test boundary condition for equipment lifetime by temporarily overriding EQUIPMENT_SPECS
     to have a single category with lifetime=1.
@@ -329,7 +329,7 @@ def test_calculate_climate_impacts_boundary_lifetime(sample_df, dummy_define_sce
 # =========================================================================
 
 @pytest.mark.parametrize("invalid_scenario", ["SomeUnknownPolicy", "InvalidScenario"])
-def test_calculate_climate_impacts_invalid_policy_scenario(sample_df, dummy_define_scenario_settings, monkeypatch, invalid_scenario):
+def test_calculate_lifetime_climate_impacts_invalid_policy_scenario(sample_df, dummy_define_scenario_settings, monkeypatch, invalid_scenario):
     """
     Test that an invalid or unrecognized policy_scenario raises ValueError from define_scenario_params.
     """
@@ -347,7 +347,7 @@ def test_calculate_climate_impacts_invalid_policy_scenario(sample_df, dummy_defi
         )
 
 
-def test_calculate_climate_impacts_missing_region_factor(sample_df, dummy_define_scenario_settings, monkeypatch):
+def test_calculate_lifetime_climate_impacts_missing_region_factor(sample_df, dummy_define_scenario_settings, monkeypatch):
     """
     Test that if a needed GEA region is not present in the electricity climate lookup,
     a KeyError or RuntimeError is raised when calculating annual emissions.
@@ -370,7 +370,7 @@ def test_calculate_climate_impacts_missing_region_factor(sample_df, dummy_define
         )
 
 
-def test_calculate_climate_impacts_missing_hdd_factor_year(sample_df, dummy_define_scenario_settings, monkeypatch):
+def test_calculate_lifetime_climate_impacts_missing_hdd_factor_year(sample_df, dummy_define_scenario_settings, monkeypatch):
     """
     Test that if the precomputed HDD factors do not contain an expected year,
     a RuntimeError is raised. We can do this by mocking 'precompute_hdd_factors'
@@ -400,7 +400,7 @@ def test_calculate_climate_impacts_missing_hdd_factor_year(sample_df, dummy_defi
         )
 
 
-def test_calculate_climate_impacts_with_baseline_damages(sample_df, dummy_define_scenario_settings, monkeypatch):
+def test_calculate_lifetime_climate_impacts_with_baseline_damages(sample_df, dummy_define_scenario_settings, monkeypatch):
     """
     Test coverage for scenario where menu_mp != 0 and df_baseline_damages is provided.
     Verifies that avoided emissions/damages columns are created in df_main and that

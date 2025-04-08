@@ -2,7 +2,7 @@
 from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_fossil_fuel import lookup_emissions_fossil_fuel
 from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_electricity_climate import lookup_emissions_electricity_climate_preIRA, lookup_emissions_electricity_climate_IRA
 from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_electricity_health import lookup_emissions_electricity_health
-from cmu_tare_model.private_impact.data_processing.create_lookup_fuel_prices import lookup_fuel_prices_preIRA, lookup_fuel_prices_iraRef
+from cmu_tare_model.private_impact.process_fuel_price_data import lookup_fuel_prices_preIRA, lookup_fuel_prices_iraRef
 from typing import Tuple, Dict
 
 def define_scenario_params(menu_mp: int, policy_scenario: str) -> Tuple[str, str, Dict, Dict, Dict, Dict]:
