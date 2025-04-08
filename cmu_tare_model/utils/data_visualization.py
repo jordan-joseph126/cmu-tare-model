@@ -11,6 +11,66 @@ import seaborn as sns
 FUNCTIONS FOR DATA VISUALIZATION
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 """
+
+# =======================================================================================================================
+# DISPLAYING PANDAS DATAFRAMES LIKE JUPYTER
+# =======================================================================================================================
+import pandas as pd
+
+def print_truncated_df(df, n=5):
+    """
+    Prints the DataFrame in a truncated view similar to Jupyter Notebook,
+    displaying the top n rows, an ellipsis line, and the bottom n rows.
+    
+    If the DataFrame has 2*n or fewer rows, it prints the entire DataFrame.
+    """
+    with pd.option_context('display.max_rows', 2 * n + 1):
+        print(df)
+
+# # Example usage:
+# # Create a sample DataFrame with many rows.
+# df = pd.DataFrame({
+#     'A': range(1, 101),
+#     'B': range(101, 201)
+# })
+
+# print_truncated_df(df)
+
+def print_truncated_dict(dict, n=5):
+    """
+    Mimics Jupyter's truncated display for dictionaries.
+    
+    If the dictionary contains more than 2*n items, it prints the first n key–value
+    pairs, then an ellipsis ('...'), followed by the last n key–value pairs.
+    Otherwise, it prints the full dictionary.
+    
+    Parameters:
+        dict (dict): The dictionary to print.
+        n (int): The number of items to show from the beginning and end.
+    """
+    items = list(dict.items())
+    total_items = len(items)
+    
+    if total_items <= 2 * n:
+        print(dict)
+    else:
+        # Start of the dict representation
+        print("{")
+        # Print the first n items with some indentation for readability
+        for key, value in items[:n]:
+            print("  {}: {},".format(repr(key), repr(value)))
+        # Print an ellipsis to indicate omitted items
+        print("  ...")
+        # Print the last n items
+        for key, value in items[-n:]:
+            print("  {}: {},".format(repr(key), repr(value)))
+        # End of the dict representation
+        print("}")
+
+# # Build a sample dictionary with 20 key–value pairs
+# sample_dict = {f'key{i}': i for i in range(1, 21)}
+# print_truncated_dict(sample_dict, n=5)
+
 # ======================================================================================================================
 # FORMAT DATA USING .DESCRIBE() METHODS
 # ======================================================================================================================

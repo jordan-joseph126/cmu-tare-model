@@ -282,3 +282,88 @@ Clearly indicate here the tasks you'd like to accomplish in the next iteration:
 
 ---
 
+
+### **Files for Review:**
+- **New Implementation:** `create_lookup_fuel_prices.py`
+- **Original Implementation:** `process_fuel_price_data.py`
+- **Additional Module(s):**
+  - (List any other modules or scripts imported by either of the two files, along with their aliases if applicable)
+
+---
+
+### **Task Description:**
+Review the new code in `create_lookup_fuel_prices.py` and compare it with the original implementation in `process_fuel_price_data.py`. Your review should focus on understanding the logic, input data structure, lookup dictionary creation, and overall transformation processes. Additionally, address the following traceback error occurring during execution:
+
+> **Traceback Summary (Partial):**  
+> ```python
+> KeyError: 'year'
+> ```
+> This error arises when attempting to access `row['year']` in the DataFrame.
+
+Key points to investigate include:
+- **Input Data Structure:** How is the fuel price or related data loaded and structured? Ensure that the DataFrame read from `bls_cpiu_2005-2023.xlsx` correctly contains a column named `'year'`.
+- **Transformation & Lookup Dictionary Logic:** What algorithms and loops are applied to build the lookup dictionaries? Is there a discrepancy in handling the `'year'` column between the two scripts?
+- **Error Handling:** Evaluate how both scripts manage DataFrame columns. Propose error handling strategies (e.g., verifying column existence, renaming columns, or using conditional logic) to address the `KeyError`.
+- **Output Structure:** What form does the resulting lookup or transformation data take, and how is it utilized further in the process?
+- **Column Verification:** Analyze if case sensitivity, leading/trailing spaces, or other naming inconsistencies might be causing the error.
+
+---
+
+### **Review and Analysis Objectives:**
+- **Comprehensive Understanding:**  
+  - Explain the intended functionality of both scripts.
+  - Detail the process each script uses to create lookup dictionaries and process input data.
+  
+- **Detailed Comparison:**  
+  - Highlight similarities and differences in logic, especially how the `'year'` column is handled.
+  - Identify any redundancies or opportunities for optimization.
+
+- **Traceback Analysis & Resolution:**  
+  - Analyze why `row['year']` might trigger the `KeyError` (e.g., DataFrame column naming issues).
+  - Provide clear code modification recommendations to resolve the error, such as verifying column existence immediately after data load or renaming columns if needed.
+
+- **Naming Conventions:**  
+  - Confirm that variable names and DataFrame column names are used consistently in both scripts.
+  - Document any deviations and propose necessary corrections.
+
+---
+
+### **Document Changes Clearly:**
+Provide a detailed changelog listing every modification from the original process to the new implementation. For each change, explain:
+- **What was changed:** Reference specific functions, loops, or sections of code.
+- **Why it was changed:** For example, to fix the `KeyError`, improve consistency, or optimize performance.
+- **Code Snippets:** Include brief excerpts from the code to illustrate the modifications (ensuring excerpts remain within safe limits).
+
+**Example Changelog Format:**
+```
+CHANGELOG
+----------
+Date: [Insert Date Here]
+- In `create_lookup_fuel_prices.py`:
+  - Modified the lookup dictionary construction:
+    - Changed DataFrame iteration logic to check for the existence of the 'year' column.
+    - Added conditional checks to validate column presence and handle discrepancies.
+  - Reason: To prevent the KeyError and align behavior with the original `process_fuel_price_data.py`.
+
+- In comparison with `process_fuel_price_data.py`:
+  - Noted that the original script handles column renaming implicitly.
+  - Updated naming conventions to ensure consistency across both implementations.
+```
+
+---
+
+### **Deliverable:**
+Your final report should include:
+
+- **Overview and Summary:**
+  - A clear, concise description of each script’s purpose, functionality, and how they interact.
+
+- **Detailed Script Comparison:**
+  - A structured side-by-side table (or bullet list) comparing key sections (input loading, lookup dictionary creation, error handling, etc.) between `create_lookup_fuel_prices.py` and `process_fuel_price_data.py`.
+
+- **Traceback Analysis and Resolution Recommendations:**
+  - An explanation of the likely causes of the `KeyError: 'year'` (e.g., DataFrame missing the `'year'` column, typos, or improper column processing).
+  - A set of clear, actionable steps or code modifications to resolve the error.
+
+- **Changelog of Modifications:**
+  - A documented list of all changes, detailed reasons for these changes, and suggestions for improved error handling in future iterations.
