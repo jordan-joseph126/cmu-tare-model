@@ -1,6 +1,6 @@
 import pandas as pd
 # from config import PROJECT_ROOT
-from cmu_tare_model.private_impact.process_fuel_price_data import lookup_fuel_prices_preIRA, lookup_fuel_prices_iraRef
+from cmu_tare_model.private_impact.data_processing.create_lookup_fuel_prices import lookup_fuel_prices_preIRA, lookup_fuel_prices_iraRef
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

@@ -317,7 +317,7 @@ df_baseline_scenario_damages
 # ## Private Perspective: Annual Energy Costs
 
 # %%
-from cmu_tare_model.private_impact.process_fuel_price_data import *
+from cmu_tare_model.private_impact.data_processing.create_lookup_fuel_prices import *
 print(f"""
 ===========================================================================================================================================================
 PROCESS FUEL PRICE DATA AND PREPARE FOR PROJECTION: 

@@ -13,29 +13,8 @@ FUNCTIONS FOR DATA VISUALIZATION
 """
 
 # =======================================================================================================================
-# DISPLAYING PANDAS DATAFRAMES LIKE JUPYTER
+# DISPLAYING TRUNCATED DICTIONARIES
 # =======================================================================================================================
-import pandas as pd
-
-def print_truncated_df(df, n=5):
-    """
-    Prints the DataFrame in a truncated view similar to Jupyter Notebook,
-    displaying the top n rows, an ellipsis line, and the bottom n rows.
-    
-    If the DataFrame has 2*n or fewer rows, it prints the entire DataFrame.
-    """
-    with pd.option_context('display.max_rows', 2 * n + 1):
-        print(df)
-
-# # Example usage:
-# # Create a sample DataFrame with many rows.
-# df = pd.DataFrame({
-#     'A': range(1, 101),
-#     'B': range(101, 201)
-# })
-
-# print_truncated_df(df)
-
 def print_truncated_dict(dict, n=5):
     """
     Mimics Jupyter's truncated display for dictionaries.

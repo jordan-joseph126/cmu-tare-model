@@ -58,19 +58,49 @@ def project_future_prices(row, factor_dict, policy_scenario):
 
     return pd.Series(future_prices)
 
+# def create_lookup_fuel_price(df, policy_scenario):
+#     """
+#     Creates a lookup dictionary for fuel prices from a DataFrame.
+
+#     Args:
+#         df (pd.DataFrame): DataFrame containing fuel price data for different locations, fuel types, and years.
+#         policy_scenario (str): The policy scenario to include in the lookup dictionary.
+
+#     Returns:
+#         dict: A nested dictionary mapping locations and fuel types to yearly prices under the given policy scenario.
+
+#     Raises:
+#         None
+#     """
+#     lookup_dict = {}
+
+#     for _, row in df.iterrows():
+#         location = row['location_map']
+#         fuel_type = row['fuel_type']
+
+#         # Initialize nested dictionary structure if not already present
+#         if location not in lookup_dict:
+#             lookup_dict[location] = {}
+#         if fuel_type not in lookup_dict[location]:
+#             lookup_dict[location][fuel_type] = {}
+#         if policy_scenario not in lookup_dict[location][fuel_type]:
+#             lookup_dict[location][fuel_type][policy_scenario] = {}
+
+#         # Populate the dictionary with prices for each year
+#         for year in range(2022, 2051):
+#             column_name = f"{year}_fuelPrice_perkWh"
+#             lookup_dict[location][fuel_type][policy_scenario][year] = row[column_name]
+
+#     return lookup_dict
+
 def create_lookup_fuel_price(df, policy_scenario):
     """
     Creates a lookup dictionary for fuel prices from a DataFrame.
+    
+    Note:
+        This function ensures all price values are scalar floats, not pandas Series objects,
+        to maintain consistency and compatibility with downstream processes.
 
-    Args:
-        df (pd.DataFrame): DataFrame containing fuel price data for different locations, fuel types, and years.
-        policy_scenario (str): The policy scenario to include in the lookup dictionary.
-
-    Returns:
-        dict: A nested dictionary mapping locations and fuel types to yearly prices under the given policy scenario.
-
-    Raises:
-        None
     """
     lookup_dict = {}
 
@@ -89,7 +119,17 @@ def create_lookup_fuel_price(df, policy_scenario):
         # Populate the dictionary with prices for each year
         for year in range(2022, 2051):
             column_name = f"{year}_fuelPrice_perkWh"
-            lookup_dict[location][fuel_type][policy_scenario][year] = row[column_name]
+            value = row[column_name]
+            
+            # Convert pandas Series to scalar when necessary
+            # This ensures consistent data types in the lookup dictionary and prevents
+            # comparison issues when validating against other data sources
+            if isinstance(value, pd.Series):
+                value = value.item() if value.size == 1 else value.iloc[0]
+
+            # Only add valid values
+            if not pd.isna(value):
+                lookup_dict[location][fuel_type][policy_scenario][year] = value
 
     return lookup_dict
 
@@ -218,12 +258,15 @@ print(f"Located at filepath: {file_path}")
 factor_dict = df_fuelPrices_projection_factors.set_index(['region', 'fuel_type', 'policy_scenario']).to_dict('index')
 # print(factor_dict)
 
+
 # Pre-IRA policy_scenario: No Inflation Reduction Act
 # Pass the desired policy_scenario as a parameter when applying the function
 preIRA_projected_prices_df = df_fuelPrices_perkWh.apply(lambda row: project_future_prices(row, factor_dict, 'No Inflation Reduction Act'), axis=1)
 
+
 # Concatenate the projected prices with the original DataFrame
 df_fuelPrices_perkWh_preIRA = pd.concat([df_fuelPrices_perkWh, preIRA_projected_prices_df], axis=1)
+
 
 # Create Fuel Price Lookup with the policy_scenario included
 lookup_fuel_prices_preIRA = create_lookup_fuel_price(df_fuelPrices_perkWh_preIRA, 'No Inflation Reduction Act')
@@ -246,3 +289,4 @@ df_fuelPrices_perkWh_iraRef = pd.concat([df_fuelPrices_perkWh, iraRef_projected_
 # Create Fuel Price Lookup with the policy_scenario included
 lookup_fuel_prices_iraRef = create_lookup_fuel_price(df_fuelPrices_perkWh_iraRef, 'AEO2023 Reference Case')
 # print(lookup_fuel_prices_iraRef)
+
