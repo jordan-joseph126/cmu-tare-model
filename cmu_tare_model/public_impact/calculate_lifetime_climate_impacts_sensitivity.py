@@ -11,7 +11,7 @@ def calculate_lifetime_climate_impacts(
     df: pd.DataFrame,
     menu_mp: int,
     policy_scenario: str,
-    df_baseline_damages: Optional[pd.DataFrame] = None
+    df_baseline_damages: Optional[pd.DataFrame] = None    
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Calculate lifetime climate impacts (CO2e emissions and climate damages) for each

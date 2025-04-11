@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Dict, Tuple, List, Optional
+from typing import Dict
 
 # Constants
 from cmu_tare_model.constants import EQUIPMENT_SPECS, CR_FUNCTIONS, RCM_MODELS, SCC_ASSUMPTIONS

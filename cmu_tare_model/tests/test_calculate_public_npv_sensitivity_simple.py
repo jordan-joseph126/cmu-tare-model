@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from cmu_tare_model.public_impact.calculate_public_npv_sensitivity_simple import (
+from cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity import (
     calculate_public_npv,
     calculate_lifetime_damages_grid_scenario
 )

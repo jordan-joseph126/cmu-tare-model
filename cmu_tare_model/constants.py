@@ -4,6 +4,7 @@ TD_LOSSES = 0.06
 TD_LOSSES_MULTIPLIER = 1 / (1 - TD_LOSSES)
 EQUIPMENT_SPECS = {'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15}
 FUEL_MAPPING = {'Electricity': 'electricity', 'Natural Gas': 'naturalGas', 'Fuel Oil': 'fuelOil', 'Propane': 'propane'}
+FUEL_PRICE_ASSUMPTIONS = ['lower', 'central', 'upper']
 
 POLLUTANTS = ['so2', 'nox', 'pm25', 'co2e']
 MER_TYPES = ['lrmer', 'srmer']

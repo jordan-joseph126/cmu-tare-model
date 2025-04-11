@@ -6,11 +6,36 @@ from config import PROJECT_ROOT
 print(f"Project root directory: {PROJECT_ROOT}")
 
 """
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-FUNCTIONS: HELPER FUNCTIONS FOR SPACE HEATING
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-""" 
-def obtain_heating_system_specs(df):
+===========================================================================================================
+OVERVIEW: CALCULATE INSTALLATION COSTS FOR VARIOUS END USES
+===========================================================================================================
+This module calculates the installation costs for various end uses such as heating, water heating,
+clothes drying, and cooking. It uses a probabilistic approach to sample costs from distributions defined by
+progressive (10th percentile), reference (50th percentile), and conservative (90th percentile) cost estimates.
+
+# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
+# UPDATED APRIL 9, 2025 @ 7:30 PM - IMPROVED DOCUMENTATION
+"""
+
+# ===========================================================================================================
+# FUNCTIONS: HELPER FUNCTIONS FOR SPACE HEATING
+# ===========================================================================================================
+
+def obtain_heating_system_specs(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Extract and process heating system specifications from input dataframe.
+    
+    Calculates total heating load and extracts efficiency metrics from raw data. 
+    
+    Args:
+        df (pd.DataFrame): Input dataframe containing heating system data
+        
+    Returns:
+        pd.DataFrame: Updated dataframe with calculated heating system specs
+        
+    Raises:
+        ValueError: If dataframe is missing required columns
+    """
     # Check if necessary columns are in the DataFrame
     necessary_columns = ['size_heating_system_primary_k_btu_h', 'size_heat_pump_backup_primary_k_btu_h',
                          'size_heating_system_secondary_k_btu_h', 'baseline_heating_type']
@@ -40,7 +65,27 @@ def obtain_heating_system_specs(df):
     
     return df
 
-def calculate_heating_installation_premium(df, menu_mp, cpi_ratio_2023_2013):
+
+def calculate_heating_installation_premium(df: pd.DataFrame,
+                                           menu_mp: int,
+                                           cpi_ratio_2023_2013: float) -> pd.DataFrame:
+    """
+    Calculate premium costs for heating system installation based on existing infrastructure.
+    
+    Adds costs for homes without existing central AC or with boiler systems that
+    need additional modifications for heat pump installation.
+    
+    Args:
+        df (pd.DataFrame): Input dataframe containing heating system data
+        menu_mp (int): Menu package identifier 
+        cpi_ratio_2023_2013 (float): Consumer price index ratio for adjusting 2013 costs to 2023
+        
+    Returns:
+        pd.DataFrame: Updated dataframe with heating installation premium costs
+        
+    Raises:
+        ValueError: If dataframe is missing required columns
+    """
     necessary_columns = ['hvac_cooling_type', 'heating_type']
     if not all(column in df.columns for column in necessary_columns):
         raise ValueError("DataFrame does not contain all necessary columns.")
@@ -70,17 +115,31 @@ def calculate_heating_installation_premium(df, menu_mp, cpi_ratio_2023_2013):
         
     return df
 
-"""
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-FUNCTIONS: CALCULATE COST OF INSTALLING NEW EQUIPMENT (RETROFIT/UPGRADES)
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-"""
 
-# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
+# ===========================================================================================================
+# FUNCTIONS: CALCULATE COST OF INSTALLING NEW EQUIPMENT (RETROFIT/UPGRADES)
+# ===========================================================================================================
 
-# Installation Cost Function and Helper Functions (Parametes, Formula)
-# Helper function to get parameters based on end use
-def get_end_use_installation_parameters(df, end_use, menu_mp):
+def get_end_use_installation_parameters(df: pd.DataFrame,
+                                        end_use: str,
+                                        menu_mp: int) -> dict:
+    """
+    Retrieve parameters for installation cost calculations based on end use type.
+    
+    Returns conditions, technology-efficiency pairs, and cost components tailored 
+    to specific end uses like heating, water heating, clothes drying, and cooking.
+    
+    Args:
+        df (pd.DataFrame): Input dataframe with equipment data
+        end_use (str): Type of end use ('heating', 'waterHeating', 'clothesDrying', 'cooking')
+        menu_mp (int): Menu package identifier
+        
+    Returns:
+        dict: Dictionary containing conditions, technology-efficiency pairs, and cost components
+        
+    Raises:
+        ValueError: If an invalid end_use is specified
+    """
     parameters = {
         'heating': {
             'conditions': [
@@ -137,50 +196,68 @@ def get_end_use_installation_parameters(df, end_use, menu_mp):
         raise ValueError(f"Invalid end_use specified: {end_use}")
     return parameters[end_use]
 
-# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
-def calculate_installation_cost_per_row(df_valid, sampled_costs_dict, menu_mp, end_use):
-    """
-    Helper function to calculate the installation cost for each row based on the end use.
 
-    Parameters:
-    df_valid (pd.DataFrame): Filtered DataFrame containing valid rows.
-    sampled_costs_dict (dict): Dictionary with sampled costs for each component.
-    menu_mp (int): Menu option identifier.
-    end_use (str): Type of end-use to calculate installation cost for ('heating', 'waterHeating', 'clothesDrying', 'cooking').
+def calculate_installation_cost_per_row(df_valid: pd.DataFrame,
+                                        sampled_costs_dict: dict,
+                                        menu_mp: int,
+                                        end_use: str) -> tuple:
+    """
+    Calculate the installation cost for each row based on the end use type.
+    
+    Applies specific cost formulas depending on the end use category.
+
+    Args:
+        df_valid (pd.DataFrame): Filtered DataFrame containing valid rows
+        sampled_costs_dict (dict): Dictionary with sampled costs for each component
+        menu_mp (int): Menu option identifier
+        end_use (str): Type of end-use ('heating', 'waterHeating', 'clothesDrying', 'cooking')
 
     Returns:
-    tuple: Tuple containing the calculated installation costs and the cost column name.
+        tuple: (installation_cost, cost_column_name) containing the calculated costs and column name
     """
     if end_use == 'heating':
+        # For heating: base cost + other costs + capacity-based costs
         installation_cost = (
             sampled_costs_dict['unitCost'] +
             sampled_costs_dict['otherCost'] +
             (df_valid['total_heating_load_kBtuh'] * sampled_costs_dict['cost_per_kBtuh']))
         cost_column_name = f'mp{menu_mp}_heating_installationCost'
     elif end_use == 'waterHeating':
+        # For water heating: base cost + volume-based costs
         installation_cost = (
             sampled_costs_dict['unitCost'] +
             (sampled_costs_dict['cost_per_gallon'] * df_valid['size_water_heater_gal']))
         cost_column_name = f'mp{menu_mp}_waterHeating_installationCost'
     else:
+        # For clothes drying and cooking: only base unit cost
         installation_cost = sampled_costs_dict['unitCost']
         cost_column_name = f'mp{menu_mp}_{end_use}_installationCost'
     
     return installation_cost, cost_column_name
 
-# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
-def calculate_installation_cost(df, cost_dict, menu_mp, end_use):
-    """
-    General function to calculate installation costs for various end-uses based on fuel types, costs, and efficiency.
 
-    Parameters:
-    df (pd.DataFrame): DataFrame containing data for different scenarios.
-    cost_dict (dict): Dictionary with cost information for different technology and efficiency combinations.
-    menu_mp (int): Menu option identifier.
-    end_use (str): Type of end-use to calculate installation cost for ('heating', 'waterHeating', 'clothesDrying', 'cooking').
+def calculate_installation_cost(df: pd.DataFrame,
+                                cost_dict: dict,
+                                menu_mp: int,
+                                end_use: str) -> pd.DataFrame:
+    """
+    Calculate installation costs for various end-uses based on technology types, efficiency, and cost data.
+
+    This function applies a probabilistic approach by sampling from cost distributions defined
+    by progressive (10th percentile), reference (50th percentile), and conservative (90th percentile)
+    cost estimates for different technology and efficiency combinations.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing data for different scenarios
+        cost_dict (dict): Dictionary mapping (technology, efficiency) tuples to cost components
+        menu_mp (int): Menu option identifier (valid values: 7, 8, 9, 10)
+        end_use (str): Type of end-use ('heating', 'waterHeating', 'clothesDrying', 'cooking')
 
     Returns:
-    pd.DataFrame: Updated DataFrame with calculated installation costs.
+        pd.DataFrame: Updated DataFrame with calculated installation costs
+
+    Raises:
+        ValueError: If menu_mp is not valid or if cost data is missing for any technology/efficiency combination
     """
     
     # Validate menu_mp 
@@ -215,6 +292,7 @@ def calculate_installation_cost(df, cost_dict, menu_mp, end_use):
 
     # Calculate costs for each component
     for cost_component in cost_components:
+        # Extract the progressive (10th percentile), reference (50th percentile), and conservative (90th percentile) costs
         progressive_costs = np.array([cost_dict.get((t, e), {}).get(f'{cost_component}_progressive', np.nan) for t, e in zip(tech, eff)])
         reference_costs = np.array([cost_dict.get((t, e), {}).get(f'{cost_component}_reference', np.nan) for t, e in zip(tech, eff)])
         conservative_costs = np.array([cost_dict.get((t, e), {}).get(f'{cost_component}_conservative', np.nan) for t, e in zip(tech, eff)])
@@ -229,7 +307,8 @@ def calculate_installation_cost(df, cost_dict, menu_mp, end_use):
             raise ValueError(f"Missing cost data for some technology and efficiency combinations in cost_component {cost_component}")
 
         # Calculate mean and standard deviation assuming the costs represent the 10th, 50th, and 90th percentiles of a normal distribution
-        mean_costs = reference_costs
+        mean_costs = reference_costs  # 50th percentile becomes the mean
+        # Calculate standard deviation using the difference between 90th and 10th percentiles
         std_costs = (conservative_costs - progressive_costs) / (norm.ppf(0.90) - norm.ppf(0.10))
 
         # Sample from the normal distribution for each row

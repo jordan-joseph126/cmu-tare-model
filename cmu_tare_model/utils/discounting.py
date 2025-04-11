@@ -15,13 +15,6 @@ def calculate_discount_factor(base_year: int, target_year: int, discounting_meth
         discount_rate = 0.02
     elif discounting_method == 'private_fixed':
         discount_rate = 0.07
-    # elif discounting_method == 'private_variable':
-    #     """
-    #     Sensitivity analyses were conducted on various economic parameters in this research. 
-    #     The first compared the results using a variable discount rate with a fixed low (7 %) 
-    #     and fixed high (45 %) discount rate. The low and high discount rates represent the minimum 
-    #     and maximum discount rates used in the range of variable discount rates, respectively. 
-    #     """
     else:
         raise ValueError("Invalid discounting method. Use 'public' or 'private_fixed'.")
     

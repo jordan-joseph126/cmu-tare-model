@@ -6,17 +6,36 @@ from config import PROJECT_ROOT
 print(f"Project root directory: {PROJECT_ROOT}")
 
 """
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-FUNCTIONS: CALCULATE COST OF ENCLOSURE UPGRADES
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-"""
-# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
-import numpy as np
-import pandas as pd
-from scipy.stats import norm
+===========================================================================================================
+OVERVIEW: CALCULATE INSTALLED COSTS FOR ENCLOSURE UPGRADE RETROFIT MEASURES
+===========================================================================================================
+This module calculates the installed costs for enclosure upgrade retrofit measurers.It uses a 
+probabilistic approach to sample costs from distributions defined by progressive (10th percentile), 
+reference (50th percentile), and conservative (90th percentile) cost estimates.
 
-# Helper function to get conditions and tech-efficiency pairs for enclosure retrofit
-def get_enclosure_parameters(df, retrofit_col):
+# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
+# UPDATED APRIL 9, 2025 @ 7:30 PM - IMPROVED DOCUMENTATION
+"""
+
+# ===========================================================================================================
+# FUNCTIONS: CALCULATE COST OF ENCLOSURE UPGRADES
+# ===========================================================================================================
+
+def get_enclosure_parameters(df: pd.DataFrame,
+                             retrofit_col: str) -> dict:
+    """
+    Get conditions and technology-efficiency pairs for enclosure retrofit based on the retrofit column.
+    
+    Args:
+        df: DataFrame containing enclosure data
+        retrofit_col: Column name for the retrofit cost to be calculated
+    
+    Returns:
+        A dictionary containing conditions and technology-efficiency pairs
+        
+    Raises:
+        ValueError: If an invalid retrofit_col is specified
+    """
     if retrofit_col == 'insulation_atticFloor_upgradeCost':
         conditions = [
             (df['upgrade_insulation_atticFloor'] == 'R-30') & (df['base_insulation_atticFloor'] == 'R-13'),
@@ -108,20 +127,25 @@ def get_enclosure_parameters(df, retrofit_col):
     
     return {'conditions': conditions, 'tech_eff_pairs': tech_eff_pairs}
 
-# UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
-def calculate_enclosure_retrofit_upgradeCosts(df, cost_dict, retrofit_col, params_col):
+
+def calculate_enclosure_retrofit_upgradeCosts(df: pd.DataFrame,
+                                              cost_dict: dict,
+                                              retrofit_col: str,
+                                              params_col: str) -> pd.DataFrame:
     """
     Calculate the enclosure retrofit upgrade costs based on given parameters and conditions.
 
-    Parameters:
-    df (pd.DataFrame): DataFrame containing data for different scenarios.
-    cost_dict (dict): Dictionary with cost information for different technology and efficiency combinations.
-    retrofit_col (str): Column name for the retrofit cost.
-        - NaN value indicates that the retrofit was not performed.
-    params_col (str): Column name for the parameter to use in the cost calculation.
+    Args:
+        df: DataFrame containing data for different scenarios
+        cost_dict: Dictionary with cost information for different technology and efficiency combinations
+        retrofit_col: Column name for the retrofit cost to be calculated
+        params_col: Column name for the parameter to use in the cost calculation
 
     Returns:
-    pd.DataFrame: Updated DataFrame with calculated retrofit costs.
+        Updated DataFrame with calculated retrofit costs
+        
+    Raises:
+        ValueError: If missing cost data for certain technology and efficiency combinations
     """
     
     # Create a copy of the original DataFrame to avoid modifying it directly
@@ -132,27 +156,15 @@ def calculate_enclosure_retrofit_upgradeCosts(df, cost_dict, retrofit_col, param
     conditions = params['conditions']
     tech_eff_pairs = params['tech_eff_pairs']
 
-    # # Debug: Print the extracted parameters
-    # print("Extracted Parameters:", params)
-
     # Map each condition to its tech and efficiency
     tech = np.select(conditions, [pair[0] for pair in tech_eff_pairs], default='unknown')
     eff = np.select(conditions, [pair[1] for pair in tech_eff_pairs], default='unknown')
-
-    # # Debug: Print the mapped tech and efficiency pairs
-    # print("Mapped Tech:", tech)
-    # print("Mapped Efficiency:", eff)
 
     # Filter out rows with unknown technology and efficiency
     valid_indices = tech != 'unknown'
     tech = tech[valid_indices]
     eff = eff[valid_indices]
     df_valid = df_copy.loc[valid_indices].copy()
-
-    # # Debug: Print the valid indices and corresponding tech-efficiency pairs
-    # print("Valid Indices:", valid_indices)
-    # print("Valid Tech:", tech)
-    # print("Valid Efficiency:", eff)
 
     # Initialize dictionary to store sampled costs
     sampled_costs_dict = {}
@@ -173,7 +185,8 @@ def calculate_enclosure_retrofit_upgradeCosts(df, cost_dict, retrofit_col, param
             raise ValueError(f"Missing cost data for some technology and efficiency combinations in cost_component {cost_component}")
 
         # Calculate mean and standard deviation assuming the costs represent the 10th, 50th, and 90th percentiles of a normal distribution
-        mean_costs = reference_costs
+        mean_costs = reference_costs  # 50th percentile is the mean of the normal distribution
+        # Calculate standard deviation based on the difference between 90th and 10th percentiles
         std_costs = (conservative_costs - progressive_costs) / (norm.ppf(0.90) - norm.ppf(0.10))
 
         # Sample from the normal distribution for each row

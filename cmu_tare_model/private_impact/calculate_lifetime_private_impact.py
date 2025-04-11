@@ -1,91 +1,156 @@
 import pandas as pd
+from typing import Tuple, Dict
 
 from config import PROJECT_ROOT
+from cmu_tare_model.constants import EQUIPMENT_SPECS
+from cmu_tare_model.utils.modeling_params import define_scenario_params
+from cmu_tare_model.utils.discounting import calculate_discount_factor
 print(f"Project root directory: {PROJECT_ROOT}")
 
 """
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-LIFETIME PRIVATE IMPACT: NPV OF CAPITAL COST INVESTMENT AND LIFETIME FUEL COSTS
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-"""
+===========================================================================================================
+OVERVIEW: CALCULATE LIFETIME PRIVATE IMPACTS
+===========================================================================================================
+This module calculates the private net present value (NPV) for various equipment categories,
+considering different cost assumptions and potential IRA rebates.
 
 # UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
-def calculate_private_NPV(df, df_fuelCosts, interest_rate, input_mp, menu_mp, policy_scenario):
+# UPDATED APRIL 9, 2025 @ 7:30 PM - IMPROVED DOCUMENTATION
+"""
+
+# ===========================================================================================================
+# LIFETIME PRIVATE IMPACT: NPV OF CAPITAL COST INVESTMENT AND LIFETIME FUEL COSTS
+# ===========================================================================================================
+
+def calculate_private_NPV(df, df_fuelCosts, input_mp, menu_mp, policy_scenario, discounting_method, base_year=2024):
     """
     Calculate the private net present value (NPV) for various equipment categories,
     considering different cost assumptions and potential IRA rebates. 
     The function adjusts equipment costs for inflation and calculates NPV based on 
     cost savings between baseline and retrofit scenarios.
 
-    Parameters:
+    Args:
         df (DataFrame): Input DataFrame with installation costs, fuel savings, and potential rebates.
         df_fuelCosts (DataFrame): DataFrame containing fuel cost savings data.
-        interest_rate (float): Annual discount rate used for NPV calculation.
         menu_mp (str): Prefix for columns in the DataFrame.
         input_mp (str): Input policy_scenario for calculating costs.
         policy_scenario (str): Policy policy_scenario that determines electricity grid projections. 
                                Accepted values: 'AEO2023 Reference Case'.
+        discounting_method (str): The method used for discounting. Default is 'private_fixed'.
+        base_year (int): The base year for discounting calculations. Default is 2024.
 
     Returns:
         DataFrame: The input DataFrame updated with calculated private NPV and adjusted equipment costs.
+
+    Raises:
+        ValueError: If an invalid policy_scenario or menu_mp is provided.
     """
-    # POTENTIALLY UPDATE CODE IN THE FUTURE TO ACCOUNT FOR CHANGES IN CAPITAL COSTS BASED ON SCENARIOS (BESIDES IRA REBATES)
-    # Note: CURRENT MODELING ASSUMES EQUIPMENT PRICES ARE THE SAME UNDER IRA REF AND IRA HIGH
-    # THIS MAY BE UPDATED IN THE FUTURE, SO WE STILL USE policy_scenario PREFIXES FOR TOTAL AND NET CAPITAL COSTS
-    # COSTS ARE DIFFERENT FOR PRE-IRA BECAUSE NO REBATES ARE APPLIED   
-    equipment_specs = {
-        'heating': 15,
-        'waterHeating': 12,
-        'clothesDrying': 13,
-        'cooking': 15
-    }
     
+    # Add validation for menu_mp
+    if not str(menu_mp).isdigit():
+        raise ValueError(f"Invalid menu_mp: {menu_mp}. Must be a digit.")
+        
+    # Add validation for policy_scenario
+    valid_scenarios = ['No Inflation Reduction Act', 'AEO2023 Reference Case']
+    if policy_scenario not in valid_scenarios:
+        raise ValueError(f"Invalid policy_scenario: {policy_scenario}. Must be one of {valid_scenarios}")
+        
+    # Add validation for discounting_method
+    valid_methods = ['private_fixed']
+    if discounting_method not in valid_methods:
+        raise ValueError(f"Invalid discounting_method: {discounting_method}. Must be one of {valid_methods}")
+
+    # Create copies to avoid modifying original dataframes
     df_copy = df.copy()
-
     df_fuelCosts_copy = df_fuelCosts.copy()
-
     df_new_columns = pd.DataFrame(index=df_copy.index)
     
-    for category, lifetime in equipment_specs.items():
-        # print(f"\nCalculating for category: {category} with lifetime: {lifetime}")
-        
-        total_capital_cost, net_capital_cost = calculate_costs(df_copy, category, input_mp, menu_mp, policy_scenario)
+    # Determine the scenario prefix based on the policy scenario
+    scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
+    
+    # Pre-calculate discount factors for each year to avoid redundant calculations
+    # This maps from year_label to its discount factor
+    discount_factors: Dict[int, float] = {}
+    
+    # Calculate the maximum lifetime across all equipment to determine how many years to pre-calculate
+    max_lifetime = max(EQUIPMENT_SPECS.values())
+    for year in range(1, max_lifetime + 1):
+        year_label = year + (base_year - 1)
+        discount_factors[year_label] = calculate_discount_factor(base_year, year_label, discounting_method)
+
+    for category, lifetime in EQUIPMENT_SPECS.items():
+        print(f"\nDetermining lifetime private impacts for category: {category} with lifetime: {lifetime}")
+
+        # Calculate total and net capital costs based on policy scenario        
+        total_capital_cost, net_capital_cost = calculate_capital_costs(df_copy=df_copy,
+                                                                       category=category,
+                                                                       input_mp=input_mp,
+                                                                       menu_mp=menu_mp,
+                                                                       policy_scenario=policy_scenario,
+                                                                       )
         
         # print(f"Total capital cost for {category}: {total_capital_cost}")
         # print(f"Net capital cost for {category}: {net_capital_cost}")
-        
-        calculate_and_update_npv(df_new_columns, df_fuelCosts_copy, category, menu_mp, interest_rate, lifetime, total_capital_cost, net_capital_cost, policy_scenario)
-      
+
+        calculate_and_update_npv(
+            df_new_columns=df_new_columns,
+            df_fuel_costs_copy=df_fuelCosts_copy,
+            category=category,
+            lifetime=lifetime,
+            total_capital_cost=total_capital_cost,
+            net_capital_cost=net_capital_cost,
+            policy_scenario=policy_scenario,
+            scenario_prefix=scenario_prefix,
+            discount_factors=discount_factors,
+            base_year=base_year
+        )
+
+    # Drop any overlapping columns from df_copy
     overlapping_columns = df_new_columns.columns.intersection(df_copy.columns)
     if not overlapping_columns.empty:
         df_copy.drop(columns=overlapping_columns, inplace=True)
 
+    # Merge new columns into the original DataFrame
     df_copy = df_copy.join(df_new_columns, how='left')
     # print("Final DataFrame after NPV calculations:\n", df_copy.head())
     return df_copy
 
-def calculate_costs(df_copy, category, input_mp, menu_mp, policy_scenario):
+
+def calculate_capital_costs(
+    df_copy: pd.DataFrame, 
+    category: str, 
+    input_mp: str, 
+    menu_mp: int, 
+    policy_scenario: str,
+) -> Tuple[pd.Series, pd.Series]:
     """
-    Calculate total and net capital costs based on the equipment category and cost assumptions.
-
-    Parameters:
-        df_copy (DataFrame): DataFrame containing cost data.
-        category (str): Equipment category.
-        menu_mp (str): Prefix for columns in the DataFrame.
-        input_mp (str): Input policy_scenario for calculating costs.
-        ira_rebates (bool): Flag indicating whether IRA rebates are applied.
-
+    Calculate total and net capital costs for an equipment category.
+    
+    This function computes the total capital cost and net capital cost (after accounting
+    for replacement costs) based on the equipment category, measure package, and whether
+    IRA rebates are applied.
+    
+    Args:
+        df: DataFrame containing cost data.
+        category: Equipment category (e.g., 'heating', 'waterHeating').
+        menu_mp: Measure package identifier (integer) used for column naming.
+        policy_scenario: Policy scenario that determines if IRA rebates are applied.
+                       'No Inflation Reduction Act' means no rebates are applied.
+    
     Returns:
-        tuple: Total and net capital costs.
+        A tuple containing:
+            - total_capital_cost: Series with total capital costs
+            - net_capital_cost: Series with net capital costs (total - replacement)
+            
+    Notes:
+        Current modeling assumes equipment prices are the same under IRA Reference
+        and IRA High scenarios. Costs differ for pre-IRA because no rebates are applied.
+    
     """
+
     print(f"""\nCalculating costs for {category}...
           input_mp: {input_mp}, menu_mp: {menu_mp}, policy_scenario: {policy_scenario}""")
 
-
-    # POTENTIALLY UPDATE CODE IN THE FUTURE TO ACCOUNT FOR CHANGES IN CAPITAL COSTS BASED ON SCENARIOS (BESIDES IRA REBATES)
-    # Note: CURRENT MODELING ASSUMES EQUIPMENT PRICES ARE THE SAME UNDER IRA REF AND IRA HIGH
-    # THIS MAY BE UPDATED IN THE FUTURE, SO WE STILL USE policy_scenario PREFIXES FOR TOTAL AND NET CAPITAL COSTS
-    # COSTS ARE DIFFERENT FOR PRE-IRA BECAUSE NO REBATES ARE APPLIED
     if policy_scenario == 'No Inflation Reduction Act':
         if category == 'heating':
             if input_mp == 'upgrade09':            
@@ -105,10 +170,6 @@ def calculate_costs(df_copy, category, input_mp, menu_mp, policy_scenario):
             total_capital_cost = df_copy[f'mp{menu_mp}_{category}_installationCost'].fillna(0)
             net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacementCost'].fillna(0)
     
-    # POTENTIALLY UPDATE CODE IN THE FUTURE TO ACCOUNT FOR CHANGES IN CAPITAL COSTS BASED ON SCENARIOS (BESIDES IRA REBATES)
-    # Note: CURRENT MODELING ASSUMES EQUIPMENT PRICES ARE THE SAME UNDER IRA REF AND IRA HIGH
-    # THIS MAY BE UPDATED IN THE FUTURE, SO WE STILL USE policy_scenario PREFIXES FOR TOTAL AND NET CAPITAL COSTS
-    # COSTS ARE DIFFERENT FOR PRE-IRA BECAUSE NO REBATES ARE APPLIED
     else:
         if category == 'heating':
             if input_mp == 'upgrade09':            
@@ -136,58 +197,67 @@ def calculate_costs(df_copy, category, input_mp, menu_mp, policy_scenario):
     # print(f"Calculated total_capital_cost: {total_capital_cost}, net_capital_cost: {net_capital_cost}")
     return total_capital_cost, net_capital_cost
 
-def calculate_and_update_npv(df_new_columns, df_fuelCosts_copy, category, menu_mp, interest_rate, lifetime, total_capital_cost, net_capital_cost, policy_scenario):
-    """
-    Calculate and update the NPV values in the DataFrame based on provided capital costs.
-
-    Parameters:
-        df_new_columns (DataFrame): DataFrame to update.
-        df_fuelCosts_copy (DataFrame): Original DataFrame containing savings data.
-        category (str): Equipment category.
-        menu_mp (str): Prefix for columns in the DataFrame.
-        interest_rate (float): Discount rate for NPV calculation.
-        lifetime (int): Expected lifetime of the equipment.
-        total_capital_cost (float): Total capital cost of the equipment.
-        net_capital_cost (float): Net capital cost after considering replacements.
-        ira_rebates (bool): Flag to consider IRA rebates in calculations.
-    """
-    # Determine the policy_scenario prefix based on the policy policy_scenario
-    if policy_scenario == 'No Inflation Reduction Act':
-        scenario_prefix = f"preIRA_mp{menu_mp}_"
-    elif policy_scenario == 'AEO2023 Reference Case':
-        scenario_prefix = f"iraRef_mp{menu_mp}_"
-    else:
-        raise ValueError("Invalid Policy policy_scenario! Please choose from 'AEO2023 Reference Case'.")
-        
-    print(f"""\nCalculating Private NPV for {category}...
-          lifetime: {lifetime}, interest_rate: {interest_rate}, policy_scenario: {policy_scenario}
-          """)
-
-    # Calculate the discounted savings for each year
-    discounted_savings = []
-    for year in range(1, lifetime + 1):
-        year_label = year + 2023  # Adjust the start year as necessary
-        annual_savings = df_fuelCosts_copy[f'{scenario_prefix}{year_label}_{category}_savings_fuelCost'].fillna(0)
-        discount_factor = (1 / ((1 + interest_rate) ** year))
-        discounted_savings.append(annual_savings * discount_factor)
-        # print(f"Year {year_label} savings for {category}: {annual_savings}, discounted: {annual_savings * discount_factor}")
+# Update function signature:
+def calculate_and_update_npv(
+    df_new_columns: pd.DataFrame,
+    df_fuel_costs_copy: pd.DataFrame,
+    category: str,
+    lifetime: int,
+    total_capital_cost: pd.Series,
+    net_capital_cost: pd.Series,
+    policy_scenario: str,
+    scenario_prefix: str,
+    discount_factors: Dict[int, float],
+    base_year: int = 2024,
+) -> None:
+    """Calculate and update NPV values in the results DataFrame.
     
-    # Sum up the discounted savings over the lifetime
-    total_discounted_savings = sum(discounted_savings)
-    # print(f"Total discounted savings over {lifetime} years for {category}: {total_discounted_savings}")
+    This function computes the NPV for two willingness-to-pay (WTP) scenarios:
+    - Less WTP: Using total capital cost in calculations
+    - More WTP: Using net capital cost (total - replacement) in calculations
+    
+    The NPV is based on discounted lifetime fuel cost savings minus the applicable capital cost.
+    
+    Args:
+        df_new_columns: DataFrame to update with calculated NPV values.
+        df_fuel_costs_copy: DataFrame containing fuel cost savings data.
+        category: Equipment category being processed.
+        lifetime: Expected lifetime of the equipment in years.
+        total_capital_cost: Series with total capital costs.
+        net_capital_cost: Series with net capital costs.
+        policy_scenario: Policy scenario that determines column naming.
+        scenario_prefix: Prefix for column names based on policy scenario.
+        discount_factors: Dictionary mapping years to discount factors.
+        base_year: Base year for calculations.
+    """
+    print(f"""Calculating Private NPV for {category} with lifetime: {lifetime} years
+          policy_scenario: {policy_scenario} --> scenario_prefix: {scenario_prefix}
+          """)
+    
+    # Initialize total_discounted_savings
+    total_discounted_savings = 0
+    
+    # Calculate discounted fuel savings for each year in the equipment's lifetime
+    for year in range(1, lifetime + 1):
+        year_label = year + (base_year - 1)
+            
+        # Get the savings column name and retrieve values
+        savings_col = f'{scenario_prefix}{year_label}_{category}_savings_fuelCost'
+        if savings_col in df_fuel_costs_copy.columns:
+            annual_savings = df_fuel_costs_copy[savings_col].fillna(0)
+                
+            # Apply pre-calculated discount factor
+            discount_factor = discount_factors[year_label]
+            total_discounted_savings += annual_savings * discount_factor
     
     # Calculate NPV for less WTP and more WTP scenarios
-    npv_lessWTP = round(total_discounted_savings - total_capital_cost, 2)
-    npv_moreWTP = round(total_discounted_savings - net_capital_cost, 2)
+    npv_less_wtp = round(total_discounted_savings - total_capital_cost, 2)
+    npv_more_wtp = round(total_discounted_savings - net_capital_cost, 2)
     
-    # POTENTIALLY UPDATE CODE IN THE FUTURE TO ACCOUNT FOR CHANGES IN CAPITAL COSTS BASED ON SCENARIOS (BESIDES IRA REBATES)
-    # Note: CURRENT MODELING ASSUMES EQUIPMENT PRICES ARE THE SAME UNDER IRA REF AND IRA HIGH
-    # THIS MAY BE UPDATED IN THE FUTURE, SO WE STILL USE policy_scenario PREFIXES FOR TOTAL AND NET CAPITAL COSTS
-    # COSTS ARE DIFFERENT FOR PRE-IRA BECAUSE NO REBATES ARE APPLIED
+    # Update capital cost columns
     df_new_columns[f'{scenario_prefix}{category}_total_capitalCost'] = total_capital_cost
     df_new_columns[f'{scenario_prefix}{category}_net_capitalCost'] = net_capital_cost
-        
-    df_new_columns[f'{scenario_prefix}{category}_private_npv_lessWTP'] = npv_lessWTP
-    df_new_columns[f'{scenario_prefix}{category}_private_npv_moreWTP'] = npv_moreWTP
-        
-    # print(f"Updated df_new_columns with NPV for {category}:\n", df_new_columns[[col for col in df_new_columns.columns if category in col]].head())
+    
+    # Update NPV columns
+    df_new_columns[f'{scenario_prefix}{category}_private_npv_lessWTP'] = npv_less_wtp
+    df_new_columns[f'{scenario_prefix}{category}_private_npv_moreWTP'] = npv_more_wtp

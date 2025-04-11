@@ -1,21 +1,21 @@
 import pandas as pd
 import numpy as np
 
-# Import the original data from the backup module
-from cmu_tare_model.private_impact.data_processing.process_fuel_price_data_OLD import (
-    df_fuelPrices_perkWh_preIRA as df_preIRA_ORIGINAL,
-    df_fuelPrices_perkWh_iraRef as df_iraRef_ORIGINAL,
-    lookup_fuel_prices_preIRA as lookup_preIRA_ORIGINAL,
-    lookup_fuel_prices_iraRef as lookup_iraRef_ORIGINAL,
-)
+# # Import the original data from the backup module
+# from cmu_tare_model.private_impact.data_processing.process_fuel_price_data_OLD import (
+#     df_fuelPrices_perkWh_preIRA as df_preIRA_ORIGINAL,
+#     df_fuelPrices_perkWh_iraRef as df_iraRef_ORIGINAL,
+#     lookup_fuel_prices_preIRA as lookup_preIRA_ORIGINAL,
+#     lookup_fuel_prices_iraRef as lookup_iraRef_ORIGINAL,
+# )
 
-# Import the new data from the updated module
-from cmu_tare_model.private_impact.data_processing.create_lookup_fuel_prices import (
-    df_fuel_prices_preIRA as df_preIRA_NEW,
-    df_fuel_prices_iraRef as df_iraRef_NEW,
-    lookup_fuel_prices_preIRA as lookup_preIRA_NEW,
-    lookup_fuel_prices_iraRef as lookup_iraRef_NEW,
-)
+# # Import the new data from the updated module
+# from cmu_tare_model.private_impact.data_processing.create_lookup_fuel_prices import (
+#     df_fuel_prices_preIRA as df_preIRA_NEW,
+#     df_fuel_prices_iraRef as df_iraRef_NEW,
+#     lookup_fuel_prices_preIRA as lookup_preIRA_NEW,
+#     lookup_fuel_prices_iraRef as lookup_iraRef_NEW,
+# )
 
 def safe_equal(val1, val2):
     """
@@ -210,19 +210,19 @@ def compare_lookups(dict1, dict2, name1, name2):
         if len(mismatched_keys) > 5:
             print(f"  ... and {len(mismatched_keys) - 5} more mismatches")
 
-# Main execution block
-def main():
-    print("Starting data comparison...")
+# # Main execution block
+# def main():
+#     print("Starting data comparison...")
     
-    # Compare dataframes
-    compare_dataframes(df_preIRA_ORIGINAL, df_preIRA_NEW, "df_preIRA_ORIGINAL", "df_preIRA_NEW")
-    compare_dataframes(df_iraRef_ORIGINAL, df_iraRef_NEW, "df_iraRef_ORIGINAL", "df_iraRef_NEW")
+#     # Compare dataframes
+#     compare_dataframes(df_preIRA_ORIGINAL, df_preIRA_NEW, "df_preIRA_ORIGINAL", "df_preIRA_NEW")
+#     compare_dataframes(df_iraRef_ORIGINAL, df_iraRef_NEW, "df_iraRef_ORIGINAL", "df_iraRef_NEW")
     
-    # Compare lookup dictionaries
-    compare_lookups(lookup_preIRA_ORIGINAL, lookup_preIRA_NEW, "lookup_preIRA_ORIGINAL", "lookup_preIRA_NEW")
-    compare_lookups(lookup_iraRef_ORIGINAL, lookup_iraRef_NEW, "lookup_iraRef_ORIGINAL", "lookup_iraRef_NEW")
+#     # Compare lookup dictionaries
+#     compare_lookups(lookup_preIRA_ORIGINAL, lookup_preIRA_NEW, "lookup_preIRA_ORIGINAL", "lookup_preIRA_NEW")
+#     compare_lookups(lookup_iraRef_ORIGINAL, lookup_iraRef_NEW, "lookup_iraRef_ORIGINAL", "lookup_iraRef_NEW")
     
-    print("\nComparison complete!")
+#     print("\nComparison complete!")
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

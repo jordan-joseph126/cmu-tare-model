@@ -679,7 +679,7 @@ DATAFRAME FOR MP8 AFTER CALCULATING PUBLIC NPV: df_euss_am_mp8_home
 """)
 
 # %%
-from cmu_tare_model.private_impact.calculate_lifetime_private_impact import *
+from cmu_tare_model.private_impact.calculate_private_npv_sensitivity import *
 
 # calculate_private_npv(df, df_fuelCosts, menu_mp, policy_scenario, equipment_specs, interest_rate=0.07)
 df_euss_am_mp8_home = calculate_private_NPV(df=df_euss_am_mp8_home,
