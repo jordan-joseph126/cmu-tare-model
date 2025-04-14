@@ -21,7 +21,7 @@ input_mp = 'baseline'
 print(f"PROJECT_ROOT (from config.py): {PROJECT_ROOT}")
 
 # Construct the absolute path to the .py file
-relative_path = os.path.join("cmu_tare_model", "model_scenarios", "tare_baseline_v2.py")
+relative_path = os.path.join("cmu_tare_model", "model_scenarios", "tare_baseline_v2.1.ipynb")
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 
 # On Windows, to avoid any path-escape quirks, convert backslashes to forward slashes
@@ -301,18 +301,56 @@ Step 5: Calculate End-use specific marginal damages
 
 # %%
 from cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity import *
+from cmu_tare_model.public_impact.calculate_lifetime_health_impacts_sensitivity import *
 # calculate_marginal_damages(df, menu_mp, policy_scenario, df_baseline_damages, df_detailed_damages)
 print("\n", "Modeling Scenario: No Inflation Reduction Act")
-df_euss_am_mp8_home, df_mp8_scenario_damages = calculate_lifetime_climate_impacts(df=df_euss_am_mp8_home,
-                                                                                  menu_mp=menu_mp, 
-                                                                                  policy_scenario='No Inflation Reduction Act', 
-                                                                                  df_baseline_damages=df_baseline_scenario_damages, 
-                                                                                  df_detailed_damages=df_mp8_scenario_damages
-                                                                                  )
+
+# def calculate_lifetime_climate_impacts(
+#     df: pd.DataFrame,
+#     menu_mp: int,
+#     policy_scenario: str,
+#     df_baseline_damages: Optional[pd.DataFrame] = None    
+# ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+
+df_euss_am_mp8_home, df_mp8_scenario_damages = calculate_lifetime_climate_impacts(
+    df=df_euss_am_mp8_home,
+    menu_mp=menu_mp, 
+    policy_scenario='No Inflation Reduction Act', 
+    df_baseline_damages=df_baseline_damages_climate 
+    )
+
+
+# def calculate_lifetime_health_impacts(
+#     df: pd.DataFrame,
+#     menu_mp: int,
+#     policy_scenario: str,
+#     df_baseline_damages: Optional[pd.DataFrame] = None
+# ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+
+df_euss_am_mp8_home, df_mp8_scenario_damages = calculate_lifetime_health_impacts(
+    df=df_euss_am_mp8_home,
+    menu_mp=menu_mp, 
+    policy_scenario='No Inflation Reduction Act', 
+    df_baseline_damages=df_baseline_damages_health 
+    )
 
 
 print("\n","Modeling Scenario: AEO2023 Reference Case")
-df_euss_am_mp8_home, df_mp8_scenario_damages = calculate_marginal_damages(df=df_euss_am_mp8_home, menu_mp=menu_mp, policy_scenario='AEO2023 Reference Case', df_baseline_damages=df_baseline_scenario_damages, df_detailed_damages=df_mp8_scenario_damages)
+df_euss_am_mp8_home, df_mp8_scenario_damages = calculate_lifetime_climate_impacts(
+    df=df_euss_am_mp8_home,
+    menu_mp=menu_mp, 
+    policy_scenario='AEO2023 Reference Case', 
+    df_baseline_damages=df_baseline_damages_climate
+    )
+
+
+df_euss_am_mp8_home, df_mp8_scenario_damages = calculate_lifetime_health_impacts(
+    df=df_euss_am_mp8_home,
+    menu_mp=menu_mp, 
+    policy_scenario='AEO2023 Reference Case', 
+    df_baseline_damages=df_baseline_damages_health 
+    )
+
 
 print(f"""  
 ====================================================================================================================================================================
@@ -342,13 +380,23 @@ Private Perspective: Annual Energy Costs
 - Step 2: Calculate Annual Operating (Fuel) Costs
 ====================================================================================================================================================================
 """)
+from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import *
+
+# Make copies to prevent overwriting the original dataframe and compare the differences
+df_euss_am_mp8_home = df_euss_am_mp8_home.copy()
+df_mp8_scenario_fuelCosts = df_euss_am_mp8_home.copy()
 
 # calculate_annual_fuelCost(df, menu_mp, policy_scenario)
 print("\n", "Modeling Scenario: No Inflation Reduction Act")
-df_mp8_scenario_fuelCosts = calculate_annual_fuelCost(df=df_mp8_scenario_fuelCosts, menu_mp=menu_mp, policy_scenario='No Inflation Reduction Act', drop_fuel_cost_columns=False)
+df_euss_am_mp8_home, df_mp8_scenario_fuelCosts = calculate_lifetime_fuel_costs(df=df_euss_am_mp8_home,
+                                                                               menu_mp=menu_mp,
+                                                                               policy_scenario='No Inflation Reduction Act')
 
 print("\n","Modeling Scenario: AEO2023 Reference Case")
-df_mp8_scenario_fuelCosts = calculate_annual_fuelCost(df=df_mp8_scenario_fuelCosts, menu_mp=menu_mp, policy_scenario='AEO2023 Reference Case', drop_fuel_cost_columns=False)
+df_euss_am_mp8_home, df_mp8_scenario_fuelCosts = calculate_lifetime_fuel_costs(df=df_euss_am_mp8_home,
+                                                                               menu_mp=menu_mp,
+                                                                               policy_scenario='AEO2023 Reference Case')
+
 
 print(f"""  
 ====================================================================================================================================================================
@@ -359,6 +407,10 @@ Calculating Fuel Costs for each end-use ...
 
 DATAFRAME FOR MP8 Fuel Costs: df_mp8_scenario_fuelCosts
 {df_mp8_scenario_fuelCosts}
+
+SUMMARY DATAFRAME FOR MP8: df_euss_am_mp8_home
+{df_euss_am_mp8_home}
+
       ====================================================================================================================================================================
 """)
 
@@ -415,8 +467,8 @@ Capital Costs: Space Heating
 Obtaining Capital Cost Data from Retrofit Cost Spreadsheet ...
 """)
 # UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
-from cmu_tare_model.private_impact.calculate_equipment_installation_costs import *
-from cmu_tare_model.private_impact.calculate_equipment_replacement_costs import *
+from cmu_tare_model.private_impact.calculations.calculate_equipment_installation_costs import *
+from cmu_tare_model.private_impact.calculations.calculate_equipment_replacement_costs import *
 
 # Columns to update
 cost_columns = [
@@ -431,10 +483,8 @@ for column in cost_columns:
 
 # Creating a dictionary from the DataFrame
 dict_heating_equipment_cost = df_heating_retrofit_costs.set_index(['technology', 'efficiency']).to_dict(orient='index')
-# dict_heating_equipment_cost
 
 # Call the function and obtain equipment specifications
-# obtain_heating_system_specs(df)
 print("Obtaining system specs ...")
 df_euss_am_mp8_home = obtain_heating_system_specs(df=df_euss_am_mp8_home)
 
@@ -593,7 +643,7 @@ print(df_euss_am_mp8_home)
 #  ## Calculate Rebate Amounts (Applicable to IRA-Reference)
 
 # %%
-from cmu_tare_model.private_impact.determine_rebate_eligibility_and_amount import *
+from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import *
 
 # Determine Percent AMI and Rebate Amounts
 # This needs to be done before running the calculate_percent_AMI function
@@ -659,16 +709,62 @@ Basic Retrofit: Measure Package {menu_mp}
 """)
 
 # %%
-from cmu_tare_model.public_impact.calculate_lifetime_public_impact import *
+from cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity import *
 
-# calculate_public_npv(df, df_baseline_damages, df_mp_damages, menu_mp, policy_scenario, equipment_specs, interest_rate=0.02)
-df_euss_am_mp8_home = calculate_public_npv(df=df_euss_am_mp8_home,
-                                           df_baseline_damages=df_baseline_scenario_damages,
-                                           df_mp_damages=df_mp8_scenario_damages,
-                                           menu_mp=menu_mp,
-                                           policy_scenario='No Inflation Reduction Act',
-                                           interest_rate=0.02,
-                                           )
+# # LAST UPDATED APRIL 6, 2025 @ 2:30PM
+# def calculate_public_npv(
+#     df: pd.DataFrame, 
+#     df_baseline_damages: pd.DataFrame, 
+#     df_mp_damages: pd.DataFrame, 
+#     menu_mp: str, 
+#     policy_scenario: str, 
+#     rcm_model: str,
+#     cr_function: str,
+#     base_year: int = 2024,
+#     discounting_method: str = 'public',
+# ) -> pd.DataFrame:
+
+# Create copies to prevent overwriting the original dataframe and compare the differences
+df_euss_am_mp8_home_ap2 = df_euss_am_mp8_home.copy()
+df_euss_am_mp8_home_easiur = df_euss_am_mp8_home.copy()
+df_euss_am_mp8_home_inmap = df_euss_am_mp8_home.copy()
+
+# ============= AP2 =============
+df_euss_am_mp8_home_ap2 = calculate_public_npv(
+    df=df_euss_am_mp8_home_ap2,
+    df_baseline_damages=df_baseline_scenario_damages,
+    df_mp_damages=df_mp8_scenario_damages,
+    menu_mp=menu_mp,
+    policy_scenario='No Inflation Reduction Act',
+    rcm_model='AP2',
+    base_year=2024,
+    discounting_method='public'
+    )
+
+# ============ EASIUR =============
+df_euss_am_mp8_home_easiur = calculate_public_npv(
+    df=df_euss_am_mp8_home_easiur,
+    df_baseline_damages=df_baseline_scenario_damages,
+    df_mp_damages=df_mp8_scenario_damages,
+    menu_mp=menu_mp,
+    policy_scenario='No Inflation Reduction Act',
+    rcm_model='EASIUR',
+    base_year=2024,
+    discounting_method='public'
+    )
+
+# =========== InMAP =============
+df_euss_am_mp8_home_inmap = calculate_public_npv(
+    df=df_euss_am_mp8_home_inmap,
+    df_baseline_damages=df_baseline_scenario_damages,
+    df_mp_damages=df_mp8_scenario_damages,
+    menu_mp=menu_mp,
+    policy_scenario='No Inflation Reduction Act',
+    rcm_model='InMAP',
+    base_year=2024,
+    discounting_method='public'
+    )
+
 
 print(f"""  
 ====================================================================================================================================================================
@@ -678,22 +774,67 @@ calculate_lifetime_public_impact.py file contains the definition for the calcula
 Additional information on emissions/damage factor lookups as well as marginal damages calculation methods can be found in the calculate_emissions_damages.py file. 
       
 DATAFRAME FOR MP8 AFTER CALCULATING PUBLIC NPV: df_euss_am_mp8_home
-      
-{df_euss_am_mp8_home}
+
+AP2: 
+-----------------------------------------------
+{df_euss_am_mp8_home_ap2}
+
+EASIUR:
+-----------------------------------------------
+{df_euss_am_mp8_home_easiur}
+
+InMAP:
+-----------------------------------------------
+{df_euss_am_mp8_home_inmap}
       
 """)
 
 # %%
-from cmu_tare_model.private_impact.calculate_private_npv_sensitivity import *
+from cmu_tare_model.private_impact.calculate_lifetime_private_impact import *
 
-# calculate_private_npv(df, df_fuelCosts, menu_mp, policy_scenario, equipment_specs, interest_rate=0.07)
-df_euss_am_mp8_home = calculate_private_NPV(df=df_euss_am_mp8_home,
-                                            df_fuelCosts=df_mp8_scenario_fuelCosts,
-                                            menu_mp=menu_mp,
-                                            input_mp=input_mp,
-                                            policy_scenario='No Inflation Reduction Act',
-                                            interest_rate=0.07,
-                                            )
+# def calculate_private_NPV(
+#         df: pd.DataFrame,
+#         df_fuelCosts: pd.DataFrame,
+#         input_mp: str,
+#         menu_mp: int,
+#         policy_scenario: str,
+#         discounting_method: str = 'private_fixed',
+#         base_year: int = 2024
+# ) -> pd.DataFrame:
+
+# ============= AP2 =============
+df_euss_am_mp8_home_ap2 = calculate_private_NPV(
+    df=df_euss_am_mp8_home_ap2,
+    df_fuelCosts=df_mp8_scenario_fuelCosts,
+    menu_mp=menu_mp,
+    input_mp=input_mp,
+    policy_scenario='No Inflation Reduction Act',
+    discounting_method='private_fixed',
+    base_year=2024
+    )
+
+# ============ EASIUR =============
+df_euss_am_mp8_home_easiur = calculate_private_NPV(
+    df=df_euss_am_mp8_home_easiur,
+    df_fuelCosts=df_mp8_scenario_fuelCosts,
+    menu_mp=menu_mp,
+    input_mp=input_mp,
+    policy_scenario='No Inflation Reduction Act',
+    discounting_method='private_fixed',
+    base_year=2024
+    )
+
+# ============ InMAP =============
+df_euss_am_mp8_home_inmap = calculate_private_NPV(
+    df=df_euss_am_mp8_home_inmap,
+    df_fuelCosts=df_mp8_scenario_fuelCosts,
+    menu_mp=menu_mp,
+    input_mp=input_mp,
+    policy_scenario='No Inflation Reduction Act',
+    discounting_method='private_fixed',
+    base_year=2024
+    )
+
 
 print(f"""  
 ====================================================================================================================================================================
@@ -704,18 +845,88 @@ Additional information on fuel price lookups can be found in the calculate_fuel_
       
 DATAFRAME FOR MP8 AFTER CALCULATING PRIVATE NPV: df_euss_am_mp8_home
 
-{df_euss_am_mp8_home}
+AP2: 
+-----------------------------------------------
+{df_euss_am_mp8_home_ap2}
+
+EASIUR:
+-----------------------------------------------
+{df_euss_am_mp8_home_easiur}
+
+InMAP:
+-----------------------------------------------
+{df_euss_am_mp8_home_inmap}
       
 """)
 
 # %%
 from cmu_tare_model.adoption_potential.determine_adoption_potential import *
 
-# adoption_decision(df, policy_scenario)
-df_euss_am_mp8_home = adoption_decision(df=df_euss_am_mp8_home,
-                                        menu_mp=menu_mp,
-                                        policy_scenario='No Inflation Reduction Act'
-                                        )
+# def adoption_decision(df: pd.DataFrame,
+#                       menu_mp: int,
+#                       policy_scenario: str,
+#                       rcm_model: str,
+#                       cr_function: str,
+#                       climate_sensitivity: bool = False  # Default is false because we use $190USD2020/mt in Joseph et al. (2025)
+# ) -> pd.DataFrame:
+
+# ============= AP2 =============
+df_euss_am_mp8_home_ap2 = adoption_decision(
+    df=df_euss_am_mp8_home_ap2,
+    menu_mp=menu_mp,
+    policy_scenario='No Inflation Reduction Act',
+    rcm_model='AP2',
+    cr_function='acs',
+    climate_sensitivity=False
+    )
+
+df_euss_am_mp8_home_ap2 = adoption_decision(
+    df=df_euss_am_mp8_home_ap2,
+    menu_mp=menu_mp,
+    policy_scenario='No Inflation Reduction Act',
+    rcm_model='AP2',
+    cr_function='h6c',
+    climate_sensitivity=False
+    )
+
+# ============ EASIUR =============
+df_euss_am_mp8_home_easiur = adoption_decision(
+    df=df_euss_am_mp8_home_easiur,
+    menu_mp=menu_mp,
+    policy_scenario='No Inflation Reduction Act',
+    rcm_model='EASIUR',
+    cr_function='acs',
+    climate_sensitivity=False
+    )
+
+df_euss_am_mp8_home_easiur = adoption_decision(
+    df=df_euss_am_mp8_home_easiur,
+    menu_mp=menu_mp,
+    policy_scenario='No Inflation Reduction Act',
+    rcm_model='EASIUR',
+    cr_function='h6c',
+    climate_sensitivity=False
+    )
+
+# ============ InMAP =============
+df_euss_am_mp8_home_inmap = adoption_decision(
+    df=df_euss_am_mp8_home_inmap,
+    menu_mp=menu_mp,
+    policy_scenario='No Inflation Reduction Act',
+    rcm_model='InMAP',
+    cr_function='acs',
+    climate_sensitivity=False
+    )
+
+df_euss_am_mp8_home_inmap = adoption_decision(
+    df=df_euss_am_mp8_home_inmap,
+    menu_mp=menu_mp,
+    policy_scenario='No Inflation Reduction Act',
+    rcm_model='InMAP',
+    cr_function='h6c',
+    climate_sensitivity=False
+    )
+
 
 print(f"""
 ====================================================================================================================================================================
@@ -725,7 +936,17 @@ determine_adoption_potential.py file contains the definition for the adoption_de
 
 DATAFRAME FOR MP8 AFTER DETERMINING ADOPTION FEASIBILITY: df_euss_am_mp8_home
       
-{df_euss_am_mp8_home}
+AP2: 
+-----------------------------------------------
+{df_euss_am_mp8_home_ap2}
+
+EASIUR:
+-----------------------------------------------
+{df_euss_am_mp8_home_easiur}
+
+InMAP:
+-----------------------------------------------
+{df_euss_am_mp8_home_inmap}
       
 """)
 
@@ -753,16 +974,53 @@ Basic Retrofit: Measure Package {menu_mp}
 """)
 
 # %%
-# from cmu_tare_model.public_impact.calculate_lifetime_public_impact import *
+# def calculate_public_npv(
+#     df: pd.DataFrame, 
+#     df_baseline_damages: pd.DataFrame, 
+#     df_mp_damages: pd.DataFrame, 
+#     menu_mp: str, 
+#     policy_scenario: str, 
+#     rcm_model: str,
+#     cr_function: str,
+#     base_year: int = 2024,
+#     discounting_method: str = 'public',
+# ) -> pd.DataFrame:
 
-# calculate_public_npv(df, df_baseline_damages, df_mp_damages, menu_mp, policy_scenario, equipment_specs, interest_rate=0.02)
-df_euss_am_mp8_home = calculate_public_npv(df=df_euss_am_mp8_home,
-                                           df_baseline_damages=df_baseline_scenario_damages,
-                                           df_mp_damages=df_mp8_scenario_damages,
-                                           menu_mp=menu_mp,
-                                           policy_scenario='AEO2023 Reference Case',
-                                           interest_rate=0.02,
-                                           )
+# ============= AP2 =============
+df_euss_am_mp8_home_ap2 = calculate_public_npv(
+    df=df_euss_am_mp8_home_ap2,
+    df_baseline_damages=df_baseline_scenario_damages,
+    df_mp_damages=df_mp8_scenario_damages,
+    menu_mp=menu_mp,
+    policy_scenario='AEO2023 Reference Case',
+    rcm_model='AP2',
+    base_year=2024,
+    discounting_method='public'
+    )
+
+# ============ EASIUR =============
+df_euss_am_mp8_home_easiur = calculate_public_npv(
+    df=df_euss_am_mp8_home_easiur,
+    df_baseline_damages=df_baseline_scenario_damages,
+    df_mp_damages=df_mp8_scenario_damages,
+    menu_mp=menu_mp,
+    policy_scenario='AEO2023 Reference Case',
+    rcm_model='EASIUR',
+    base_year=2024,
+    discounting_method='public'
+    )
+
+# =========== InMAP =============
+df_euss_am_mp8_home_inmap = calculate_public_npv(
+    df=df_euss_am_mp8_home_inmap,
+    df_baseline_damages=df_baseline_scenario_damages,
+    df_mp_damages=df_mp8_scenario_damages,
+    menu_mp=menu_mp,
+    policy_scenario='AEO2023 Reference Case',
+    rcm_model='InMAP',
+    base_year=2024,
+    discounting_method='public'
+    )
 
 print(f"""  
 ====================================================================================================================================================================
@@ -773,21 +1031,64 @@ Additional information on emissions/damage factor lookups as well as marginal da
       
 DATAFRAME FOR MP8 AFTER CALCULATING PUBLIC NPV: df_euss_am_mp8_home
       
-{df_euss_am_mp8_home}
+AP2: 
+-----------------------------------------------
+{df_euss_am_mp8_home_ap2}
+
+EASIUR:
+-----------------------------------------------
+{df_euss_am_mp8_home_easiur}
+
+InMAP:
+-----------------------------------------------
+{df_euss_am_mp8_home_inmap}
       
 """)
 
 # %%
-# from cmu_tare_model.private_impact.calculate_lifetime_private_impact import *
+# def calculate_private_NPV(
+#         df: pd.DataFrame,
+#         df_fuelCosts: pd.DataFrame,
+#         input_mp: str,
+#         menu_mp: int,
+#         policy_scenario: str,
+#         discounting_method: str = 'private_fixed',
+#         base_year: int = 2024
+# ) -> pd.DataFrame:
 
-# calculate_private_npv(df, df_fuelCosts, menu_mp, policy_scenario, equipment_specs, interest_rate=0.07)
-df_euss_am_mp8_home = calculate_private_NPV(df=df_euss_am_mp8_home,
-                                            df_fuelCosts=df_mp8_scenario_fuelCosts,
-                                            menu_mp=menu_mp,
-                                            input_mp=input_mp,
-                                            policy_scenario='AEO2023 Reference Case',
-                                            interest_rate=0.07,
-                                            )
+# ============= AP2 =============
+df_euss_am_mp8_home_ap2 = calculate_private_NPV(
+    df=df_euss_am_mp8_home_ap2,
+    df_fuelCosts=df_mp8_scenario_fuelCosts,
+    menu_mp=menu_mp,
+    input_mp=input_mp,
+    policy_scenario='AEO2023 Reference Case',
+    discounting_method='private_fixed',
+    base_year=2024
+    )
+
+# ============ EASIUR =============
+df_euss_am_mp8_home_easiur = calculate_private_NPV(
+    df=df_euss_am_mp8_home_easiur,
+    df_fuelCosts=df_mp8_scenario_fuelCosts,
+    menu_mp=menu_mp,
+    input_mp=input_mp,
+    policy_scenario='AEO2023 Reference Case',
+    discounting_method='private_fixed',
+    base_year=2024
+    )
+
+# ============ InMAP =============
+df_euss_am_mp8_home_inmap = calculate_private_NPV(
+    df=df_euss_am_mp8_home_inmap,
+    df_fuelCosts=df_mp8_scenario_fuelCosts,
+    menu_mp=menu_mp,
+    input_mp=input_mp,
+    policy_scenario='AEO2023 Reference Case',
+    discounting_method='private_fixed',
+    base_year=2024
+    )
+
 
 print(f"""  
 ====================================================================================================================================================================
@@ -798,18 +1099,78 @@ Additional information on fuel price lookups can be found in the calculate_fuel_
       
 DATAFRAME FOR MP8 AFTER CALCULATING PRIVATE NPV: df_euss_am_mp8_home
 
-{df_euss_am_mp8_home}
+AP2: 
+-----------------------------------------------
+{df_euss_am_mp8_home_ap2}
+
+EASIUR:
+-----------------------------------------------
+{df_euss_am_mp8_home_easiur}
+
+InMAP:
+-----------------------------------------------
+{df_euss_am_mp8_home_inmap}
       
 """)
 
 # %%
-# from cmu_tare_model.adoption_potential.determine_adoption_potential import *
 
-# adoption_decision(df, policy_scenario)
-df_euss_am_mp8_home = adoption_decision(df=df_euss_am_mp8_home,
-                                        menu_mp=menu_mp,
-                                        policy_scenario='AEO2023 Reference Case'
-                                        )
+# ============= AP2 =============
+df_euss_am_mp8_home_ap2 = adoption_decision(
+    df=df_euss_am_mp8_home_ap2,
+    menu_mp=menu_mp,
+    policy_scenario='AEO2023 Reference Case',
+    rcm_model='AP2',
+    cr_function='acs',
+    climate_sensitivity=False
+    )
+
+df_euss_am_mp8_home_ap2 = adoption_decision(
+    df=df_euss_am_mp8_home_ap2,
+    menu_mp=menu_mp,
+    policy_scenario='AEO2023 Reference Case',
+    rcm_model='AP2',
+    cr_function='h6c',
+    climate_sensitivity=False
+    )
+
+# ============ EASIUR =============
+df_euss_am_mp8_home_easiur = adoption_decision(
+    df=df_euss_am_mp8_home_easiur,
+    menu_mp=menu_mp,
+    policy_scenario='AEO2023 Reference Case',
+    rcm_model='EASIUR',
+    cr_function='acs',
+    climate_sensitivity=False
+    )
+
+df_euss_am_mp8_home_easiur = adoption_decision(
+    df=df_euss_am_mp8_home_easiur,
+    menu_mp=menu_mp,
+    policy_scenario='AEO2023 Reference Case',
+    rcm_model='EASIUR',
+    cr_function='h6c',
+    climate_sensitivity=False
+    )
+
+# ============ InMAP =============
+df_euss_am_mp8_home_inmap = adoption_decision(
+    df=df_euss_am_mp8_home_inmap,
+    menu_mp=menu_mp,
+    policy_scenario='AEO2023 Reference Case',
+    rcm_model='InMAP',
+    cr_function='acs',
+    climate_sensitivity=False
+    )
+
+df_euss_am_mp8_home_inmap = adoption_decision(
+    df=df_euss_am_mp8_home_inmap,
+    menu_mp=menu_mp,
+    policy_scenario='AEO2023 Reference Case',
+    rcm_model='InMAP',
+    cr_function='h6c',
+    climate_sensitivity=False
+    )
 
 print(f"""
 ====================================================================================================================================================================
@@ -819,7 +1180,17 @@ determine_adoption_potential.py file contains the definition for the adoption_de
 
 DATAFRAME FOR MP8 AFTER DETERMINING ADOPTION FEASIBILITY: df_euss_am_mp8_home
       
-{df_euss_am_mp8_home}
+AP2: 
+-----------------------------------------------
+{df_euss_am_mp8_home_ap2}
+
+EASIUR:
+-----------------------------------------------
+{df_euss_am_mp8_home_easiur}
+
+InMAP:
+-----------------------------------------------
+{df_euss_am_mp8_home_inmap}
       
 """)
 

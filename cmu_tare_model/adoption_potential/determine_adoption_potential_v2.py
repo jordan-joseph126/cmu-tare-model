@@ -106,11 +106,11 @@ def adoption_decision(df, menu_mp, policy_scenario, include_health_benefits, hea
             if lessWTP_private_npv_col in df_copy.columns and moreWTP_private_npv_col in df_copy.columns and public_npv_col in df_copy.columns and rebate_col in df_copy.columns and avoided_mt_co2e_col in df_copy.columns:
                 # No IRA Rebate so no "Additional Public Benefit"
                 if policy_scenario == 'No Inflation Reduction Act':
-                    df_new_columns[addition_public_benefit] = np.nan
+                    df_new_columns[addition_public_benefit] = np.
                     df_new_columns[rebate_col] = np.nan
                     df_new_columns[cost_eff_co2e_abatement_col] = np.nan
                 else:
-                    # Calculate Additional Public Benefit with IRA Rebates Accounted For
+                    # Calculate Additional Public Benefit with IRA Rebates Accounted Fornan
                     df_new_columns[addition_public_benefit] = round((df_copy[public_npv_col] - df_copy[rebate_col]), 2) # Previously clipped at 0 for no negative values: ().clip(lower=0)
                     df_new_columns[cost_eff_co2e_abatement_col] = round((df_copy[rebate_col] / df_copy[avoided_mt_co2e_col]), 2)
 

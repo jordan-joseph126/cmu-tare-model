@@ -1,4 +1,4 @@
-# ChatGPT Prompt - Documentation for Code/Functions:
+# Prompt - Documentation for Code/Functions:
 
 file.py uses {}, {}, and other imports from the cmu_tare_model package. Some functions lack adequate docstrings and inline comments.  
 
@@ -17,7 +17,7 @@ file.py uses {}, {}, and other imports from the cmu_tare_model package. Some fun
 
 
 
-# ChatGPT Prompt - Additional Information for Unit Tests (Edge Cases): 
+# Prompt - Additional Information for Unit Tests (Edge Cases): 
 
     What are some edge cases for this set of functions? What additional information would help you generate pytest tests?
 
@@ -30,7 +30,7 @@ Remember the important edge case and additional info for writing the pytest test
     TEXT HERE
     """
 
- Write a prompt that I can use to ask ChatGPT to generate pytest tests for the code above. Please follow **best practices** in prompt engineering by clearly stating: 
+ Write a prompt that I can use to generate pytest tests for the code above. Please follow **best practices** in prompt engineering by clearly stating: 
 - **Context**: What the function does.  
 - **Objectives**: What kind of tests are needed (edge-case coverage, exception handling, etc.).  
 - **Constraints/Requirements**: Use of pytest.raises, parametrization, no actual I/O, etc.

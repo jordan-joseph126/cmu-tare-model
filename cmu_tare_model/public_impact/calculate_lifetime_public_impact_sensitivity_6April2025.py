@@ -1,11 +1,10 @@
 import pandas as pd
-from typing import Dict, Tuple, List
+from typing import Dict
 
 # Constants
 from cmu_tare_model.constants import EQUIPMENT_SPECS, CR_FUNCTIONS, RCM_MODELS, SCC_ASSUMPTIONS
 from cmu_tare_model.utils.discounting import calculate_discount_factor
 from cmu_tare_model.utils.modeling_params import define_scenario_params
-from cmu_tare_model.public_impact.data_processing.validate_damages_dataframes import validate_damage_dataframes
 
 print(f"""
 ===================================================================================
@@ -18,13 +17,11 @@ LIFETIME PUBLIC IMPACT: NPV OF LIFETIME MONETIZED DAMAGES (CLIMATE AND HEALTH)
     CR_FUNCTIONS = {CR_FUNCTIONS}
 """)
 
-# LAST UPDATED APRIL 13, 2025 @ 12:30PM
+# LAST UPDATED APRIL 6, 2025 @ 2:30PM
 def calculate_public_npv(
     df: pd.DataFrame, 
-    df_baseline_climate: pd.DataFrame, 
-    df_baseline_health: pd.DataFrame,
-    df_mp_climate: pd.DataFrame,
-    df_mp_health: pd.DataFrame,
+    df_baseline_damages: pd.DataFrame, 
+    df_mp_damages: pd.DataFrame, 
     menu_mp: str, 
     policy_scenario: str, 
     rcm_model: str,
@@ -40,10 +37,8 @@ def calculate_public_npv(
 
     Args:
         df: Input DataFrame containing base data for calculations.
-        df_baseline_climate: DataFrame containing baseline climate damage projections.
-        df_baseline_health: DataFrame containing baseline health damage projections.
-        df_mp_climate: DataFrame containing post-retrofit climate damage projections.
-        df_mp_health: DataFrame containing post-retrofit health damage projections.
+        df_baseline_damages: DataFrame containing baseline damage projections.
+        df_mp_damages: DataFrame containing post-retrofit damage projections.
         menu_mp: Menu identifier used to construct column names for the measure package.
         policy_scenario: Policy scenario that determines electricity grid projections.
             Accepted values: 'No Inflation Reduction Act', 'AEO2023 Reference Case'.
@@ -54,14 +49,7 @@ def calculate_public_npv(
     Returns:
         DataFrame with additional columns containing the calculated public NPVs for each 
         equipment category, damage type, and sensitivity analysis combination.
-        
-    Raises:
-        ValueError: If input parameters are invalid or if required data columns are missing.
     """
-    print("\n" + "="*50)
-    print("VALIDATING INPUT PARAMETERS")
-    print("="*50)
-    
     # Add validation for menu_mp
     if not menu_mp.isdigit():
         raise ValueError(f"Invalid menu_mp: {menu_mp}. Must be a digit.")
@@ -75,61 +63,18 @@ def calculate_public_npv(
     valid_methods = ['public', 'private_fixed']
     if discounting_method not in valid_methods:
         raise ValueError(f"Invalid discounting_method: {discounting_method}. Must be one of {valid_methods}")
-    
-    # Add validation for rcm_model
-    if rcm_model not in RCM_MODELS:
-        raise ValueError(f"Invalid rcm_model: {rcm_model}. Must be one of {RCM_MODELS}")
-    
-    print("✓ All input parameters are valid.")
-    
-    print("\n" + "="*50)
-    print("VALIDATING INPUT DATA STRUCTURE")
-    print("="*50)
-    
-    # Validate input DataFrames have the expected structure
-    is_valid, messages = validate_damage_dataframes(
-        df_baseline_climate,
-        df_baseline_health,
-        df_mp_climate,
-        df_mp_health,
-        menu_mp, 
-        policy_scenario, 
-        base_year, 
-        EQUIPMENT_SPECS
-    )
-    
-    # Print any validation messages
-    for message in messages:
-        print(message)
-    
-    if not is_valid:
-        raise ValueError("Input DataFrames are missing required damage columns. See errors above.")
-    
-    print("✓ Input data structure validation passed.\n")
 
     # Create copies to avoid modifying original dataframes
     df_copy = df.copy()
-    df_baseline_climate_copy = df_baseline_climate.copy()
-    df_baseline_health_copy = df_baseline_health.copy()
-    df_mp_climate_copy = df_mp_climate.copy()
-    df_mp_health_copy = df_mp_health.copy()
-    
-    # Track all new dataframes that will be joined at the end
-    all_new_dfs = []
+    df_baseline_damages_copy = df_baseline_damages.copy()
+    df_mp_damages_copy = df_mp_damages.copy()
 
-    print("\n" + "="*50)
-    print(f"CALCULATING NPV FOR EACH CONCENTRATION-RESPONSE FUNCTION")
-    print("="*50)
-    
     for cr_function in CR_FUNCTIONS:
-        print(f"\nProcessing CR Function: {cr_function}")
         # Calculate the lifetime damages and corresponding NPV based on the policy scenario
         df_new_columns = calculate_lifetime_damages_grid_scenario(
             df_copy, 
-            df_baseline_climate_copy,
-            df_baseline_health_copy,
-            df_mp_climate_copy,
-            df_mp_health_copy,
+            df_baseline_damages_copy, 
+            df_mp_damages_copy, 
             menu_mp,
             policy_scenario, 
             rcm_model, 
@@ -137,39 +82,21 @@ def calculate_public_npv(
             base_year, 
             discounting_method
         )
-        
-        # Store the new DataFrame for later joining
-        all_new_dfs.append(df_new_columns)
-    
-    # Combine all new DataFrames
-    if all_new_dfs:
-        df_combined_new = pd.concat(all_new_dfs, axis=1)
-        
-        # Drop any overlapping columns from df_copy
-        overlapping_columns = df_combined_new.columns.intersection(df_copy.columns)
-        if not overlapping_columns.empty:
-            print(f"Dropping {len(overlapping_columns)} overlapping columns from the original DataFrame.")
-            df_copy.drop(columns=overlapping_columns, inplace=True)
-        
-        # Merge new columns into the original DataFrame
-        df_copy = df_copy.join(df_combined_new, how='left')
-    else:
-        print("WARNING: No new NPV columns were calculated.")
 
-    print("\n" + "="*50)
-    print("NPV CALCULATION COMPLETED")
-    print("="*50)
-    print(f"Added {len(df_copy.columns) - len(df.columns)} new NPV columns to the DataFrame.")
-    
+    # Drop any overlapping columns from df_copy
+    overlapping_columns = df_new_columns.columns.intersection(df_copy.columns)
+    if not overlapping_columns.empty:
+        df_copy.drop(columns=overlapping_columns, inplace=True)
+
+    # Merge new columns into the original DataFrame
+    df_copy = df_copy.join(df_new_columns, how='left')
+
     return df_copy
-
 
 def calculate_lifetime_damages_grid_scenario(
     df_copy: pd.DataFrame, 
-    df_baseline_climate: pd.DataFrame,
-    df_baseline_health: pd.DataFrame,
-    df_mp_climate: pd.DataFrame,
-    df_mp_health: pd.DataFrame,
+    df_baseline_damages_copy: pd.DataFrame, 
+    df_mp_damages_copy: pd.DataFrame, 
     menu_mp: str, 
     policy_scenario: str, 
     rcm_model: str,
@@ -189,10 +116,8 @@ def calculate_lifetime_damages_grid_scenario(
 
     Args:
         df_copy: Copy of the original DataFrame to use for index alignment.
-        df_baseline_climate: DataFrame containing baseline climate damage projections.
-        df_baseline_health: DataFrame containing baseline health damage projections.
-        df_mp_climate: DataFrame containing post-retrofit climate damage projections.
-        df_mp_health: DataFrame containing post-retrofit health damage projections.
+        df_baseline_damages_copy: DataFrame containing baseline damage projections.
+        df_mp_damages_copy: DataFrame containing post-retrofit damage projections.
         menu_mp: Menu identifier used to construct column names for the measure package.
         policy_scenario: Specifies the grid scenario ('No Inflation Reduction Act', 'AEO2023 Reference Case').
         rcm_model: The Reduced Complexity Model used for health impact calculations.
@@ -206,7 +131,6 @@ def calculate_lifetime_damages_grid_scenario(
         
     Raises:
         ValueError: Indirectly through define_scenario_params if policy_scenario is invalid.
-        ValueError: If required columns are missing from input DataFrames.
     """
     # Determine the scenario prefix based on the policy scenario
     scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
@@ -248,10 +172,6 @@ def calculate_lifetime_damages_grid_scenario(
             climate_npv = pd.Series(0.0, index=df_copy.index)
             health_npv = pd.Series(0.0, index=df_copy.index)
             
-            # Track if any year's data was successfully processed
-            climate_years_processed = 0
-            health_years_processed = 0
-            
             # Calculate NPVs for each year in the equipment's lifetime
             for year in range(1, lifetime + 1):
                 year_label = year + (base_year - 1)
@@ -265,69 +185,25 @@ def calculate_lifetime_damages_grid_scenario(
                 retrofit_climate_col = f'{scenario_prefix}{year_label}_{category}_damages_climate_lrmer_{scc}'
                 retrofit_health_col = f'{scenario_prefix}{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
                 
-                # Check if climate columns exist before calculation
-                climate_cols_exist = (base_climate_col in df_baseline_climate.columns and 
-                                     retrofit_climate_col in df_mp_climate.columns)
+                # Calculate avoided damages (baseline - retrofit) and apply discount factor
+                if base_climate_col in df_baseline_damages_copy and retrofit_climate_col in df_mp_damages_copy:
+                    climate_npv += ((df_baseline_damages_copy[base_climate_col] - 
+                                    df_mp_damages_copy[retrofit_climate_col]) * discount_factor)
                 
-                # Check if health columns exist before calculation
-                health_cols_exist = (base_health_col in df_baseline_health.columns and 
-                                    retrofit_health_col in df_mp_health.columns)
-                
-                # Calculate avoided climate damages if columns exist
-                if climate_cols_exist:
-                    climate_npv += ((df_baseline_climate[base_climate_col] - 
-                                   df_mp_climate[retrofit_climate_col]) * discount_factor)
-                    climate_years_processed += 1
-                else:
-                    # Print clear warning about missing columns
-                    print(f"  WARNING: Cannot calculate climate NPV for year {year_label}.")
-                    print(f"    Missing column(s): "
-                          f"{'base_climate_col' if base_climate_col not in df_baseline_climate.columns else ''}"
-                          f"{' and ' if (base_climate_col not in df_baseline_climate.columns and retrofit_climate_col not in df_mp_climate.columns) else ''}"
-                          f"{'retrofit_climate_col' if retrofit_climate_col not in df_mp_climate.columns else ''}")
-                
-                # Calculate avoided health damages if columns exist
-                if health_cols_exist:
-                    health_npv += ((df_baseline_health[base_health_col] - 
-                                  df_mp_health[retrofit_health_col]) * discount_factor)
-                    health_years_processed += 1
-                else:
-                    # Print clear warning about missing columns
-                    print(f"  WARNING: Cannot calculate health NPV for year {year_label}.")
-                    print(f"    Missing column(s): "
-                          f"{'base_health_col' if base_health_col not in df_baseline_health.columns else ''}"
-                          f"{' and ' if (base_health_col not in df_baseline_health.columns and retrofit_health_col not in df_mp_health.columns) else ''}"
-                          f"{'retrofit_health_col' if retrofit_health_col not in df_mp_health.columns else ''}")
+                if base_health_col in df_baseline_damages_copy and retrofit_health_col in df_mp_damages_copy:
+                    health_npv += ((df_baseline_damages_copy[base_health_col] - 
+                                  df_mp_damages_copy[retrofit_health_col]) * discount_factor)
             
-            # Store the unrounded values for final calculation
+            # First, store the unrounded values
             climate_npv_unrounded = climate_npv.copy()
             health_npv_unrounded = health_npv.copy()
 
-            # Check if any data was processed
-            if climate_years_processed == 0:
-                print(f"ERROR: No climate damage data was found for {category}. NPV will be zero.")
-            elif climate_years_processed < lifetime:
-                print(f"WARNING: Only processed {climate_years_processed}/{lifetime} years for climate damages.")
-                
-            if health_years_processed == 0:
-                print(f"ERROR: No health damage data was found for {category}. NPV will be zero.")
-            elif health_years_processed < lifetime:
-                print(f"WARNING: Only processed {health_years_processed}/{lifetime} years for health damages.")
-            
-            # Round values for display/storage
+            # Then round for display/storage
             climate_npv = climate_npv_unrounded.round(2)
             health_npv = health_npv_unrounded.round(2)
 
             # Calculate public NPV from sum of climate and health NPVs (unrounded values), then round
             public_npv = (climate_npv_unrounded + health_npv_unrounded).round(2)
-            
-            # Check for zero NPVs and warn
-            if (climate_npv == 0).all():
-                print(f"WARNING: {climate_npv_key} has all zero values. This may indicate missing data.")
-            if (health_npv == 0).all():
-                print(f"WARNING: {health_npv_key} has all zero values. This may indicate missing data.")
-            if (public_npv == 0).all():
-                print(f"WARNING: {public_npv_key} has all zero values. This may indicate missing data.")
             
             # Store NPVs in the results dictionary
             all_npvs[climate_npv_key] = climate_npv
