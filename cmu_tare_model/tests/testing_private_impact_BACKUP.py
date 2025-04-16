@@ -6,7 +6,7 @@ from copy import deepcopy
 
 # Import both versions of the function
 from cmu_tare_model.private_impact import calculate_lifetime_private_impact as current
-from cmu_tare_model.private_impact import calculate_lifetime_private_impact_BACKUP as backup
+from archived_files import calculate_lifetime_private_impact_BACKUP_nodoc as backup
 
 from cmu_tare_model.constants import EQUIPMENT_SPECS
 

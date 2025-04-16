@@ -3,19 +3,28 @@ import pandas as pd
 
 # import from cmu-tare-model package
 from config import PROJECT_ROOT
-print(f"Project root directory: {PROJECT_ROOT}")
 
-print("""
-==============================================================================================================================================================================
-HEALTH RELATED EMISSIONS: 
-      Calculated using the Schmitt et al. (2024) Long Run Marginal Emissions Rates (LRMER) for the MidCase Scenario
-      Formerly used to validate CEDM Marginal Emissions/Damages Rates but we decided not to use those.
-==============================================================================================================================================================================
-- Assumes GEA Region and EPA eGRID subregions are the same. They are similar but not the same.
-- Multiply emissions factors (pollutant / kWh) for the grid mix fuel sources (ef_pollutants_egrid: Coal, NG, Renewables) by the generation fraction (grid_mix_reg_full_delta: Fuel Source Generation / Total Generation)
-- This creates a regional emissions factor. The delta scenario approximates long run marginal emissions rates by subtracting the MidCase generation from the High Electrification scenario generation
-- The regional emissions factor (eGRID subregion/Cambium GEA Region) can then be multiplied by the EASIUR marginal social costs (Latitude/Longitude specific)
-""")
+# =======================================================================================================================
+# Set print_verbose to True for detailed output, or False for minimal output
+# By default, print_verbose is set to False because define_scenario_params is imported multiple times in the codebase
+# and we don't want to print the same information multiple times.
+print_verbose = False
+# =======================================================================================================================
+
+if print_verbose:
+    print(f"Project root directory: {PROJECT_ROOT}")
+
+    print("""
+    ==============================================================================================================================================================================
+    HEALTH RELATED EMISSIONS: 
+        Calculated using the Schmitt et al. (2024) Long Run Marginal Emissions Rates (LRMER) for the MidCase Scenario
+        Formerly used to validate CEDM Marginal Emissions/Damages Rates but we decided not to use those.
+    ==============================================================================================================================================================================
+    - Assumes GEA Region and EPA eGRID subregions are the same. They are similar but not the same.
+    - Multiply emissions factors (pollutant / kWh) for the grid mix fuel sources (ef_pollutants_egrid: Coal, NG, Renewables) by the generation fraction (grid_mix_reg_full_delta: Fuel Source Generation / Total Generation)
+    - This creates a regional emissions factor. The delta scenario approximates long run marginal emissions rates by subtracting the MidCase generation from the High Electrification scenario generation
+    - The regional emissions factor (eGRID subregion/Cambium GEA Region) can then be multiplied by the EASIUR marginal social costs (Latitude/Longitude specific)
+    """)
 
 # LAST UPDATED MARCH 26, 2025 @ 6:45 PM
 def process_Schmitt_emissions_data(
@@ -126,16 +135,17 @@ df_grid_mix = pd.DataFrame({
     'fraction_generation': df_grid_mix['Fraction'],
 })
 
-print(f"""
-======================================================================================================================
-Loading the data for electricity grid mix fuel sources and generation fractions ...
-For example: Region ___ uses ___% Coal, ___% NG, ___% Renewables
-======================================================================================================================
+if print_verbose:
+    print(f"""
+    ======================================================================================================================
+    Loading the data for electricity grid mix fuel sources and generation fractions ...
+    For example: Region ___ uses ___% Coal, ___% NG, ___% Renewables
+    ======================================================================================================================
 
-DATAFRAME: df_grid_mix
+    DATAFRAME: df_grid_mix
 
-{df_grid_mix}
-""")
+    {df_grid_mix}
+    """)
 
 filename = "ef_pollutants_egrid.csv"
 relative_path = os.path.join("cmu_tare_model", "data", "projections", "schmitt_ev_study", filename)
@@ -206,21 +216,21 @@ lookup_emissions_electricity_health = df_emis_factors_epa_egrid.set_index(
     ['year', 'gea_region']
 ).to_dict('index')
 
+if print_verbose:
+    print(f"""
+    ======================================================================================================================
+    Load the data for grid mix fuel sources and emissions factors
+    For example: Using Fuel Source X in Region Y results in ___ mt/kWh of Pollutant Z
+    ======================================================================================================================
+    DATAFRAME: df_grid_emis_factors
 
-print(f"""
-======================================================================================================================
-Load the data for grid mix fuel sources and emissions factors
-For example: Using Fuel Source X in Region Y results in ___ mt/kWh of Pollutant Z
-======================================================================================================================
-DATAFRAME: df_grid_emis_factors
+    {df_grid_emis_factors}
 
-{df_grid_emis_factors}
+    DATAFRAME: df_emis_factors_epa_egrid
 
-DATAFRAME: df_emis_factors_epa_egrid
+    {df_emis_factors_epa_egrid}
 
-{df_emis_factors_epa_egrid}
+    LOOKUP DICTIONARY: lookup_emissions_electricity_health
 
-LOOKUP DICTIONARY: lookup_emissions_electricity_health
-
-{lookup_emissions_electricity_health}
-""")
+    {lookup_emissions_electricity_health}
+    """)

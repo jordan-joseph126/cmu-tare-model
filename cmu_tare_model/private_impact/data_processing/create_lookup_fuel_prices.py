@@ -12,6 +12,14 @@ from cmu_tare_model.utils.inflation_adjustment import (
     )
 from cmu_tare_model.utils.data_visualization import print_truncated_dict
 
+# =======================================================================================================================
+# Set print_verbose to True for detailed output, or False for minimal output
+# By default, verbose is set to False because define_scenario_params is imported multiple times in the codebase
+# and we don't want to print the same information multiple times.
+print_verbose = False
+# =======================================================================================================================
+
+
 """
 =======================================================================================================
 CREATE LOOKUP FOR FUEL PRICES
@@ -232,7 +240,8 @@ file_path = os.path.join(PROJECT_ROOT, relative_path)
 df_projection_factors = pd.read_excel(io=file_path, sheet_name='fuel_price_factors_2022_2050')
 
 # Print column names for debugging
-print("Columns in projection factors DataFrame:", df_projection_factors.columns.tolist())
+if print_verbose:
+    print("Columns in projection factors DataFrame:", df_projection_factors.columns.tolist())
 
 # Create a dictionary from the projection factors DataFrame
 # This approach handles the wide-format data where years are columns
@@ -260,20 +269,21 @@ iraRef_projected_prices_df = df_fuel_prices_adjusted.apply(
 # Concatenate the projected prices with the original DataFrame
 df_fuel_prices_iraRef = pd.concat([df_fuel_prices_adjusted, iraRef_projected_prices_df], axis=1)
 
-print(f"""
-=======================================================================================================
-PROCESSING FUEL PRICE DATA FOR PRE-IRA AND IRA REFERENCE SCENARIOS
-- First, obtain the projection factors from the AEO 2022 to 2050 projections.
-- Then, project the fuel prices for the Pre-IRA and IRA Reference scenarios.
-=======================================================================================================
+if print_verbose:
+    print(f"""
+    =======================================================================================================
+    PROCESSING FUEL PRICE DATA FOR PRE-IRA AND IRA REFERENCE SCENARIOS
+    - First, obtain the projection factors from the AEO 2022 to 2050 projections.
+    - Then, project the fuel prices for the Pre-IRA and IRA Reference scenarios.
+    =======================================================================================================
 
-DataFrame for Pre-IRA Scenario:
-{df_fuel_prices_preIRA}
+    DataFrame for Pre-IRA Scenario:
+    {df_fuel_prices_preIRA}
 
-DataFrame for IRA Reference Scenario:
-{df_fuel_prices_iraRef}
+    DataFrame for IRA Reference Scenario:
+    {df_fuel_prices_iraRef}
 
-""")
+    """)
 
 # =======================================================================================================
 # CREATE LOOKUP DICTIONARIES FOR FUEL PRICES
@@ -291,14 +301,15 @@ lookup_fuel_prices_iraRef = create_lookup_fuel_price(
     'AEO2023 Reference Case'
 )
 
-print(f"""
-=======================================================================================================
-CREATE LOOKUP DICTIONARIES FOR FUEL PRICES
-=======================================================================================================
-Lookup dictionary for Pre-IRA and IRA-Ref scenarios:
-""")
-print_truncated_dict(lookup_fuel_prices_preIRA, n=5)
-print_truncated_dict(lookup_fuel_prices_iraRef, n=5)
+if print_verbose:
+    print(f"""
+    =======================================================================================================
+    CREATE LOOKUP DICTIONARIES FOR FUEL PRICES
+    =======================================================================================================
+    Lookup dictionary for Pre-IRA and IRA-Ref scenarios:
+    """)
+    print_truncated_dict(lookup_fuel_prices_preIRA, n=5)
+    print_truncated_dict(lookup_fuel_prices_iraRef, n=5)
 
 """
 As of April 8, 2025, the dataframes and lookup dictionaries for fuel prices have been created successfully and are identical to the original code.

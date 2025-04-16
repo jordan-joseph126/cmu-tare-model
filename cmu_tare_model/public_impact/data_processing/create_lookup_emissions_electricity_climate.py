@@ -6,6 +6,13 @@ from scipy.interpolate import interp1d
 # import from cmu-tare-model package
 from config import PROJECT_ROOT
 
+# =======================================================================================================================
+# Set print_verbose to True for detailed output, or False for minimal output
+# By default, print_verbose is set to False because define_scenario_params is imported multiple times in the codebase
+# and we don't want to print the same information multiple times.
+print_verbose = False
+# =======================================================================================================================
+
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ELECTRICITY - CLIMATE RELATED EMISSIONS
@@ -169,12 +176,13 @@ def create_cambium_co2e_lookup(df_cambium_processed: pd.DataFrame) -> dict:
 ### Climate-Related Emissions from CAMBIUM LRMER/SRMER 
 ### Includes pre-combustion (fugitive) and combustion
 
-print("""
--------------------------------------------------------------------------------------------------------
-PRE-IRA LONG RUN AND SHORT RUN MARGINAL EMISSIONS RATES (LRMER, SRMER) FROM CAMBIUM 2021 RELEASE
--------------------------------------------------------------------------------------------------------
+if print_verbose:
+    print("""
+    -------------------------------------------------------------------------------------------------------
+    PRE-IRA LONG RUN AND SHORT RUN MARGINAL EMISSIONS RATES (LRMER, SRMER) FROM CAMBIUM 2021 RELEASE
+    -------------------------------------------------------------------------------------------------------
 
-""")
+    """)
 
 # CAMBIUM 2021 FOR PRE-IRA SCENARIO
 filename = 'cambium21_midCase_annual_gea.xlsx'
@@ -182,14 +190,15 @@ relative_path = os.path.join("cmu_tare_model", "data", "projections", filename)
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 df_cambium21_margEmis_electricity = pd.read_excel(io=file_path, sheet_name='proc_Cambium21_MidCase_gea')
 
-print(f"""
-Retrieved data for filename: {filename}
-Located at filepath: {file_path}
+if print_verbose:
+    print(f"""
+    Retrieved data for filename: {filename}
+    Located at filepath: {file_path}
 
-Loading dataframe ...
-Creating lookup dictionary for LRMER and SRMER ...
--------------------------------------------------------------------------------------------------------
-""")
+    Loading dataframe ...
+    Creating lookup dictionary for LRMER and SRMER ...
+    -------------------------------------------------------------------------------------------------------
+    """)
 
 # Calculate electricity emission factors for Cambium 2021
 df_cambium21_processed = calculate_electricity_co2e_cambium(df_cambium21_margEmis_electricity)
@@ -197,11 +206,12 @@ df_cambium21_processed = calculate_electricity_co2e_cambium(df_cambium21_margEmi
 # Create the lookup dictionary
 lookup_emissions_electricity_climate_preIRA = create_cambium_co2e_lookup(df_cambium21_processed)
 
-print("""
--------------------------------------------------------------------------------------------------------
-IRA LONG RUN AND SHORT RUN MARGINAL EMISSIONS RATES (LRMER, SRMER) FROM CAMBIUM 2022 RELEASE
--------------------------------------------------------------------------------------------------------
-""")
+if print_verbose:
+    print("""
+    -------------------------------------------------------------------------------------------------------
+    IRA LONG RUN AND SHORT RUN MARGINAL EMISSIONS RATES (LRMER, SRMER) FROM CAMBIUM 2022 RELEASE
+    -------------------------------------------------------------------------------------------------------
+    """)
 
 # CAMBIUM 2022 FOR IRA SCENARIO
 filename = 'cambium22_allScenarios_annual_gea.xlsx'
@@ -209,14 +219,15 @@ relative_path = os.path.join("cmu_tare_model", "data", "projections", filename)
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 df_cambium22_margEmis_electricity = pd.read_excel(io=file_path, sheet_name='proc_Cambium22_MidCase_gea')
 
-print(f"""
-Retrieved data for filename: {filename}
-Located at filepath: {file_path}
+if print_verbose:
+    print(f"""
+    Retrieved data for filename: {filename}
+    Located at filepath: {file_path}
 
-Loading dataframe ...
-Creating lookup dictionary for 2024 LRMER and SRMER ...
--------------------------------------------------------------------------------------------------------
-""")
+    Loading dataframe ...
+    Creating lookup dictionary for 2024 LRMER and SRMER ...
+    -------------------------------------------------------------------------------------------------------
+    """)
 
 # Calculate electricity emission factors for Cambium 2022
 df_cambium22_processed = calculate_electricity_co2e_cambium(df_cambium22_margEmis_electricity)

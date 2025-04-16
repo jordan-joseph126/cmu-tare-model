@@ -3,7 +3,14 @@ import pandas as pd
 from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2023_2022
 
 from config import PROJECT_ROOT
-print(f"Project root directory: {PROJECT_ROOT}")
+
+# =======================================================================================================================
+# Set print_verbose to True for detailed output, or False for minimal output
+# By default, verbose is set to False because define_scenario_params is imported multiple times in the codebase
+# and we don't want to print the same information multiple times.
+print_verbose = False
+# =======================================================================================================================
+
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -17,9 +24,10 @@ filename = "nhgis0003_ds261_2022_puma.csv"
 relative_path = os.path.join("cmu_tare_model", "data", "equity_data", filename)
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 
-print(f"Retrieved data for filename: {filename}")
-print(f"Located at filepath: {file_path}")
-print("\n")
+if print_verbose:
+    print(f"Retrieved data for filename: {filename}")
+    print(f"Located at filepath: {file_path}")
+    print("\n")
 
 df_puma_medianIncome = pd.read_csv(file_path, encoding='ISO-8859-1')
 # df_puma_medianIncome = df_puma_medianIncome.drop(0)
@@ -36,9 +44,10 @@ filename = "nhgis0005_ds261_2022_county.csv"
 relative_path = os.path.join("cmu_tare_model", "data", "equity_data", filename)
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 
-print(f"Retrieved data for filename: {filename}")
-print(f"Located at filepath: {file_path}")
-print("\n")
+if print_verbose:
+    print(f"Retrieved data for filename: {filename}")
+    print(f"Located at filepath: {file_path}")
+    print("\n")
 
 df_county_medianIncome = pd.read_csv(file_path, encoding='ISO-8859-1')
 # df_county_medianIncome = df_county_medianIncome.drop(0)
@@ -55,9 +64,10 @@ filename = "nhgis0004_ds261_2022_state.csv"
 relative_path = os.path.join("cmu_tare_model", "data", "equity_data", filename)
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 
-print(f"Retrieved data for filename: {filename}")
-print(f"Located at filepath: {file_path}")
-print("\n")
+if print_verbose:
+    print(f"Retrieved data for filename: {filename}")
+    print(f"Located at filepath: {file_path}")
+    print("\n")
 
 df_state_medianIncome = pd.read_csv(file_path, encoding='ISO-8859-1')
 # df_state_medianIncome = df_state_medianIncome.drop(0)

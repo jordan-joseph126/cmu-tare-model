@@ -14,3 +14,19 @@ SCC_ASSUMPTIONS = ['lower', 'central', 'upper']
 
 # DOLLAR_YEAR = 2023
 # INFLATION_ADJUSTED_USD = f'USD{DOLLAR_YEAR}'
+
+# Define equipment categories and their corresponding upgrade columns
+UPGRADE_COLUMNS = {
+    'heating': 'upgrade_hvac_heating_efficiency',
+    'waterHeating': 'upgrade_water_heater_efficiency',
+    'clothesDrying': 'upgrade_clothes_dryer',
+    'cooking': 'upgrade_cooking_range'
+    }
+
+# Mapping for categories and their corresponding rebate amounts
+REBATE_MAPPING = {
+    'heating': ('upgrade_hvac_heating_efficiency', ['ASHP', 'MSHP'], 8000.00),
+    'waterHeating': ('upgrade_water_heater_efficiency', ['Electric Heat Pump'], 1750.00),
+    'clothesDrying': ('upgrade_clothes_dryer', ['Electric, Premium, Heat Pump, Ventless'], 840.00),
+    'cooking': ('upgrade_cooking_range', ['Electric, '], 840.00)
+}

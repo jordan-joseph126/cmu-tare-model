@@ -1,13 +1,20 @@
 import pandas as pd
+from typing import Dict, Optional
+
 from cmu_tare_model.constants import POLLUTANTS
-from typing import Dict
+from cmu_tare_model.utils.retrofit_error_handling_utils import (
+    determine_retrofit_status,
+    initialize_npv_series,
+)
 
 def calculate_fossil_fuel_emissions(
     df: pd.DataFrame,
     category: str,
     adjusted_hdd_factor: float,
     lookup_emissions_fossil_fuel: Dict[tuple, float],
-    menu_mp: int
+    menu_mp: int,
+    retrofit_mask: Optional[pd.Series] = None,
+    verbose: bool = False
 ) -> Dict[str, pd.Series]:
     """
     Calculate fossil fuel emissions (SO2, NOx, PM2.5, and CO2e) for a given category and scenario.
@@ -18,6 +25,8 @@ def calculate_fossil_fuel_emissions(
         adjusted_hdd_factor (float): Adjustment factor for heating degree days.
         lookup_emissions_fossil_fuel (dict): Dictionary mapping (fuel, pollutant) → emission factor.
         menu_mp (int): Measure package identifier (0 indicates baseline).
+        retrofit_mask (Optional[pd.Series]): Pre-computed retrofit mask. If None, it will be calculated.
+        verbose (bool): Whether to print detailed information.
 
     Returns:
         dict: A dictionary where each key is a pollutant (str) and each value is a pd.Series
@@ -38,7 +47,15 @@ def calculate_fossil_fuel_emissions(
             - first key is the fuel type (e.g., 'naturalGas', 'fuelOil', 'propane')
             - second key is the pollutant (e.g., 'so2', 'nox', 'pm25', 'co2e').
     """
-    total_fossil_emissions = {p: pd.Series(0.0, index=df.index) for p in POLLUTANTS}
+    # Use provided retrofit_mask if available, otherwise calculate it
+    if retrofit_mask is None:
+        retrofit_mask = determine_retrofit_status(df, category, menu_mp, verbose=verbose)
+
+    # Initialize with zeros for homes with retrofits, NaN for others
+    total_fossil_emissions = {
+        p: initialize_npv_series(df, retrofit_mask, verbose=False)
+        for p in POLLUTANTS
+    }
 
     if menu_mp == 0:
         fuels = ['naturalGas', 'propane']
@@ -47,7 +64,7 @@ def calculate_fossil_fuel_emissions(
 
         for fuel in fuels:
             consumption_col = f'base_{fuel}_{category}_consumption'
-            fuel_consumption = df.get(consumption_col, pd.Series(0.0, index=df.index)).fillna(0) * adjusted_hdd_factor
+            fuel_consumption = df.get(consumption_col, pd.Series(0.0, index=df.index)) * adjusted_hdd_factor
 
             # Fixed issue with the emissions factor lookup
             for pollutant in POLLUTANTS:

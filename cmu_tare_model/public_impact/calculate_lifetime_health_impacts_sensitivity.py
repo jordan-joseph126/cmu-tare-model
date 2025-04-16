@@ -7,21 +7,32 @@ from cmu_tare_model.constants import EQUIPMENT_SPECS, POLLUTANTS, TD_LOSSES_MULT
 
 # Imports for lookup dictionaries, functions, and calculations
 from cmu_tare_model.public_impact.calculations.calculate_fossil_fuel_emissions import calculate_fossil_fuel_emissions
-from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.public_impact.calculations.precompute_hdd_factors import precompute_hdd_factors
+from cmu_tare_model.public_impact.data_processing.create_lookup_health_vsl_adjustment import lookup_health_vsl_adjustment
 from cmu_tare_model.public_impact.data_processing.create_lookup_health_impact_county import (
     lookup_health_fossil_fuel_acs,
     lookup_health_fossil_fuel_h6c,
     lookup_health_electricity_acs,
     lookup_health_electricity_h6c,
+    get_health_impact_with_fallback,
+    analyze_health_impact_coverage
 )
-from cmu_tare_model.public_impact.data_processing.create_lookup_health_vsl_adjustment import lookup_health_vsl_adjustment
+from cmu_tare_model.utils.modeling_params import define_scenario_params
+from cmu_tare_model.utils.retrofit_error_handling_utils import (
+    determine_retrofit_status,
+    initialize_npv_series,
+    calculate_avoided_values,
+    update_values_for_retrofits
+)
 
 def calculate_lifetime_health_impacts(
     df: pd.DataFrame,
     menu_mp: int,
     policy_scenario: str,
-    df_baseline_damages: Optional[pd.DataFrame] = None
+    base_year: int = 2024,
+    df_baseline_damages: Optional[pd.DataFrame] = None,
+    debug: bool = False,
+    verbose: bool = False
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Calculate lifetime health impacts for each equipment category over all (rcm, cr) combinations.
 
@@ -36,6 +47,9 @@ def calculate_lifetime_health_impacts(
         policy_scenario (str): Policy scenario name that determines model inputs
             ('No Inflation Reduction Act' or 'AEO2023 Reference Case').
         df_baseline_damages (Optional[pd.DataFrame]): Baseline health damages data.
+        base_year (int): The base year for calculations (default is 2024).
+        debug (bool): If True, enables debug mode for additional output.
+        verbose (bool, optional): Whether to print detailed progress messages. Defaults to False.
 
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]: A tuple containing:
@@ -51,6 +65,18 @@ def calculate_lifetime_health_impacts(
     # Initialize the detailed DataFrame with the same index as df_copy
     df_detailed = pd.DataFrame(index=df_copy.index)
 
+    if debug and verbose:
+        analyze_health_impact_coverage(
+            df=df_copy,
+            lookup_health_fossil_fuel_acs=lookup_health_fossil_fuel_acs,
+            lookup_health_fossil_fuel_h6c=lookup_health_fossil_fuel_h6c,
+            lookup_health_electricity_acs=lookup_health_electricity_acs,
+            lookup_health_electricity_h6c=lookup_health_electricity_h6c,
+            rcm_models=RCM_MODELS,
+            cr_functions=CR_FUNCTIONS,
+            verbose=True
+        )
+    
     # Dictionary to hold lifetime health impacts columns for each category
     lifetime_columns_data = {}
 
@@ -64,20 +90,24 @@ def calculate_lifetime_health_impacts(
     # Loop over each equipment category and its lifetime from EQUIPMENT_SPECS
     for category, lifetime in EQUIPMENT_SPECS.items():
         try:
-            print(f"Calculating Health Emissions and Damages from 2024 to {2024 + lifetime} for {category}")
+            if verbose:
+                print(f"Calculating Health Emissions and Damages from 2024 to {2024 + lifetime} for {category}")
+            
+            # Determine which homes get retrofits for this category - do this once per category
+            retrofit_mask = determine_retrofit_status(df_copy, category, menu_mp, verbose=verbose)
 
-            # Initialize lifetime health damages for each (rcm, cr) pair with zeros
+            # Initialize with zeros for homes with retrofits, NaN for others
             lifetime_health_damages = {
-                (rcm, cr): pd.Series(0.0, index=df_copy.index)
+                (rcm, cr): initialize_npv_series(df_copy, retrofit_mask)
                 for rcm in RCM_MODELS
                 for cr in CR_FUNCTIONS
             }
-            
+
             # Loop over each year in the equipment's lifetime
             for year in range(1, lifetime + 1):
                 try:
                     # Calculate the calendar year label (e.g., 2024, 2025, etc.)
-                    year_label = year + 2023
+                    year_label = year + (base_year - 1)
                     
                     # Check that an HDD factor exists for the current year; raise KeyError if missing
                     if year_label not in hdd_factors_per_year:
@@ -88,9 +118,16 @@ def calculate_lifetime_health_impacts(
                     adjusted_hdd_factor = hdd_factor if category in ['heating', 'waterHeating'] else pd.Series(1.0, index=df_copy.index)
                     
                     # Calculate fossil fuel emissions for the current category and year
+                    # In calculate_lifetime_climate_impacts and calculate_lifetime_health_impacts:
                     total_fossil_fuel_emissions = calculate_fossil_fuel_emissions(
-                        df_copy, category, adjusted_hdd_factor, lookup_emissions_fossil_fuel, menu_mp
-                    )
+                        df=df_copy,
+                        category=category,
+                        adjusted_hdd_factor=adjusted_hdd_factor,
+                        lookup_emissions_fossil_fuel=lookup_emissions_fossil_fuel,
+                        menu_mp=menu_mp,
+                        retrofit_mask=retrofit_mask,  # Pass the pre-computed mask
+                        verbose=verbose
+                    ) 
                     
                     # For each (rcm, cr) combination, compute health damages for this year and accumulate lifetime values
                     for rcm in RCM_MODELS:
@@ -110,9 +147,15 @@ def calculate_lifetime_health_impacts(
                             )
                             # Construct the overall column name for the annual damages for this pair
                             overall_col = f'{scenario_prefix}{year_label}_{category}_damages_health_{rcm}_{cr}'
-                            # Accumulate the damages for the current year into the lifetime total
-                            lifetime_health_damages[(rcm, cr)] += health_results_pair[overall_col]
                             
+                            # Accumulate the damages for the current year into the lifetime total, only for homes with retrofits
+                            lifetime_health_damages[(rcm, cr)] = update_values_for_retrofits(
+                                lifetime_health_damages[(rcm, cr)],
+                                health_results_pair[overall_col],
+                                retrofit_mask,
+                                menu_mp
+                            )
+
                             # Append the annual results to the detailed DataFrame
                             df_detailed = pd.concat([df_detailed, pd.DataFrame(health_results_pair, index=df_copy.index)], axis=1)
 
@@ -122,17 +165,26 @@ def calculate_lifetime_health_impacts(
 
             # After processing all years, prepare lifetime results for the category
             lifetime_dict = {}
+
             # Compute avoided damages if baseline data is provided and menu_mp is non-zero
             if menu_mp != 0 and df_baseline_damages is not None:
                 for rcm in RCM_MODELS:
                     for cr in CR_FUNCTIONS:
+                        # Construct the column name for the lifetime damages for this (rcm, cr) pair                        
                         baseline_health_col = f'baseline_{category}_lifetime_damages_health_{rcm}_{cr}'
                         if baseline_health_col in df_baseline_damages.columns:
                             avoided_health_damages_col = f'{scenario_prefix}{category}_avoided_damages_health_{rcm}_{cr}'
-                            # Calculate avoided damages by subtracting computed damages from baseline values
-                            lifetime_dict[avoided_health_damages_col] = df_baseline_damages[baseline_health_col] - lifetime_health_damages[(rcm, cr)]
+                            # Calculate avoided damages only for homes with retrofits
+                            lifetime_dict[avoided_health_damages_col] = calculate_avoided_values(
+                                df_baseline_damages[baseline_health_col],
+                                lifetime_health_damages[(rcm, cr)],
+                                retrofit_mask
+                            )
+           
                         else:
-                            print(f"Warning: Missing baseline for {category} ({cr}, {rcm}). Avoided health values skipped.")
+                            if verbose:
+                                print(f"Warning: Missing baseline for {category} ({cr}, {rcm}). Avoided health values skipped.")
+
             # Record overall lifetime damages for each (rcm, cr) pair
             for rcm in RCM_MODELS:
                 for cr in CR_FUNCTIONS:
@@ -232,7 +284,7 @@ def calculate_health_damages_for_pair(
         # Get unique county keys for an efficient vectorized lookup
         unique_counties = df['county_key'].unique()
         msc_lookup_fossil = {
-            key: lookup_msc_fossil_fuel.get(key, {}).get(rcm, {}).get(pollutant.lower(), np.nan)
+            key: get_health_impact_with_fallback(lookup_msc_fossil_fuel, key, rcm, pollutant.lower())
             for key in unique_counties
         }
         # Map the lookup dictionary to the county_key column to retrieve MSC values
@@ -270,9 +322,10 @@ def calculate_health_damages_for_pair(
         # --- ELECTRICITY MSC Lookup (Vectorized) ---
         # Build a lookup dictionary for electricity MSC values
         msc_lookup_electricity = {
-            key: lookup_msc_electricity.get(key, {}).get(rcm, {}).get(pollutant.lower(), np.nan)
+            key: get_health_impact_with_fallback(lookup_msc_electricity, key, rcm, pollutant.lower())
             for key in unique_counties
         }
+
         # Map the lookup dictionary to retrieve electricity MSC values
         electricity_msc = df['county_key'].map(msc_lookup_electricity)
         # Adjust the MSC values using the VSL adjustment factor

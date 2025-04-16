@@ -1,9 +1,8 @@
 import pandas as pd
 
 # import functions.tare_setup as tare_setup
+from cmu_tare_model.constants import EQUIPMENT_SPECS
 from cmu_tare_model.energy_consumption_and_metadata.project_future_energy_consumption import lookup_hdd_factor
-
-EQUIPMENT_SPECS = {'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15}
 
 def precompute_hdd_factors(df: pd.DataFrame) -> pd.DataFrame:
     """

@@ -2,16 +2,24 @@ import pandas as pd
 from typing import Optional, Tuple, Dict
 
 from cmu_tare_model.constants import EQUIPMENT_SPECS, TD_LOSSES_MULTIPLIER, MER_TYPES, SCC_ASSUMPTIONS
+from cmu_tare_model.public_impact.data_processing.create_lookup_climate_impact_scc import lookup_climate_impact_scc
+from cmu_tare_model.public_impact.calculations.precompute_hdd_factors import precompute_hdd_factors
 from cmu_tare_model.public_impact.calculations.calculate_fossil_fuel_emissions import calculate_fossil_fuel_emissions
 from cmu_tare_model.utils.modeling_params import define_scenario_params
-from cmu_tare_model.public_impact.calculations.precompute_hdd_factors import precompute_hdd_factors
-from cmu_tare_model.public_impact.data_processing.create_lookup_climate_impact_scc import lookup_climate_impact_scc
+from cmu_tare_model.utils.retrofit_error_handling_utils import (
+    determine_retrofit_status,
+    initialize_npv_series,
+    calculate_avoided_values,
+    update_values_for_retrofits
+)
 
 def calculate_lifetime_climate_impacts(
     df: pd.DataFrame,
     menu_mp: int,
     policy_scenario: str,
-    df_baseline_damages: Optional[pd.DataFrame] = None    
+    base_year: int = 2024,
+    df_baseline_damages: Optional[pd.DataFrame] = None,
+    verbose: bool = False    
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Calculate lifetime climate impacts (CO2e emissions and climate damages) for each
@@ -26,6 +34,7 @@ def calculate_lifetime_climate_impacts(
         menu_mp (int): Measure package identifier (0 for baseline, nonzero for different scenarios).
         policy_scenario (str): Determines emissions scenario inputs (e.g., 'No Inflation Reduction Act' or 'AEO2023 Reference Case').
         df_baseline_damages (pd.DataFrame, optional): Baseline damages for computing avoided emissions/damages.
+        verbose (bool, optional): Whether to print detailed progress messages. Defaults to False.
 
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]:
@@ -55,12 +64,19 @@ def calculate_lifetime_climate_impacts(
         # Use try-except to wrap the entire category’s processing
         # so that we can raise an error message that includes the category info if something fails.
         try:
-            print(f"Calculating Climate Emissions and Damages from 2024 to {2024 + lifetime} for {category}")
-                    
-            # Reinitialize lifetime climate impacts for this category for each (mer_type, scc_assumption) pair
-            lifetime_climate_emissions = {mer_type: pd.Series(0.0, index=df_copy.index) for mer_type in MER_TYPES}
+            if verbose:
+                print(f"Calculating Climate Emissions and Damages from 2024 to {2024 + lifetime} for {category}")                    
+            
+            # Determine which homes get retrofits for this category - do this once per category
+            retrofit_mask = determine_retrofit_status(df_copy, category, menu_mp, verbose=verbose)
+
+            # Initialize with zeros for homes with retrofits, NaN for others
+            lifetime_climate_emissions = {
+                mer_type: initialize_npv_series(df_copy, retrofit_mask)
+                for mer_type in MER_TYPES
+            }
             lifetime_climate_damages = {
-                (mer_type, scc_value): pd.Series(0.0, index=df_copy.index)
+                (mer_type, scc_value): initialize_npv_series(df_copy, retrofit_mask)
                 for mer_type in MER_TYPES
                 for scc_value in SCC_ASSUMPTIONS
             }
@@ -69,7 +85,8 @@ def calculate_lifetime_climate_impacts(
             for year in range(1, lifetime + 1):
                 # Try-except here helps isolate issues specific to a given year.
                 try:
-                    year_label = year + 2023
+                    # Calculate the calendar year label (e.g., 2024, 2025, etc.)
+                    year_label = year + (base_year - 1)
                     
                     # Retrieve HDD factor for the current year; raise exception if missing
                     if year_label not in hdd_factors_per_year:
@@ -81,10 +98,17 @@ def calculate_lifetime_climate_impacts(
                     adjusted_hdd_factor = hdd_factor if category in ['heating', 'waterHeating'] else pd.Series(1.0, index=df_copy.index)
                     
                     # Calculate fossil fuel emissions for the current category and year
+                    # In calculate_lifetime_climate_impacts and calculate_lifetime_health_impacts:
                     total_fossil_fuel_emissions = calculate_fossil_fuel_emissions(
-                        df_copy, category, adjusted_hdd_factor, lookup_emissions_fossil_fuel, menu_mp
-                    )
-                    
+                        df=df_copy,
+                        category=category,
+                        adjusted_hdd_factor=adjusted_hdd_factor,
+                        lookup_emissions_fossil_fuel=lookup_emissions_fossil_fuel,
+                        menu_mp=menu_mp,
+                        retrofit_mask=retrofit_mask,  # Pass the pre-computed mask
+                        verbose=verbose
+                    ) 
+
                     # Compute climate emissions and damages with scc_value sensitivities
                     climate_results, annual_emissions, annual_damages = calculate_climate_emissions_and_damages(
                         df=df_copy,
@@ -97,14 +121,24 @@ def calculate_lifetime_climate_impacts(
                         scenario_prefix=scenario_prefix,
                         menu_mp=menu_mp
                     )
-                    
+
                     # Accumulate annual emissions (scc_value-independent)
                     for mer_type in MER_TYPES:
-                        lifetime_climate_emissions[mer_type] += annual_emissions.get(mer_type, 0.0)
+                        lifetime_climate_emissions[mer_type] = update_values_for_retrofits(
+                            lifetime_climate_emissions[mer_type],
+                            annual_emissions.get(mer_type, 0.0),
+                            retrofit_mask,
+                            menu_mp
+                        )
 
                     # Accumulate annual damages for each scc_value assumption
                     for key, value in annual_damages.items():
-                        lifetime_climate_damages[key] += value
+                        lifetime_climate_damages[key] = update_values_for_retrofits(
+                            lifetime_climate_damages[key],
+                            value,
+                            retrofit_mask,
+                            menu_mp
+                        )
 
                     # If there are results, attach them to the detailed DataFrame
                     if climate_results:
@@ -122,20 +156,30 @@ def calculate_lifetime_climate_impacts(
                 for scc_assumption in SCC_ASSUMPTIONS:
                     damages_col = f'{scenario_prefix}{category}_lifetime_damages_climate_{mer_type}_{scc_assumption}'
                     lifetime_dict[damages_col] = lifetime_climate_damages[(mer_type, scc_assumption)]
-                    
+                                   
                     # Calculate avoided damages if baseline data is provided
                     if menu_mp != 0 and df_baseline_damages is not None:
                         baseline_damages_col = f'baseline_{category}_lifetime_damages_climate_{mer_type}_{scc_assumption}'
                         avoided_damages_col = f'{scenario_prefix}{category}_avoided_damages_climate_{mer_type}_{scc_assumption}'
-                        # Subtract measure package damages from baseline
-                        lifetime_dict[avoided_damages_col] = df_baseline_damages[baseline_damages_col] - lifetime_dict[damages_col]
-                
+                        
+                        # Calculate avoided damages only for homes with retrofits
+                        lifetime_dict[avoided_damages_col] = calculate_avoided_values(
+                            df_baseline_damages[baseline_damages_col],
+                            lifetime_dict[damages_col],
+                            retrofit_mask
+                        )
+
                 # Calculate avoided emissions if baseline data is provided
                 if menu_mp != 0 and df_baseline_damages is not None:
                     baseline_emissions_col = f'baseline_{category}_lifetime_mt_co2e_{mer_type}'
                     avoided_emissions_col = f'{scenario_prefix}{category}_avoided_mt_co2e_{mer_type}'
-                    # Subtract measure package emissions from baseline
-                    lifetime_dict[avoided_emissions_col] = df_baseline_damages[baseline_emissions_col] - lifetime_dict[emissions_col]
+                    
+                    # Calculate avoided emissions only for homes with retrofits
+                    lifetime_dict[avoided_emissions_col] = calculate_avoided_values(
+                        df_baseline_damages[baseline_emissions_col],
+                        lifetime_dict[emissions_col],
+                        retrofit_mask
+                    )
 
             # Store in global lifetime dictionary
             lifetime_columns_data.update(lifetime_dict)
@@ -265,7 +309,7 @@ def calculate_climate_emissions_and_damages(
         raise ValueError(f"Required column '{consumption_col}' not found in the input DataFrame.")
 
     # Adjust electricity consumption by the HDD factor for heating/waterHeating
-    electricity_consumption = df[consumption_col].fillna(0) * adjusted_hdd_factor
+    electricity_consumption = df[consumption_col] * adjusted_hdd_factor
 
     # Calculate annual emissions for each mer_type type
     for mer_type in MER_TYPES:

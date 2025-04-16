@@ -5,6 +5,12 @@ from typing import Dict, Tuple, List
 from cmu_tare_model.constants import EQUIPMENT_SPECS, CR_FUNCTIONS, RCM_MODELS, SCC_ASSUMPTIONS
 from cmu_tare_model.utils.discounting import calculate_discount_factor
 from cmu_tare_model.utils.modeling_params import define_scenario_params
+from cmu_tare_model.utils.retrofit_error_handling_utils import (
+    determine_retrofit_status,
+    initialize_npv_series,
+    replace_small_values_with_nan,
+    update_values_for_retrofits
+)
 from cmu_tare_model.public_impact.data_processing.validate_damages_dataframes import validate_damage_dataframes
 
 print(f"""
@@ -244,10 +250,13 @@ def calculate_lifetime_damages_grid_scenario(
             health_npv_key = f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
             public_npv_key = f'{scenario_prefix}{category}_public_npv_{scc}_{rcm_model}_{cr_function}'
             
-            # Initialize NPV series with zeros
-            climate_npv = pd.Series(0.0, index=df_copy.index)
-            health_npv = pd.Series(0.0, index=df_copy.index)
-            
+            # Determine which homes get retrofits
+            retrofit_mask = determine_retrofit_status(df_copy, category, menu_mp)
+
+            # Initialize NPV series with zeros for homes with retrofits, NaN for others
+            climate_npv = initialize_npv_series(df_copy, retrofit_mask)
+            health_npv = initialize_npv_series(df_copy, retrofit_mask)
+
             # Track if any year's data was successfully processed
             climate_years_processed = 0
             health_years_processed = 0
@@ -275,8 +284,13 @@ def calculate_lifetime_damages_grid_scenario(
                 
                 # Calculate avoided climate damages if columns exist
                 if climate_cols_exist:
-                    climate_npv += ((df_baseline_climate[base_climate_col] - 
-                                   df_mp_climate[retrofit_climate_col]) * discount_factor)
+                    # Calculate avoided damages for this year
+                    avoided_climate = ((df_baseline_climate[base_climate_col] - 
+                                    df_mp_climate[retrofit_climate_col]) * discount_factor)
+                    
+                    # Update NPV only for homes with retrofits
+                    climate_npv = update_values_for_retrofits(
+                        climate_npv, avoided_climate, retrofit_mask, menu_mp)
                     climate_years_processed += 1
                 else:
                     # Print clear warning about missing columns
@@ -288,8 +302,13 @@ def calculate_lifetime_damages_grid_scenario(
                 
                 # Calculate avoided health damages if columns exist
                 if health_cols_exist:
-                    health_npv += ((df_baseline_health[base_health_col] - 
-                                  df_mp_health[retrofit_health_col]) * discount_factor)
+                    # Calculate avoided damages for this year
+                    avoided_health = ((df_baseline_health[base_health_col] - 
+                                    df_mp_health[retrofit_health_col]) * discount_factor)
+                    
+                    # Update NPV only for homes with retrofits
+                    health_npv = update_values_for_retrofits(
+                        health_npv, avoided_health, retrofit_mask, menu_mp)
                     health_years_processed += 1
                 else:
                     # Print clear warning about missing columns
@@ -299,6 +318,10 @@ def calculate_lifetime_damages_grid_scenario(
                           f"{' and ' if (base_health_col not in df_baseline_health.columns and retrofit_health_col not in df_mp_health.columns) else ''}"
                           f"{'retrofit_health_col' if retrofit_health_col not in df_mp_health.columns else ''}")
             
+            # Replace tiny values with NaN to avoid numerical artifacts
+            climate_npv = replace_small_values_with_nan(climate_npv)
+            health_npv = replace_small_values_with_nan(health_npv)
+
             # Store the unrounded values for final calculation
             climate_npv_unrounded = climate_npv.copy()
             health_npv_unrounded = health_npv.copy()

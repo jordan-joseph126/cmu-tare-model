@@ -1,9 +1,7 @@
 import numpy as np
 from scipy.stats import norm
 
-from config import PROJECT_ROOT
-print(f"Project root directory: {PROJECT_ROOT}")
-
+from cmu_tare_model.constants import REBATE_MAPPING
 from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2023_2022
 from cmu_tare_model.private_impact.data_processing.process_income_data_for_rebates import *
 
@@ -137,21 +135,12 @@ FUNCTIONS: CALCULATE REBATE AMOUNTS
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 """
 
-# UPDATED AUGUST 20, 2024 @ 3:08 AM
-# Mapping for categories and their corresponding conditions
-rebate_mapping = {
-    'heating': ('upgrade_hvac_heating_efficiency', ['ASHP', 'MSHP'], 8000.00),
-    'waterHeating': ('upgrade_water_heater_efficiency', ['Electric Heat Pump'], 1750.00),
-    'clothesDrying': ('upgrade_clothes_dryer', ['Electric, Premium, Heat Pump, Ventless'], 840.00),
-    'cooking': ('upgrade_cooking_range', ['Electric, '], 840.00)
-}
-
 def get_max_rebate_amount(row, category):
     """
     Determine the maximum rebate amounts based on the category and row data.
     """
-    if category in rebate_mapping:
-        column, conditions, rebate_amount = rebate_mapping[category]
+    if category in REBATE_MAPPING:
+        column, conditions, rebate_amount = REBATE_MAPPING[category]
         max_rebate_amount = rebate_amount if any(cond in str(row[column]) for cond in conditions) else 0.00
     else:
         max_rebate_amount = 0.00

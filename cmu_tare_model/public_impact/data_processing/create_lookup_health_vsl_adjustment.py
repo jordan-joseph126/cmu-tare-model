@@ -5,6 +5,14 @@ from typing import Dict
 # import from cmu-tare-model package
 from config import PROJECT_ROOT
 
+# =======================================================================================================================
+# Set print_verbose to True for detailed output, or False for minimal output
+# By default, verbose is set to False because define_scenario_params is imported multiple times in the codebase
+# and we don't want to print the same information multiple times.
+print_verbose = False
+# =======================================================================================================================
+
+
 """
 ======================================================================================================================
 Future VSL estimates were calculated using the following formula:
@@ -23,27 +31,29 @@ relative_path = os.path.join("cmu_tare_model", "data", "marginal_social_costs", 
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 df_rcm_msc_data = pd.read_excel(io=file_path, sheet_name='vsl_adjustment_factor')
 
-print(f"""
-======================================================================================================================
-HEALTH IMPACTS VSL ADJUSTMENT FACTOR (2023-2050)
-======================================================================================================================
+if print_verbose:
+    print(f"""
+    ======================================================================================================================
+    HEALTH IMPACTS VSL ADJUSTMENT FACTOR (2023-2050)
+    ======================================================================================================================
 
-DATAFRAME: HEALTH IMPACTS VSL ADJUSTMENT FACTOR (2023-2050)
-      
-{df_rcm_msc_data}
-      
-""")
+    DATAFRAME: HEALTH IMPACTS VSL ADJUSTMENT FACTOR (2023-2050)
+        
+    {df_rcm_msc_data}
+        
+    """)
 
 # Create a lookup dictionary with year as the key and vsl_adjustment_factor as the value
 lookup_health_vsl_adjustment: Dict[int, float] = df_rcm_msc_data.set_index('year')['vsl_adjustment_factor'].to_dict()
 
-print(f"""
-======================================================================================================================
-LOOKUP DICTIONARY: HEALTH IMPACTS (MSC) FROM ELECTRICITY GENERATION
-======================================================================================================================
+if print_verbose:
+    print(f"""
+    ======================================================================================================================
+    LOOKUP DICTIONARY: HEALTH IMPACTS (MSC) FROM ELECTRICITY GENERATION
+    ======================================================================================================================
 
-LOOKUP: VSL ADJUSTMENT FACTOR (2023-2050)
-      
-{lookup_health_vsl_adjustment}
+    LOOKUP: VSL ADJUSTMENT FACTOR (2023-2050)
+        
+    {lookup_health_vsl_adjustment}
 
-""")
+    """)
