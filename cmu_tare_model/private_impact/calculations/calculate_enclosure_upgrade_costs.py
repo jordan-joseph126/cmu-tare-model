@@ -6,9 +6,9 @@ from config import PROJECT_ROOT
 print(f"Project root directory: {PROJECT_ROOT}")
 
 """
-===========================================================================================================
+========================================================================================================================================================================
 OVERVIEW: CALCULATE INSTALLED COSTS FOR ENCLOSURE UPGRADE RETROFIT MEASURES
-===========================================================================================================
+========================================================================================================================================================================
 This module calculates the installed costs for enclosure upgrade retrofit measurers.It uses a 
 probabilistic approach to sample costs from distributions defined by progressive (10th percentile), 
 reference (50th percentile), and conservative (90th percentile) cost estimates.
@@ -17,9 +17,9 @@ reference (50th percentile), and conservative (90th percentile) cost estimates.
 # UPDATED APRIL 9, 2025 @ 7:30 PM - IMPROVED DOCUMENTATION
 """
 
-# ===========================================================================================================
+# ========================================================================================================================================================================
 # FUNCTIONS: CALCULATE COST OF ENCLOSURE UPGRADES
-# ===========================================================================================================
+# ========================================================================================================================================================================
 
 def get_enclosure_parameters(df: pd.DataFrame,
                              retrofit_col: str) -> dict:

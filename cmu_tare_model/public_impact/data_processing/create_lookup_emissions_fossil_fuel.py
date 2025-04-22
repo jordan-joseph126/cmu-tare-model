@@ -1,12 +1,12 @@
 import pandas as pd
 from cmu_tare_model.constants import POLLUTANTS
 
-# =======================================================================================================================
+# ====================================================================================================================================================================================
 # Set print_verbose to True for detailed output, or False for minimal output
 # By default, print_verbose is set to False because define_scenario_params is imported multiple times in the codebase
 # and we don't want to print the same information multiple times.
 print_verbose = False
-# =======================================================================================================================
+# ====================================================================================================================================================================================
 
 if print_verbose:
     print("""

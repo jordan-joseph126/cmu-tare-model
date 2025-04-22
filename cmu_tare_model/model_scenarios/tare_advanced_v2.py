@@ -206,13 +206,13 @@ DATAFRAME: df_euss_am_baseline_home
 """)
 
 # %%
-# from cmu_tare_model.energy_consumption_and_metadata.load_and_filter_euss_data import *
+# from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import *
 print("""
 ====================================================================================================================================================================
 Post-Retrofit (MP) Consumption: WHOLE-HOME
 ====================================================================================================================================================================
 df_euss_am_mp10_home will be created by running the df_enduse_compare function (contains post-retrofit consumption data for the entire home in 2024).
-load_and_filter_euss_data.py file contains the function definition.
+process_euss_data.py file contains the function definition.
 """)
 
 # df_enduse_compare(df_mp, category, df_baseline):

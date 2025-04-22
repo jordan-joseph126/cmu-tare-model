@@ -4,9 +4,9 @@ Below is an example prompt you can copy and paste into ChatGPT to request **pyte
 Feel free to adjust the details (e.g., if you have specific data schemas or additional rules) before sending it to ChatGPT.
 
 ---
-# ========================================================================================================
-# PROMPT FOR LOAD_AND_FILTER_EUSS_DATA PYTEST TESTS
-# ========================================================================================================
+# =====================================================================================================================================================================
+# PROMPT FOR process_euss_data PYTEST TESTS
+# =====================================================================================================================================================================
 
 ```plaintext
 You are provided with a Python module containing several functions:

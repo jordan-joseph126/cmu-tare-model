@@ -11,7 +11,7 @@ from unittest.mock import patch, MagicMock
 
 # Assuming all functions are defined in a file named my_module.py
 # Adjust the import statement to match your actual filename:
-from cmu_tare_model.energy_consumption_and_metadata.load_and_filter_euss_data_v2 import(
+from cmu_tare_model.energy_consumption_and_metadata.process_euss_data_v2 import(
     get_menu_choice,
     get_state_choice,
     get_city_choice,

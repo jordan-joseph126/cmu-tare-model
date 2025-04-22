@@ -6,9 +6,9 @@ from config import PROJECT_ROOT
 print(f"Project root directory: {PROJECT_ROOT}")
 
 """
-===========================================================================================================
+========================================================================================================================================================================
 OVERVIEW: CALCULATE REPLACEMENT COSTS FOR VARIOUS END USES
-===========================================================================================================
+========================================================================================================================================================================
 This module calculates the replacement costs for various end uses such as space heating, water heating,
 clothes drying, and cooking. It uses a probabilistic approach to sample costs from distributions 
 defined by progressive (10th percentile), reference (50th percentile), and conservative (90th percentile)
@@ -18,9 +18,9 @@ cost estimates.
 # UPDATED APRIL 9, 2025 @ 7:30 PM - IMPROVED DOCUMENTATION
 """
 
-# ===========================================================================================================
+# ========================================================================================================================================================================
 # FUNCTIONS: CALCULATE COST OF REPLACING EXISTING EQUIPMENT
-# ===========================================================================================================
+# ========================================================================================================================================================================
 
 # Replacement Cost Function and Helper Functions (Parametes, Formula)
 def get_end_use_replacement_parameters(df: pd.DataFrame, end_use: str) -> dict:

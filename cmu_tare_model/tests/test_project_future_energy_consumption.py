@@ -53,9 +53,9 @@
 
 By clarifying these aspects, it becomes much easier to write focused, thorough pytest tests that cover both typical and edge-case usage.
 
-# ========================================================================================================
+# =====================================================================================================================================================================
 # PROMPT FOR PROJECT_FUTURE_ENERGY_CONSUMPTION FUNCTION
-# ========================================================================================================
+# =====================================================================================================================================================================
 
 ChatGPT, I have a Python function named `project_future_consumption` which projects future energy consumption based on baseline or upgraded equipment specs. It relies on a DataFrame (with columns like `census_division`, `baseline_heating_consumption`, etc.) and a lookup dictionary (`lookup_hdd_factor`) containing Heating Degree Day factors. The function adjusts consumption over multiple years, uses “National” as a fallback for missing factors, and differentiates scenarios based on a `menu_mp` parameter (0 for baseline, others like 8,9,10 for retrofit).
 

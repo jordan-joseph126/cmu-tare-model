@@ -74,9 +74,9 @@ Additional Information for Test Generation
 
 With the above details, you can write more comprehensive and robust pytest tests, each targeting specific edge cases, ensuring the function handles real-world complexities without unexpected behavior.
 
-# ========================================================================================================
+# =====================================================================================================================================================================
 # PROMPT FOR CALCUATE_FUEL_COSTS FUNCTION
-# ========================================================================================================
+# =====================================================================================================================================================================
 
 Below is an **updated prompt** that provides clearer context, objectives, and requirements for generating pytest tests specifically for the `calculate_annual_fuelCost` function, following best practices in prompt engineering.
 

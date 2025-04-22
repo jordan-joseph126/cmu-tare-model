@@ -1,103 +1,10 @@
 import pandas as pd
 import numpy as np
 import re
+from typing import Any, Tuple, Dict, List, Optional, Union
 
 from config import PROJECT_ROOT
-
-"""
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-USER INPUT FOR GEOGRAPHIC FILTERS
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-"""
-
-menu_prompt = """
-Would you like to filter for a specific state's data? Please enter one of the following:
-N. I'd like to analyze all of the United States.
-Y. I'd like to filter data for a specific state.
-"""
-
-city_prompt = """
-To accurately characterize load profile, it is recommended to select subsets of data with >= 1000 models (~240,000 representative dwelling units).
-
-The following cities (number of models also shown) are available for this state:
-"""
-
-city_menu_prompt = """
-Would you like to filter a subset of city-level data? Please enter one of the following:
-N. I'd like to analyze all of my selected state.
-Y. I'd like to filter by city in the state.
-"""
-
-def get_menu_choice(prompt, choices):
-    """Prompts the user with a menu and returns a validated choice.
-
-    This function loops until the user inputs a valid option
-    that exists in the provided choices.
-
-    Args:
-        prompt (str): The message to display to the user.
-        choices (list[str]): A list of valid choices (e.g., ['N', 'Y']).
-
-    Returns:
-        str: The validated user input.
-
-    Raises:
-        None: This function does not raise any exceptions.
-    """
-    while True:
-        choice = input(prompt).upper()
-        if choice in choices:
-            return choice
-        print("Invalid option. Please try again.")
-
-
-def get_state_choice(df_copy):
-    """Prompts the user to input a two-letter state abbreviation and validates it.
-
-    This function repeats until the user provides a valid state abbreviation
-    that exists within the 'in.state' column of the given DataFrame.
-
-    Args:
-        df_copy (pd.DataFrame): A pandas DataFrame that includes an 'in.state' column.
-
-    Returns:
-        str: The two-letter abbreviation of the state.
-
-    Raises:
-        None: This function does not raise any exceptions.
-    """
-    while True:
-        input_state = input("Which state would you like to analyze data for? Please enter the two-letter abbreviation: ").upper()
-        if df_copy['in.state'].eq(input_state).any():
-            return input_state
-        print("Invalid state abbreviation. Please try again.")
-
-
-def get_city_choice(df_copy, input_state):
-    """Prompts the user to input a city name within a given state and validates it.
-
-    This function repeats until the user provides a valid city name
-    that exists in the 'in.city' column of the DataFrame, matching
-    the specified state.
-
-    Args:
-        df_copy (pd.DataFrame): A pandas DataFrame that includes an 'in.city' column.
-        input_state (str): The two-letter abbreviation of the selected state.
-
-    Returns:
-        str: The validated city name.
-
-    Raises:
-        None: This function does not raise any exceptions.
-    """
-    while True:
-        input_cityFilter = input("Please enter the city name ONLY (e.g., Pittsburgh): ")
-        # city_filter checks for an exact match of state and city in the format 'ST, CityName'
-        city_filter = df_copy['in.city'].eq(f"{input_state}, {input_cityFilter}")
-        if city_filter.any():
-            return input_cityFilter
-        print("Invalid city name. Please try again.")
-
+from cmu_tare_model.constants import ALLOWED_TECHNOLOGIES, EQUIPMENT_SPECS, FUEL_MAPPING
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -105,7 +12,49 @@ LOAD EUSS/RESSTOCK DATA AND APPLY FILTERS
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 """
 
-def standardize_fuel_name(fuel_desc):
+
+def extract_city_name(row: str) -> str:
+    """Extracts the city name from a string in the format 'ST, CityName'.
+
+    If the input does not match the pattern of two uppercase letters,
+    followed by a comma and a space, then the original string is returned.
+
+    Args:
+        row: A string in the format 'ST, CityName'.
+
+    Returns:
+        The extracted city name if the format matches; otherwise, the original string.
+    """
+    if not isinstance(row, str):
+        return row
+        
+    # Regex to match exactly two uppercase letters, then a comma and a space, capturing the remainder
+    match = re.match(r'^[A-Z]{2}, (.+)$', row)
+    return match.group(1) if match else row
+
+
+def get_fuel_types_for_category(category: str) -> List[str]:
+    """Returns the list of fuel types applicable for a given category.
+    
+    Args:
+        category: Equipment category name.
+        
+    Returns:
+        List of fuel type strings for column name construction.
+    """
+    if category in ['heating', 'waterHeating']:
+        return list(FUEL_MAPPING.values())
+    elif category == 'clothesDrying':
+        # Valid Fuel Types: Electricity, Natural Gas, Propane
+        return [v for k, v in FUEL_MAPPING.items() if k != 'Fuel Oil']
+    elif category == 'cooking':
+        # Valid Fuel Types: Natural Gas and Propane
+        return [v for k, v in FUEL_MAPPING.items() if k != 'Fuel Oil' and k != 'Electricity']
+    else:
+        raise ValueError(f"Invalid category. Must be one of the following: {EQUIPMENT_SPECS.keys()}")
+    
+
+def standardize_fuel_name(fuel_desc: Any) -> Optional[str]:
     """Standardizes a fuel description into a recognized category or None.
 
     This function inspects an input fuel description (e.g., "Electric Heater",
@@ -115,24 +64,21 @@ def standardize_fuel_name(fuel_desc):
     returns None.
 
     Args:
-        fuel_desc (Any): A value representing the fuel description. It can be a string
+        fuel_desc: A value representing the fuel description. It can be a string
             containing words like "Electric," "Gas," "Propane," or "Oil." It may
             also be NaN (pandas missing value) or another data type.
 
     Returns:
-        str or None: One of the strings {"Electricity", "Natural Gas", "Propane", "Fuel Oil"}
-            if a match is found, or None otherwise.
-
-    Raises:
-        None: This function does not raise any exceptions.
+        One of the strings {"Electricity", "Natural Gas", "Propane", "Fuel Oil"}
+        if a match is found, or None otherwise.
     """
     # Check if fuel_desc is NaN or not a string; return None if so
     if pd.isna(fuel_desc) or not isinstance(fuel_desc, str):
         return None
-
+    
     # Convert the string to uppercase for case-insensitive matching
     fuel_desc_upper = fuel_desc.upper()
-
+    
     # Match substrings for known fuel types
     if 'ELECTRIC' in fuel_desc_upper:
         return 'Electricity'
@@ -146,23 +92,47 @@ def standardize_fuel_name(fuel_desc):
         # If no match is found, return None
         return None
 
+    # # Check if fuel_desc is NaN or not a string; return None if so
+    # if pd.isna(fuel_desc) or not isinstance(fuel_desc, str):
+    #     return None
 
-def preprocess_fuel_data(df, column_name):
+    # # Convert the string to uppercase for case-insensitive matching
+    # fuel_desc_upper = fuel_desc.upper()
+
+    # # Match substrings for known fuel types using keys from FUEL_MAPPING
+    # for fuel_name in FUEL_MAPPING.keys():
+    #     if fuel_name.upper() in fuel_desc_upper:
+    #         return fuel_name
+    
+    # # If no match is found, return None
+    # return None
+
+
+def preprocess_fuel_data(df: pd.DataFrame,
+                         column_name: str
+) -> pd.DataFrame:
     """Applies a standardization process to the specified fuel column in the DataFrame.
 
     This function applies 'standardize_fuel_name' to every value in the specified column
     and updates the DataFrame in-place.
 
     Args:
-        df (pd.DataFrame): The input pandas DataFrame containing fuel data.
-        column_name (str): The name of the column to standardize.
+        df: The input pandas DataFrame containing fuel data.
+        column_name: The name of the column to standardize.
 
     Returns:
-        pd.DataFrame: The updated DataFrame with standardized fuel names in the specified column.
+        The updated DataFrame with standardized fuel names in the specified column.
 
     Raises:
-        None: This function does not raise any exceptions.
+        KeyError: If the specified column does not exist in the DataFrame.
+        TypeError: If the DataFrame is not a pandas DataFrame.
     """
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("Input must be a pandas DataFrame")
+    
+    if column_name not in df.columns:
+        raise KeyError(f"Column '{column_name}' not found in DataFrame")
+    
     print(f"Processing column: {column_name}")
     print(f"Initial data types: {df[column_name].dtype}")
 
@@ -172,165 +142,182 @@ def preprocess_fuel_data(df, column_name):
     print(f"Data types after processing: {df[column_name].dtype}")
     return df
 
-def apply_fuel_filter(df, category, enable, mode='filter'):
-    """
-    Filters or masks the DataFrame rows based on allowed fuels for a given category.
+
+def identify_valid_homes(df: pd.DataFrame) -> pd.DataFrame:
+    """Creates comprehensive data quality flags for all categories.
+    
+    This function adds columns to track the quality and validity of data
+    across all equipment categories. Technology validation is only applied
+    to heating and water heating categories.
     
     Args:
-        df (pd.DataFrame): The DataFrame to modify.
-        category (str): The end-use category (e.g., 'waterHeating').
-        enable (str): 'Yes' to apply the filter.
-        mode (str): 'filter' to drop invalid rows or 'mask' to assign NaN.
-    
+        df: DataFrame containing energy consumption data.
+        
     Returns:
-        pd.DataFrame: The modified DataFrame.
+        DataFrame with added data quality flags.
     """
-    if enable != 'Yes':
-        return df
-
-    allowed_fuel = ['Natural Gas', 'Electricity', 'Propane', 'Fuel Oil']
-    fuel_col = f'base_{category}_fuel'
-    valid_mask = df[fuel_col].isin(allowed_fuel)
+    # Initialize the overall inclusion flag
+    df['include_all'] = True
+    print("\nCreating data quality flags for all categories")
     
-    if mode == 'filter':
-        df = df[valid_mask]
-        print(f"Filtered for allowed fuels in {category}: {allowed_fuel}")
-    elif mode == 'mask':
-        # Determine consumption columns based on category.
-        fuel_types = ['electricity', 'fuelOil', 'naturalGas', 'propane'] if category in ['heating', 'waterHeating'] else ['electricity', 'naturalGas', 'propane']
+    for category in EQUIPMENT_SPECS.keys():
+        print(f"\n--- Processing {category} ---")
+        
+        # Create fuel validity flag
+        fuel_flag = f'valid_fuel_{category}'
+        fuel_col = f'base_{category}_fuel'
+        
+        if fuel_col in df.columns:
+            # Print some diagnostic info about the values
+            print(f"Values in {fuel_col} (top 5):")
+            print(df[fuel_col].value_counts().head(5))
+            
+            # UPDATED: use get_fuel_types_for_category to get the valid fuel types
+            # Get the appropriate fuel keys for this category using reverse mapping
+            valid_fuel_types = get_fuel_types_for_category(category)
+            valid_fuel_keys = [k for k, v in FUEL_MAPPING.items() if v in valid_fuel_types]
+            df[fuel_flag] = df[fuel_col].isin(valid_fuel_keys)
+
+            # Invalid fuel count and percentage
+            invalid_fuel_count = (~df[fuel_flag]).sum()
+            invalid_fuel_pct = (invalid_fuel_count / len(df)) * 100 if len(df) > 0 else 0
+            print(f"  {category}: Found {invalid_fuel_count} homes ({invalid_fuel_pct:.1f}%) with invalid fuel types")
+            
+            # Show what's being filtered
+            if invalid_fuel_count > 0:
+                invalid_fuels = df.loc[~df[fuel_flag], fuel_col].value_counts()
+                print("  Invalid fuel types (top 5):")
+                print(invalid_fuels.head(5))
+        else:
+            print(f"  Warning: Column {fuel_col} not found")
+            df[fuel_flag] = True
+        
+        # Handle technology validation only for heating and water heating
+        if category in ['heating', 'waterHeating']:
+            # Create technology validity flag
+            tech_flag = f'valid_tech_{category}'
+            tech_col = f'{category}_type'
+            
+            if tech_col in df.columns and category in ALLOWED_TECHNOLOGIES:
+                # Print some diagnostic info
+                print(f"Values in {tech_col} (top 5):")
+                print(df[tech_col].value_counts().head(5))
+                
+                print(f"Allowed values for {category}:")
+                print(ALLOWED_TECHNOLOGIES[category])
+                
+                # Check if the technology type is in the allowed list
+                df[tech_flag] = df[tech_col].isin(ALLOWED_TECHNOLOGIES[category])
+
+                # Invalid technology count and percentage
+                invalid_tech_count = (~df[tech_flag]).sum()
+                invalid_tech_pct = (invalid_tech_count / len(df)) * 100 if len(df) > 0 else 0
+                print(f"  {category}: Found {invalid_tech_count} homes ({invalid_tech_pct:.1f}%) with invalid technology types")
+                
+                # Show what's being filtered
+                if invalid_tech_count > 0:
+                    invalid_techs = df.loc[~df[tech_flag], tech_col].value_counts()
+                    print("  Invalid technology types (top 5):")
+                    print(invalid_techs.head(5))
+                
+                # Create category inclusion flag based on both fuel and tech validity
+                include_col = f'include_{category}'
+                df[include_col] = df[fuel_flag] & df[tech_flag]
+            else:
+                if category not in ALLOWED_TECHNOLOGIES:
+                    print(f"  {category}: No allowed technologies defined")
+                elif tech_col not in df.columns:
+                    print(f"  {category}: Warning - Column {tech_col} not found")
+                
+                # Set inclusion flag based only on fuel validity
+                include_col = f'include_{category}'
+                df[include_col] = df[fuel_flag]
+        else:
+            # For clothes drying and cooking, only use fuel validation
+            print(f"  {category}: Technology validation not applicable (no technology type column)")
+            include_col = f'include_{category}'
+            df[include_col] = df[fuel_flag]
+        
+        # Print exclusion summary
+        excluded_count = (~df[include_col]).sum()
+        excluded_pct = (excluded_count / len(df)) * 100 if len(df) > 0 else 0
+        print(f"  {category}: Total {excluded_count} homes ({excluded_pct:.1f}%) excluded from analysis")
+        
+        # Update the overall inclusion flag
+        df['include_all'] &= df[include_col]
+    
+    overall_excluded = (~df['include_all']).sum()
+    overall_pct = (overall_excluded / len(df)) * 100 if len(df) > 0 else 0
+    print(f"\nTotal {overall_excluded} homes ({overall_pct:.1f}%) excluded from all categories")
+    return df
+
+
+def mask_invalid_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Sets consumption values to NaN based on inclusion flags.
+    
+    Args:
+        df: DataFrame with inclusion flags already created.
+        
+    Returns:
+        DataFrame with consumption values set to NaN for invalid records.
+    """
+    print("Applying NaN masking based on inclusion flags")
+    
+    for category in EQUIPMENT_SPECS.keys():
+        include_col = f'include_{category}'
+        
+        if include_col not in df.columns:
+            print(f"  {category}: Warning - Inclusion flag '{include_col}' not found. Skipping masking.")
+            continue
+        
+        # Get appropriate fuel types for this category
+        fuel_types = get_fuel_types_for_category(category)
+        
+        # Mask individual fuel consumption columns
+        masked_count = 0
         for fuel in fuel_types:
             cons_col = f'base_{fuel}_{category}_consumption'
-            df.loc[~valid_mask, cons_col] = np.nan
-        print(f"Applied NaN to consumption columns in {category} for invalid fuels")
-    else:
-        raise ValueError("Mode must be 'filter' or 'mask'")
+            if cons_col in df.columns:
+                df.loc[~df[include_col], cons_col] = np.nan
+                masked_count += 1
+        
+        # Also mask total consumption
+        total_col = f'baseline_{category}_consumption'
+        if total_col in df.columns:
+            df.loc[~df[include_col], total_col] = np.nan
+            masked_count += 1
+        
+        print(f"  {category}: Masked {masked_count} consumption columns for invalid records")
     
     return df
 
-def apply_technology_filter(df, category, enable, mode='filter'):
-    """
-    Filters or masks the DataFrame rows based on allowed technology types for a given category.
-    
-    Args:
-        df (pd.DataFrame): The DataFrame to modify.
-        category (str): The consumption category (e.g., 'waterHeating').
-        enable (str): 'Yes' to apply the filter.
-        mode (str): 'filter' to drop invalid rows or 'mask' to assign NaN.
-    
-    Returns:
-        pd.DataFrame: The modified DataFrame.
-    """
-    if enable != 'Yes' or category not in ['heating', 'waterHeating']:
-        return df
 
-    if category == 'heating':
-        allowed_tech = [
-            'Electricity ASHP', 'Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace',
-            'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace', 
-            'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
-            'Propane Fuel Boiler', 'Propane Fuel Furnace'
-        ]
-        tech_col = 'heating_type'
-    elif category == 'waterHeating':
-        allowed_tech = [
-            'Electric Heat Pump, 80 gal', 'Electric Premium', 'Electric Standard',
-            'Fuel Oil Premium', 'Fuel Oil Standard', 
-            'Natural Gas Premium', 'Natural Gas Standard',
-            'Propane Premium', 'Propane Standard'
-        ]
-        tech_col = 'waterHeating_type'
-    
-    valid_mask = df[tech_col].isin(allowed_tech)
-    
-    if mode == 'filter':
-        df = df[valid_mask]
-        print(f"Filtered for allowed technologies in {category}: {allowed_tech}")
-    elif mode == 'mask':
-        # Determine consumption columns based on category.
-        fuel_types = ['electricity', 'fuelOil', 'naturalGas', 'propane']
-        for fuel in fuel_types:
-            cons_col = f'base_{fuel}_{category}_consumption'
-            df.loc[~valid_mask, cons_col] = np.nan
-        print(f"Applied NaN to consumption columns in {category} for invalid technologies")
-    else:
-        raise ValueError("Mode must be 'filter' or 'mask'")
-    
-    return df
+def df_enduse_refactored(df_baseline: pd.DataFrame) -> pd.DataFrame:
+    """Creates a standardized energy usage DataFrame and applies data quality filters.
 
-def debug_filters(df, filter_name):
-    """Prints a debugging statement about the DataFrame size after a filter is applied.
-
-    This function helps to track the number of rows remaining in the DataFrame
-    after a specific filter step.
+    This function creates a new DataFrame with standardized column names and structure,
+    calculates total consumption by fuel type, creates data quality flags for analysis,
+    and sets invalid consumption values to NaN.
 
     Args:
-        df (pd.DataFrame): The DataFrame after a filter operation.
-        filter_name (str): A short description of the filter operation.
+        df_baseline: The baseline DataFrame containing raw EUSS/ResStock data.
 
     Returns:
-        None
+        A standardized DataFrame with processed consumption data and data quality flags.
 
     Raises:
-        None: This function does not raise any exceptions.
-    """
-    if df.empty:
-        print(f"No rows left after applying {filter_name}")
-    else:
-        print(f"{len(df)} rows remain after applying {filter_name}")
-
-
-def extract_city_name(row):
-    """Extracts the city name from a string in the format 'ST, CityName'.
-
-    If the input does not match the pattern of two uppercase letters,
-    followed by a comma and a space, then the original string is returned.
-
-    Args:
-        row (str): A string in the format 'ST, CityName'.
-
-    Returns:
-        str: The extracted city name if the format matches; otherwise, the original string.
-
-    Raises:
-        None: This function does not raise any exceptions.
-    """
-    # Regex to match exactly two uppercase letters, then a comma and a space, capturing the remainder
-    match = re.match(r'^[A-Z]{2}, (.+)$', row)
-    return match.group(1) if match else row
-
-
-def df_enduse_refactored(df_baseline, fuel_filter='Yes', tech_filter='Yes', invalid_row_handling='mask'):
-    """
-    Creates and returns a DataFrame named df_enduse based on a baseline DataFrame,
-    optionally applying fuel and technology filters.
-
-    Args:
-        df_baseline (pd.DataFrame): The baseline DataFrame from which df_enduse is created.
-        fuel_filter (str, optional): 'Yes' to apply the fuel filter, defaults to 'Yes'.
-        tech_filter (str, optional): 'Yes' to apply the technology filter, defaults to 'Yes'.
-
-    Returns:
-        pd.DataFrame: A new DataFrame (df_enduse) with standardized fuel columns, 
-            total consumption columns, and optional filters applied.
-
-    Raises:
-        None: This function does not raise any exceptions.
+        ValueError: If required columns are missing from the input DataFrame.
     """
     # Initial check
     if df_baseline.empty:
         print("Warning: Input DataFrame is empty")
         return df_baseline
 
-    # Standardize fuel names in the base columns before creating the df_enduse
+    # Standardize fuel names in the base columns
     df_baseline = preprocess_fuel_data(df_baseline, 'in.clothes_dryer')
     df_baseline = preprocess_fuel_data(df_baseline, 'in.cooking_range')
 
-    # Map standardized names to new columns
-    df_baseline['base_clothesDrying_fuel'] = df_baseline['in.clothes_dryer']
-    df_baseline['base_cooking_fuel'] = df_baseline['in.cooking_range']
-    
     # Initialize df_enduse from df_baseline with all required columns
-    # (assuming columns are correctly listed here)
     # Create a new DataFrame named df_enduse using pd.DataFrame constructor
     df_enduse = pd.DataFrame({
         'square_footage': df_baseline['in.sqft'],
@@ -371,24 +358,19 @@ def df_enduse_refactored(df_baseline, fuel_filter='Yes', tech_filter='Yes', inva
         'base_naturalGas_waterHeating_consumption': df_baseline['out.natural_gas.hot_water.energy_consumption.kwh'],
         'base_propane_waterHeating_consumption': df_baseline['out.propane.hot_water.energy_consumption.kwh'],
         'base_clothesDrying_fuel': df_baseline['in.clothes_dryer'],
-        'clothesDrying_type': df_baseline['in.clothes_dryer'],
         'base_electricity_clothesDrying_consumption': df_baseline['out.electricity.clothes_dryer.energy_consumption.kwh'],
         'base_naturalGas_clothesDrying_consumption': df_baseline['out.natural_gas.clothes_dryer.energy_consumption.kwh'],
         'base_propane_clothesDrying_consumption': df_baseline['out.propane.clothes_dryer.energy_consumption.kwh'],
         'base_cooking_fuel': df_baseline['in.cooking_range'],
-        'cooking_type': df_baseline['in.cooking_range'],
         'base_electricity_cooking_consumption': df_baseline['out.electricity.range_oven.energy_consumption.kwh'],
         'base_naturalGas_cooking_consumption': df_baseline['out.natural_gas.range_oven.energy_consumption.kwh'],
         'base_propane_cooking_consumption': df_baseline['out.propane.range_oven.energy_consumption.kwh']
     })
-    
-    categories = ['heating', 'waterHeating', 'clothesDrying', 'cooking']
-    for category in categories:
-        # Determine fuel types based on the category
-        if category in ['heating', 'waterHeating']:
-            fuel_types = ['electricity', 'fuelOil', 'naturalGas', 'propane']
-        else:
-            fuel_types = ['electricity', 'naturalGas', 'propane']
+
+    # Calculate total consumption for all categories
+    for category in EQUIPMENT_SPECS.keys():
+        # Get appropriate fuel types for this category
+        fuel_types = get_fuel_types_for_category(category)
 
         # Calculate total consumption by summing fuel-specific columns
         total_consumption = sum(
@@ -396,21 +378,22 @@ def df_enduse_refactored(df_baseline, fuel_filter='Yes', tech_filter='Yes', inva
             for fuel in fuel_types
         )
         df_enduse[f'baseline_{category}_consumption'] = total_consumption.replace(0, np.nan)
-        debug_filters(df_enduse, f"total {category} consumption calculation")
-        
-        # Apply filtering or masking using the updated helper functions
-        if category in ['heating', 'waterHeating']:
-            df_enduse = apply_fuel_filter(df_enduse, category, fuel_filter, mode=invalid_row_handling)
-            debug_filters(df_enduse, f"{category} fuel filter/mask")
-            df_enduse = apply_technology_filter(df_enduse, category, tech_filter, mode=invalid_row_handling)
-            debug_filters(df_enduse, f"{category} technology filter/mask")
-        else:
-            df_enduse = apply_fuel_filter(df_enduse, category, fuel_filter, mode=invalid_row_handling)
-            debug_filters(df_enduse, f"{category} fuel filter/mask")
     
+    # Step 1: Create data quality flags
+    df_enduse = identify_valid_homes(df_enduse)
+    
+    # Step 2: Apply NaN masking based on inclusion flags
+    df_enduse = mask_invalid_data(df_enduse)
+
     return df_enduse
 
-def df_enduse_compare(df_mp, input_mp, menu_mp, df_baseline, df_cooking_range):
+
+def df_enduse_compare(df_mp: pd.DataFrame, 
+                      input_mp: str, 
+                      menu_mp: int, 
+                      df_baseline: pd.DataFrame, 
+                      df_cooking_range: pd.DataFrame
+) -> pd.DataFrame:
     """Creates a comparison DataFrame by merging multiple DataFrames based on measure packages.
 
     This function constructs a new DataFrame (df_compare) that includes columns
@@ -419,18 +402,15 @@ def df_enduse_compare(df_mp, input_mp, menu_mp, df_baseline, df_cooking_range):
     and cooking.
 
     Args:
-        df_mp (pd.DataFrame): The main DataFrame containing modeling parameters and outputs.
-        input_mp (str): The input measure package ID (e.g., 'upgrade09', 'upgrade10').
-        menu_mp (int): The menu measure package number.
-        df_baseline (pd.DataFrame): The baseline DataFrame to merge with df_compare.
-        df_cooking_range (pd.DataFrame): Additional DataFrame for cooking range parameters/outputs.
+        df_mp: The main DataFrame containing modeling parameters and outputs.
+        input_mp: The input measure package ID (e.g., 'upgrade09', 'upgrade10').
+        menu_mp: The menu measure package number.
+        df_baseline: The baseline DataFrame to merge with df_compare.
+        df_cooking_range: Additional DataFrame for cooking range parameters/outputs.
 
     Returns:
-        pd.DataFrame: A merged DataFrame (df_compare) that includes relevant columns for
-            baseline and measure packages comparison.
-
-    Raises:
-        None: This function does not raise any exceptions.
+        A merged DataFrame (df_compare) that includes relevant columns for
+        baseline and measure packages comparison.
     """
     # Build df_compare from relevant columns in df_mp and df_cooking_range
     df_compare = pd.DataFrame({

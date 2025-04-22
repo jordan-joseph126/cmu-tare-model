@@ -2,16 +2,22 @@ import pandas as pd
 from typing import Optional, Tuple, Dict
 
 from cmu_tare_model.constants import EQUIPMENT_SPECS, TD_LOSSES_MULTIPLIER, MER_TYPES, SCC_ASSUMPTIONS
-from cmu_tare_model.public_impact.data_processing.create_lookup_climate_impact_scc import lookup_climate_impact_scc
-from cmu_tare_model.public_impact.calculations.precompute_hdd_factors import precompute_hdd_factors
-from cmu_tare_model.public_impact.calculations.calculate_fossil_fuel_emissions import calculate_fossil_fuel_emissions
 from cmu_tare_model.utils.modeling_params import define_scenario_params
-from cmu_tare_model.utils.retrofit_error_handling_utils import (
-    determine_retrofit_status,
-    initialize_npv_series,
+from cmu_tare_model.utils.precompute_hdd_factors import precompute_hdd_factors
+
+# UPDATED: Import the new validation approach for climate impact calculations
+from cmu_tare_model.utils.data_validation.retrofit_status_utils import (
+    create_retrofit_only_series,
     calculate_avoided_values,
     update_values_for_retrofits
 )
+from cmu_tare_model.utils.data_validation.data_quality_utils import (
+    mask_category_specific_data,
+    get_valid_calculation_mask
+)
+
+from cmu_tare_model.public_impact.calculations.calculate_fossil_fuel_emissions import calculate_fossil_fuel_emissions
+from cmu_tare_model.public_impact.data_processing.create_lookup_climate_impact_scc import lookup_climate_impact_scc
 
 def calculate_lifetime_climate_impacts(
     df: pd.DataFrame,
@@ -45,12 +51,25 @@ def calculate_lifetime_climate_impacts(
         RuntimeError: If processing fails at the category or year level (e.g., missing data or key lookups).
     """
     # Create a copy of the input df
-    # Then initialize the detailed dataframe (df_copy will become df_main)
     df_copy = df.copy()
-    df_detailed = pd.DataFrame(index=df_copy.index)
     
+    # Initialize the detailed DataFrame with the same index as df_copy
+    df_detailed = pd.DataFrame(index=df_copy.index)
+
+    # Copy inclusion flags and validation columns from df_copy to df_detailed
+    validation_prefixes = ["include_", "valid_tech_", "valid_fuel_"]
+    validation_cols = []
+    for prefix in validation_prefixes:
+        validation_cols.extend([col for col in df_copy.columns if col.startswith(prefix)])
+        
+    for col in validation_cols:
+        df_detailed[col] = df_copy[col]
+
     # Initialize a dictionary to store lifetime climate impacts columns
     lifetime_columns_data = {}
+
+    # Add this line
+    all_columns_to_mask = {category: [] for category in EQUIPMENT_SPECS}
 
     # Retrieve scenario-specific params for electricity/fossil-fuel emissions
     # Ignored (underscored) the health lookup as it's not used in this function
@@ -67,16 +86,21 @@ def calculate_lifetime_climate_impacts(
             if verbose:
                 print(f"Calculating Climate Emissions and Damages from 2024 to {2024 + lifetime} for {category}")                    
             
-            # Determine which homes get retrofits for this category - do this once per category
-            retrofit_mask = determine_retrofit_status(df_copy, category, menu_mp, verbose=verbose)
+            # UPDATED: Use new validation approach to mask data for this category
+            # Determine which homes have valid data and get retrofits for this category
+            valid_mask = get_valid_calculation_mask(df_copy, category, menu_mp, verbose=verbose)
 
-            # Initialize with zeros for homes with retrofits, NaN for others
+            # Add a tracking array for this category
+            category_columns_to_mask = []
+
+            # UPDATED: Use the new function to create a mask for retrofits
+            # Initialize with zeros for valid homes, NaN for others
             lifetime_climate_emissions = {
-                mer_type: initialize_npv_series(df_copy, retrofit_mask)
+                mer_type: create_retrofit_only_series(df_copy, valid_mask)
                 for mer_type in MER_TYPES
             }
             lifetime_climate_damages = {
-                (mer_type, scc_value): initialize_npv_series(df_copy, retrofit_mask)
+                (mer_type, scc_value): create_retrofit_only_series(df_copy, valid_mask)
                 for mer_type in MER_TYPES
                 for scc_value in SCC_ASSUMPTIONS
             }
@@ -105,7 +129,7 @@ def calculate_lifetime_climate_impacts(
                         adjusted_hdd_factor=adjusted_hdd_factor,
                         lookup_emissions_fossil_fuel=lookup_emissions_fossil_fuel,
                         menu_mp=menu_mp,
-                        retrofit_mask=retrofit_mask,  # Pass the pre-computed mask
+                        retrofit_mask=valid_mask,  # Pass the valid mask instead
                         verbose=verbose
                     ) 
 
@@ -125,49 +149,55 @@ def calculate_lifetime_climate_impacts(
                     # Accumulate annual emissions (scc_value-independent)
                     for mer_type in MER_TYPES:
                         lifetime_climate_emissions[mer_type] = update_values_for_retrofits(
-                            lifetime_climate_emissions[mer_type],
-                            annual_emissions.get(mer_type, 0.0),
-                            retrofit_mask,
-                            menu_mp
+                            target_series=lifetime_climate_emissions[mer_type],
+                            update_values=annual_emissions.get(mer_type, 0.0),
+                            retrofit_mask=valid_mask,
+                            menu_mp=menu_mp
                         )
 
                     # Accumulate annual damages for each scc_value assumption
                     for key, value in annual_damages.items():
                         lifetime_climate_damages[key] = update_values_for_retrofits(
-                            lifetime_climate_damages[key],
-                            value,
-                            retrofit_mask,
-                            menu_mp
+                            target_series=lifetime_climate_damages[key],
+                            update_values=value,
+                            retrofit_mask=valid_mask,
+                            menu_mp=menu_mp
                         )
 
                     # If there are results, attach them to the detailed DataFrame
                     if climate_results:
                         df_detailed = pd.concat([df_detailed, pd.DataFrame(climate_results, index=df_copy.index)], axis=1)
+                        # Track these columns for final masking
+                        category_columns_to_mask.extend(climate_results.keys())
+
                 except Exception as e:
                     # Convert any exception into a RuntimeError with additional context
                     raise RuntimeError(f"Error processing year {year_label} for category '{category}': {e}")
 
             # Prepare lifetime columns
             lifetime_dict = {}
-            for mer_type in MER_TYPES:
+            for mer_type in MER_TYPES:              
                 emissions_col = f'{scenario_prefix}{category}_lifetime_mt_co2e_{mer_type}'
                 lifetime_dict[emissions_col] = lifetime_climate_emissions[mer_type]
-                
+                category_columns_to_mask.append(emissions_col)  # Add tracking for emissions columns    
+
                 for scc_assumption in SCC_ASSUMPTIONS:
                     damages_col = f'{scenario_prefix}{category}_lifetime_damages_climate_{mer_type}_{scc_assumption}'
                     lifetime_dict[damages_col] = lifetime_climate_damages[(mer_type, scc_assumption)]
-                                   
+                    category_columns_to_mask.append(damages_col)    # Add tracking for damages columns
+
                     # Calculate avoided damages if baseline data is provided
                     if menu_mp != 0 and df_baseline_damages is not None:
                         baseline_damages_col = f'baseline_{category}_lifetime_damages_climate_{mer_type}_{scc_assumption}'
                         avoided_damages_col = f'{scenario_prefix}{category}_avoided_damages_climate_{mer_type}_{scc_assumption}'
-                        
+
                         # Calculate avoided damages only for homes with retrofits
                         lifetime_dict[avoided_damages_col] = calculate_avoided_values(
-                            df_baseline_damages[baseline_damages_col],
-                            lifetime_dict[damages_col],
-                            retrofit_mask
+                            baseline_values=df_baseline_damages[baseline_damages_col],
+                            measure_values=lifetime_dict[damages_col],
+                            retrofit_mask=valid_mask
                         )
+                        category_columns_to_mask.extend([baseline_damages_col, avoided_damages_col])  # Add tracking for avoided damages columns
 
                 # Calculate avoided emissions if baseline data is provided
                 if menu_mp != 0 and df_baseline_damages is not None:
@@ -176,15 +206,20 @@ def calculate_lifetime_climate_impacts(
                     
                     # Calculate avoided emissions only for homes with retrofits
                     lifetime_dict[avoided_emissions_col] = calculate_avoided_values(
-                        df_baseline_damages[baseline_emissions_col],
-                        lifetime_dict[emissions_col],
-                        retrofit_mask
+                        baseline_values=df_baseline_damages[baseline_emissions_col],
+                        measure_values=lifetime_dict[emissions_col],
+                        retrofit_mask=valid_mask
                     )
+                    category_columns_to_mask.extend([baseline_emissions_col, avoided_emissions_col])  # Add tracking for avoided damages columns
 
             # Store in global lifetime dictionary
             lifetime_columns_data.update(lifetime_dict)
+
             # Append these columns to df_detailed for completeness
             df_detailed = pd.concat([df_detailed, pd.DataFrame(lifetime_dict, index=df_copy.index)], axis=1)
+
+            # Add all columns for this category to the masking dictionary
+            all_columns_to_mask[category].extend(category_columns_to_mask)
 
         except Exception as e:
             # Convert any exception into a RuntimeError with additional context
@@ -194,10 +229,22 @@ def calculate_lifetime_climate_impacts(
     df_lifetime = pd.DataFrame(lifetime_columns_data, index=df_copy.index)
     df_main = df_copy.join(df_lifetime, how='left')
     
+    # Apply final verification masking for consistency
+    print("\nVerifying masking for all calculated columns:")
+    for category, cols_to_mask in all_columns_to_mask.items():
+        # Filter out columns that don't exist in df_main or df_detailed
+        main_cols = [col for col in cols_to_mask if col in df_main.columns]
+        detailed_cols = [col for col in cols_to_mask if col in df_detailed.columns]
+        
+        if main_cols:
+            df_main = mask_category_specific_data(df_main, main_cols, category, verbose=verbose)
+        if detailed_cols:
+            df_detailed = mask_category_specific_data(df_detailed, detailed_cols, category, verbose=verbose)
+
     # Round final results
     df_main = df_main.round(2)
     df_detailed = df_detailed.round(2)
-    
+
     return df_main, df_detailed
 
 def calculate_climate_emissions_and_damages(

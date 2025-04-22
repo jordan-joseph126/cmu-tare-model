@@ -53,7 +53,7 @@ Result outputs will be exported here: {output_folder_path}
 # # Simulate Residential Energy Consumption using NREL End-Use Savings Shapes
 
 # %%
-from cmu_tare_model.energy_consumption_and_metadata.load_and_filter_euss_data_v2 import *
+from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import *
 
 # Measure Package 0: Baseline
 menu_mp = 0
@@ -137,7 +137,7 @@ GEOGRAPHIC FILTERS: National, State, or City
 
 Additional details and documentation: 
       data can be found in the EUSS documentation here: 
-methods can be found in the load_and_filter_euss_data.py file.
+methods can be found in the process_euss_data.py file.
       
 DATAFRAME: df_euss_am_baseline
       
@@ -257,9 +257,9 @@ SCC Values used in analysis are:
 
 # %%
 print(f"""
-===========================================================================================================================================================
+========================================================================================================================================================================================================================
 LOOKUP MARGINAL SOCIAL COSTS FOR HEALTH-RELATED EMISSIONS
-===========================================================================================================================================================
+========================================================================================================================================================================================================================
 No Electricity Grid Uncertainty (Just Current Grid and Future Grid Projections)
       
 
@@ -319,13 +319,13 @@ df_baseline_scenario_damages
 # %%
 from cmu_tare_model.private_impact.data_processing.create_lookup_fuel_prices import *
 print(f"""
-===========================================================================================================================================================
+========================================================================================================================================================================================================================
 PROCESS FUEL PRICE DATA AND PREPARE FOR PROJECTION: 
 1. Load nominal fuel price data from EIA sources (2018-2022)
 2. Convert base units (like dollars per gallon and cf) in nominal fuel price data to USD2023/kWh
 3. Inflate all nominal fuel prices to $USD2023 (example: 2018 data in USD2018... multiply by cpi_ratio_2023_2018)
 4. Map states to census division using map_location_to_census_division function (allows us to apply regional projection factors)
-===========================================================================================================================================================
+========================================================================================================================================================================================================================
 **Data Sources for Excel workbook containing state average Residential fuel cost for each fuel in 2018**
 - EIA State Electricity Price: https://www.eia.gov/electricity/state/archive/2018/
 - EIA Natural Gas Prices: https://www.eia.gov/dnav/ng/ng_pri_sum_dcu_SPA_a.htm
@@ -333,7 +333,7 @@ PROCESS FUEL PRICE DATA AND PREPARE FOR PROJECTION:
     - https://www.eia.gov/outlooks/steo/pdf/wf01.pdf
     - Table WF01: Average Consumer Prices and Expenditures for Heating Fuels During the Winter
     - US Average: 2018-2019 Data
-===========================================================================================================================================================
+========================================================================================================================================================================================================================
 
 The process_fuel_price_data.py file contains the following dataframes and lookup dictionaries:
 
@@ -344,12 +344,12 @@ DATAFRAME: Processed fuel price data (normalized in per kWh price, set up locati
 
 # %%
 print(f"""
-===========================================================================================================================================================
+========================================================================================================================================================================================================================
 PROJECT FUTURE FUEL PRICES: 
 5. Load 2022-2050 regional projection factor data from AEO2023 (Normalized all fuel prices by the 2022 value for each region)
 6. For each policy scenario, project future fuel prices using the project_future_prices function
 7. For each policy scenario, create a lookup dictionary using the create_fuel_price_lookup function
-===========================================================================================================================================================
+========================================================================================================================================================================================================================
 
 The process_fuel_price_data.py file contains the following dataframes and lookup dictionaries:
 

@@ -4,12 +4,12 @@ from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2023_2022
 
 from config import PROJECT_ROOT
 
-# =======================================================================================================================
+# ====================================================================================================================================================================================
 # Set print_verbose to True for detailed output, or False for minimal output
 # By default, verbose is set to False because define_scenario_params is imported multiple times in the codebase
 # and we don't want to print the same information multiple times.
 print_verbose = False
-# =======================================================================================================================
+# ====================================================================================================================================================================================
 
 
 """

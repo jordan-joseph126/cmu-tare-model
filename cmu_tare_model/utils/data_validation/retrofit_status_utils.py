@@ -4,7 +4,7 @@ from typing import Optional, Union, Dict, Any
 
 from cmu_tare_model.constants import UPGRADE_COLUMNS
 
-def determine_retrofit_status(
+def get_retrofit_homes_mask(
     df: pd.DataFrame, 
     category: str, 
     menu_mp: Union[int, str], 
@@ -51,7 +51,7 @@ def determine_retrofit_status(
     return retrofit_mask
 
 
-def initialize_npv_series(
+def create_retrofit_only_series(
     df: pd.DataFrame,
     retrofit_mask: Optional[pd.Series] = None,
     category: Optional[str] = None,
@@ -82,7 +82,7 @@ def initialize_npv_series(
     if retrofit_mask is None:
         if category is None or menu_mp is None:
             raise ValueError("Either retrofit_mask must be provided or both category and menu_mp")
-        retrofit_mask = determine_retrofit_status(df, category, menu_mp, verbose)
+        retrofit_mask = get_retrofit_homes_mask(df, category, menu_mp, verbose)
     
     # Initialize series with NaN for all homes
     result = pd.Series(np.nan, index=df.index)

@@ -1,5 +1,27 @@
 # Example constants (copied from the original code).
 # Adjust or remove them as needed, or move them to a separate config file.
+# Excludes HP Tech for Space/Water Heating and Clothes Drying. Also excludes electric resistance cooking and induction cooking.
+ALLOWED_TECHNOLOGIES = {
+    'heating': [
+        'Electricity Baseboard', 'Electricity Electric Boiler', 
+        'Electricity Electric Furnace', 'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace', 
+        'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
+        'Propane Fuel Boiler', 'Propane Fuel Furnace'
+    ],
+    'waterHeating': [
+        'Electric Premium', 'Electric Standard',
+        'Fuel Oil Premium', 'Fuel Oil Standard', 
+        'Natural Gas Premium', 'Natural Gas Standard',
+        'Propane Premium', 'Propane Standard'
+    ],
+    'clothesDrying': [
+        'Electric', 'Gas', 'Propane'
+    ],
+    'cooking': [
+        'Gas', 'Propane'
+    ]
+} 
+
 TD_LOSSES = 0.06
 TD_LOSSES_MULTIPLIER = 1 / (1 - TD_LOSSES)
 EQUIPMENT_SPECS = {'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15}

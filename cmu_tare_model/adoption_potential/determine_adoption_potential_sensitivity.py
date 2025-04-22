@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional
 
-from cmu_tare_model.constants import SCC_ASSUMPTIONS, RCM_MODELS, CR_FUNCTIONS
+from cmu_tare_model.constants import SCC_ASSUMPTIONS, RCM_MODELS, CR_FUNCTIONS, UPGRADE_COLUMNS
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 
 
@@ -97,17 +97,9 @@ def adoption_decision(df: pd.DataFrame,
         
         # Create a DataFrame to hold new columns
         df_new_columns = pd.DataFrame(index=df_copy.index)
-        
-        # Define equipment categories and their corresponding upgrade columns
-        upgrade_columns = {
-            'heating': 'upgrade_hvac_heating_efficiency',
-            'waterHeating': 'upgrade_water_heater_efficiency',
-            'clothesDrying': 'upgrade_clothes_dryer',
-            'cooking': 'upgrade_cooking_range'
-        }
-        
+                
         # Check that required upgrade columns exist in the DataFrame
-        missing_columns = [col for col in upgrade_columns.values() if col not in df_copy.columns]
+        missing_columns = [col for col in UPGRADE_COLUMNS.values() if col not in df_copy.columns]
         if missing_columns:
             raise KeyError(f"Required upgrade columns missing from DataFrame: {missing_columns}")
         
@@ -129,7 +121,7 @@ def adoption_decision(df: pd.DataFrame,
         
         # ========== PROCESS EACH EQUIPMENT CATEGORY ==========
         
-        for category, upgrade_column in upgrade_columns.items():
+        for category, upgrade_column in UPGRADE_COLUMNS.items():
             try:
                 print(f"\nCalculating Adoption Potential for {category} under '{policy_scenario}' Scenario...")
                 
@@ -153,7 +145,7 @@ def adoption_decision(df: pd.DataFrame,
                         # Define column names for NPV values
                         lessWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_lessWTP'
                         moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP'
-                        public_npv_col = f'{scenario_prefix}{category}_{scc}_{rcm_model}_{cr_function}'
+                        public_npv_col = f'{scenario_prefix}{category}_public_npv_{scc}_{rcm_model}_{cr_function}'
                         rebate_col = f'mp{menu_mp}_{category}_rebate_amount'
                         
                         # Define column names for calculated values
@@ -228,11 +220,12 @@ def adoption_decision(df: pd.DataFrame,
                         
                         # Determine public impacts
                         public_conditions = [
+                            df_copy[public_npv_col] == 0,  # Zero public NPV = no retrofit
                             df_copy[public_npv_col] > 0,  # Positive public NPV = benefit
                             df_copy[public_npv_col] < 0   # Negative public NPV = detriment
                         ]
                         
-                        public_choices = ['Public Benefit', 'Public Detriment']
+                        public_choices = ['No Retrofit', 'Public Benefit', 'Public Detriment']
                         df_new_columns[retrofit_col_name] = np.select(public_conditions, public_choices, default='No Retrofit')
                         
                     except Exception as e:

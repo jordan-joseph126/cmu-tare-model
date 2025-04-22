@@ -2,9 +2,9 @@ import pandas as pd
 from typing import Dict, Optional
 
 from cmu_tare_model.constants import POLLUTANTS
-from cmu_tare_model.utils.retrofit_error_handling_utils import (
-    determine_retrofit_status,
-    initialize_npv_series,
+from cmu_tare_model.utils.data_validation.retrofit_status_utils import (
+    get_retrofit_homes_mask,
+    create_retrofit_only_series,
 )
 
 def calculate_fossil_fuel_emissions(
@@ -49,11 +49,11 @@ def calculate_fossil_fuel_emissions(
     """
     # Use provided retrofit_mask if available, otherwise calculate it
     if retrofit_mask is None:
-        retrofit_mask = determine_retrofit_status(df, category, menu_mp, verbose=verbose)
+        retrofit_mask = get_retrofit_homes_mask(df, category, menu_mp, verbose=verbose)
 
     # Initialize with zeros for homes with retrofits, NaN for others
     total_fossil_emissions = {
-        p: initialize_npv_series(df, retrofit_mask, verbose=False)
+        p: create_retrofit_only_series(df, retrofit_mask, verbose=False)
         for p in POLLUTANTS
     }
 
