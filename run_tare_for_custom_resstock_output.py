@@ -10,6 +10,7 @@ with Notebook():
     import tare_model_IO_functions_v1_4_1 as TARE_IO
     # Gather data
     hdd_factor_lookup = TARE_IO.load_hdd_factors(project_root)
+    cdd_factor_lookup = TARE_IO.load_cdd_factors(project_root)
     emis_preIRA_cambium21_lookup, emis_IRA_2024_cambium22_lookup, emis_IRA_2025_2050_cambium23_lookup = TARE_IO.load_cambium_lookup(project_root)
     emis_factor_co2e_naturalGas_ton_perkWh, emis_factor_co2e_propane_ton_perkWh, emis_factor_co2e_fuelOil_ton_perkWh = TARE_IO.load_emis_factors()
     cpi_ratio_2023_2023, cpi_ratio_2023_2022, cpi_ratio_2023_2021, cpi_ratio_2023_2020, cpi_ratio_2023_2019, cpi_ratio_2023_2018, cpi_ratio_2023_2013, cpi_ratio_2023_2010, cpi_ratio_2023_2008 = TARE_IO.load_cpi_data(project_root)
@@ -47,7 +48,7 @@ for region in ["national_ASHP"]:
     # Load the annual metadata associated with this case. This will be loading my custom data format from my own ResStock runs
     df_resstock_run_am = TARE_IO.load_multiple_resstock_run_annual_metadata(data_folder_file_path, menu_mp, NUM_RESIDENCES)
 
-    df_resstock_run_am = base_TARE.project_future_consumption(df=df_resstock_run_am, hdd_factor_lookup=hdd_factor_lookup, menu_mp=menu_mp)
+    df_resstock_run_am = base_TARE.project_future_consumption(df=df_resstock_run_am, hdd_factor_lookup=hdd_factor_lookup, cdd_factor_lookup=cdd_factor_lookup, menu_mp=menu_mp)
 
     for policy_scenario in policy_scenarios:
         df_resstock_run_am = base_TARE.calculate_marginal_damages(df=df_resstock_run_am, menu_mp=menu_mp, policy_scenario=policy_scenario, df_summary=df_resstock_run_am)
@@ -69,7 +70,7 @@ for region in ["national_ASHP"]:
         print("This does not apply to this building because:", e)
         exit() #continue
 
-    df_resstock_run_am_mp8 = base_TARE.project_future_consumption(df=df_resstock_run_am_mp8, hdd_factor_lookup=hdd_factor_lookup, menu_mp=menu_mp)
+    df_resstock_run_am_mp8 = base_TARE.project_future_consumption(df=df_resstock_run_am_mp8, hdd_factor_lookup=hdd_factor_lookup, cdd_factor_lookup=cdd_factor_lookup, menu_mp=menu_mp)
 
     for policy_scenario in policy_scenarios:
         df_resstock_run_am_mp8 = base_TARE.calculate_marginal_damages(df=df_resstock_run_am_mp8, menu_mp=menu_mp, policy_scenario=policy_scenario, df_summary=df_resstock_run_am)
