@@ -23,92 +23,90 @@ with Notebook():
 
     import tare_model_functions_v1_4_1 as base_TARE
 
-NUM_RESIDENCES = 800
-city = "columbus"
+NUM_RESIDENCES = 8000
 PUBLIC_INTEREST_RATE = 0.02
 
 
 ALPHA = 0.2
 BETA = 0.3
 MMPV_DISCOUNT_RATE = 0.07
-USING_MMPV = True
+USING_MMPV = False
 MMPV_filename = 'MMPV_ALPHA0pt2_BETA0pt3_DISCOUNT0pt07'
 
-
-output_filepath = os.path.join("output_results",f"{city}_{NUM_RESIDENCES}_all_unit_residence", f"alpha_beta_{MMPV_filename if USING_MMPV else 'NPV'}_tare_output.csv")
-
-
 unit_num = "all"
+# region = "urban_ohio"
 
-# for unit_num in building_unit_types:
-menu_mp = 0
-input_mp = "baseline"
-data_folder_file_path = os.path.join("/home","arnavgautam","resstock-3.4.0",f"{city}_upgrades_{NUM_RESIDENCES}_{unit_num}_unit_residence")
-print(data_folder_file_path)
+for region in ["national_ASHP"]:
+    output_filepath = os.path.join("output_results",f"{region}_{NUM_RESIDENCES}_all_unit_residence", f"alpha_beta_{MMPV_filename if USING_MMPV else 'NPV'}_tare_output.csv")
 
-# Load the annual metadata associated with this case. This will be loading my custom data format from my own ResStock runs
-df_resstock_run_am = TARE_IO.load_multiple_resstock_run_annual_metadata(data_folder_file_path, menu_mp, NUM_RESIDENCES)
+    menu_mp = 0
+    input_mp = "baseline"
+    data_folder_file_path = os.path.join("/home","arnavgautam","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence")
+    print(data_folder_file_path)
 
-df_resstock_run_am = base_TARE.project_future_consumption(df=df_resstock_run_am, hdd_factor_lookup=hdd_factor_lookup, menu_mp=menu_mp)
+    # Load the annual metadata associated with this case. This will be loading my custom data format from my own ResStock runs
+    df_resstock_run_am = TARE_IO.load_multiple_resstock_run_annual_metadata(data_folder_file_path, menu_mp, NUM_RESIDENCES)
 
-for policy_scenario in policy_scenarios:
-    df_resstock_run_am = base_TARE.calculate_marginal_damages(df=df_resstock_run_am, menu_mp=menu_mp, policy_scenario=policy_scenario, df_summary=df_resstock_run_am)
+    df_resstock_run_am = base_TARE.project_future_consumption(df=df_resstock_run_am, hdd_factor_lookup=hdd_factor_lookup, menu_mp=menu_mp)
 
-for policy_scenario in policy_scenarios:
-    df_resstock_run_am = base_TARE.calculate_annual_fuelCost(df=df_resstock_run_am, menu_mp=menu_mp, policy_scenario=policy_scenario, drop_fuel_cost_columns=False)
+    for policy_scenario in policy_scenarios:
+        df_resstock_run_am = base_TARE.calculate_marginal_damages(df=df_resstock_run_am, menu_mp=menu_mp, policy_scenario=policy_scenario, df_summary=df_resstock_run_am)
 
-# Upgrade scenario
-menu_mp = 8
-input_mp = "default_option_closest_to_sales_volume_weighted_heat_pump_device"
-data_folder_file_path = os.path.join("/home","arnavgautam","resstock-3.4.0",f"{city}_upgrades_{NUM_RESIDENCES}_{unit_num}_unit_residence_ASHP")
-print(data_folder_file_path)
+    for policy_scenario in policy_scenarios:
+        df_resstock_run_am = base_TARE.calculate_annual_fuelCost(df=df_resstock_run_am, menu_mp=menu_mp, policy_scenario=policy_scenario, drop_fuel_cost_columns=False)
 
-# Load the annual metadata associated with this case. This will be loading my custom data format from my own ResStock runs
-try:
-    print("start loading data from upgrades")
-    df_resstock_run_am_mp8 = TARE_IO.load_multiple_resstock_run_annual_metadata(data_folder_file_path, menu_mp, NUM_RESIDENCES, baseline_data=df_resstock_run_am)
-except Exception as e:
-    print("This does not apply to this building because:", e)
-    exit() #continue
+    # Upgrade scenario
+    menu_mp = 8
+    input_mp = "default_option_closest_to_sales_volume_weighted_heat_pump_device"
+    data_folder_file_path = os.path.join("/home","arnavgautam","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence_ASHP")
+    print(data_folder_file_path)
 
-df_resstock_run_am_mp8 = base_TARE.project_future_consumption(df=df_resstock_run_am_mp8, hdd_factor_lookup=hdd_factor_lookup, menu_mp=menu_mp)
+    # Load the annual metadata associated with this case. This will be loading my custom data format from my own ResStock runs
+    try:
+        print("start loading data from upgrades")
+        df_resstock_run_am_mp8 = TARE_IO.load_multiple_resstock_run_annual_metadata(data_folder_file_path, menu_mp, NUM_RESIDENCES, baseline_data=df_resstock_run_am)
+    except Exception as e:
+        print("This does not apply to this building because:", e)
+        exit() #continue
 
-for policy_scenario in policy_scenarios:
-    df_resstock_run_am_mp8 = base_TARE.calculate_marginal_damages(df=df_resstock_run_am_mp8, menu_mp=menu_mp, policy_scenario=policy_scenario, df_summary=df_resstock_run_am)
+    df_resstock_run_am_mp8 = base_TARE.project_future_consumption(df=df_resstock_run_am_mp8, hdd_factor_lookup=hdd_factor_lookup, menu_mp=menu_mp)
 
-for policy_scenario in policy_scenarios:
-    df_resstock_run_am_mp8 = base_TARE.calculate_annual_fuelCost(df=df_resstock_run_am_mp8, menu_mp=menu_mp, policy_scenario=policy_scenario, drop_fuel_cost_columns=False)
+    for policy_scenario in policy_scenarios:
+        df_resstock_run_am_mp8 = base_TARE.calculate_marginal_damages(df=df_resstock_run_am_mp8, menu_mp=menu_mp, policy_scenario=policy_scenario, df_summary=df_resstock_run_am)
 
-df_resstock_run_am_mp8 = base_TARE.obtain_heating_system_specs(df_resstock_run_am_mp8)
+    for policy_scenario in policy_scenarios:
+        df_resstock_run_am_mp8 = base_TARE.calculate_annual_fuelCost(df=df_resstock_run_am_mp8, menu_mp=menu_mp, policy_scenario=policy_scenario, drop_fuel_cost_columns=False)
 
-df_resstock_run_am_mp8 = TARE_IO.load_rsMeans_CCI_values(project_root, df_resstock_run_am_mp8)
+    df_resstock_run_am_mp8 = base_TARE.obtain_heating_system_specs(df_resstock_run_am_mp8)
 
-# calculate_installation_cost(df, cost_dict, rsMeans_national_avg, menu_mp, end_use)
-print("Calculating Cost of Retrofit Upgrade: Heat Pump for Space Heating (No Enclosure Upgrade) ...")
-df_resstock_run_am_mp8 = base_TARE.calculate_installation_cost(df_resstock_run_am_mp8, dict_heating_equipment_cost, rsMeans_national_avg, menu_mp, 'heating')
+    df_resstock_run_am_mp8 = TARE_IO.load_rsMeans_CCI_values(project_root, df_resstock_run_am_mp8)
 
-# calculate_replacement_cost(df, cost_dict, rsMeans_national_avg, menu_mp, end_use)
-print("Calculating Cost of Replacing Existing Equipment with Similar Model/Efficiency ...")
-df_resstock_run_am_mp8 = base_TARE.calculate_replacement_cost(df_resstock_run_am_mp8, dict_heating_equipment_cost, rsMeans_national_avg, menu_mp, 'heating')
+    # calculate_installation_cost(df, cost_dict, rsMeans_national_avg, menu_mp, end_use)
+    print("Calculating Cost of Retrofit Upgrade: Heat Pump for Space Heating (No Enclosure Upgrade) ...")
+    df_resstock_run_am_mp8 = base_TARE.calculate_installation_cost(df_resstock_run_am_mp8, dict_heating_equipment_cost, rsMeans_national_avg, menu_mp, 'heating')
 
-# Call the function and calculate installation premium based on existing housing characteristics
-# calculate_heating_installation_premium(df, rsMeans_national_avg, cpi_ratio_2023_2013)
-print("Calculating Space Heating Specific Premiums (Ex: Removing Hydronic Boiler) ...")
-df_resstock_run_am_mp8 = base_TARE.calculate_heating_installation_premium(df_resstock_run_am_mp8, menu_mp, rsMeans_national_avg, cpi_ratio_2023_2013)
+    # calculate_replacement_cost(df, cost_dict, rsMeans_national_avg, menu_mp, end_use)
+    print("Calculating Cost of Replacing Existing Equipment with Similar Model/Efficiency ...")
+    df_resstock_run_am_mp8 = base_TARE.calculate_replacement_cost(df_resstock_run_am_mp8, dict_heating_equipment_cost, rsMeans_national_avg, menu_mp, 'heating')
 
-df_resstock_run_am_mp8 = base_TARE.calculate_percent_AMI(df_resstock_run_am_mp8)
+    # Call the function and calculate installation premium based on existing housing characteristics
+    # calculate_heating_installation_premium(df, rsMeans_national_avg, cpi_ratio_2023_2013)
+    print("Calculating Space Heating Specific Premiums (Ex: Removing Hydronic Boiler) ...")
+    df_resstock_run_am_mp8 = base_TARE.calculate_heating_installation_premium(df_resstock_run_am_mp8, menu_mp, rsMeans_national_avg, cpi_ratio_2023_2013)
 
-df_resstock_run_am_mp8 = base_TARE.calculate_rebateIRA(df_resstock_run_am_mp8, "heating", menu_mp)
+    df_resstock_run_am_mp8 = base_TARE.calculate_percent_AMI(df_resstock_run_am_mp8)
 
-for policy_scenario in policy_scenarios:
-    df_resstock_run_am_mp8 = base_TARE.calculate_public_npv(df_resstock_run_am_mp8, df_resstock_run_am_mp8, menu_mp, policy_scenario, interest_rate=PUBLIC_INTEREST_RATE)
+    df_resstock_run_am_mp8 = base_TARE.calculate_rebateIRA(df_resstock_run_am_mp8, "heating", menu_mp)
 
-for policy_scenario in policy_scenarios:
-    df_resstock_run_am_mp8 = base_TARE.calculate_MMPV(df_resstock_run_am_mp8, df_resstock_run_am_mp8, MMPV_DISCOUNT_RATE, ALPHA, BETA, input_mp, menu_mp, policy_scenario)    
+    for policy_scenario in policy_scenarios:
+        df_resstock_run_am_mp8 = base_TARE.calculate_public_npv(df_resstock_run_am_mp8, df_resstock_run_am_mp8, menu_mp, policy_scenario, interest_rate=PUBLIC_INTEREST_RATE)
 
-for policy_scenario in policy_scenarios:
-    df_resstock_run_am_mp8 = base_TARE.adoption_decision(df_resstock_run_am_mp8, policy_scenario, menu_mp, using_MMPV=USING_MMPV)
+    for policy_scenario in policy_scenarios:
+        df_resstock_run_am_mp8 = base_TARE.calculate_MMPV(df_resstock_run_am_mp8, df_resstock_run_am_mp8, MMPV_DISCOUNT_RATE, ALPHA, BETA, input_mp, menu_mp, policy_scenario)    
+
+    for policy_scenario in policy_scenarios:
+        df_resstock_run_am_mp8 = base_TARE.adoption_decision(df_resstock_run_am_mp8, policy_scenario, menu_mp, using_MMPV=USING_MMPV)
 
 
-print(f"Writing output to {output_filepath}")
-TARE_IO.write_TARE_results(df_resstock_run_am_mp8, output_filepath)
+    print(f"Writing output to {output_filepath}")
+    TARE_IO.write_TARE_results(df_resstock_run_am_mp8, output_filepath)
