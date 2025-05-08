@@ -1,0 +1,2154 @@
+#BASELINE - FUCNTION CALL AND OUTPUT
+## CLIMATE IMPACTS
+FUNCTION CALL
+'''
+print(f"""
+====================================================================================================================================================================
+CLIMATE CHANGE IMPACTS: Baseline Scenario
+====================================================================================================================================================================
+Modified usage pattern - keeping df_euss_am_baseline_home and detailed results separate
+
+def calculate_lifetime_climate_impacts(
+    df: pd.DataFrame,
+    menu_mp: int,
+    policy_scenario: str,
+    base_year: int = 2024,
+    df_baseline_damages: Optional[pd.DataFrame] = None,
+    verbose: bool = False    
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+
+""")
+
+# Make copies to prevent overwriting the original dataframe and compare the differences
+df_euss_am_baseline_home = df_euss_am_baseline_home.copy()
+df_baseline_damages_climate = df_euss_am_baseline_home.copy()
+
+# Modified usage pattern - keeping df_euss_am_baseline_home as a single DataFrame
+# while keeping detailed results separate
+df_euss_am_baseline_home, df_baseline_damages_climate = calculate_lifetime_climate_impacts(
+    df=df_euss_am_baseline_home,
+    menu_mp=0,  # baseline
+    policy_scenario='No Inflation Reduction Act',
+    verbose=True  # Add this parameter
+)
+
+'''
+
+OUPUT
+====================================================================================================================================================================
+CLIMATE CHANGE IMPACTS: Baseline Scenario
+====================================================================================================================================================================
+Modified usage pattern - keeping df_euss_am_baseline_home and detailed results separate
+
+def calculate_lifetime_climate_impacts(
+    df: pd.DataFrame,
+    menu_mp: int,
+    policy_scenario: str,
+    base_year: int = 2024,
+    df_baseline_damages: Optional[pd.DataFrame] = None,
+    verbose: bool = False    
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+
+
+-- Scenario: Baseline -- 
+              scenario_prefix: 'baseline_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+Calculating Climate Emissions and Damages from 2024 to 2039 for heating
+Baseline calculation for heating:
+  - 12266 homes have valid data
+  - 3385 homes have invalid data (values will be NaN)
+Calculating Climate Emissions and Damages from 2024 to 2036 for waterHeating
+Baseline calculation for waterHeating:
+  - 14999 homes have valid data
+  - 652 homes have invalid data (values will be NaN)
+Calculating Climate Emissions and Damages from 2024 to 2037 for clothesDrying
+Baseline calculation for clothesDrying:
+  - 14743 homes have valid data
+  - 908 homes have invalid data (values will be NaN)
+Calculating Climate Emissions and Damages from 2024 to 2039 for cooking
+Baseline calculation for cooking:
+  - 7867 homes have valid data
+  - 7784 homes have invalid data (values will be NaN)
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+Masking 8 columns for category 'cooking'
+    baseline_cooking_lifetime_mt_co2e_lrmer: Masked 7784 values
+    baseline_cooking_lifetime_damages_climate_lrmer_lower: Masked 7784 values
+    baseline_cooking_lifetime_damages_climate_lrmer_central: Masked 7784 values
+    baseline_cooking_lifetime_damages_climate_lrmer_upper: Masked 7784 values
+    baseline_cooking_lifetime_mt_co2e_srmer: Masked 7784 values
+    baseline_cooking_lifetime_damages_climate_srmer_lower: Masked 7784 values
+    baseline_cooking_lifetime_damages_climate_srmer_central: Masked 7784 values
+    baseline_cooking_lifetime_damages_climate_srmer_upper: Masked 7784 values
+  Total: Masked 62272 values across 8 columns
+
+Verifying masking for all calculated columns:
+Masking 128 columns for category 'cooking'
+    baseline_cooking_lifetime_mt_co2e_lrmer: Masked 7784 values
+    baseline_cooking_lifetime_damages_climate_lrmer_lower: Masked 7784 values
+    baseline_cooking_lifetime_damages_climate_lrmer_central: Masked 7784 values
+    baseline_cooking_lifetime_damages_climate_lrmer_upper: Masked 7784 values
+    baseline_cooking_lifetime_mt_co2e_srmer: Masked 7784 values
+    baseline_cooking_lifetime_damages_climate_srmer_lower: Masked 7784 values
+    baseline_cooking_lifetime_damages_climate_srmer_central: Masked 7784 values
+    baseline_cooking_lifetime_damages_climate_srmer_upper: Masked 7784 values
+  Total: Masked 62272 values across 128 columns
+
+====================================================================================================================================================================
+
+df_euss_am_baseline_home: DataFrame containing the baseline scenario data
+         square_footage census_region  census_division census_division_recs  \
+bldg_id                                                                       
+119              2152.0     Northeast  Middle Atlantic      Middle Atlantic   
+122              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+150              1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+153              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+162              2663.0     Northeast  Middle Atlantic      Middle Atlantic   
+...                 ...           ...              ...                  ...   
+549882           1202.0     Northeast  Middle Atlantic      Middle Atlantic   
+549915           2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+549937            885.0     Northeast  Middle Atlantic      Middle Atlantic   
+549963           1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+549989           1220.0     Northeast  Middle Atlantic      Middle Atlantic   
+
+        building_america_climate_zone  reeds_balancing_area gea_region state  \
+bldg_id                                                                        
+119                       Mixed-Humid                   122      RFCEc    PA   
+122                       Mixed-Humid                   122      RFCEc    PA   
+150                              Cold                   122      RFCEc    PA   
+153                       Mixed-Humid                   122      RFCEc    PA   
+162                       Mixed-Humid                   122      RFCEc    PA   
+...                               ...                   ...        ...   ...   
+549882                           Cold                   122      RFCEc    PA   
+549915                           Cold                   122      RFCEc    PA   
+549937                           Cold                   115      RFCWc    PA   
+549963                           Cold                   115      RFCWc    PA   
+549989                           Cold                   122      RFCEc    PA   
+
+                            city    county  ...  \
+bldg_id                                     ...   
+119        Not in a census Place  G4200450  ...   
+122      In another census Place  G4200450  ...   
+150      In another census Place  G4201190  ...   
+153        Not in a census Place  G4200170  ...   
+162        Not in a census Place  G4200450  ...   
+...                          ...       ...  ...   
+549882     Not in a census Place  G4200110  ...   
+549915                 Lancaster  G4200710  ...   
+549937   In another census Place  G4200050  ...   
+549963   In another census Place  G4201290  ...   
+549989     Not in a census Place  G4201110  ...   
+
+        baseline_clothesDrying_lifetime_damages_climate_srmer_central  \
+bldg_id                                                                 
+119                                                 174.19              
+122                                                 222.30              
+150                                                 257.97              
+153                                                   0.00              
+162                                                 797.77              
+...                                                    ...              
+549882                                              357.90              
+549915                                              623.19              
+549937                                              498.42              
+549963                                              355.73              
+549989                                              322.46              
+
+        baseline_clothesDrying_lifetime_damages_climate_srmer_upper  \
+bldg_id                                                               
+119                                                 621.09            
+122                                                 792.99            
+150                                                 920.24            
+153                                                   0.00            
+162                                                2845.84            
+...                                                    ...            
+549882                                             1276.71            
+549915                                             2223.08            
+549937                                             1777.22            
+549963                                             1269.04            
+549989                                             1150.30            
+
+        baseline_cooking_lifetime_mt_co2e_lrmer  \
+bldg_id                                           
+119                                        3.48   
+122                                         NaN   
+150                                         NaN   
+153                                         NaN   
+162                                         NaN   
+...                                         ...   
+549882                                      NaN   
+549915                                      NaN   
+549937                                     4.76   
+549963                                      NaN   
+549989                                     3.55   
+
+        baseline_cooking_lifetime_damages_climate_lrmer_lower  \
+bldg_id                                                         
+119                                                  81.39      
+122                                                    NaN      
+150                                                    NaN      
+153                                                    NaN      
+162                                                    NaN      
+...                                                    ...      
+549882                                                 NaN      
+549915                                                 NaN      
+549937                                              111.20      
+549963                                                 NaN      
+549989                                               82.95      
+
+         baseline_cooking_lifetime_damages_climate_lrmer_central  \
+bldg_id                                                            
+119                                                 257.42         
+122                                                    NaN         
+150                                                    NaN         
+153                                                    NaN         
+162                                                    NaN         
+...                                                    ...         
+549882                                                 NaN         
+549915                                                 NaN         
+549937                                              351.63         
+549963                                                 NaN         
+549989                                              262.34         
+
+         baseline_cooking_lifetime_damages_climate_lrmer_upper  \
+bldg_id                                                          
+119                                                 914.08       
+122                                                    NaN       
+150                                                    NaN       
+153                                                    NaN       
+162                                                    NaN       
+...                                                    ...       
+549882                                                 NaN       
+549915                                                 NaN       
+549937                                             1248.47       
+549963                                                 NaN       
+549989                                              931.50       
+
+        baseline_cooking_lifetime_mt_co2e_srmer  \
+bldg_id                                           
+119                                        3.68   
+122                                         NaN   
+150                                         NaN   
+153                                         NaN   
+162                                         NaN   
+...                                         ...   
+549882                                      NaN   
+549915                                      NaN   
+549937                                     5.07   
+549963                                      NaN   
+549989                                     3.72   
+
+        baseline_cooking_lifetime_damages_climate_srmer_lower  \
+bldg_id                                                         
+119                                                  86.09      
+122                                                    NaN      
+150                                                    NaN      
+153                                                    NaN      
+162                                                    NaN      
+...                                                    ...      
+549882                                                 NaN      
+549915                                                 NaN      
+549937                                              118.40      
+549963                                                 NaN      
+549989                                               86.97      
+
+        baseline_cooking_lifetime_damages_climate_srmer_central  \
+bldg_id                                                           
+119                                                 272.24        
+122                                                    NaN        
+150                                                    NaN        
+153                                                    NaN        
+162                                                    NaN        
+...                                                    ...        
+549882                                                 NaN        
+549915                                                 NaN        
+549937                                              374.43        
+549963                                                 NaN        
+549989                                              275.02        
+
+        baseline_cooking_lifetime_damages_climate_srmer_upper  
+bldg_id                                                        
+119                                                 966.60     
+122                                                    NaN     
+150                                                    NaN     
+153                                                    NaN     
+162                                                    NaN     
+...                                                    ...     
+549882                                                 NaN     
+549915                                                 NaN     
+549937                                             1329.45     
+549963                                                 NaN     
+549989                                              976.45     
+
+[15651 rows x 147 columns]
+
+df_baseline_damages_climate: DataFrame containing the baseline scenario data with climate damages      
+         include_all  include_heating  include_waterHeating  \
+bldg_id                                                       
+119             True             True                  True   
+122            False             True                  True   
+150            False             True                  True   
+153            False             True                  True   
+162            False             True                  True   
+...              ...              ...                   ...   
+549882         False            False                  True   
+549915         False             True                  True   
+549937          True             True                  True   
+549963         False             True                  True   
+549989          True             True                  True   
+
+         include_clothesDrying  include_cooking  valid_tech_heating  \
+bldg_id                                                               
+119                       True             True                True   
+122                       True            False                True   
+150                       True            False                True   
+153                      False            False                True   
+162                       True            False                True   
+...                        ...              ...                 ...   
+549882                    True            False               False   
+549915                    True            False                True   
+549937                    True             True                True   
+549963                    True            False                True   
+549989                    True             True                True   
+
+         valid_tech_waterHeating  valid_fuel_heating  valid_fuel_waterHeating  \
+bldg_id                                                                         
+119                         True                True                     True   
+122                         True                True                     True   
+150                         True                True                     True   
+153                         True                True                     True   
+162                         True                True                     True   
+...                          ...                 ...                      ...   
+549882                      True                True                     True   
+549915                      True                True                     True   
+549937                      True                True                     True   
+549963                      True                True                     True   
+549989                      True                True                     True   
+
+         valid_fuel_clothesDrying  ...  \
+bldg_id                            ...   
+119                          True  ...   
+122                          True  ...   
+150                          True  ...   
+153                         False  ...   
+162                          True  ...   
+...                           ...  ...   
+549882                       True  ...   
+549915                       True  ...   
+549937                       True  ...   
+549963                       True  ...   
+549989                       True  ...   
+
+         baseline_2038_cooking_damages_climate_srmer_central  \
+bldg_id                                                        
+119                                                  20.28     
+122                                                    NaN     
+150                                                    NaN     
+153                                                    NaN     
+162                                                    NaN     
+...                                                    ...     
+549882                                                 NaN     
+549915                                                 NaN     
+549937                                               27.79     
+549963                                                 NaN     
+549989                                               20.50     
+
+         baseline_2038_cooking_damages_climate_srmer_upper  \
+bldg_id                                                      
+119                                                  70.07   
+122                                                    NaN   
+150                                                    NaN   
+153                                                    NaN   
+162                                                    NaN   
+...                                                    ...   
+549882                                                 NaN   
+549915                                                 NaN   
+549937                                               96.06   
+549963                                                 NaN   
+549989                                               70.86   
+
+         baseline_cooking_lifetime_mt_co2e_lrmer  \
+bldg_id                                            
+119                                         3.48   
+122                                          NaN   
+150                                          NaN   
+153                                          NaN   
+162                                          NaN   
+...                                          ...   
+549882                                       NaN   
+549915                                       NaN   
+549937                                      4.76   
+549963                                       NaN   
+549989                                      3.55   
+
+         baseline_cooking_lifetime_damages_climate_lrmer_lower  \
+bldg_id                                                          
+119                                                  81.39       
+122                                                    NaN       
+150                                                    NaN       
+153                                                    NaN       
+162                                                    NaN       
+...                                                    ...       
+549882                                                 NaN       
+549915                                                 NaN       
+549937                                              111.20       
+549963                                                 NaN       
+549989                                               82.95       
+
+         baseline_cooking_lifetime_damages_climate_lrmer_central  \
+bldg_id                                                            
+119                                                 257.42         
+122                                                    NaN         
+150                                                    NaN         
+153                                                    NaN         
+162                                                    NaN         
+...                                                    ...         
+549882                                                 NaN         
+549915                                                 NaN         
+549937                                              351.63         
+549963                                                 NaN         
+549989                                              262.34         
+
+         baseline_cooking_lifetime_damages_climate_lrmer_upper  \
+bldg_id                                                          
+119                                                 914.08       
+122                                                    NaN       
+150                                                    NaN       
+153                                                    NaN       
+162                                                    NaN       
+...                                                    ...       
+549882                                                 NaN       
+549915                                                 NaN       
+549937                                             1248.47       
+549963                                                 NaN       
+549989                                              931.50       
+
+         baseline_cooking_lifetime_mt_co2e_srmer  \
+bldg_id                                            
+119                                         3.68   
+122                                          NaN   
+150                                          NaN   
+153                                          NaN   
+162                                          NaN   
+...                                          ...   
+549882                                       NaN   
+549915                                       NaN   
+549937                                      5.07   
+549963                                       NaN   
+549989                                      3.72   
+
+         baseline_cooking_lifetime_damages_climate_srmer_lower  \
+bldg_id                                                          
+119                                                  86.09       
+122                                                    NaN       
+150                                                    NaN       
+153                                                    NaN       
+162                                                    NaN       
+...                                                    ...       
+549882                                                 NaN       
+549915                                                 NaN       
+549937                                              118.40       
+549963                                                 NaN       
+549989                                               86.97       
+
+         baseline_cooking_lifetime_damages_climate_srmer_central  \
+bldg_id                                                            
+119                                                 272.24         
+122                                                    NaN         
+150                                                    NaN         
+153                                                    NaN         
+162                                                    NaN         
+...                                                    ...         
+549882                                                 NaN         
+549915                                                 NaN         
+549937                                              374.43         
+549963                                                 NaN         
+549989                                              275.02         
+
+         baseline_cooking_lifetime_damages_climate_srmer_upper  
+bldg_id                                                         
+119                                                 966.60      
+122                                                    NaN      
+150                                                    NaN      
+153                                                    NaN      
+162                                                    NaN      
+...                                                    ...      
+549882                                                 NaN      
+549915                                                 NaN      
+549937                                             1329.45      
+549963                                                 NaN      
+549989                                              976.45      
+
+[15651 rows x 483 columns]
+
+
+
+====================================================================================================================================================================
+## HEALTH IMPACTS
+FUNCTION CALL
+'''
+print(f"""
+====================================================================================================================================================================
+PUBLIC HEALTH IMPACTS: Baseline Scenario
+====================================================================================================================================================================
+Modified usage pattern - keeping df_euss_am_baseline_home and detailed results separate
+
+def calculate_lifetime_health_impacts(
+    df: pd.DataFrame,
+    menu_mp: int,
+    policy_scenario: str,
+    base_year: int = 2024,
+    df_baseline_damages: Optional[pd.DataFrame] = None,
+    debug: bool = False,
+    verbose: bool = False
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+
+""")
+
+# Make copies to prevent overwriting the original dataframe and compare the differences
+df_euss_am_baseline_home = df_euss_am_baseline_home.copy()
+df_baseline_damages_health = df_euss_am_baseline_home.copy()
+
+df_euss_am_baseline_home, df_baseline_damages_health = calculate_lifetime_health_impacts(
+    df=df_euss_am_baseline_home,
+    menu_mp=0,  # baseline
+    policy_scenario='No Inflation Reduction Act',
+    debug=True,
+    verbose=True  # Add this parameter
+)
+
+'''
+
+OUPUT
+====================================================================================================================================================================
+PUBLIC HEALTH IMPACTS: Baseline Scenario
+====================================================================================================================================================================
+Modified usage pattern - keeping df_euss_am_baseline_home and detailed results separate
+
+def calculate_lifetime_health_impacts(
+    df: pd.DataFrame,
+    menu_mp: int,
+    policy_scenario: str,
+    base_year: int = 2024,
+    df_baseline_damages: Optional[pd.DataFrame] = None,
+    debug: bool = False,
+    verbose: bool = False
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+
+
+
+================================================================================
+HEALTH IMPACT DATA COVERAGE ANALYSIS
+================================================================================
+
+Analyzed 67 counties across 1 states
+
+FOSSIL FUEL HEALTH IMPACT COVERAGE:
+----------------------------------------
+Model: AP2, CR Function: acs
+  - County-level data: 67/67 counties (100.0%)
+  - State-level fallback: 0/67 counties (0.0%)
+  - Missing data: 0/67 counties (0.0%)
+  - Total coverage: 67/67 counties (100.0%)
+Model: AP2, CR Function: h6c
+  - County-level data: 67/67 counties (100.0%)
+  - State-level fallback: 0/67 counties (0.0%)
+  - Missing data: 0/67 counties (0.0%)
+  - Total coverage: 67/67 counties (100.0%)
+Model: EASIUR, CR Function: acs
+  - County-level data: 67/67 counties (100.0%)
+  - State-level fallback: 0/67 counties (0.0%)
+  - Missing data: 0/67 counties (0.0%)
+  - Total coverage: 67/67 counties (100.0%)
+Model: EASIUR, CR Function: h6c
+  - County-level data: 67/67 counties (100.0%)
+  - State-level fallback: 0/67 counties (0.0%)
+  - Missing data: 0/67 counties (0.0%)
+  - Total coverage: 67/67 counties (100.0%)
+Model: InMAP, CR Function: acs
+  - County-level data: 67/67 counties (100.0%)
+  - State-level fallback: 0/67 counties (0.0%)
+  - Missing data: 0/67 counties (0.0%)
+  - Total coverage: 67/67 counties (100.0%)
+Model: InMAP, CR Function: h6c
+  - County-level data: 67/67 counties (100.0%)
+  - State-level fallback: 0/67 counties (0.0%)
+  - Missing data: 0/67 counties (0.0%)
+  - Total coverage: 67/67 counties (100.0%)
+
+ELECTRICITY HEALTH IMPACT COVERAGE:
+----------------------------------------
+Model: AP2, CR Function: acs
+  - County-level data: 67/67 counties (100.0%)
+  - State-level fallback: 0/67 counties (0.0%)
+  - Missing data: 0/67 counties (0.0%)
+  - Total coverage: 67/67 counties (100.0%)
+Model: AP2, CR Function: h6c
+  - County-level data: 67/67 counties (100.0%)
+  - State-level fallback: 0/67 counties (0.0%)
+  - Missing data: 0/67 counties (0.0%)
+  - Total coverage: 67/67 counties (100.0%)
+Model: EASIUR, CR Function: acs
+  - County-level data: 67/67 counties (100.0%)
+  - State-level fallback: 0/67 counties (0.0%)
+  - Missing data: 0/67 counties (0.0%)
+  - Total coverage: 67/67 counties (100.0%)
+Model: EASIUR, CR Function: h6c
+  - County-level data: 67/67 counties (100.0%)
+  - State-level fallback: 0/67 counties (0.0%)
+  - Missing data: 0/67 counties (0.0%)
+  - Total coverage: 67/67 counties (100.0%)
+Model: InMAP, CR Function: acs
+  - County-level data: 67/67 counties (100.0%)
+  - State-level fallback: 0/67 counties (0.0%)
+  - Missing data: 0/67 counties (0.0%)
+  - Total coverage: 67/67 counties (100.0%)
+Model: InMAP, CR Function: h6c
+  - County-level data: 67/67 counties (100.0%)
+  - State-level fallback: 0/67 counties (0.0%)
+  - Missing data: 0/67 counties (0.0%)
+  - Total coverage: 67/67 counties (100.0%)
+
+STATES COVERED IN DATA:
+----------------------------------------
+PA
+
+MISSING STATES:
+----------------------------------------
+AK, AL, AR, AZ, CA, CO, CT, DC, DE, FL
+GA, HI, IA, ID, IL, IN, KS, KY, LA, MA
+MD, ME, MI, MN, MO, MS, MT, NC, ND, NE
+NH, NJ, NM, NV, NY, OH, OK, OR, RI, SC
+SD, TN, TX, UT, VA, VT, WA, WI, WV, WY
+-- Scenario: Baseline -- 
+              scenario_prefix: 'baseline_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+Calculating Health Emissions and Damages from 2024 to 2038 for heating
+Baseline calculation for heating:
+  - 12266 homes have valid data
+  - 3385 homes have invalid data (values will be NaN)
+Calculating Health Emissions and Damages from 2024 to 2035 for waterHeating
+Baseline calculation for waterHeating:
+  - 14999 homes have valid data
+  - 652 homes have invalid data (values will be NaN)
+Calculating Health Emissions and Damages from 2024 to 2036 for clothesDrying
+Baseline calculation for clothesDrying:
+  - 14743 homes have valid data
+  - 908 homes have invalid data (values will be NaN)
+Calculating Health Emissions and Damages from 2024 to 2038 for cooking
+Baseline calculation for cooking:
+  - 7867 homes have valid data
+  - 7784 homes have invalid data (values will be NaN)
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+Masking 6 columns for category 'cooking'
+    baseline_cooking_lifetime_damages_health_AP2_acs: Masked 7784 values
+    baseline_cooking_lifetime_damages_health_AP2_h6c: Masked 7784 values
+    baseline_cooking_lifetime_damages_health_EASIUR_acs: Masked 7784 values
+    baseline_cooking_lifetime_damages_health_EASIUR_h6c: Masked 7784 values
+    baseline_cooking_lifetime_damages_health_InMAP_acs: Masked 7784 values
+    baseline_cooking_lifetime_damages_health_InMAP_h6c: Masked 7784 values
+  Total: Masked 46704 values across 6 columns
+
+Verifying masking for all calculated columns:
+Masking 360 columns for category 'cooking'
+
+====================================================================================================================================================================
+
+df_euss_am_baseline_home: DataFrame containing the baseline scenario data
+         square_footage census_region  census_division census_division_recs  \
+bldg_id                                                                       
+119              2152.0     Northeast  Middle Atlantic      Middle Atlantic   
+122              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+150              1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+153              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+162              2663.0     Northeast  Middle Atlantic      Middle Atlantic   
+...                 ...           ...              ...                  ...   
+549882           1202.0     Northeast  Middle Atlantic      Middle Atlantic   
+549915           2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+549937            885.0     Northeast  Middle Atlantic      Middle Atlantic   
+549963           1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+549989           1220.0     Northeast  Middle Atlantic      Middle Atlantic   
+
+        building_america_climate_zone  reeds_balancing_area gea_region state  \
+bldg_id                                                                        
+119                       Mixed-Humid                   122      RFCEc    PA   
+122                       Mixed-Humid                   122      RFCEc    PA   
+150                              Cold                   122      RFCEc    PA   
+153                       Mixed-Humid                   122      RFCEc    PA   
+162                       Mixed-Humid                   122      RFCEc    PA   
+...                               ...                   ...        ...   ...   
+549882                           Cold                   122      RFCEc    PA   
+549915                           Cold                   122      RFCEc    PA   
+549937                           Cold                   115      RFCWc    PA   
+549963                           Cold                   115      RFCWc    PA   
+549989                           Cold                   122      RFCEc    PA   
+
+                            city    county  ...  \
+bldg_id                                     ...   
+119        Not in a census Place  G4200450  ...   
+122      In another census Place  G4200450  ...   
+150      In another census Place  G4201190  ...   
+153        Not in a census Place  G4200170  ...   
+162        Not in a census Place  G4200450  ...   
+...                          ...       ...  ...   
+549882     Not in a census Place  G4200110  ...   
+549915                 Lancaster  G4200710  ...   
+549937   In another census Place  G4200050  ...   
+549963   In another census Place  G4201290  ...   
+549989     Not in a census Place  G4201110  ...   
+
+        baseline_clothesDrying_lifetime_damages_health_EASIUR_acs  \
+bldg_id                                                             
+119                                                  93.38          
+122                                                 115.33          
+150                                                 104.67          
+153                                                   0.00          
+162                                                 413.87          
+...                                                    ...          
+549882                                              176.14          
+549915                                              297.88          
+549937                                              107.80          
+549963                                               66.56          
+549989                                              108.32          
+
+        baseline_clothesDrying_lifetime_damages_health_EASIUR_h6c  \
+bldg_id                                                             
+119                                                 239.93          
+122                                                 296.30          
+150                                                 268.93          
+153                                                   0.00          
+162                                                1063.35          
+...                                                    ...          
+549882                                              452.56          
+549915                                              765.34          
+549937                                              276.96          
+549963                                              171.00          
+549989                                              278.29          
+
+        baseline_clothesDrying_lifetime_damages_health_InMAP_acs  \
+bldg_id                                                            
+119                                                 100.64         
+122                                                  75.71         
+150                                                 164.84         
+153                                                   0.00         
+162                                                 271.71         
+...                                                    ...         
+549882                                              258.91         
+549915                                              333.92         
+549937                                               78.34         
+549963                                               74.73         
+549989                                              140.44         
+
+        baseline_clothesDrying_lifetime_damages_health_InMAP_h6c  \
+bldg_id                                                            
+119                                                 258.56         
+122                                                 194.53         
+150                                                 423.52         
+153                                                   0.00         
+162                                                 698.10         
+...                                                    ...         
+549882                                              665.22         
+549915                                              857.94         
+549937                                              201.26         
+549963                                              192.00         
+549989                                              360.82         
+
+         baseline_cooking_lifetime_damages_health_AP2_acs  \
+bldg_id                                                     
+119                                                 41.75   
+122                                                   NaN   
+150                                                   NaN   
+153                                                   NaN   
+162                                                   NaN   
+...                                                   ...   
+549882                                                NaN   
+549915                                                NaN   
+549937                                              23.17   
+549963                                                NaN   
+549989                                              26.21   
+
+         baseline_cooking_lifetime_damages_health_AP2_h6c  \
+bldg_id                                                     
+119                                                107.28   
+122                                                   NaN   
+150                                                   NaN   
+153                                                   NaN   
+162                                                   NaN   
+...                                                   ...   
+549882                                                NaN   
+549915                                                NaN   
+549937                                              59.53   
+549963                                                NaN   
+549989                                              67.34   
+
+        baseline_cooking_lifetime_damages_health_EASIUR_acs  \
+bldg_id                                                       
+119                                                 144.99    
+122                                                    NaN    
+150                                                    NaN    
+153                                                    NaN    
+162                                                    NaN    
+...                                                    ...    
+549882                                                 NaN    
+549915                                                 NaN    
+549937                                               81.51    
+549963                                                 NaN    
+549989                                               65.76    
+
+        baseline_cooking_lifetime_damages_health_EASIUR_h6c  \
+bldg_id                                                       
+119                                                 372.51    
+122                                                    NaN    
+150                                                    NaN    
+153                                                    NaN    
+162                                                    NaN    
+...                                                    ...    
+549882                                                 NaN    
+549915                                                 NaN    
+549937                                              209.42    
+549963                                                 NaN    
+549989                                              168.97    
+
+        baseline_cooking_lifetime_damages_health_InMAP_acs  \
+bldg_id                                                      
+119                                                 164.50   
+122                                                    NaN   
+150                                                    NaN   
+153                                                    NaN   
+162                                                    NaN   
+...                                                    ...   
+549882                                                 NaN   
+549915                                                 NaN   
+549937                                               56.12   
+549963                                                 NaN   
+549989                                               63.62   
+
+        baseline_cooking_lifetime_damages_health_InMAP_h6c  
+bldg_id                                                     
+119                                                 422.64  
+122                                                    NaN  
+150                                                    NaN  
+153                                                    NaN  
+162                                                    NaN  
+...                                                    ...  
+549882                                                 NaN  
+549915                                                 NaN  
+549937                                              144.17  
+549963                                                 NaN  
+549989                                              163.46  
+
+[15651 rows x 172 columns]
+      
+df_baseline_damages_health: DataFrame containing the baseline scenario data with health damages
+         include_all  include_heating  include_waterHeating  \
+bldg_id                                                       
+119             True             True                  True   
+122            False             True                  True   
+150            False             True                  True   
+153            False             True                  True   
+162            False             True                  True   
+...              ...              ...                   ...   
+549882         False            False                  True   
+549915         False             True                  True   
+549937          True             True                  True   
+549963         False             True                  True   
+549989          True             True                  True   
+
+         include_clothesDrying  include_cooking  valid_tech_heating  \
+bldg_id                                                               
+119                       True             True                True   
+122                       True            False                True   
+150                       True            False                True   
+153                      False            False                True   
+162                       True            False                True   
+...                        ...              ...                 ...   
+549882                    True            False               False   
+549915                    True            False                True   
+549937                    True             True                True   
+549963                    True            False                True   
+549989                    True             True                True   
+
+         valid_tech_waterHeating  valid_fuel_heating  valid_fuel_waterHeating  \
+bldg_id                                                                         
+119                         True                True                     True   
+122                         True                True                     True   
+150                         True                True                     True   
+153                         True                True                     True   
+162                         True                True                     True   
+...                          ...                 ...                      ...   
+549882                      True                True                     True   
+549915                      True                True                     True   
+549937                      True                True                     True   
+549963                      True                True                     True   
+549989                      True                True                     True   
+
+         valid_fuel_clothesDrying  ...  \
+bldg_id                            ...   
+119                          True  ...   
+122                          True  ...   
+150                          True  ...   
+153                         False  ...   
+162                          True  ...   
+...                           ...  ...   
+549882                       True  ...   
+549915                       True  ...   
+549937                       True  ...   
+549963                       True  ...   
+549989                       True  ...   
+
+         baseline_2038_cooking_damages_pm25_EASIUR_h6c  \
+bldg_id                                                  
+119                                               6.83   
+122                                                NaN   
+150                                                NaN   
+153                                                NaN   
+162                                                NaN   
+...                                                ...   
+549882                                             NaN   
+549915                                             NaN   
+549937                                            3.32   
+549963                                             NaN   
+549989                                            2.01   
+
+         baseline_2038_cooking_damages_health_EASIUR_h6c  \
+bldg_id                                                    
+119                                                25.75   
+122                                                  NaN   
+150                                                  NaN   
+153                                                  NaN   
+162                                                  NaN   
+...                                                  ...   
+549882                                               NaN   
+549915                                               NaN   
+549937                                             14.34   
+549963                                               NaN   
+549989                                             11.53   
+
+         baseline_2038_cooking_damages_so2_InMAP_acs  \
+bldg_id                                                
+119                                             0.40   
+122                                              NaN   
+150                                              NaN   
+153                                              NaN   
+162                                              NaN   
+...                                              ...   
+549882                                           NaN   
+549915                                           NaN   
+549937                                          0.27   
+549963                                           NaN   
+549989                                          0.36   
+
+         baseline_2038_cooking_damages_nox_InMAP_acs  \
+bldg_id                                                
+119                                             7.49   
+122                                              NaN   
+150                                              NaN   
+153                                              NaN   
+162                                              NaN   
+...                                              ...   
+549882                                           NaN   
+549915                                           NaN   
+549937                                          3.09   
+549963                                           NaN   
+549989                                          3.60   
+
+         baseline_2038_cooking_damages_pm25_InMAP_acs  \
+bldg_id                                                 
+119                                              3.59   
+122                                               NaN   
+150                                               NaN   
+153                                               NaN   
+162                                               NaN   
+...                                               ...   
+549882                                            NaN   
+549915                                            NaN   
+549937                                           0.40   
+549963                                            NaN   
+549989                                           0.30   
+
+         baseline_2038_cooking_damages_health_InMAP_acs  \
+bldg_id                                                   
+119                                               11.48   
+122                                                 NaN   
+150                                                 NaN   
+153                                                 NaN   
+162                                                 NaN   
+...                                                 ...   
+549882                                              NaN   
+549915                                              NaN   
+549937                                             3.76   
+549963                                              NaN   
+549989                                             4.25   
+
+         baseline_2038_cooking_damages_so2_InMAP_h6c  \
+bldg_id                                                
+119                                             1.03   
+122                                              NaN   
+150                                              NaN   
+153                                              NaN   
+162                                              NaN   
+...                                              ...   
+549882                                           NaN   
+549915                                           NaN   
+549937                                          0.70   
+549963                                           NaN   
+549989                                          0.92   
+
+         baseline_2038_cooking_damages_nox_InMAP_h6c  \
+bldg_id                                                
+119                                            19.26   
+122                                              NaN   
+150                                              NaN   
+153                                              NaN   
+162                                              NaN   
+...                                              ...   
+549882                                           NaN   
+549915                                           NaN   
+549937                                          7.94   
+549963                                           NaN   
+549989                                          9.24   
+
+         baseline_2038_cooking_damages_pm25_InMAP_h6c  \
+bldg_id                                                 
+119                                              9.21   
+122                                               NaN   
+150                                               NaN   
+153                                               NaN   
+162                                               NaN   
+...                                               ...   
+549882                                            NaN   
+549915                                            NaN   
+549937                                           1.02   
+549963                                            NaN   
+549989                                           0.76   
+
+         baseline_2038_cooking_damages_health_InMAP_h6c  
+bldg_id                                                  
+119                                               29.50  
+122                                                 NaN  
+150                                                 NaN  
+153                                                 NaN  
+162                                                 NaN  
+...                                                 ...  
+549882                                              NaN  
+549915                                              NaN  
+549937                                             9.65  
+549963                                              NaN  
+549989                                            10.92  
+
+[15651 rows x 1331 columns]
+
+
+#MEASURE PACKAGE - FUNCTION CALL AND OUTPUT
+## CLIMATE AND HEALTH
+
+**FUNCTION CALL**
+print("""
+========== SCENARIO: No Inflation Reduction Act ==========
+""")
+df_euss_am_mp8_home, df_mp8_noIRA_damages_climate = calculate_lifetime_climate_impacts(
+    df=df_euss_am_mp8_home,
+    menu_mp=menu_mp, 
+    policy_scenario='No Inflation Reduction Act', 
+    df_baseline_damages=df_baseline_damages_climate,
+    verbose=False  # Add this parameter
+    )
+
+df_euss_am_mp8_home, df_mp8_noIRA_damages_health = calculate_lifetime_health_impacts(
+    df=df_euss_am_mp8_home,
+    menu_mp=menu_mp, 
+    policy_scenario='No Inflation Reduction Act', 
+    df_baseline_damages=df_baseline_damages_health,
+    debug=False,
+    verbose=False  # Add this parameter
+    )
+
+
+print("""
+========== SCENARIO: Inflation Reduction Act (AEO2023 Reference Case) ==========
+""")
+df_euss_am_mp8_home, df_mp8_IRA_damages_climate = calculate_lifetime_climate_impacts(
+    df=df_euss_am_mp8_home,
+    menu_mp=menu_mp, 
+    policy_scenario='AEO2023 Reference Case', 
+    df_baseline_damages=df_baseline_damages_climate,
+    verbose=False  # Add this parameter
+    )
+
+
+df_euss_am_mp8_home, df_mp8_IRA_damages_health = calculate_lifetime_health_impacts(
+    df=df_euss_am_mp8_home,
+    menu_mp=menu_mp, 
+    policy_scenario='AEO2023 Reference Case', 
+    df_baseline_damages=df_baseline_damages_health,
+    debug=False,
+    verbose=False  # Add this parameter
+    )
+
+
+print(f"""  
+====================================================================================================================================================================
+Post-Retrofit (MP8) Marginal Damages: WHOLE-HOME
+Scenario: No Inflation Reduction Act and AEO2023 Reference Case
+====================================================================================================================================================================
+calculate_emissions_damages.py file contains the definition for the calculate_marginal_damages function.
+Additional information on emissions and damage factor lookups can be found in the calculate_emissions_damages.py file as well. 
+      
+CLIMATE DAMAGES: No IRA and IRA-Reference
+--------------------------------------------------------
+Climate Damages (No IRA): df_mp8_noIRA_damages_climate
+{df_mp8_noIRA_damages_climate}
+
+Climate Damages (IRA): df_mp8_IRA_damages_climate
+{df_mp8_IRA_damages_climate}
+
+HEALTH DAMAGES: No IRA and IRA-Reference
+--------------------------------------------------------
+Health Damages (No IRA): df_mp8_noIRA_damages_health
+{df_mp8_noIRA_damages_health}
+
+Health Damages (IRA): df_mp8_IRA_damages_health
+{df_mp8_IRA_damages_health}
+
+SUMMARY DATAFRAME FOR MP8: df_euss_am_mp8_home
+{df_euss_am_mp8_home}
+====================================================================================================================================================================
+""")
+
+**OUTPUT**
+========== SCENARIO: No Inflation Reduction Act ==========
+
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+
+========== SCENARIO: Inflation Reduction Act (AEO2023 Reference Case) ==========
+
+-- Scenario: Inflation Reduction Act (IRA) Reference -- 
+              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+              
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+-- Scenario: Inflation Reduction Act (IRA) Reference -- 
+              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+              
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+  
+====================================================================================================================================================================
+Post-Retrofit (MP8) Marginal Damages: WHOLE-HOME
+Scenario: No Inflation Reduction Act and AEO2023 Reference Case
+====================================================================================================================================================================
+calculate_emissions_damages.py file contains the definition for the calculate_marginal_damages function.
+Additional information on emissions and damage factor lookups can be found in the calculate_emissions_damages.py file as well. 
+      
+CLIMATE DAMAGES: No IRA and IRA-Reference
+--------------------------------------------------------
+Climate Damages (No IRA): df_mp8_noIRA_damages_climate
+         include_all  include_heating  include_waterHeating  \
+bldg_id                                                       
+119             True             True                  True   
+122            False             True                  True   
+150            False             True                  True   
+153            False             True                  True   
+162            False             True                  True   
+...              ...              ...                   ...   
+549882         False            False                  True   
+549915         False             True                  True   
+549937          True             True                  True   
+549963         False             True                  True   
+549989          True             True                  True   
+
+         include_clothesDrying  include_cooking  valid_tech_heating  \
+bldg_id                                                               
+119                       True             True                True   
+122                       True            False                True   
+150                       True            False                True   
+153                      False            False                True   
+162                       True            False                True   
+...                        ...              ...                 ...   
+549882                    True            False               False   
+549915                    True            False                True   
+549937                    True             True                True   
+549963                    True            False                True   
+549989                    True             True                True   
+
+         valid_tech_waterHeating  valid_fuel_heating  valid_fuel_waterHeating  \
+bldg_id                                                                         
+119                         True                True                     True   
+122                         True                True                     True   
+150                         True                True                     True   
+153                         True                True                     True   
+162                         True                True                     True   
+...                          ...                 ...                      ...   
+549882                      True                True                     True   
+549915                      True                True                     True   
+549937                      True                True                     True   
+549963                      True                True                     True   
+549989                      True                True                     True   
+
+         valid_fuel_clothesDrying  ...  \
+bldg_id                            ...   
+119                          True  ...   
+122                          True  ...   
+150                          True  ...   
+153                         False  ...   
+162                          True  ...   
+...                           ...  ...   
+549882                       True  ...   
+549915                       True  ...   
+549937                       True  ...   
+549963                       True  ...   
+549989                       True  ...   
+
+         preIRA_mp8_cooking_avoided_damages_climate_lrmer_upper  \
+bldg_id                                                           
+119                                                  98.39        
+122                                                    NaN        
+150                                                    NaN        
+153                                                    NaN        
+162                                                    NaN        
+...                                                    ...        
+549882                                                 NaN        
+549915                                                 NaN        
+549937                                               64.98        
+549963                                                 NaN        
+549989                                              234.20        
+
+         preIRA_mp8_cooking_avoided_mt_co2e_lrmer  \
+bldg_id                                             
+119                                          0.34   
+122                                           NaN   
+150                                           NaN   
+153                                           NaN   
+162                                           NaN   
+...                                           ...   
+549882                                        NaN   
+549915                                        NaN   
+549937                                       0.24   
+549963                                        NaN   
+549989                                       0.87   
+
+         preIRA_mp8_cooking_lifetime_mt_co2e_srmer  \
+bldg_id                                              
+119                                           6.04   
+122                                            NaN   
+150                                            NaN   
+153                                            NaN   
+162                                            NaN   
+...                                            ...   
+549882                                         NaN   
+549915                                         NaN   
+549937                                        9.03   
+549963                                         NaN   
+549989                                        5.16   
+
+         preIRA_mp8_cooking_lifetime_damages_climate_srmer_lower  \
+bldg_id                                                            
+119                                                 140.60         
+122                                                    NaN         
+150                                                    NaN         
+153                                                    NaN         
+162                                                    NaN         
+...                                                    ...         
+549882                                                 NaN         
+549915                                                 NaN         
+549937                                              209.98         
+549963                                                 NaN         
+549989                                              120.19         
+
+         preIRA_mp8_cooking_avoided_damages_climate_srmer_lower  \
+bldg_id                                                           
+119                                                 -54.51        
+122                                                    NaN        
+150                                                    NaN        
+153                                                    NaN        
+162                                                    NaN        
+...                                                    ...        
+549882                                                 NaN        
+549915                                                 NaN        
+549937                                              -91.58        
+549963                                                 NaN        
+549989                                              -33.22        
+
+         preIRA_mp8_cooking_lifetime_damages_climate_srmer_central  \
+bldg_id                                                              
+119                                                 445.20           
+122                                                    NaN           
+150                                                    NaN           
+153                                                    NaN           
+162                                                    NaN           
+...                                                    ...           
+549882                                                 NaN           
+549915                                                 NaN           
+549937                                              665.14           
+549963                                                 NaN           
+549989                                              380.58           
+
+         preIRA_mp8_cooking_avoided_damages_climate_srmer_central  \
+bldg_id                                                             
+119                                                -172.96          
+122                                                    NaN          
+150                                                    NaN          
+153                                                    NaN          
+162                                                    NaN          
+...                                                    ...          
+549882                                                 NaN          
+549915                                                 NaN          
+549937                                             -290.71          
+549963                                                 NaN          
+549989                                             -105.56          
+
+         preIRA_mp8_cooking_lifetime_damages_climate_srmer_upper  \
+bldg_id                                                            
+119                                                1581.70         
+122                                                    NaN         
+150                                                    NaN         
+153                                                    NaN         
+162                                                    NaN         
+...                                                    ...         
+549882                                                 NaN         
+549915                                                 NaN         
+549937                                             2363.37         
+549963                                                 NaN         
+549989                                             1352.12         
+
+         preIRA_mp8_cooking_avoided_damages_climate_srmer_upper  \
+bldg_id                                                           
+119                                                -615.10        
+122                                                    NaN        
+150                                                    NaN        
+153                                                    NaN        
+162                                                    NaN        
+...                                                    ...        
+549882                                                 NaN        
+549915                                                 NaN        
+549937                                            -1033.92        
+549963                                                 NaN        
+549989                                             -375.67        
+
+         preIRA_mp8_cooking_avoided_mt_co2e_srmer  
+bldg_id                                            
+119                                         -2.36  
+122                                           NaN  
+150                                           NaN  
+153                                           NaN  
+162                                           NaN  
+...                                           ...  
+549882                                        NaN  
+549915                                        NaN  
+549937                                      -3.96  
+549963                                        NaN  
+549989                                      -1.44  
+
+[15651 rows x 515 columns]
+
+Climate Damages (IRA): df_mp8_IRA_damages_climate
+         include_all  include_heating  include_waterHeating  \
+bldg_id                                                       
+119             True             True                  True   
+122            False             True                  True   
+150            False             True                  True   
+153            False             True                  True   
+162            False             True                  True   
+...              ...              ...                   ...   
+549882         False            False                  True   
+549915         False             True                  True   
+549937          True             True                  True   
+549963         False             True                  True   
+549989          True             True                  True   
+
+         include_clothesDrying  include_cooking  valid_tech_heating  \
+bldg_id                                                               
+119                       True             True                True   
+122                       True            False                True   
+150                       True            False                True   
+153                      False            False                True   
+162                       True            False                True   
+...                        ...              ...                 ...   
+549882                    True            False               False   
+549915                    True            False                True   
+549937                    True             True                True   
+549963                    True            False                True   
+549989                    True             True                True   
+
+         valid_tech_waterHeating  valid_fuel_heating  valid_fuel_waterHeating  \
+bldg_id                                                                         
+119                         True                True                     True   
+122                         True                True                     True   
+150                         True                True                     True   
+153                         True                True                     True   
+162                         True                True                     True   
+...                          ...                 ...                      ...   
+549882                      True                True                     True   
+549915                      True                True                     True   
+549937                      True                True                     True   
+549963                      True                True                     True   
+549989                      True                True                     True   
+
+         valid_fuel_clothesDrying  ...  \
+bldg_id                            ...   
+119                          True  ...   
+122                          True  ...   
+150                          True  ...   
+153                         False  ...   
+162                          True  ...   
+...                           ...  ...   
+549882                       True  ...   
+549915                       True  ...   
+549937                       True  ...   
+549963                       True  ...   
+549989                       True  ...   
+
+         iraRef_mp8_cooking_avoided_damages_climate_lrmer_upper  \
+bldg_id                                                           
+119                                                 239.83        
+122                                                    NaN        
+150                                                    NaN        
+153                                                    NaN        
+162                                                    NaN        
+...                                                    ...        
+549882                                                 NaN        
+549915                                                 NaN        
+549937                                              205.79        
+549963                                                 NaN        
+549989                                              355.11        
+
+         iraRef_mp8_cooking_avoided_mt_co2e_lrmer  \
+bldg_id                                             
+119                                          0.91   
+122                                           NaN   
+150                                           NaN   
+153                                           NaN   
+162                                           NaN   
+...                                           ...   
+549882                                        NaN   
+549915                                        NaN   
+549937                                       0.78   
+549963                                        NaN   
+549989                                       1.35   
+
+         iraRef_mp8_cooking_lifetime_mt_co2e_srmer  \
+bldg_id                                              
+119                                           5.30   
+122                                            NaN   
+150                                            NaN   
+153                                            NaN   
+162                                            NaN   
+...                                            ...   
+549882                                         NaN   
+549915                                         NaN   
+549937                                        7.37   
+549963                                         NaN   
+549989                                        4.53   
+
+         iraRef_mp8_cooking_lifetime_damages_climate_srmer_lower  \
+bldg_id                                                            
+119                                                 122.61         
+122                                                    NaN         
+150                                                    NaN         
+153                                                    NaN         
+162                                                    NaN         
+...                                                    ...         
+549882                                                 NaN         
+549915                                                 NaN         
+549937                                              169.77         
+549963                                                 NaN         
+549989                                              104.81         
+
+         iraRef_mp8_cooking_avoided_damages_climate_srmer_lower  \
+bldg_id                                                           
+119                                                 -36.52        
+122                                                    NaN        
+150                                                    NaN        
+153                                                    NaN        
+162                                                    NaN        
+...                                                    ...        
+549882                                                 NaN        
+549915                                                 NaN        
+549937                                              -51.37        
+549963                                                 NaN        
+549989                                              -17.84        
+
+         iraRef_mp8_cooking_lifetime_damages_climate_srmer_central  \
+bldg_id                                                              
+119                                                 389.10           
+122                                                    NaN           
+150                                                    NaN           
+153                                                    NaN           
+162                                                    NaN           
+...                                                    ...           
+549882                                                 NaN           
+549915                                                 NaN           
+549937                                              539.42           
+549963                                                 NaN           
+549989                                              332.62           
+
+         iraRef_mp8_cooking_avoided_damages_climate_srmer_central  \
+bldg_id                                                             
+119                                                -116.86          
+122                                                    NaN          
+150                                                    NaN          
+153                                                    NaN          
+162                                                    NaN          
+...                                                    ...          
+549882                                                 NaN          
+549915                                                 NaN          
+549937                                             -164.99          
+549963                                                 NaN          
+549989                                              -57.60          
+
+         iraRef_mp8_cooking_lifetime_damages_climate_srmer_upper  \
+bldg_id                                                            
+119                                                1384.04         
+122                                                    NaN         
+150                                                    NaN         
+153                                                    NaN         
+162                                                    NaN         
+...                                                    ...         
+549882                                                 NaN         
+549915                                                 NaN         
+549937                                             1919.97         
+549963                                                 NaN         
+549989                                             1183.15         
+
+         iraRef_mp8_cooking_avoided_damages_climate_srmer_upper  \
+bldg_id                                                           
+119                                                -417.44        
+122                                                    NaN        
+150                                                    NaN        
+153                                                    NaN        
+162                                                    NaN        
+...                                                    ...        
+549882                                                 NaN        
+549915                                                 NaN        
+549937                                             -590.52        
+549963                                                 NaN        
+549989                                             -206.70        
+
+         iraRef_mp8_cooking_avoided_mt_co2e_srmer  
+bldg_id                                            
+119                                         -1.62  
+122                                           NaN  
+150                                           NaN  
+153                                           NaN  
+162                                           NaN  
+...                                           ...  
+549882                                        NaN  
+549915                                        NaN  
+549937                                      -2.30  
+549963                                        NaN  
+549989                                      -0.81  
+
+[15651 rows x 515 columns]
+
+HEALTH DAMAGES: No IRA and IRA-Reference
+--------------------------------------------------------
+Health Damages (No IRA): df_mp8_noIRA_damages_health
+         include_all  include_heating  include_waterHeating  \
+bldg_id                                                       
+119             True             True                  True   
+122            False             True                  True   
+150            False             True                  True   
+153            False             True                  True   
+162            False             True                  True   
+...              ...              ...                   ...   
+549882         False            False                  True   
+549915         False             True                  True   
+549937          True             True                  True   
+549963         False             True                  True   
+549989          True             True                  True   
+
+         include_clothesDrying  include_cooking  valid_tech_heating  \
+bldg_id                                                               
+119                       True             True                True   
+122                       True            False                True   
+150                       True            False                True   
+153                      False            False                True   
+162                       True            False                True   
+...                        ...              ...                 ...   
+549882                    True            False               False   
+549915                    True            False                True   
+549937                    True             True                True   
+549963                    True            False                True   
+549989                    True             True                True   
+
+         valid_tech_waterHeating  valid_fuel_heating  valid_fuel_waterHeating  \
+bldg_id                                                                         
+119                         True                True                     True   
+122                         True                True                     True   
+150                         True                True                     True   
+153                         True                True                     True   
+162                         True                True                     True   
+...                          ...                 ...                      ...   
+549882                      True                True                     True   
+549915                      True                True                     True   
+549937                      True                True                     True   
+549963                      True                True                     True   
+549989                      True                True                     True   
+
+         valid_fuel_clothesDrying  ...  \
+bldg_id                            ...   
+119                          True  ...   
+122                          True  ...   
+150                          True  ...   
+153                         False  ...   
+162                          True  ...   
+...                           ...  ...   
+549882                       True  ...   
+549915                       True  ...   
+549937                       True  ...   
+549963                       True  ...   
+549989                       True  ...   
+
+         preIRA_mp8_2038_cooking_damages_pm25_EASIUR_h6c  \
+bldg_id                                                    
+119                                                10.35   
+122                                                  NaN   
+150                                                  NaN   
+153                                                  NaN   
+162                                                  NaN   
+...                                                  ...   
+549882                                               NaN   
+549915                                               NaN   
+549937                                              3.22   
+549963                                               NaN   
+549989                                              3.80   
+
+         preIRA_mp8_2038_cooking_damages_health_EASIUR_h6c  \
+bldg_id                                                      
+119                                                  28.24   
+122                                                    NaN   
+150                                                    NaN   
+153                                                    NaN   
+162                                                    NaN   
+...                                                    ...   
+549882                                                 NaN   
+549915                                                 NaN   
+549937                                               12.45   
+549963                                                 NaN   
+549989                                               14.62   
+
+         preIRA_mp8_2038_cooking_damages_so2_InMAP_acs  \
+bldg_id                                                  
+119                                               4.66   
+122                                                NaN   
+150                                                NaN   
+153                                                NaN   
+162                                                NaN   
+...                                                ...   
+549882                                             NaN   
+549915                                             NaN   
+549937                                            3.10   
+549963                                             NaN   
+549989                                            4.99   
+
+         preIRA_mp8_2038_cooking_damages_nox_InMAP_acs  \
+bldg_id                                                  
+119                                               0.48   
+122                                                NaN   
+150                                                NaN   
+153                                                NaN   
+162                                                NaN   
+...                                                ...   
+549882                                             NaN   
+549915                                             NaN   
+549937                                            0.96   
+549963                                             NaN   
+549989                                            0.97   
+
+         preIRA_mp8_2038_cooking_damages_pm25_InMAP_acs  \
+bldg_id                                                   
+119                                                1.28   
+122                                                 NaN   
+150                                                 NaN   
+153                                                 NaN   
+162                                                 NaN   
+...                                                 ...   
+549882                                              NaN   
+549915                                              NaN   
+549937                                             0.67   
+549963                                              NaN   
+549989                                             1.03   
+
+         preIRA_mp8_2038_cooking_damages_health_InMAP_acs  \
+bldg_id                                                     
+119                                                  6.42   
+122                                                   NaN   
+150                                                   NaN   
+153                                                   NaN   
+162                                                   NaN   
+...                                                   ...   
+549882                                                NaN   
+549915                                                NaN   
+549937                                               4.73   
+549963                                                NaN   
+549989                                               6.99   
+
+         preIRA_mp8_2038_cooking_damages_so2_InMAP_h6c  \
+bldg_id                                                  
+119                                              11.97   
+122                                                NaN   
+150                                                NaN   
+153                                                NaN   
+162                                                NaN   
+...                                                ...   
+549882                                             NaN   
+549915                                             NaN   
+549937                                            7.96   
+549963                                             NaN   
+549989                                           12.83   
+
+         preIRA_mp8_2038_cooking_damages_nox_InMAP_h6c  \
+bldg_id                                                  
+119                                               1.24   
+122                                                NaN   
+150                                                NaN   
+153                                                NaN   
+162                                                NaN   
+...                                                ...   
+549882                                             NaN   
+549915                                             NaN   
+549937                                            2.46   
+549963                                             NaN   
+549989                                            2.49   
+
+         preIRA_mp8_2038_cooking_damages_pm25_InMAP_h6c  \
+bldg_id                                                   
+119                                                3.28   
+122                                                 NaN   
+150                                                 NaN   
+153                                                 NaN   
+162                                                 NaN   
+...                                                 ...   
+549882                                              NaN   
+549915                                              NaN   
+549937                                             1.73   
+549963                                              NaN   
+549989                                             2.63   
+
+         preIRA_mp8_2038_cooking_damages_health_InMAP_h6c  
+bldg_id                                                    
+119                                                 16.49  
+122                                                   NaN  
+150                                                   NaN  
+153                                                   NaN  
+162                                                   NaN  
+...                                                   ...  
+549882                                                NaN  
+549915                                                NaN  
+549937                                              12.15  
+549963                                                NaN  
+549989                                              17.96  
+
+[15651 rows x 1331 columns]
+
+Health Damages (IRA): df_mp8_IRA_damages_health
+         include_all  include_heating  include_waterHeating  \
+bldg_id                                                       
+119             True             True                  True   
+122            False             True                  True   
+150            False             True                  True   
+153            False             True                  True   
+162            False             True                  True   
+...              ...              ...                   ...   
+549882         False            False                  True   
+549915         False             True                  True   
+549937          True             True                  True   
+549963         False             True                  True   
+549989          True             True                  True   
+
+         include_clothesDrying  include_cooking  valid_tech_heating  \
+bldg_id                                                               
+119                       True             True                True   
+122                       True            False                True   
+150                       True            False                True   
+153                      False            False                True   
+162                       True            False                True   
+...                        ...              ...                 ...   
+549882                    True            False               False   
+549915                    True            False                True   
+549937                    True             True                True   
+549963                    True            False                True   
+549989                    True             True                True   
+
+         valid_tech_waterHeating  valid_fuel_heating  valid_fuel_waterHeating  \
+bldg_id                                                                         
+119                         True                True                     True   
+122                         True                True                     True   
+150                         True                True                     True   
+153                         True                True                     True   
+162                         True                True                     True   
+...                          ...                 ...                      ...   
+549882                      True                True                     True   
+549915                      True                True                     True   
+549937                      True                True                     True   
+549963                      True                True                     True   
+549989                      True                True                     True   
+
+         valid_fuel_clothesDrying  ...  \
+bldg_id                            ...   
+119                          True  ...   
+122                          True  ...   
+150                          True  ...   
+153                         False  ...   
+162                          True  ...   
+...                           ...  ...   
+549882                       True  ...   
+549915                       True  ...   
+549937                       True  ...   
+549963                       True  ...   
+549989                       True  ...   
+
+         iraRef_mp8_2038_cooking_damages_pm25_EASIUR_h6c  \
+bldg_id                                                    
+119                                                10.35   
+122                                                  NaN   
+150                                                  NaN   
+153                                                  NaN   
+162                                                  NaN   
+...                                                  ...   
+549882                                               NaN   
+549915                                               NaN   
+549937                                              3.22   
+549963                                               NaN   
+549989                                              3.80   
+
+         iraRef_mp8_2038_cooking_damages_health_EASIUR_h6c  \
+bldg_id                                                      
+119                                                  28.24   
+122                                                    NaN   
+150                                                    NaN   
+153                                                    NaN   
+162                                                    NaN   
+...                                                    ...   
+549882                                                 NaN   
+549915                                                 NaN   
+549937                                               12.45   
+549963                                                 NaN   
+549989                                               14.62   
+
+         iraRef_mp8_2038_cooking_damages_so2_InMAP_acs  \
+bldg_id                                                  
+119                                               4.66   
+122                                                NaN   
+150                                                NaN   
+153                                                NaN   
+162                                                NaN   
+...                                                ...   
+549882                                             NaN   
+549915                                             NaN   
+549937                                            3.10   
+549963                                             NaN   
+549989                                            4.99   
+
+         iraRef_mp8_2038_cooking_damages_nox_InMAP_acs  \
+bldg_id                                                  
+119                                               0.48   
+122                                                NaN   
+150                                                NaN   
+153                                                NaN   
+162                                                NaN   
+...                                                ...   
+549882                                             NaN   
+549915                                             NaN   
+549937                                            0.96   
+549963                                             NaN   
+549989                                            0.97   
+
+         iraRef_mp8_2038_cooking_damages_pm25_InMAP_acs  \
+bldg_id                                                   
+119                                                1.28   
+122                                                 NaN   
+150                                                 NaN   
+153                                                 NaN   
+162                                                 NaN   
+...                                                 ...   
+549882                                              NaN   
+549915                                              NaN   
+549937                                             0.67   
+549963                                              NaN   
+549989                                             1.03   
+
+         iraRef_mp8_2038_cooking_damages_health_InMAP_acs  \
+bldg_id                                                     
+119                                                  6.42   
+122                                                   NaN   
+150                                                   NaN   
+153                                                   NaN   
+162                                                   NaN   
+...                                                   ...   
+549882                                                NaN   
+549915                                                NaN   
+549937                                               4.73   
+549963                                                NaN   
+549989                                               6.99   
+
+         iraRef_mp8_2038_cooking_damages_so2_InMAP_h6c  \
+bldg_id                                                  
+119                                              11.97   
+122                                                NaN   
+150                                                NaN   
+153                                                NaN   
+162                                                NaN   
+...                                                ...   
+549882                                             NaN   
+549915                                             NaN   
+549937                                            7.96   
+549963                                             NaN   
+549989                                           12.83   
+
+         iraRef_mp8_2038_cooking_damages_nox_InMAP_h6c  \
+bldg_id                                                  
+119                                               1.24   
+122                                                NaN   
+150                                                NaN   
+153                                                NaN   
+162                                                NaN   
+...                                                ...   
+549882                                             NaN   
+549915                                             NaN   
+549937                                            2.46   
+549963                                             NaN   
+549989                                            2.49   
+
+         iraRef_mp8_2038_cooking_damages_pm25_InMAP_h6c  \
+bldg_id                                                   
+119                                                3.28   
+122                                                 NaN   
+150                                                 NaN   
+153                                                 NaN   
+162                                                 NaN   
+...                                                 ...   
+549882                                              NaN   
+549915                                              NaN   
+549937                                             1.73   
+549963                                              NaN   
+549989                                             2.63   
+
+         iraRef_mp8_2038_cooking_damages_health_InMAP_h6c  
+bldg_id                                                    
+119                                                 16.49  
+122                                                   NaN  
+150                                                   NaN  
+153                                                   NaN  
+162                                                   NaN  
+...                                                   ...  
+549882                                                NaN  
+549915                                                NaN  
+549937                                              12.15  
+549963                                                NaN  
+549989                                              17.96  
+
+[15651 rows x 1331 columns]
+
+SUMMARY DATAFRAME FOR MP8: df_euss_am_mp8_home
+         square_footage census_region  census_division census_division_recs  \
+bldg_id                                                                       
+119              2152.0     Northeast  Middle Atlantic      Middle Atlantic   
+122              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+150              1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+153              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+162              2663.0     Northeast  Middle Atlantic      Middle Atlantic   
+...                 ...           ...              ...                  ...   
+549882           1202.0     Northeast  Middle Atlantic      Middle Atlantic   
+549915           2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+549937            885.0     Northeast  Middle Atlantic      Middle Atlantic   
+549963           1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+549989           1220.0     Northeast  Middle Atlantic      Middle Atlantic   
+
+        building_america_climate_zone  reeds_balancing_area gea_region state  \
+bldg_id                                                                        
+119                       Mixed-Humid                   122      RFCEc    PA   
+122                       Mixed-Humid                   122      RFCEc    PA   
+150                              Cold                   122      RFCEc    PA   
+153                       Mixed-Humid                   122      RFCEc    PA   
+162                       Mixed-Humid                   122      RFCEc    PA   
+...                               ...                   ...        ...   ...   
+549882                           Cold                   122      RFCEc    PA   
+549915                           Cold                   122      RFCEc    PA   
+549937                           Cold                   115      RFCWc    PA   
+549963                           Cold                   115      RFCWc    PA   
+549989                           Cold                   122      RFCEc    PA   
+
+                            city    county  ...  \
+bldg_id                                     ...   
+119        Not in a census Place  G4200450  ...   
+122      In another census Place  G4200450  ...   
+150      In another census Place  G4201190  ...   
+153        Not in a census Place  G4200170  ...   
+162        Not in a census Place  G4200450  ...   
+...                          ...       ...  ...   
+549882     Not in a census Place  G4200110  ...   
+549915                 Lancaster  G4200710  ...   
+549937   In another census Place  G4200050  ...   
+549963   In another census Place  G4201290  ...   
+549989     Not in a census Place  G4201110  ...   
+
+        iraRef_mp8_clothesDrying_lifetime_damages_health_EASIUR_acs  \
+bldg_id                                                               
+119                                                 115.20            
+122                                                  59.93            
+150                                                  54.35            
+153                                                    NaN            
+162                                                 214.84            
+...                                                    ...            
+549882                                               91.50            
+549915                                              154.70            
+549937                                              128.24            
+549963                                               34.57            
+549989                                               56.26            
+
+        iraRef_mp8_clothesDrying_lifetime_damages_health_EASIUR_h6c  \
+bldg_id                                                               
+119                                                 295.99            
+122                                                 153.98            
+150                                                 139.64            
+153                                                    NaN            
+162                                                 551.98            
+...                                                    ...            
+549882                                              235.10            
+549915                                              397.47            
+549937                                              329.48            
+549963                                               88.82            
+549989                                              144.55            
+
+        iraRef_mp8_clothesDrying_lifetime_damages_health_InMAP_acs  \
+bldg_id                                                              
+119                                                  75.63           
+122                                                  39.34           
+150                                                  85.59           
+153                                                    NaN           
+162                                                 141.05           
+...                                                    ...           
+549882                                              134.50           
+549915                                              173.42           
+549937                                              129.42           
+549963                                               38.82           
+549989                                               72.95           
+
+        iraRef_mp8_clothesDrying_lifetime_damages_health_InMAP_h6c  \
+bldg_id                                                              
+119                                                 194.32           
+122                                                 101.09           
+150                                                 219.91           
+153                                                    NaN           
+162                                                 362.38           
+...                                                    ...           
+549882                                              345.57           
+549915                                              445.56           
+549937                                              332.51           
+549963                                               99.73           
+549989                                              187.42           
+
+         iraRef_mp8_cooking_lifetime_damages_health_AP2_acs  \
+bldg_id                                                       
+119                                                 190.90    
+122                                                    NaN    
+150                                                    NaN    
+153                                                    NaN    
+162                                                    NaN    
+...                                                    ...    
+549882                                                 NaN    
+549915                                                 NaN    
+549937                                               87.16    
+549963                                                 NaN    
+549989                                              129.84    
+
+         iraRef_mp8_cooking_lifetime_damages_health_AP2_h6c  \
+bldg_id                                                       
+119                                                 490.47    
+122                                                    NaN    
+150                                                    NaN    
+153                                                    NaN    
+162                                                    NaN    
+...                                                    ...    
+549882                                                 NaN    
+549915                                                 NaN    
+549937                                              223.94    
+549963                                                 NaN    
+549989                                              333.60    
+
+        iraRef_mp8_cooking_lifetime_damages_health_EASIUR_acs  \
+bldg_id                                                         
+119                                                 221.81      
+122                                                    NaN      
+150                                                    NaN      
+153                                                    NaN      
+162                                                    NaN      
+...                                                    ...      
+549882                                                 NaN      
+549915                                                 NaN      
+549937                                              116.35      
+549963                                                 NaN      
+549989                                              122.02      
+
+        iraRef_mp8_cooking_lifetime_damages_health_EASIUR_h6c  \
+bldg_id                                                         
+119                                                 569.88      
+122                                                    NaN      
+150                                                    NaN      
+153                                                    NaN      
+162                                                    NaN      
+...                                                    ...      
+549882                                                 NaN      
+549915                                                 NaN      
+549937                                              298.92      
+549963                                                 NaN      
+549989                                              313.49      
+
+        iraRef_mp8_cooking_lifetime_damages_health_InMAP_acs  \
+bldg_id                                                        
+119                                                 144.08     
+122                                                    NaN     
+150                                                    NaN     
+153                                                    NaN     
+162                                                    NaN     
+...                                                    ...     
+549882                                                 NaN     
+549915                                                 NaN     
+549937                                              117.11     
+549963                                                 NaN     
+549989                                              157.45     
+
+        iraRef_mp8_cooking_lifetime_damages_health_InMAP_h6c  
+bldg_id                                                       
+119                                                 370.18    
+122                                                    NaN    
+150                                                    NaN    
+153                                                    NaN    
+162                                                    NaN    
+...                                                    ...    
+549882                                                 NaN    
+549915                                                 NaN    
+549937                                              300.89    
+549963                                                 NaN    
+549989                                              404.53    
+
+[15651 rows x 487 columns]
+====================================================================================================================================================================

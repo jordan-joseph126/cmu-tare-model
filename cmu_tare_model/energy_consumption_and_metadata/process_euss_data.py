@@ -4,14 +4,12 @@ import re
 from typing import Any, Optional
 
 from cmu_tare_model.constants import EQUIPMENT_SPECS
-from cmu_tare_model.utils.data_validation.data_quality_utils import (
-    # get_valid_fuel_types,
+
+from cmu_tare_model.utils.validation_framework import get_valid_calculation_mask
+from cmu_tare_model.utils.calculation_utils import (
     get_all_possible_fuel_columns,
-    # get_post_retrofit_columns,
-    identify_valid_homes,
-    mask_invalid_data,
-    get_valid_calculation_mask
-)
+    identify_valid_homes
+    )
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

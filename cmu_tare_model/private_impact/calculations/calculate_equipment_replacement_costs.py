@@ -1,9 +1,19 @@
 import pandas as pd
 import numpy as np
-from scipy.stats import norm
+from typing import Dict, List, Optional, Tuple
 
-from config import PROJECT_ROOT
-print(f"Project root directory: {PROJECT_ROOT}")
+from cmu_tare_model.utils.validation_framework import (
+    create_retrofit_only_series,
+    initialize_validation_tracking,
+    apply_new_columns_to_dataframe,
+    apply_final_masking
+    )
+
+from cmu_tare_model.utils.calculation_utils import (
+    sample_costs_from_distributions,
+    filter_valid_tech_homes
+    )
+
 
 """
 ========================================================================================================================================================================
@@ -23,7 +33,9 @@ cost estimates.
 # ========================================================================================================================================================================
 
 # Replacement Cost Function and Helper Functions (Parametes, Formula)
-def get_end_use_replacement_parameters(df: pd.DataFrame, end_use: str) -> dict:
+def get_end_use_replacement_parameters(
+        df: pd.DataFrame,
+        end_use: str) -> dict:
     """
     Retrieve parameters for equipment replacement cost calculations based on end use type.
     
@@ -104,10 +116,11 @@ def get_end_use_replacement_parameters(df: pd.DataFrame, end_use: str) -> dict:
     return parameters[end_use]
 
 
-def calculate_replacement_cost_per_row(df_valid: pd.DataFrame, 
-                                       sampled_costs_dict: dict, 
-                                       menu_mp: int, 
-                                       end_use: str) -> tuple:
+def calculate_replacement_cost_per_row(
+        df_valid: pd.DataFrame, 
+        sampled_costs_dict: dict, 
+        menu_mp: int,
+        end_use: str) -> tuple:
     """
     Calculate replacement cost for each row based on the end use and associated costs.
     
@@ -121,131 +134,165 @@ def calculate_replacement_cost_per_row(df_valid: pd.DataFrame,
         tuple: (replacement_cost, cost_column_name) where:
             - replacement_cost: Array of calculated costs for each row
             - cost_column_name: String name for the cost column in the output DataFrame
+            
+    Raises:
+        ValueError: If required columns are missing from the DataFrame
+        KeyError: If required cost components are missing from sampled_costs_dict
     """
-    if end_use == 'heating':
-        # For heating, cost includes base unit cost, other costs, and capacity-based costs
-        replacement_cost = (
-            sampled_costs_dict['unitCost'] +
-            sampled_costs_dict['otherCost'] +
-            (df_valid['total_heating_load_kBtuh'] * sampled_costs_dict['cost_per_kBtuh']))
-        
-        cost_column_name = f'mp{menu_mp}_heating_replacementCost'
+    try:
+        if end_use == 'heating':
+            # Validate required columns and cost components
+            if 'total_heating_load_kBtuh' not in df_valid.columns:
+                raise ValueError("Required column 'total_heating_load_kBtuh' not found in DataFrame")
+            
+            required_components = ['unitCost', 'otherCost', 'cost_per_kBtuh']
+            for comp in required_components:
+                if comp not in sampled_costs_dict:
+                    raise KeyError(f"Required cost component '{comp}' not found for heating calculation")
+                
+            # For heating, cost includes base unit cost, other costs, and capacity-based costs
+            replacement_cost = (
+                sampled_costs_dict['unitCost'] +
+                sampled_costs_dict['otherCost'] +
+                (df_valid['total_heating_load_kBtuh'] * sampled_costs_dict['cost_per_kBtuh']))
+            
+            cost_column_name = f'mp{menu_mp}_heating_replacementCost'
 
-    elif end_use == 'waterHeating':
-        # For water heating, cost includes base unit cost and gallon-based costs
-        replacement_cost = (
-            sampled_costs_dict['unitCost'] +
-            (sampled_costs_dict['cost_per_gallon'] * df_valid['size_water_heater_gal']))
-        
-        cost_column_name = f'mp{menu_mp}_waterHeating_replacementCost'
+        elif end_use == 'waterHeating':
+            # Validate required columns and cost components
+            if 'size_water_heater_gal' not in df_valid.columns:
+                raise ValueError("Required column 'size_water_heater_gal' not found in DataFrame")
+                
+            required_components = ['unitCost', 'cost_per_gallon']
+            for comp in required_components:
+                if comp not in sampled_costs_dict:
+                    raise KeyError(f"Required cost component '{comp}' not found for water heating calculation")
+                
+            # For water heating, cost includes base unit cost and gallon-based costs
+            replacement_cost = (
+                sampled_costs_dict['unitCost'] +
+                (sampled_costs_dict['cost_per_gallon'] * df_valid['size_water_heater_gal']))
+            
+            cost_column_name = f'mp{menu_mp}_waterHeating_replacementCost'
 
-    else:
-        # For other end uses (cooking, clothes drying), only unit cost applies
-        replacement_cost = sampled_costs_dict['unitCost'] 
-        cost_column_name = f'mp{menu_mp}_{end_use}_replacementCost'
+        else:
+            # Validate cost components for clothes drying and cooking
+            if 'unitCost' not in sampled_costs_dict:
+                raise KeyError(f"Required cost component 'unitCost' not found for {end_use} calculation")
+                
+            # For other end uses (cooking, clothes drying), only unit cost applies
+            replacement_cost = sampled_costs_dict['unitCost'] 
+            cost_column_name = f'mp{menu_mp}_{end_use}_replacementCost'
+        
+        return replacement_cost, cost_column_name
+        
+    except Exception as e:
+        raise RuntimeError(f"Error calculating {end_use} replacement cost: {str(e)}")
     
-    return replacement_cost, cost_column_name
 
-
-def calculate_replacement_cost(df: pd.DataFrame, 
-                              cost_dict: dict, 
-                              menu_mp: int, 
-                              end_use: str) -> pd.DataFrame:
+def calculate_replacement_cost(
+        df: pd.DataFrame, 
+        cost_dict: dict, 
+        menu_mp: int, 
+        end_use: str) -> pd.DataFrame:
     """
     Calculate replacement costs for various end-uses based on fuel types, costs, and efficiency.
     
     This function applies probabilistic cost calculation using normal distribution sampling
-    from progressive, reference, and conservative cost estimates.
+    from progressive, reference, and conservative cost estimates. It also applies data validation
+    to ensure only valid homes are included in calculations.
     
     Args:
-        df (pd.DataFrame): DataFrame containing data for different scenarios.
-        cost_dict (dict): Dictionary with cost information for different technology and efficiency combinations.
+        df: DataFrame containing data for different scenarios.
+        cost_dict: Dictionary with cost information for different technology and efficiency combinations.
             Expected format: {(tech, efficiency): {'unitCost_progressive': float, 'unitCost_reference': float, ...}}
-        menu_mp (int): Menu option identifier (valid values: 7, 8, 9, 10).
-        end_use (str): Type of end-use ('heating', 'waterHeating', 'clothesDrying', 'cooking').
+        menu_mp: Menu option identifier (valid values: 7, 8, 9, 10).
+        end_use: Type of end-use ('heating', 'waterHeating', 'clothesDrying', 'cooking').
     
     Returns:
         pd.DataFrame: Updated DataFrame with calculated replacement costs added as new columns.
         
     Raises:
         ValueError: If menu_mp is invalid or if cost data is missing for technology/efficiency combinations.
+        RuntimeError: If an unexpected error occurs during calculation.
+        
+    Notes:
+        This function implements the validation framework:
+        1. Uses initialize_validation_tracking() to determine valid homes
+        2. Creates retrofit-only series with NaN for invalid homes
+        3. Calculates values only for valid homes with identifiable technology
+        4. Applies final verification masking
     """
+    # Add logging for calculation start
+    print(f"Starting {end_use} replacement cost calculation with validation framework")
+
+    # Initialize validation tracking
+    df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
+        df, end_use, menu_mp, verbose=True)
     
+    print(f"Found {valid_mask.sum()} valid homes out of {len(df_copy)} for {end_use} replacement")
+
     # Validate menu_mp
     valid_menu_mps = [7, 8, 9, 10]
     if menu_mp not in valid_menu_mps:
         raise ValueError("Please enter a valid measure package number for menu_mp. Should be 7, 8, 9, or 10.")
     
     # Get conditions, technology-efficiency pairs, and cost components for the specified end_use
-    params = get_end_use_replacement_parameters(df, end_use)
+    params = get_end_use_replacement_parameters(df_copy, end_use)
     conditions = params['conditions']
     tech_eff_pairs = params['tech_eff_pairs']
     cost_components = params['cost_components']
    
     # Map each condition to its tech and efficiency using numpy.select
-    # This creates arrays of technology and efficiency values based on matching conditions
     tech = np.select(conditions, [pair[0] for pair in tech_eff_pairs], default='unknown')
     eff = np.select(conditions, [pair[1] for pair in tech_eff_pairs], default=np.nan)
 
     # Convert efficiency values to appropriate types based on end use
     if end_use == 'heating':
-        # For heating, efficiencies are strings (e.g., "94 AFUE")
         eff = np.array([str(e) if e != 'unknown' else np.nan for e in eff])
     else:
-        # For other end uses, efficiencies are numeric values
         eff = np.array([float(e) if e != 'unknown' else np.nan for e in eff])
 
-    # Filter out rows with unknown technology and NaN efficiency
-    valid_indices = tech != 'unknown'
-    tech = tech[valid_indices]
-    eff = eff[valid_indices]
-    df_valid = df.loc[valid_indices].copy()
+    try:
+        # Use the standard filtering function to get only homes with both valid data and identifiable tech
+        df_valid, valid_calculation_indices, tech_filtered, eff_filtered = filter_valid_tech_homes(
+            df_copy, valid_mask, tech, eff)
+        
+        print(f"After tech filtering: {len(valid_calculation_indices)} homes remain valid for {end_use} replacement")
 
-    # Initialize dictionary to store sampled costs for each cost component
-    sampled_costs_dict = {}
-
-    # Calculate costs for each component (unitCost, otherCost, cost_per_kBtuh, etc.)
-    for cost_component in cost_components:
-        # Extract the three cost scenarios (progressive, reference, conservative) for each tech-eff pair
-        # These represent low (10th percentile), median (50th), and high (90th) cost estimates
-        progressive_costs = np.array([cost_dict.get((t, e), {}).get(f'{cost_component}_progressive', np.nan) for t, e in zip(tech, eff)])
-        reference_costs = np.array([cost_dict.get((t, e), {}).get(f'{cost_component}_reference', np.nan) for t, e in zip(tech, eff)])
-        conservative_costs = np.array([cost_dict.get((t, e), {}).get(f'{cost_component}_conservative', np.nan) for t, e in zip(tech, eff)])
-
-        # Handle missing cost data with detailed error reporting
-        if np.isnan(progressive_costs).any() or np.isnan(reference_costs).any() or np.isnan(conservative_costs).any():
-            missing_indices = np.where(np.isnan(progressive_costs) | np.isnan(reference_costs) | np.isnan(conservative_costs))
-            print(f"Missing data at indices: {missing_indices}")
-            print(f"Tech with missing data: {tech[missing_indices]}")
-            print(f"Efficiencies with missing data: {eff[missing_indices]}")
+        if df_valid.empty:
+            print(f"Warning: No valid homes found for {end_use} replacement cost calculation.")
             
-            raise ValueError(f"Missing cost data for some technology and efficiency combinations in cost_component {cost_component}")
+        # Sample costs from distributions only if we have valid homes
+        if not df_valid.empty:
+            sampled_costs_dict = sample_costs_from_distributions(tech_filtered, eff_filtered, cost_dict, cost_components)
+            
+            # Calculate the replacement cost for each row
+            replacement_cost, cost_column_name = calculate_replacement_cost_per_row(df_valid, sampled_costs_dict, menu_mp, end_use)
+        else:
+            cost_column_name = f'mp{menu_mp}_{end_use}_replacementCost'
+        
+        # Initialize the result series properly
+        result_series = create_retrofit_only_series(df_copy, valid_mask)
+        
+        # Update only for homes that have valid data AND match our tech criteria
+        if not df_valid.empty:
+            result_series.loc[valid_calculation_indices] = np.round(replacement_cost, 2)
+    except Exception as e:
+        raise RuntimeError(f"Error in {end_use} replacement cost calculation: {str(e)}")
 
-        # Calculate mean and standard deviation for normal distribution
-        # Assumes costs represent 10th, 50th, and 90th percentiles of a normal distribution
-        mean_costs = reference_costs  # 50th percentile = mean for normal distribution
-        # Calculate standard deviation using the difference between 90th and 10th percentiles
-        std_costs = (conservative_costs - progressive_costs) / (norm.ppf(0.90) - norm.ppf(0.10))
+    # Then create the DataFrame column
+    df_new_columns = pd.DataFrame({cost_column_name: result_series})    
 
-        # Sample from the normal distribution for each row to create cost variability
-        sampled_costs = np.random.normal(loc=mean_costs, scale=std_costs)
-        sampled_costs_dict[cost_component] = sampled_costs
+    # Track the column for masking
+    category_columns_to_mask.append(cost_column_name)
+    
+    # Apply new columns to DataFrame with proper tracking
+    df_copy, all_columns_to_mask = apply_new_columns_to_dataframe(
+        df_copy, df_new_columns, end_use, category_columns_to_mask, all_columns_to_mask)
+    
+    # Apply final verification masking for consistency
+    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=True)
 
-    # Calculate the replacement cost for each row based on the end use
-    replacement_cost, cost_column_name = calculate_replacement_cost_per_row(df_valid, sampled_costs_dict, menu_mp, end_use)
+    return df_copy
 
-    # Add the calculated costs to a new DataFrame, rounded to 2 decimal places
-    df_new_columns = pd.DataFrame({cost_column_name: np.round(replacement_cost, 2)}, index=df_valid.index)
-
-    # Identify overlapping columns between the new and existing DataFrame to avoid duplicates
-    overlapping_columns = df_new_columns.columns.intersection(df.columns)
-
-    # Drop overlapping columns from the original DataFrame if they exist
-    if not overlapping_columns.empty:
-        df.drop(columns=overlapping_columns, inplace=True)
-
-    # Merge new columns into the original DataFrame using join
-    # Left join ensures all original rows are preserved
-    df = df.join(df_new_columns, how='left')
-
-    return df

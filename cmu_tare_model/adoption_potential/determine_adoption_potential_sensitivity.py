@@ -5,11 +5,19 @@ from typing import Dict, List, Tuple, Optional
 from cmu_tare_model.constants import SCC_ASSUMPTIONS, RCM_MODELS, CR_FUNCTIONS, UPGRADE_COLUMNS
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 
+from cmu_tare_model.utils.validation_framework import (
+    create_retrofit_only_series,
+    initialize_validation_tracking,
+    apply_new_columns_to_dataframe,
+    apply_final_masking
+    )
 
-def validate_input_parameters(menu_mp: int,
-                              policy_scenario: str,
-                              rcm_model: str,
-                              cr_function: str
+
+def validate_input_parameters(
+        menu_mp: int,
+        policy_scenario: str,
+        rcm_model: str,
+        cr_function: str
 ) -> None:
     """
     Validates that input parameters meet expected criteria.
@@ -44,12 +52,13 @@ def validate_input_parameters(menu_mp: int,
             raise ValueError(f"menu_mp must be an integer, got {type(menu_mp).__name__}: {menu_mp}")
 
 
-def adoption_decision(df: pd.DataFrame,
-                      menu_mp: int,
-                      policy_scenario: str,
-                      rcm_model: str,
-                      cr_function: str,
-                      climate_sensitivity: bool = False  # Default is false because we use $190USD2020/mt in Joseph et al. (2025)
+def adoption_decision(
+        df: pd.DataFrame,
+        menu_mp: int,
+        policy_scenario: str,
+        rcm_model: str,
+        cr_function: str,
+        climate_sensitivity: bool = False  # Default is false because we use $190USD2020/mt in Joseph et al. (2025)
 ) -> pd.DataFrame:
     """
     Updates the provided DataFrame with new columns that reflect decisions about equipment adoption
@@ -120,14 +129,22 @@ def adoption_decision(df: pd.DataFrame,
             raise ValueError("SCC_ASSUMPTIONS is empty. Cannot perform climate sensitivity analysis.")
         
         # ========== PROCESS EACH EQUIPMENT CATEGORY ==========
-        
         for category, upgrade_column in UPGRADE_COLUMNS.items():
             try:
                 print(f"\nCalculating Adoption Potential for {category} under '{policy_scenario}' Scenario...")
                 
+                # Step 1): Initialize validation tracking for this category (Get valid mask)
+                df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
+                    df_copy, category, menu_mp, verbose=True)
+                
+                print(f"Found {valid_mask.sum()} valid homes out of {len(df_copy)} for {category} adoption potential")
+                
                 # Process each SCC assumption for climate damages
                 for scc in scc_assumptions:
                     try:
+                        # Create a DataFrame for new columns
+                        df_new_columns = pd.DataFrame(index=df_copy.index)
+                        
                         # Log processing information
                         print(f"""\n --- Public NPV Sensitivity ---
                               Climate Impact Sensitivity:
@@ -137,26 +154,33 @@ def adoption_decision(df: pd.DataFrame,
                                 rcm_model Model: {rcm_model} | cr_function Function: {cr_function}""")
                         
                         # ========== PREPARE COLUMN NAMES ==========
-                        
-                        # Create column for sensitivity analysis identification
-                        health_sensitivity_col = f'{scenario_prefix}{category}_health_sensitivity'
-                        df_new_columns[health_sensitivity_col] = f'{rcm_model}, {cr_function}'
-                        
-                        # Define column names for NPV values
+                        # Create variable names for NPV columns (private and public impact progams)
                         lessWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_lessWTP'
                         moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP'
                         public_npv_col = f'{scenario_prefix}{category}_public_npv_{scc}_{rcm_model}_{cr_function}'
                         rebate_col = f'mp{menu_mp}_{category}_rebate_amount'
                         
-                        # Define column names for calculated values
-                        addition_public_benefit = f'{scenario_prefix}{category}_benefit_{scc}_{rcm_model}_{cr_function}'
-                        lessWTP_total_npv_col = f'{scenario_prefix}{category}_total_npv_lessWTP_{scc}_{rcm_model}_{cr_function}'
-                        moreWTP_total_npv_col = f'{scenario_prefix}{category}_total_npv_moreWTP_{scc}_{rcm_model}_{cr_function}'
-                        adoption_col_name = f'{scenario_prefix}{category}_adoption_{scc}_{rcm_model}_{cr_function}'
-                        retrofit_col_name = f'{scenario_prefix}{category}_impact_{scc}_{rcm_model}_{cr_function}'
-                        
+                        # Define column names for calculated values using a dictionary
+                        new_col_names = {
+                            'health_sensitivity': f'{scenario_prefix}{category}_health_sensitivity',
+                            'benefit': f'{scenario_prefix}{category}_benefit_{scc}_{rcm_model}_{cr_function}',
+                            'lessWTP_total_npv': f'{scenario_prefix}{category}_total_npv_lessWTP_{scc}_{rcm_model}_{cr_function}',
+                            'moreWTP_total_npv': f'{scenario_prefix}{category}_total_npv_moreWTP_{scc}_{rcm_model}_{cr_function}',
+                            'adoption': f'{scenario_prefix}{category}_adoption_{scc}_{rcm_model}_{cr_function}',
+                            'impact': f'{scenario_prefix}{category}_impact_{scc}_{rcm_model}_{cr_function}'
+                        }
+
+                        # Track all output columns for masking
+                        category_columns_to_mask.extend(new_col_names.values())
+
+                        # Step 2.) Initialize result columns with zeros for valid homes, NaN for others
+                        for col_name in new_col_names.values():
+                            if col_name == new_col_names['health_sensitivity']:
+                                df_new_columns[col_name] = f'{rcm_model}, {cr_function}'
+                            else:
+                                df_new_columns[col_name] = create_retrofit_only_series(df_copy, valid_mask)
+
                         # ========== VALIDATE AND CONVERT COLUMNS ==========
-                        
                         # Check for required NPV columns
                         required_cols = [lessWTP_private_npv_col, moreWTP_private_npv_col, public_npv_col]
                         missing_required_cols = [col for col in required_cols if col not in df_copy.columns]
@@ -178,56 +202,93 @@ def adoption_decision(df: pd.DataFrame,
                                     print(f"Warning: Optional column '{col}' does not exist in the DataFrame.")
                         
                         # ========== CALCULATE DERIVED VALUES ==========
-                        
+                        # Step 3 & 4.) Calculate and update ONLY valid homes
                         # Calculate additional public benefit
                         if policy_scenario == 'No Inflation Reduction Act':
                             # No IRA Rebate so no "Additional Public Benefit"
-                            df_new_columns[addition_public_benefit] = 0.0
+                            df_new_columns.loc[valid_mask, new_col_names['benefit']] = 0.0
                         else:
                             # If rebate column exists, use it; otherwise, assume zero
                             if rebate_col in df_copy.columns:
-                                df_new_columns[addition_public_benefit] = (df_copy[public_npv_col] - df_copy[rebate_col]).clip(lower=0)
+                                valid_rows = valid_mask & df_copy[public_npv_col].notna() & df_copy[rebate_col].notna()
+                                df_new_columns.loc[valid_rows, new_col_names['benefit']] = (
+                                    df_copy.loc[valid_rows, public_npv_col] - 
+                                    df_copy.loc[valid_rows, rebate_col]).clip(lower=0)
                             else:
-                                rebate_values = pd.Series(0.0, index=df_copy.index)
-                                df_new_columns[addition_public_benefit] = (df_copy[public_npv_col] - rebate_values).clip(lower=0)
-                        
-                        # Calculate total NPV values
-                        df_new_columns[lessWTP_total_npv_col] = df_copy[lessWTP_private_npv_col] + df_copy[public_npv_col]
-                        df_new_columns[moreWTP_total_npv_col] = df_copy[moreWTP_private_npv_col] + df_copy[public_npv_col]
-                        
+                                valid_rows = valid_mask & df_copy[public_npv_col].notna()
+                                df_new_columns.loc[valid_rows, new_col_names['benefit']] = (df_copy.loc[valid_rows, public_npv_col]).clip(lower=0)
+
+                        # Calculate total NPV values - only for valid homes with non-null inputs
+                        valid_npv_rows = valid_mask & df_copy[lessWTP_private_npv_col].notna() & df_copy[public_npv_col].notna()
+                        df_new_columns.loc[valid_npv_rows, new_col_names['lessWTP_total_npv']] = (
+                            df_copy.loc[valid_npv_rows, lessWTP_private_npv_col] + 
+                            df_copy.loc[valid_npv_rows, public_npv_col]
+                        )
+
+                        valid_npv_rows = valid_mask & df_copy[moreWTP_private_npv_col].notna() & df_copy[public_npv_col].notna()
+                        df_new_columns.loc[valid_npv_rows, new_col_names['moreWTP_total_npv']] = (
+                            df_copy.loc[valid_npv_rows, moreWTP_private_npv_col] + 
+                            df_copy.loc[valid_npv_rows, public_npv_col]
+                        )
+
                         # ========== DETERMINE ADOPTION TIERS AND PUBLIC IMPACTS ==========
-                        
-                        # Initialize with default values
-                        df_new_columns[adoption_col_name] = 'Tier 4: Averse'
-                        df_new_columns[retrofit_col_name] = 'No Retrofit'
-                        
-                        # Determine adoption tiers
-                        conditions = [
-                            df_copy[upgrade_column].isna(),  # Existing equipment (no upgrade)
-                            df_copy[lessWTP_private_npv_col] > 0,  # Tier 1: Economically feasible
-                            (df_copy[lessWTP_private_npv_col] < 0) & (df_copy[moreWTP_private_npv_col] > 0),  # Tier 2: Feasible vs alternative
-                            (df_copy[lessWTP_private_npv_col] < 0) & (df_copy[moreWTP_private_npv_col] < 0) & (df_new_columns[moreWTP_total_npv_col] > 0),  # Tier 3: Subsidy-dependent
-                        ]
-                        
-                        choices = [
-                            'Existing Equipment', 
-                            'Tier 1: Feasible', 
-                            'Tier 2: Feasible vs. Alternative', 
-                            'Tier 3: Subsidy-Dependent Feasibility'
-                        ]
-                        
-                        df_new_columns[adoption_col_name] = np.select(conditions, choices, default='Tier 4: Averse')
-                        
-                        # Determine public impacts
-                        public_conditions = [
-                            df_copy[public_npv_col] == 0,  # Zero public NPV = no retrofit
-                            df_copy[public_npv_col] > 0,  # Positive public NPV = benefit
-                            df_copy[public_npv_col] < 0   # Negative public NPV = detriment
-                        ]
-                        
-                        public_choices = ['No Retrofit', 'Public Benefit', 'Public Detriment']
-                        df_new_columns[retrofit_col_name] = np.select(public_conditions, public_choices, default='No Retrofit')
-                        
+                        # # Initialize with more descriptive default values for ALL homes
+                        # df_new_columns[new_col_names['adoption']] = 'N/A: Invalid Fuel/Tech or No Upgrade'
+                        # df_new_columns[new_col_names['impact']] = 'N/A: Invalid Fuel/Tech or No Upgrade'
+
+                        # Initialize with more descriptive default values for ALL homes
+                        df_new_columns[new_col_names['adoption']] = 'N/A: Invalid Baseline Fuel/Tech'
+                        df_new_columns[new_col_names['impact']] = 'N/A: Invalid Baseline Fuel/Tech'
+
+                        # Set Tier 4 as default for valid homes with NPV data
+                        valid_homes_with_npv = valid_mask & df_copy[lessWTP_private_npv_col].notna() & df_copy[moreWTP_private_npv_col].notna()
+                        df_new_columns.loc[valid_homes_with_npv, new_col_names['adoption']] = 'Tier 4: Averse'
+
+                        # Process homes with no upgrades
+                        no_upgrade_mask = valid_mask & df_copy[upgrade_column].isna()
+                        df_new_columns.loc[no_upgrade_mask, new_col_names['adoption']] = 'N/A: Already Upgraded!'
+
+                        # Process Tier 1: Economically feasible
+                        tier1_mask = valid_mask & df_copy[lessWTP_private_npv_col].notna() & (df_copy[lessWTP_private_npv_col] > 0)
+                        df_new_columns.loc[tier1_mask, new_col_names['adoption']] = 'Tier 1: Feasible'
+
+                        # Process Tier 2: Feasible vs alternative
+                        tier2_mask = valid_mask & df_copy[lessWTP_private_npv_col].notna() & df_copy[moreWTP_private_npv_col].notna() & \
+                                    (df_copy[lessWTP_private_npv_col] < 0) & (df_copy[moreWTP_private_npv_col] > 0)
+                        df_new_columns.loc[tier2_mask, new_col_names['adoption']] = 'Tier 2: Feasible vs. Alternative'
+
+                        # Process Tier 3: Subsidy-dependent
+                        tier3_mask = valid_mask & df_copy[lessWTP_private_npv_col].notna() & df_copy[moreWTP_private_npv_col].notna() & \
+                                    df_new_columns[new_col_names['moreWTP_total_npv']].notna() & \
+                                    (df_copy[lessWTP_private_npv_col] < 0) & (df_copy[moreWTP_private_npv_col] < 0) & \
+                                    (df_new_columns[new_col_names['moreWTP_total_npv']] > 0)
+                        df_new_columns.loc[tier3_mask, new_col_names['adoption']] = 'Tier 3: Subsidy-Dependent Feasibility'
+
+                        # Determine public impacts - only for valid homes
+                        # Initialize impact to "No Impact" for valid homes
+                        df_new_columns.loc[valid_mask, new_col_names['impact']] = 'N/A: Already Upgraded!'
+
+                        # Zero public NPV = zero impact
+                        zero_impact_mask = valid_mask & df_copy[public_npv_col].notna() & (df_copy[public_npv_col] == 0)
+                        df_new_columns.loc[zero_impact_mask, new_col_names['impact']] = 'Public NPV is Zero'
+
+                        # Positive public NPV = benefit
+                        benefit_mask = valid_mask & df_copy[public_npv_col].notna() & (df_copy[public_npv_col] > 0)
+                        df_new_columns.loc[benefit_mask, new_col_names['impact']] = 'Public Benefit'
+
+                        # Negative public NPV = detriment
+                        detriment_mask = valid_mask & df_copy[public_npv_col].notna() & (df_copy[public_npv_col] < 0)
+                        df_new_columns.loc[detriment_mask, new_col_names['impact']] = 'Public Detriment'
+
+                        # Apply new columns to DataFrame with proper tracking
+                        # This utility function handles common tasks when adding new calculated columns:
+                        # - Tracks columns for validation
+                        # - Handles overlapping columns
+                        # - Joins new columns to the original DataFrame
+                        df_copy, all_columns_to_mask = apply_new_columns_to_dataframe(
+                            df_copy, df_new_columns, category, category_columns_to_mask, all_columns_to_mask
+                        )
+
                     except Exception as e:
                         print(f"Error processing SCC assumption {scc} for {category}: {str(e)}")
                         # Continue with next SCC assumption rather than failing completely
@@ -238,17 +299,9 @@ def adoption_decision(df: pd.DataFrame,
                 # Continue with next equipment category rather than failing completely
                 continue
         
-        # ========== MERGE RESULTS AND RETURN ==========
-        
-        # Identify overlapping columns between the new and existing DataFrame
-        overlapping_columns = df_new_columns.columns.intersection(df_copy.columns)
-        
-        # Drop overlapping columns from df_copy
-        if not overlapping_columns.empty:
-            df_copy.drop(columns=overlapping_columns, inplace=True)
-        
-        # Merge new columns into df_copy
-        df_copy = df_copy.join(df_new_columns, how='left')
+        # ========== APPLY FINAL VERIFICATION MASKING ==========
+        # Step 5.) Apply final verification masking for all tracked columns
+        df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=True)
         
         # Return the updated DataFrame
         return df_copy
@@ -258,4 +311,3 @@ def adoption_decision(df: pd.DataFrame,
         error_message = f"An unexpected error occurred in adoption_decision: {str(e)}"
         print(f"ERROR: {error_message}")
         raise RuntimeError(error_message) from e
-    

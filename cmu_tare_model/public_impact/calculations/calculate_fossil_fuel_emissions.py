@@ -2,7 +2,7 @@ import pandas as pd
 from typing import Dict, Optional
 
 from cmu_tare_model.constants import POLLUTANTS
-from cmu_tare_model.utils.data_validation.retrofit_status_utils import (
+from cmu_tare_model.utils.validation_framework import (
     get_retrofit_homes_mask,
     create_retrofit_only_series,
 )

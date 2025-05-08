@@ -1,13 +1,14 @@
 import pandas as pd
 import numpy as np
-from typing import Tuple, Dict, Any, Union, Optional
+from typing import Tuple
 
 from cmu_tare_model.constants import EQUIPMENT_SPECS
 from cmu_tare_model.utils.precompute_hdd_factors import precompute_hdd_factors
-from cmu_tare_model.utils.data_validation.data_quality_utils import (
+from cmu_tare_model.utils.validation_framework import (
     mask_category_specific_data,
     get_valid_calculation_mask,
 )
+
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 PROJECT FUTURE ENERGY CONSUMPTION

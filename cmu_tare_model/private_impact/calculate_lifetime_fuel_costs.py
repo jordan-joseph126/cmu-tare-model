@@ -1,28 +1,49 @@
 import pandas as pd
-from typing import Optional, Tuple, Dict
+import numpy as np
+from typing import Optional, Tuple, Dict, List
 
 from cmu_tare_model.constants import EQUIPMENT_SPECS, FUEL_MAPPING
 from cmu_tare_model.utils.modeling_params import define_scenario_params
+from cmu_tare_model.utils.validation_framework import (
+    apply_final_masking,
+    create_retrofit_only_series,
+    calculate_avoided_values,
+    initialize_validation_tracking
+)
+from cmu_tare_model.utils.calculation_utils import (
+    validate_common_parameters,
+    apply_temporary_validation_and_mask
+)
 
 def calculate_lifetime_fuel_costs(
     df: pd.DataFrame,
     menu_mp: int,
     policy_scenario: str,
-    df_baseline_costs: Optional[pd.DataFrame] = None
+    df_baseline_costs: Optional[pd.DataFrame] = None,
+    verbose: bool = True
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Calculate lifetime fuel costs for each equipment category.
+    """
+    Calculate lifetime fuel costs for each equipment category.
 
     This function processes each equipment category over its lifetime, computing annual
     and lifetime fuel costs. Results are combined into two DataFrames:
     a main summary (df_main) and a detailed annual breakdown (df_detailed).
+    
+    This function follows the five-step validation framework:
+    1. Mask Initialization: Identifies valid homes using inclusion flags and retrofit status
+    2. Series Initialization: Creates result series with zeros for valid homes, NaN for others
+    3. Valid-Only Calculation: Performs calculations only for valid homes
+    4. Valid-Only Updates: Uses list-based collection of yearly values instead of incremental updates
+    5. Final Masking: Applies consistent masking to all result columns
 
     Args:
-        df (pd.DataFrame): Input DataFrame containing equipment consumption data, region info, etc.
-        menu_mp (int): Measure package identifier (0 for baseline, nonzero for different scenarios).
-        policy_scenario (str): Determines fuel price scenario inputs 
+        df: Input DataFrame containing equipment consumption data, region info, etc.
+        menu_mp: Measure package identifier (0 for baseline, nonzero for different scenarios).
+        policy_scenario: Determines fuel price scenario inputs 
             (e.g., 'No Inflation Reduction Act' or 'AEO2023 Reference Case').
-        df_baseline_costs (Optional[pd.DataFrame]): Baseline costs for computing operational savings.
+        df_baseline_costs: Optional DataFrame with baseline costs for computing operational savings.
             Default is None.
+        verbose: Whether to print detailed processing information. Default is True.
 
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]:
@@ -34,13 +55,30 @@ def calculate_lifetime_fuel_costs(
         ValueError: If an invalid policy_scenario is provided.
         KeyError: If required columns are missing from the input DataFrame.
     """
-    # Create a copy of the input df
-    # Then initialize the detailed dataframe (df_copy will become df_main)
-    df_copy = df.copy()
-    df_detailed = pd.DataFrame(index=df_copy.index)
+    # ===== STEP 0: Validate input parameters =====
+    menu_mp, policy_scenario, _ = validate_common_parameters(
+        menu_mp, policy_scenario, None)
     
+    # Create a copy of the input df
+    df_copy = df.copy()
+    
+    # Initialize the detailed DataFrame with the same index as df_copy
+    df_detailed = pd.DataFrame(index=df_copy.index)
+
+    # Copy inclusion flags and validation columns from df_copy to df_detailed
+    validation_prefixes = ["include_", "valid_tech_", "valid_fuel_"]
+    validation_cols = []
+    for prefix in validation_prefixes:
+        validation_cols.extend([col for col in df_copy.columns if col.startswith(prefix)])
+        
+    for col in validation_cols:
+        df_detailed[col] = df_copy[col]
+
     # Initialize a dictionary to store lifetime fuel costs columns
     lifetime_columns_data = {}
+
+    # Initialize dictionary to track columns for masking verification by category
+    all_columns_to_mask = {category: [] for category in EQUIPMENT_SPECS}
 
     try:
         # Validate required columns
@@ -50,7 +88,6 @@ def calculate_lifetime_fuel_costs(
             raise KeyError(f"Required columns missing from input dataframe: {', '.join(missing_columns)}")
 
         # Determine the scenario prefix and fuel price lookup based on menu_mp and policy_scenario
-        # Note: We always use 'central' price assumption (removed sensitivity parameter)
         scenario_prefix, _, _, _, _, lookup_fuel_prices = define_scenario_params(
             menu_mp=menu_mp,
             policy_scenario=policy_scenario
@@ -64,14 +101,22 @@ def calculate_lifetime_fuel_costs(
 
     # Loop over each equipment category and its lifetime
     for category, lifetime in EQUIPMENT_SPECS.items():
-        # Use try-except to wrap the entire category's processing
         try:
-            print(f"Calculating Fuel Costs from 2024 to {2024 + lifetime} for {category}")
-                    
-            # Initialize lifetime fuel costs for this category
-            lifetime_fuel_costs = pd.Series(0.0, index=df_copy.index)
+            if verbose:
+                print(f"Calculating Fuel Costs from 2024 to {2024 + lifetime} for {category}")
+            
+            # ===== STEP 1: Initialize validation tracking =====
+            df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
+                df_copy, category, menu_mp, verbose=verbose)
+            
+            # ===== STEP 2: Initialize result series with template =====
+            # Use create_retrofit_only_series to properly initialize with zeros for valid homes, NaN for others
+            fuel_costs_template = create_retrofit_only_series(df_copy, valid_mask)
+            
+            # Create a list to store yearly costs (instead of incrementally updating a single Series)
+            yearly_costs_list = []
 
-            # If baseline calculations are required
+            # If baseline calculations are required, set up fuel type mapping
             if menu_mp == 0:
                 # Validate fuel type column exists
                 fuel_col = f'base_{category}_fuel'
@@ -87,6 +132,7 @@ def calculate_lifetime_fuel_costs(
             else:
                 is_elec_or_gas = None
 
+            # ===== STEP 3 & 4: Valid-Only Calculation and Updates =====
             # Loop over each year in the equipment's lifetime
             for year in range(1, lifetime + 1):
                 year_label = year + 2023
@@ -101,16 +147,33 @@ def calculate_lifetime_fuel_costs(
                         lookup_fuel_prices=lookup_fuel_prices,
                         policy_scenario=policy_scenario,
                         scenario_prefix=scenario_prefix,
-                        is_elec_or_gas=is_elec_or_gas
+                        is_elec_or_gas=is_elec_or_gas,
+                        valid_mask=valid_mask  # Pass the valid mask for proper masking
                     )
                     
-                    # Accumulate annual costs
-                    lifetime_fuel_costs += annual_cost_value
-
-                    # If there are results, attach them to the detailed DataFrame
-                    if annual_costs:
-                        df_detailed = pd.concat([df_detailed, pd.DataFrame(annual_costs, index=df_copy.index)], axis=1)
+                    # Apply validation mask to annual costs (for measure packages)
+                    if menu_mp != 0:
+                        annual_cost_values = annual_cost_value.copy()
+                        annual_cost_values.loc[~valid_mask] = 0.0
+                    else:
+                        annual_cost_values = annual_cost_value
                     
+                    # Add to list (instead of incrementally updating)
+                    yearly_costs_list.append(annual_cost_values)
+
+                    # If baseline costs are provided, include baseline annual costs for reference only
+                    if menu_mp != 0 and df_baseline_costs is not None:
+                        baseline_col = f'baseline_{year_label}_{category}_fuelCost'
+                        if baseline_col in df_baseline_costs.columns:
+                            annual_costs[baseline_col] = df_baseline_costs[baseline_col]
+                            category_columns_to_mask.append(baseline_col)
+
+                    # Add annual costs to detailed DataFrame
+                    if annual_costs:
+                        annual_df = pd.DataFrame(annual_costs, index=df_copy.index)
+                        df_detailed = pd.concat([df_detailed, annual_df], axis=1)
+                        category_columns_to_mask.extend(annual_costs.keys())
+
                 except KeyError as e:
                     raise RuntimeError(f"Missing fuel price data for year {year_label}, category '{category}': {e}")
                 except ValueError as e:
@@ -118,28 +181,57 @@ def calculate_lifetime_fuel_costs(
                 except Exception as e:
                     raise RuntimeError(f"Error processing year {year_label} for category '{category}': {e}")
 
+            # Calculate lifetime fuel costs using vectorized operations
+            if yearly_costs_list:
+                # Convert list to DataFrame and sum
+                costs_df = pd.concat(yearly_costs_list, axis=1)
+                lifetime_fuel_costs = costs_df.sum(axis=1)
+                
+                # Apply validation mask for measure packages
+                if menu_mp != 0:
+                    lifetime_fuel_costs = pd.Series(
+                        np.where(valid_mask, lifetime_fuel_costs, np.nan),
+                        index=lifetime_fuel_costs.index
+                    )
+            else:
+                # Use template if no costs were calculated
+                lifetime_fuel_costs = fuel_costs_template
+
             # Prepare lifetime columns
             lifetime_dict = {}
             costs_col = f'{scenario_prefix}{category}_lifetime_fuelCost'
             lifetime_dict[costs_col] = lifetime_fuel_costs
+            category_columns_to_mask.append(costs_col)
                 
-            # Calculate avoided costs if baseline data is provided
+            # Calculate avoided costs at lifetime level if baseline data is provided
+            # This is consistent with how climate and health modules handle avoided calculations
             if menu_mp != 0 and df_baseline_costs is not None:
                 baseline_costs_col = f'baseline_{category}_lifetime_fuelCost'
-                savings_cost_col = f'{scenario_prefix}{category}_lifetime_savings_fuelCost'
-
-                # Check if baseline column exists before calculating operational savings
                 if baseline_costs_col in df_baseline_costs.columns:
-                    # Subtract measure package costs from baseline
-                    lifetime_dict[savings_cost_col] = df_baseline_costs[baseline_costs_col] - lifetime_dict[costs_col]
-                else:
-                    # Log warning but continue processing
+                    savings_cost_col = f'{scenario_prefix}{category}_lifetime_savings_fuelCost'
+
+                    # Use calculate_avoided_values function for consistency with climate and health modules
+                    lifetime_dict[savings_cost_col] = calculate_avoided_values(
+                        baseline_values=df_baseline_costs[baseline_costs_col],
+                        measure_values=lifetime_fuel_costs,
+                        retrofit_mask=valid_mask
+                    )
+                    
+                    # Add baseline column to results for reference
+                    lifetime_dict[baseline_costs_col] = df_baseline_costs[baseline_costs_col]
+                    
+                    # Track columns for masking
+                    category_columns_to_mask.extend([baseline_costs_col, savings_cost_col])
+                elif verbose:
                     print(f"Warning: Baseline costs column '{baseline_costs_col}' not found. Skipping avoided cost calculation.")
 
-            # Store in global lifetime dictionary
+            # Store in global lifetime dictionary and add to detailed DataFrame
             lifetime_columns_data.update(lifetime_dict)
-            # Append these columns to df_detailed for completeness
-            df_detailed = pd.concat([df_detailed, pd.DataFrame(lifetime_dict, index=df_copy.index)], axis=1)
+            lifetime_df = pd.DataFrame(lifetime_dict, index=df_copy.index)
+            df_detailed = pd.concat([df_detailed, lifetime_df], axis=1)
+
+            # Add all columns for this category to the masking dictionary
+            all_columns_to_mask[category].extend(category_columns_to_mask)
 
         except Exception as e:
             # Convert any exception into a RuntimeError with additional context
@@ -147,7 +239,13 @@ def calculate_lifetime_fuel_costs(
 
     # Create a dataframe for lifetime results and merge with the main dataframe
     df_lifetime = pd.DataFrame(lifetime_columns_data, index=df_copy.index)
-    df_main = df_copy.join(df_lifetime, how='left')
+    
+    # ===== STEP 5: Apply final masking =====
+    # Use apply_temporary_validation_and_mask utility for df_main
+    df_main = apply_temporary_validation_and_mask(df_copy, df_lifetime, all_columns_to_mask, verbose=verbose)
+    
+    # Use apply_final_masking for df_detailed
+    df_detailed = apply_final_masking(df_detailed, all_columns_to_mask, verbose=verbose)
     
     # Round final results
     df_main = df_main.round(2)
@@ -163,25 +261,28 @@ def calculate_annual_fuel_costs(
     lookup_fuel_prices: Dict[str, Dict[str, Dict[str, Dict[int, float]]]],
     policy_scenario: str,
     scenario_prefix: str,
-    is_elec_or_gas: Optional[pd.Series] = None
+    is_elec_or_gas: Optional[pd.Series] = None,
+    valid_mask: Optional[pd.Series] = None
 ) -> Tuple[Dict[str, pd.Series], pd.Series]:
-    """Calculate annual fuel costs for a given category/year.
+    """
+    Calculate annual fuel costs for a given category/year.
 
     This function looks up fuel prices for the specified region/state and year, 
     and calculates annual costs based on consumption. It uses a temporary column
     for storing per-row price lookups.
 
     Args:
-        df (pd.DataFrame): DataFrame containing consumption data and region info.
-        category (str): Equipment category (e.g., 'heating', 'waterHeating').
-        year_label (int): The calendar year (e.g., 2024).
-        menu_mp (int): Measure package identifier (0 for baseline, nonzero for a measure scenario).
-        lookup_fuel_prices (Dict[str, Dict[str, Dict[str, Dict[int, float]]]]): 
-            Nested dict with fuel prices for different locations and years.
-        policy_scenario (str): The policy scenario to use for fuel price lookups.
-        scenario_prefix (str): Prefix for output column naming.
-        is_elec_or_gas (Optional[pd.Series]): Boolean mask indicating which rows use state vs. census_division.
+        df: DataFrame containing consumption data and region info.
+        category: Equipment category (e.g., 'heating', 'waterHeating').
+        year_label: The calendar year (e.g., 2024).
+        menu_mp: Measure package identifier (0 for baseline, nonzero for a measure scenario).
+        lookup_fuel_prices: Nested dict with fuel prices for different locations and years.
+        policy_scenario: The policy scenario to use for fuel price lookups.
+        scenario_prefix: Prefix for output column naming.
+        is_elec_or_gas: Boolean mask indicating which rows use state vs. census_division.
             Default is None. Required for baseline (menu_mp=0) calculations.
+        valid_mask: Boolean Series indicating which homes have valid data.
+            Default is None. If provided, will be used for masking calculations.
 
     Returns:
         Tuple[Dict[str, pd.Series], pd.Series]:
@@ -256,6 +357,14 @@ def calculate_annual_fuel_costs(
         # Get consumption data from the appropriate column (with null safety)
         consumption = df[consumption_col].fillna(0)
         
+        # ===== STEP 3: Valid-Only Calculation =====
+        # Apply valid mask if provided
+        if valid_mask is not None and not valid_mask.all():
+            # Make a copy to avoid modifying the original Series
+            consumption = consumption.copy()
+            # Set values to zero for invalid homes
+            consumption.loc[~valid_mask] = 0.0
+        
         # Calculate fuel costs
         fuel_costs = consumption * df['_temp_price']
         
@@ -263,12 +372,7 @@ def calculate_annual_fuel_costs(
         cost_col = f'{scenario_prefix}{year_label}_{category}_fuelCost'
         annual_costs[cost_col] = fuel_costs
         
-        # If this is a measure package, calculate savings relative to baseline
-        if menu_mp != 0:
-            baseline_col = f'baseline_{year_label}_{category}_fuelCost'
-            if baseline_col in df.columns:
-                savings_col = f'{scenario_prefix}{year_label}_{category}_savings_fuelCost'
-                annual_costs[savings_col] = df[baseline_col] - fuel_costs
+        # Note: No baseline or avoided cost calculations here - consistent with climate and health modules
     
     except Exception as e:
         # Re-raise to preserve the exception stack

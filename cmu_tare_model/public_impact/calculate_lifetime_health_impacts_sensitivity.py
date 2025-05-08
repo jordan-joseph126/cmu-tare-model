@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import Optional, Tuple  # Added for type hints
+from typing import Optional, Tuple, Dict, List
 
 # Constants
 from cmu_tare_model.constants import EQUIPMENT_SPECS, POLLUTANTS, TD_LOSSES_MULTIPLIER, CR_FUNCTIONS, RCM_MODELS
@@ -8,14 +8,15 @@ from cmu_tare_model.constants import EQUIPMENT_SPECS, POLLUTANTS, TD_LOSSES_MULT
 # Imports for lookup dictionaries, functions, and calculations
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.precompute_hdd_factors import precompute_hdd_factors
-from cmu_tare_model.utils.data_validation.retrofit_status_utils import (
-    create_retrofit_only_series,
+from cmu_tare_model.utils.validation_framework import (
+    apply_final_masking,
+    initialize_validation_tracking,
     calculate_avoided_values,
-    update_values_for_retrofits
+    create_retrofit_only_series
 )
-from cmu_tare_model.utils.data_validation.data_quality_utils import (
-    mask_category_specific_data,
-    get_valid_calculation_mask
+from cmu_tare_model.utils.calculation_utils import (
+    validate_common_parameters,
+    apply_temporary_validation_and_mask
 )
 from cmu_tare_model.public_impact.data_processing.create_lookup_health_vsl_adjustment import lookup_health_vsl_adjustment
 from cmu_tare_model.public_impact.data_processing.create_lookup_health_impact_county import (
@@ -37,20 +38,32 @@ def calculate_lifetime_health_impacts(
     debug: bool = False,
     verbose: bool = False
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Calculate lifetime health impacts for each equipment category over all (rcm, cr) combinations.
+    """
+    Calculate lifetime health impacts for each equipment category over all (rcm, cr) combinations.
 
     This function calculates lifetime health damages for each equipment category by iterating over each year of the
     equipment's lifetime and each (rcm, cr) combination. It returns a tuple of two DataFrames:
-      - The main DataFrame updated with lifetime health damages.
-      - A detailed DataFrame containing annual results with lifetime breakdowns.
+    - The main DataFrame updated with lifetime health damages.
+    - A detailed DataFrame containing annual results with lifetime breakdowns.
+
+    This function follows the five-step validation framework:
+    1. Mask Initialization: Identifies valid homes using inclusion flags and retrofit status
+    2. Series Initialization: Creates result series with zeros for valid homes, NaN for others
+    3. Valid-Only Calculation: Performs calculations only for valid homes
+    4. Valid-Only Updates: Uses list-based collection of yearly values instead of incremental updates
+    5. Final Masking: Applies consistent masking to all result columns
+
+    The list-based collection approach stores yearly values in lists and sums them using pandas
+    vectorized operations after all years have been processed. This approach prevents accumulation
+    errors that can occur with incremental updates.
 
     Args:
         df (pd.DataFrame): Input data.
         menu_mp (int): Measure package identifier.
         policy_scenario (str): Policy scenario name that determines model inputs
             ('No Inflation Reduction Act' or 'AEO2023 Reference Case').
-        df_baseline_damages (Optional[pd.DataFrame]): Baseline health damages data.
         base_year (int): The base year for calculations (default is 2024).
+        df_baseline_damages (Optional[pd.DataFrame]): Baseline health damages data.
         debug (bool): If True, enables debug mode for additional output.
         verbose (bool, optional): Whether to print detailed progress messages. Defaults to False.
 
@@ -60,9 +73,14 @@ def calculate_lifetime_health_impacts(
             - df_detailed (pd.DataFrame): The detailed annual health damages results.
 
     Raises:
+        ValueError: If menu_mp or policy_scenario is invalid.
         RuntimeError: If processing fails at the category or year level due to missing data or calculation errors.
         KeyError: If an HDD factor is not found for a required year.
-    """
+    """ 
+    # ===== STEP 0: Validate input parameters =====
+    menu_mp, policy_scenario, _ = validate_common_parameters(
+        menu_mp, policy_scenario, None)
+    
     # Create a copy of the input DataFrame to avoid modifying the original data
     df_copy = df.copy()
 
@@ -93,12 +111,12 @@ def calculate_lifetime_health_impacts(
     # Dictionary to hold lifetime health impacts columns for each category
     lifetime_columns_data = {}
 
-    # Add this line
+    # Initialize dictionary to track columns for masking verification
     all_columns_to_mask = {category: [] for category in EQUIPMENT_SPECS}
 
-    # Retrieve scenario-specific params for electricity/fossil-fuel emissions.
-    # Note: The climate lookup and cambium scenario are ignored as they are not used in this function.
-    scenario_prefix, _, lookup_emissions_fossil_fuel, _, lookup_emissions_electricity_health, _ = define_scenario_params(menu_mp, policy_scenario)
+    # Retrieve scenario-specific params for electricity/fossil-fuel emissions
+    scenario_prefix, _, lookup_emissions_fossil_fuel, _, lookup_emissions_electricity_health, _ = define_scenario_params(
+        menu_mp, policy_scenario)
 
     # Precompute HDD adjustment factors by region and year
     hdd_factors_per_year = precompute_hdd_factors(df_copy)
@@ -107,19 +125,24 @@ def calculate_lifetime_health_impacts(
     for category, lifetime in EQUIPMENT_SPECS.items():
         try:
             if verbose:
-                print(f"Calculating Health Emissions and Damages from 2024 to {2024 + lifetime} for {category}")
+                print(f"Calculating Health Emissions and Damages from {base_year} to {base_year + lifetime - 1} for {category}")
             
-            # UPDATED: Use new validation approach to mask data for this category
-            # Determine which homes have valid data and get retrofits for this category
-            valid_mask = get_valid_calculation_mask(df_copy, category, menu_mp, verbose=verbose)
-
-            # Add a tracking array for this category
-            category_columns_to_mask = []
-
-            # Initialize with zeros for valid homes, NaN for others
-            lifetime_health_damages = {
+            # ===== STEP 1: Initialize validation tracking =====
+            df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
+                df_copy, category, menu_mp, verbose=verbose)
+            
+            # ===== STEP 2: Initialize result series for damages =====
+            # Create templates for health damages (for initialization only)
+            lifetime_health_templates = {
                 (rcm, cr): create_retrofit_only_series(df_copy, valid_mask)
                 for rcm in RCM_MODELS
+                for cr in CR_FUNCTIONS
+            }
+
+            # Create dictionary to store yearly health damages as lists
+            yearly_health_damages_lists = {
+                (rcm, cr): [] 
+                for rcm in RCM_MODELS 
                 for cr in CR_FUNCTIONS
             }
 
@@ -129,30 +152,31 @@ def calculate_lifetime_health_impacts(
                     # Calculate the calendar year label (e.g., 2024, 2025, etc.)
                     year_label = year + (base_year - 1)
                     
-                    # Check that an HDD factor exists for the current year; raise KeyError if missing
+                    # Check that an HDD factor exists for the current year
                     if year_label not in hdd_factors_per_year:
                         raise KeyError(f"HDD factor for year {year_label} not found.")
 
-                    # Retrieve HDD factor for the current year; use factor only for heating/waterHeating categories
-                    hdd_factor = hdd_factors_per_year.get(year_label, pd.Series(1.0, index=df_copy.index))
+                    # Retrieve HDD factor for the current year
+                    # Apply factor only for heating/waterHeating categories
+                    hdd_factor = hdd_factors_per_year[year_label]
                     adjusted_hdd_factor = hdd_factor if category in ['heating', 'waterHeating'] else pd.Series(1.0, index=df_copy.index)
                     
                     # Calculate fossil fuel emissions for the current category and year
-                    # In calculate_lifetime_climate_impacts and calculate_lifetime_health_impacts:
                     total_fossil_fuel_emissions = calculate_fossil_fuel_emissions(
                         df=df_copy,
                         category=category,
                         adjusted_hdd_factor=adjusted_hdd_factor,
                         lookup_emissions_fossil_fuel=lookup_emissions_fossil_fuel,
                         menu_mp=menu_mp,
-                        retrofit_mask=valid_mask,  # Pass the valid mask instead
+                        retrofit_mask=valid_mask,  
                         verbose=verbose
                     ) 
                     
-                    # For each (rcm, cr) combination, compute health damages for this year and accumulate lifetime values
+                    #===== STEP 3: Valid-Only Calculation =====
+                    # For each (rcm, cr) combination, compute health damages for this year
                     for rcm in RCM_MODELS:
                         for cr in CR_FUNCTIONS:
-                            # Compute health damages for the current (rcm, cr) pair using the helper function
+                            # Compute health damages for the current (rcm, cr) pair
                             health_results_pair = calculate_health_damages_for_pair(
                                 df=df_copy,
                                 category=category,
@@ -165,27 +189,55 @@ def calculate_lifetime_health_impacts(
                                 rcm=rcm,
                                 cr=cr
                             )
-                            # Construct the overall column name for the annual damages for this pair
+
+                            #===== STEP 4: Valid-Only Updates =====
+                            # Store annual health damages in lists instead of updating incrementally
                             overall_col = f'{scenario_prefix}{year_label}_{category}_damages_health_{rcm}_{cr}'
-                            category_columns_to_mask.append(overall_col)
+                            if overall_col in health_results_pair:
+                                health_values = health_results_pair[overall_col].copy()
 
-                            # Accumulate the damages for the current year into the lifetime total, only for homes with retrofits
-                            lifetime_health_damages[(rcm, cr)] = update_values_for_retrofits(
-                                target_series=lifetime_health_damages[(rcm, cr)],
-                                update_values=health_results_pair[overall_col],
-                                retrofit_mask=valid_mask,
-                                menu_mp=menu_mp
-                            )
+                                # Apply validation mask for measure packages
+                                if menu_mp != 0:
+                                    health_values.loc[~valid_mask] = 0.0
+                                yearly_health_damages_lists[(rcm, cr)].append(health_values)
 
-                            # Append the annual results to the detailed DataFrame
-                            if health_results_pair:
-                                df_detailed = pd.concat([df_detailed, pd.DataFrame(health_results_pair, index=df_copy.index)], axis=1)
-                                # Add the column name to the category-specific tracking array
-                                category_columns_to_mask.extend(health_results_pair.keys())
+                            # # Add annual results to the detailed DataFrame
+                            # for col_name, values in health_results_pair.items():
+                            #     df_detailed[col_name] = values
+                            #     category_columns_to_mask.append(col_name)
+
+                            # Store annual health results in a temporary dictionary
+                            annual_health_columns = {}
+                            for col_name, values in health_results_pair.items():
+                                annual_health_columns[col_name] = values
+                                category_columns_to_mask.append(col_name)
+
+                            # Add to df_detailed with a single concat operation
+                            if annual_health_columns:
+                                annual_df = pd.DataFrame(annual_health_columns, index=df_copy.index)
+                                df_detailed = pd.concat([df_detailed, annual_df], axis=1)
 
                 except Exception as e:
                     # Raise a RuntimeError with context if an error occurs during processing for a year
                     raise RuntimeError(f"Error processing year {year_label} for category '{category}': {e}")
+
+            # Sum up lifetime health damages using pandas operations
+            lifetime_health_damages = {}
+            for key in yearly_health_damages_lists:
+                if yearly_health_damages_lists[key]:
+                    # Convert list of Series to DataFrame and sum
+                    damages_df = pd.concat(yearly_health_damages_lists[key], axis=1)
+                    total_damages = damages_df.sum(axis=1)
+                    
+                    # Apply validation mask for measure packages
+                    if menu_mp != 0:
+                        total_damages = pd.Series(
+                            np.where(valid_mask, total_damages, np.nan),
+                            index=total_damages.index
+                        )
+                    lifetime_health_damages[key] = total_damages
+                else:
+                    lifetime_health_damages[key] = lifetime_health_templates[key]
 
             # After processing all years, prepare lifetime results for the category
             lifetime_dict = {}
@@ -194,35 +246,36 @@ def calculate_lifetime_health_impacts(
             if menu_mp != 0 and df_baseline_damages is not None:
                 for rcm in RCM_MODELS:
                     for cr in CR_FUNCTIONS:
-                        # Construct the column name for the lifetime damages for this (rcm, cr) pair                        
+                        # Record overall lifetime damages for each (rcm, cr) pair
+                        overall_health_col = f'{scenario_prefix}{category}_lifetime_damages_health_{rcm}_{cr}'
+                        lifetime_dict[overall_health_col] = lifetime_health_damages[(rcm, cr)]
+                        category_columns_to_mask.append(overall_health_col)
+                        
+                        # Calculate avoided damages
                         baseline_health_col = f'baseline_{category}_lifetime_damages_health_{rcm}_{cr}'
                         if baseline_health_col in df_baseline_damages.columns:
                             avoided_health_damages_col = f'{scenario_prefix}{category}_avoided_damages_health_{rcm}_{cr}'
+                            
                             # Calculate avoided damages only for homes with retrofits
                             lifetime_dict[avoided_health_damages_col] = calculate_avoided_values(
                                 baseline_values=df_baseline_damages[baseline_health_col],
-                                measure_values=lifetime_health_damages[(rcm, cr)],
+                                measure_values=lifetime_dict[overall_health_col],
                                 retrofit_mask=valid_mask
                             )
-                            # Append the column name to the category-specific tracking array
                             category_columns_to_mask.append(avoided_health_damages_col)
-
                         else:
                             if verbose:
                                 print(f"Warning: Missing baseline for {category} ({cr}, {rcm}). Avoided health values skipped.")
-
-            # Record overall lifetime damages for each (rcm, cr) pair
-            for rcm in RCM_MODELS:
-                for cr in CR_FUNCTIONS:
-                    overall_health_col = f'{scenario_prefix}{category}_lifetime_damages_health_{rcm}_{cr}'
-                    lifetime_dict[overall_health_col] = lifetime_health_damages[(rcm, cr)]
-                    category_columns_to_mask.append(overall_health_col)
+            else:
+                # If no baseline data or not a measure package, just record lifetime damages
+                for rcm in RCM_MODELS:
+                    for cr in CR_FUNCTIONS:
+                        overall_health_col = f'{scenario_prefix}{category}_lifetime_damages_health_{rcm}_{cr}'
+                        lifetime_dict[overall_health_col] = lifetime_health_damages[(rcm, cr)]
+                        category_columns_to_mask.append(overall_health_col)
 
             # Add the lifetime results for the category to the global dictionary
             lifetime_columns_data.update(lifetime_dict)
-
-            # Append the lifetime columns to the detailed DataFrame for completeness
-            df_detailed = pd.concat([df_detailed, pd.DataFrame(lifetime_dict, index=df_copy.index)], axis=1)
 
             # Add all columns for this category to the masking dictionary
             all_columns_to_mask[category].extend(category_columns_to_mask)
@@ -231,21 +284,12 @@ def calculate_lifetime_health_impacts(
             # Raise a RuntimeError with context if an error occurs for a category
             raise RuntimeError(f"Error processing category '{category}': {e}")
 
-    # Create a DataFrame from the lifetime results and merge it with the main DataFrame
+    # Create a DataFrame from the lifetime results
     df_lifetime = pd.DataFrame(lifetime_columns_data, index=df_copy.index)
-    df_main = df_copy.join(df_lifetime, how='left')
     
-    # Apply final verification masking for consistency
-    print("\nVerifying masking for all calculated columns:")
-    for category, cols_to_mask in all_columns_to_mask.items():
-        # Filter out columns that don't exist in df_main or df_detailed
-        main_cols = [col for col in cols_to_mask if col in df_main.columns]
-        detailed_cols = [col for col in cols_to_mask if col in df_detailed.columns]
-        
-        if main_cols:
-            df_main = mask_category_specific_data(df_main, main_cols, category, verbose=verbose)
-        if detailed_cols:
-            df_detailed = mask_category_specific_data(df_detailed, detailed_cols, category, verbose=verbose)
+    #===== STEP 5: Apply final masking using the improved utility function =====
+    df_main = apply_temporary_validation_and_mask(df_copy, df_lifetime, all_columns_to_mask, verbose=verbose)
+    df_detailed = apply_final_masking(df_detailed, all_columns_to_mask, verbose=verbose)
 
     # Apply rounding to final results
     df_main = df_main.round(2)
@@ -264,12 +308,14 @@ def calculate_health_damages_for_pair(
     menu_mp: int,
     rcm: str,
     cr: str
-) -> dict:
-    """Calculate health-related damages for a single (rcm, cr) pair for a given category and year.
+) -> Dict[str, pd.Series]:
+    """
+    Calculate health-related damages for a single (rcm, cr) pair for a given category and year.
 
-    This function computes the health damages by performing vectorized lookups for fossil fuel and electricity-related 
-    marginal social costs (MSC) and emissions factors. It returns a dictionary mapping column names to computed 
-    damage Series.
+    This function computes the health damages by performing vectorized lookups for fossil fuel 
+    and electricity-related marginal social costs (MSC) and emissions factors. The calculated 
+    damages represent the monetized health impacts of emissions from both fossil fuel combustion 
+    and electricity generation.
 
     Args:
         df (pd.DataFrame): Main DataFrame containing region and consumption data.
@@ -280,17 +326,19 @@ def calculate_health_damages_for_pair(
         scenario_prefix (str): Prefix for naming output columns (e.g., 'baseline_' or 'preIRA_mp1_').
         total_fossil_fuel_emissions (dict): Mapping of pollutant to Series of fossil fuel emissions.
         menu_mp (int): Measure package identifier.
-        rcm (str): Regional climate model identifier (e.g., 'rcm1').
+        rcm (str): Regional climate model identifier (e.g., 'AP2', 'EASIUR', 'InMAP').
         cr (str): Concentration-response function identifier (e.g., 'acs' or 'h6c').
 
     Returns:
-        dict: A dictionary where keys are column names (str) and values are pd.Series representing calculated damages.
+        Dict[str, pd.Series]: A dictionary mapping column names to calculated damage values.
+            - Keys are formatted as {scenario_prefix}{year_label}_{category}_damages_{pollutant}_{rcm}_{cr}
+            - The overall damages are stored under {scenario_prefix}{year_label}_{category}_damages_health_{rcm}_{cr}
 
     Raises:
         KeyError: If required lookup data (e.g., emissions factor or VSL adjustment factor) is missing.
         ValueError: If an invalid concentration-response function is provided.
     """
-    # Retrieve the VSL adjustment factor for the current year; raise KeyError if not found
+    # Retrieve the VSL adjustment factor for the current year
     if year_label not in lookup_health_vsl_adjustment:
         raise KeyError(f"VSL adjustment factor not found for year {year_label}")
     vsl_adjustment_factor = lookup_health_vsl_adjustment[year_label]
@@ -303,22 +351,23 @@ def calculate_health_damages_for_pair(
         lookup_msc_fossil_fuel = lookup_health_fossil_fuel_h6c
         lookup_msc_electricity = lookup_health_electricity_h6c
     else:
-        raise ValueError(f"Invalid C-R function: {cr}")
+        raise ValueError(f"Invalid C-R function: {cr}. Must be one of: {CR_FUNCTIONS}.")
     
-    # Ensure a county key exists for vectorized lookups; create one if missing
+    # Ensure a county key exists for vectorized lookups
     if 'county_key' not in df.columns:
+        # Create county_key as tuple of (county_fips, state) for more efficient lookup
         df['county_key'] = list(zip(df['county_fips'], df['state']))
     
     # Initialize a Series to accumulate annual damages and a dictionary for storing results
     annual_damages = pd.Series(0.0, index=df.index)
     health_results = {}
     
-    # Loop through each pollutant defined in POLLUTANTS
+    # Loop through each pollutant (excluding CO2e which is handled by climate impacts)
     for pollutant in POLLUTANTS:
         if pollutant == 'co2e':
             continue
         
-        # Ensure fossil fuel emissions exist for the pollutant; raise KeyError if missing
+        # Ensure fossil fuel emissions exist for the pollutant
         if pollutant not in total_fossil_fuel_emissions:
             raise KeyError(f"Fossil fuel emissions not found for pollutant '{pollutant}'")
         fossil_fuel_emissions = total_fossil_fuel_emissions[pollutant]
@@ -326,14 +375,19 @@ def calculate_health_damages_for_pair(
         # --- FOSSIL FUEL MSC Lookup (Vectorized) ---
         # Get unique county keys for an efficient vectorized lookup
         unique_counties = df['county_key'].unique()
+        
+        # Create a mapping of county keys to their MSC values
         msc_lookup_fossil = {
             key: get_health_impact_with_fallback(lookup_msc_fossil_fuel, key, rcm, pollutant.lower())
             for key in unique_counties
         }
+        
         # Map the lookup dictionary to the county_key column to retrieve MSC values
         fossil_fuel_msc = df['county_key'].map(msc_lookup_fossil)
+        
         # Adjust the MSC values using the VSL adjustment factor
         fossil_fuel_msc_adjusted = fossil_fuel_msc * vsl_adjustment_factor
+        
         # Calculate fossil fuel damages by multiplying emissions with adjusted MSC values
         fossil_fuel_damages = fossil_fuel_emissions * fossil_fuel_msc_adjusted
         
@@ -343,23 +397,29 @@ def calculate_health_damages_for_pair(
         for (yr, region), data in lookup_emissions_electricity_health.items():
             if yr == year_label:
                 key_name = f"delta_egrid_{pollutant.lower()}"
-                region_mapping[region] = data.get(key_name, np.nan)
+                if key_name in data:
+                    region_mapping[region] = data[key_name]
+        
         # Map the region mapping to the 'gea_region' column to retrieve emissions factors
         electricity_emissions_factor = df['gea_region'].map(region_mapping)
         
-        # Retrieve electricity consumption based on the menu_mp value
+        # Determine electricity consumption column based on menu_mp
         if menu_mp == 0:
             col_name = f'base_electricity_{category}_consumption'
-            if col_name not in df.columns:
-                raise KeyError(f"Required column '{col_name}' is missing from the DataFrame.")
-            # Fill missing values with 0 and apply the adjusted HDD factor
-            electricity_consumption = df[col_name].fillna(0) * adjusted_hdd_factor
         else:
             col_name = f'mp{menu_mp}_{year_label}_{category}_consumption'
-            if col_name not in df.columns:
-                raise KeyError(f"Required column '{col_name}' is missing from the DataFrame.")
-            electricity_consumption = df[col_name].fillna(0)
-        # Calculate electricity emissions by accounting for TD losses and emissions factors
+            
+        # Validate column exists
+        if col_name not in df.columns:
+            raise KeyError(f"Required column '{col_name}' is missing from the DataFrame.")
+            
+        # Get electricity consumption and apply adjustments
+        electricity_consumption = df[col_name].fillna(0)
+        if menu_mp == 0:
+            # Apply HDD adjustment for baseline calculations in heating/water heating
+            electricity_consumption = electricity_consumption * adjusted_hdd_factor
+            
+        # Calculate electricity emissions accounting for transmission/distribution losses
         electricity_emissions = electricity_consumption * TD_LOSSES_MULTIPLIER * electricity_emissions_factor
         
         # --- ELECTRICITY MSC Lookup (Vectorized) ---
@@ -371,13 +431,16 @@ def calculate_health_damages_for_pair(
 
         # Map the lookup dictionary to retrieve electricity MSC values
         electricity_msc = df['county_key'].map(msc_lookup_electricity)
+        
         # Adjust the MSC values using the VSL adjustment factor
         electricity_msc_adjusted = electricity_msc * vsl_adjustment_factor
+        
         # Calculate electricity damages by multiplying emissions with adjusted MSC values
         electricity_damages = electricity_emissions * electricity_msc_adjusted
         
         # Combine fossil fuel and electricity damages for the current pollutant
         total_damages = fossil_fuel_damages + electricity_damages
+        
         # Construct the column name for the pollutant-specific damages
         col_name = f'{scenario_prefix}{year_label}_{category}_damages_{pollutant}_{rcm}_{cr}'
         health_results[col_name] = total_damages
@@ -388,4 +451,5 @@ def calculate_health_damages_for_pair(
     # Store the overall annual damages under a summary column name
     overall_col = f'{scenario_prefix}{year_label}_{category}_damages_health_{rcm}_{cr}'
     health_results[overall_col] = annual_damages
+    
     return health_results

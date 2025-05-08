@@ -794,7 +794,7 @@ from cmu_tare_model.private_impact.calculate_lifetime_private_impact import *
 
 # def calculate_private_NPV(
 #         df: pd.DataFrame,
-#         df_fuelCosts: pd.DataFrame,
+#         df_fuel_costs: pd.DataFrame,
 #         input_mp: str,
 #         menu_mp: int,
 #         policy_scenario: str,
@@ -805,7 +805,7 @@ from cmu_tare_model.private_impact.calculate_lifetime_private_impact import *
 # ============= AP2 =============
 df_euss_am_mp8_home_ap2 = calculate_private_NPV(
     df=df_euss_am_mp8_home_ap2,
-    df_fuelCosts=df_mp8_scenario_fuelCosts,
+    df_fuel_costs=df_mp8_scenario_fuelCosts,
     menu_mp=menu_mp,
     input_mp=input_mp,
     policy_scenario='No Inflation Reduction Act',
@@ -816,7 +816,7 @@ df_euss_am_mp8_home_ap2 = calculate_private_NPV(
 # ============ EASIUR =============
 df_euss_am_mp8_home_easiur = calculate_private_NPV(
     df=df_euss_am_mp8_home_easiur,
-    df_fuelCosts=df_mp8_scenario_fuelCosts,
+    df_fuel_costs=df_mp8_scenario_fuelCosts,
     menu_mp=menu_mp,
     input_mp=input_mp,
     policy_scenario='No Inflation Reduction Act',
@@ -827,7 +827,7 @@ df_euss_am_mp8_home_easiur = calculate_private_NPV(
 # ============ InMAP =============
 df_euss_am_mp8_home_inmap = calculate_private_NPV(
     df=df_euss_am_mp8_home_inmap,
-    df_fuelCosts=df_mp8_scenario_fuelCosts,
+    df_fuel_costs=df_mp8_scenario_fuelCosts,
     menu_mp=menu_mp,
     input_mp=input_mp,
     policy_scenario='No Inflation Reduction Act',
@@ -1048,7 +1048,7 @@ InMAP:
 # %%
 # def calculate_private_NPV(
 #         df: pd.DataFrame,
-#         df_fuelCosts: pd.DataFrame,
+#         df_fuel_costs: pd.DataFrame,
 #         input_mp: str,
 #         menu_mp: int,
 #         policy_scenario: str,
@@ -1059,7 +1059,7 @@ InMAP:
 # ============= AP2 =============
 df_euss_am_mp8_home_ap2 = calculate_private_NPV(
     df=df_euss_am_mp8_home_ap2,
-    df_fuelCosts=df_mp8_scenario_fuelCosts,
+    df_fuel_costs=df_mp8_scenario_fuelCosts,
     menu_mp=menu_mp,
     input_mp=input_mp,
     policy_scenario='AEO2023 Reference Case',
@@ -1070,7 +1070,7 @@ df_euss_am_mp8_home_ap2 = calculate_private_NPV(
 # ============ EASIUR =============
 df_euss_am_mp8_home_easiur = calculate_private_NPV(
     df=df_euss_am_mp8_home_easiur,
-    df_fuelCosts=df_mp8_scenario_fuelCosts,
+    df_fuel_costs=df_mp8_scenario_fuelCosts,
     menu_mp=menu_mp,
     input_mp=input_mp,
     policy_scenario='AEO2023 Reference Case',
@@ -1081,7 +1081,7 @@ df_euss_am_mp8_home_easiur = calculate_private_NPV(
 # ============ InMAP =============
 df_euss_am_mp8_home_inmap = calculate_private_NPV(
     df=df_euss_am_mp8_home_inmap,
-    df_fuelCosts=df_mp8_scenario_fuelCosts,
+    df_fuel_costs=df_mp8_scenario_fuelCosts,
     menu_mp=menu_mp,
     input_mp=input_mp,
     policy_scenario='AEO2023 Reference Case',

@@ -2,9 +2,19 @@ import pandas as pd
 import numpy as np
 from scipy.stats import norm
 
-from config import PROJECT_ROOT
-print(f"Project root directory: {PROJECT_ROOT}")
+from cmu_tare_model.utils.validation_framework import (
+    create_retrofit_only_series,
+    initialize_validation_tracking,
+    apply_new_columns_to_dataframe,
+    apply_final_masking,
+)
 
+from cmu_tare_model.utils.calculation_utils import (
+    sample_costs_from_distributions,
+    filter_valid_tech_homes,
+)
+
+ 
 """
 ========================================================================================================================================================================
 OVERVIEW: CALCULATE INSTALLED COSTS FOR ENCLOSURE UPGRADE RETROFIT MEASURES
@@ -21,8 +31,9 @@ reference (50th percentile), and conservative (90th percentile) cost estimates.
 # FUNCTIONS: CALCULATE COST OF ENCLOSURE UPGRADES
 # ========================================================================================================================================================================
 
-def get_enclosure_parameters(df: pd.DataFrame,
-                             retrofit_col: str) -> dict:
+def get_enclosure_parameters(
+        df: pd.DataFrame,
+        retrofit_col: str) -> dict:
     """
     Get conditions and technology-efficiency pairs for enclosure retrofit based on the retrofit column.
     
@@ -128,12 +139,17 @@ def get_enclosure_parameters(df: pd.DataFrame,
     return {'conditions': conditions, 'tech_eff_pairs': tech_eff_pairs}
 
 
-def calculate_enclosure_retrofit_upgradeCosts(df: pd.DataFrame,
-                                              cost_dict: dict,
-                                              retrofit_col: str,
-                                              params_col: str) -> pd.DataFrame:
+def calculate_enclosure_retrofit_upgradeCosts(
+        df: pd.DataFrame,
+        cost_dict: dict,
+        retrofit_col: str,
+        params_col: str) -> pd.DataFrame:
     """
     Calculate the enclosure retrofit upgrade costs based on given parameters and conditions.
+
+    This function uses a probabilistic approach to sample costs from distributions defined
+    by progressive, reference, and conservative estimates. It applies data validation to
+    ensure only valid homes are included in calculations.
 
     Args:
         df: DataFrame containing data for different scenarios
@@ -146,10 +162,29 @@ def calculate_enclosure_retrofit_upgradeCosts(df: pd.DataFrame,
         
     Raises:
         ValueError: If missing cost data for certain technology and efficiency combinations
+        RuntimeError: If an unexpected error occurs during calculation
+        
+    Notes:
+        This function implements the validation framework:
+        1. Uses initialize_validation_tracking() to determine valid homes
+        2. Creates retrofit-only series with NaN for invalid homes
+        3. Calculates values only for valid homes with identifiable technology
+        4. Applies final verification masking
     """
+    # Extract category from retrofit_col (e.g., 'insulation_atticFloor_upgradeCost' -> 'insulation')
+    category = retrofit_col.split('_')[0]
     
-    # Create a copy of the original DataFrame to avoid modifying it directly
-    df_copy = df.copy()
+    # Use zero as menu_mp for enclosure components as they don't follow the standard menu package approach
+    menu_mp = 0
+    
+    # Add logging for calculation start
+    print(f"Starting {category} enclosure retrofit calculation with validation framework")
+
+    # Initialize validation tracking
+    df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
+        df, category, menu_mp, verbose=True)
+
+    print(f"Found {valid_mask.sum()} valid homes out of {len(df_copy)} for {retrofit_col}")
 
     # Get conditions and tech-efficiency pairs for the specified retrofit
     params = get_enclosure_parameters(df_copy, retrofit_col)
@@ -160,54 +195,46 @@ def calculate_enclosure_retrofit_upgradeCosts(df: pd.DataFrame,
     tech = np.select(conditions, [pair[0] for pair in tech_eff_pairs], default='unknown')
     eff = np.select(conditions, [pair[1] for pair in tech_eff_pairs], default='unknown')
 
-    # Filter out rows with unknown technology and efficiency
-    valid_indices = tech != 'unknown'
-    tech = tech[valid_indices]
-    eff = eff[valid_indices]
-    df_valid = df_copy.loc[valid_indices].copy()
+    # Use the standard filtering function to get only homes with both valid data and identifiable tech
+    try:
+        df_valid, valid_calculation_indices, tech_filtered, eff_filtered = filter_valid_tech_homes(
+            df_copy, valid_mask, tech, eff)
+        
+        print(f"After tech filtering: {len(valid_calculation_indices)} homes remain valid for {retrofit_col}")
 
-    # Initialize dictionary to store sampled costs
-    sampled_costs_dict = {}
-
-    # Calculate costs for each component (normalized_cost)
-    for cost_component in ['normalized_cost']:
-        progressive_costs = np.array([cost_dict.get((t, e), {}).get(f'{cost_component}_progressive', np.nan) for t, e in zip(tech, eff)])
-        reference_costs = np.array([cost_dict.get((t, e), {}).get(f'{cost_component}_reference', np.nan) for t, e in zip(tech, eff)])
-        conservative_costs = np.array([cost_dict.get((t, e), {}).get(f'{cost_component}_conservative', np.nan) for t, e in zip(tech, eff)])
-
-        # Handle missing cost data
-        if np.isnan(progressive_costs).any() or np.isnan(reference_costs).any() or np.isnan(conservative_costs).any():
-            missing_indices = np.where(np.isnan(progressive_costs) | np.isnan(reference_costs) | np.isnan(conservative_costs))
-            print(f"Missing data at indices: {missing_indices}")
-            print(f"Tech with missing data: {tech[missing_indices]}")
-            print(f"Efficiencies with missing data: {eff[missing_indices]}")
+        if df_valid.empty:
+            print(f"Warning: No valid homes found for {category} retrofit calculation.")
             
-            raise ValueError(f"Missing cost data for some technology and efficiency combinations in cost_component {cost_component}")
+        # Define cost components for enclosure upgrades
+        cost_components = ['normalized_cost']
+        
+        # Sample costs from distributions only if we have valid homes
+        if not df_valid.empty:
+            sampled_costs_dict = sample_costs_from_distributions(tech_filtered, eff_filtered, cost_dict, cost_components)
+            
+            # Calculate the retrofit cost for each row
+            retrofit_cost = sampled_costs_dict['normalized_cost'] * df_valid[params_col]
+        
+        # Initialize the result series properly
+        result_series = create_retrofit_only_series(df_copy, valid_mask)
+        
+        # Update only for homes that have valid data AND match our tech criteria
+        if not df_valid.empty:
+            result_series.loc[valid_calculation_indices] = np.round(retrofit_cost, 2)
+    except Exception as e:
+        raise RuntimeError(f"Error in enclosure retrofit calculation for {retrofit_col}: {str(e)}")
 
-        # Calculate mean and standard deviation assuming the costs represent the 10th, 50th, and 90th percentiles of a normal distribution
-        mean_costs = reference_costs  # 50th percentile is the mean of the normal distribution
-        # Calculate standard deviation based on the difference between 90th and 10th percentiles
-        std_costs = (conservative_costs - progressive_costs) / (norm.ppf(0.90) - norm.ppf(0.10))
-
-        # Sample from the normal distribution for each row
-        sampled_costs = np.random.normal(loc=mean_costs, scale=std_costs)
-        sampled_costs_dict[cost_component] = sampled_costs
-
-    # Calculate the retrofit cost for each row
-    retrofit_cost = (
-        sampled_costs_dict['normalized_cost'] * df_valid[params_col])
-
-    # Add the calculated costs to a new DataFrame, rounded to 2 decimal places
-    df_new_columns = pd.DataFrame({retrofit_col: np.round(retrofit_cost, 2)}, index=df_valid.index)
-
-    # Identify overlapping columns between the new and existing DataFrame
-    overlapping_columns = df_new_columns.columns.intersection(df_copy.columns)
-
-    # Drop overlapping columns from the original DataFrame
-    if not overlapping_columns.empty:
-        df_copy.drop(columns=overlapping_columns, inplace=True)
-
-    # Merge new columns into the original DataFrame, ensuring no duplicates or overwrites occur
-    df_copy = df_copy.join(df_new_columns, how='left')
+    # Then create the DataFrame column
+    df_new_columns = pd.DataFrame({retrofit_col: result_series})    
+    
+    # Track the column for masking
+    category_columns_to_mask.append(retrofit_col)
+    
+    # Apply new columns to DataFrame with proper tracking
+    df_copy, all_columns_to_mask = apply_new_columns_to_dataframe(
+        df_copy, df_new_columns, category, category_columns_to_mask, all_columns_to_mask)
+    
+    # Apply final verification masking for consistency
+    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=True)
 
     return df_copy

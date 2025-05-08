@@ -773,9 +773,9 @@ DATAFRAME FOR MP9 AFTER CALCULATING PUBLIC NPV: df_euss_am_mp9_home
 # %%
 from cmu_tare_model.private_impact.calculate_private_npv_sensitivity import *
 
-# calculate_private_npv(df, df_fuelCosts, menu_mp, policy_scenario, equipment_specs, interest_rate=0.07)
+# calculate_private_npv(df, df_fuel_costs, menu_mp, policy_scenario, equipment_specs, interest_rate=0.07)
 df_euss_am_mp9_home = calculate_private_NPV(df=df_euss_am_mp9_home,
-                                            df_fuelCosts=df_mp9_scenario_fuelCosts,
+                                            df_fuel_costs=df_mp9_scenario_fuelCosts,
                                             menu_mp=menu_mp,
                                             input_mp=input_mp,
                                             policy_scenario='No Inflation Reduction Act',
@@ -867,9 +867,9 @@ DATAFRAME FOR MP9 AFTER CALCULATING PUBLIC NPV: df_euss_am_mp9_home
 # %%
 # from cmu_tare_model.private_impact.calculate_lifetime_private_impact import *
 
-# calculate_private_npv(df, df_fuelCosts, menu_mp, policy_scenario, equipment_specs, interest_rate=0.07)
+# calculate_private_npv(df, df_fuel_costs, menu_mp, policy_scenario, equipment_specs, interest_rate=0.07)
 df_euss_am_mp9_home = calculate_private_NPV(df=df_euss_am_mp9_home,
-                                            df_fuelCosts=df_mp9_scenario_fuelCosts,
+                                            df_fuel_costs=df_mp9_scenario_fuelCosts,
                                             menu_mp=menu_mp,
                                             input_mp=input_mp,
                                             policy_scenario='AEO2023 Reference Case',

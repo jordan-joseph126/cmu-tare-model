@@ -91,7 +91,7 @@ def generate_column_patterns(
                 # Year-specific consumption patterns
                 patterns['consumption'].append(f"{prefix}[0-9]{{4}}_{category}_consumption")
                 patterns['consumption'].append(f"{prefix}[0-9]{{4}}_{category}_reduction_consumption")
-            
+
             # Emissions patterns
             if 'mt_co2e' in metrics:
                 for mer_type in ['lrmer', 'srmer']:  # Long-run and short-run marginal emission rates
