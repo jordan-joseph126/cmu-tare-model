@@ -1,0 +1,685 @@
+import pytest
+import pandas as pd
+import numpy as np
+from typing import Dict, List, Tuple, Optional, Any, Union, Callable, Set
+from unittest import mock
+from cmu_tare_model.utils.calculation_utils import mask_category_specific_data
+from cmu_tare_model.constants import EQUIPMENT_SPECS, FUEL_MAPPING, UPGRADE_COLUMNS
+
+# filepath: c:\Users\14128\Research\cmu-tare-model\cmu_tare_model\tests\test_validation_framework_copilot.py
+"""
+test_validation_framework_copilot.py
+
+Comprehensive test suite for the 5-step validation framework:
+1. Mask Initialization with initialize_validation_tracking()
+2. Series Initialization with create_retrofit_only_series()
+3. Valid-Only Calculation for qualifying homes
+4. Valid-Only Updates using list-based collection
+5. Final Masking with apply_final_masking()
+
+Tests are organized into logical classes with clear naming conventions
+and leverage fixtures for reusable test data.
+"""
+
+
+# Import the validation framework utilities
+from cmu_tare_model.utils.validation_framework import (
+    initialize_validation_tracking,
+    create_retrofit_only_series,
+    apply_final_masking,
+    get_valid_calculation_mask,
+    get_retrofit_homes_mask,
+    apply_new_columns_to_dataframe,
+    replace_small_values_with_nan,
+    calculate_avoided_values,
+    get_valid_fuel_types
+)
+
+
+# Import constants
+
+# -------------------------------------------------------------------------
+#                           TEST FIXTURES
+# -------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def mock_constants(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Mock the constants module to isolate tests from external dependencies.
+    
+    Args:
+        monkeypatch: Pytest fixture for patching attributes/functions
+    """
+    mock_equipment_specs = {
+        'heating': {
+            'valid_fuel_types': ['electricity', 'natural gas', 'propane', 'fuel oil'],
+            'valid_tech': ['furnace', 'boiler', 'heat pump', 'resistance'],
+            'lifetime': 20
+        },
+        'waterHeating': {
+            'valid_fuel_types': ['electricity', 'natural gas', 'propane', 'fuel oil'],
+            'valid_tech': ['storage', 'tankless', 'heat pump water heater'],
+            'lifetime': 15
+        },
+        'clothesDrying': {
+            'valid_fuel_types': ['electricity', 'natural gas'],
+            'valid_tech': ['standard', 'heat pump dryer'],
+            'lifetime': 12
+        },
+        'cooking': {
+            'valid_fuel_types': ['electricity', 'natural gas'],
+            'valid_tech': ['standard', 'induction'],
+            'lifetime': 15
+        }
+    }
+    
+    mock_fuel_mapping = {
+        'electricity': {'name': 'electricity', 'unit': 'kWh'},
+        'natural gas': {'name': 'natural_gas', 'unit': 'therm'},
+        'propane': {'name': 'propane', 'unit': 'gallon'},
+        'fuel oil': {'name': 'fuel_oil', 'unit': 'gallon'}
+    }
+    
+    mock_upgrade_columns = {
+        'heating': {'include_flag': 'include_heating_flag', 'retrofit_flag': 'heating_retrofit_flag'},
+        'waterHeating': {'include_flag': 'include_waterHeating_flag', 'retrofit_flag': 'waterHeating_retrofit_flag'},
+        'clothesDrying': {'include_flag': 'include_clothesDrying_flag', 'retrofit_flag': 'clothesDrying_retrofit_flag'},
+        'cooking': {'include_flag': 'include_cooking_flag', 'retrofit_flag': 'cooking_retrofit_flag'}
+    }
+    
+    monkeypatch.setattr('cmu_tare_model.constants.EQUIPMENT_SPECS', mock_equipment_specs)
+    monkeypatch.setattr('cmu_tare_model.constants.FUEL_MAPPING', mock_fuel_mapping)
+    monkeypatch.setattr('cmu_tare_model.constants.UPGRADE_COLUMNS', mock_upgrade_columns)
+
+@pytest.fixture
+def sample_homes_df() -> pd.DataFrame:
+    """
+    Create a sample DataFrame with homes having different validation scenarios.
+    
+    Returns:
+        A DataFrame with 10 homes with various validation states
+    """
+    # Create homes with different validation scenarios
+    data = {
+        # Flags for heating
+        'include_heating_flag': [True, True, True, True, False, True, True, True, True, True],
+        'heating_retrofit_flag': [True, False, True, True, False, False, True, False, True, True],
+        'heating_fuel': ['electricity', 'natural gas', 'propane', 'electricity', 'natural gas', 
+                         'unknown', 'electricity', 'natural gas', 'propane', 'fuel oil'],
+        'heating_tech': ['heat pump', 'furnace', 'furnace', 'heat pump', 'furnace',
+                        'furnace', 'unknown', 'furnace', 'furnace', 'furnace'],
+        
+        # Flags for waterHeating
+        'include_waterHeating_flag': [True, True, False, True, False, True, True, True, True, True],
+        'waterHeating_retrofit_flag': [True, False, False, True, False, True, False, False, True, True],
+        'waterHeating_fuel': ['electricity', 'natural gas', 'electricity', 'electricity', 'natural gas',
+                             'propane', 'unknown', 'natural gas', 'electricity', 'fuel oil'],
+        'waterHeating_tech': ['heat pump water heater', 'storage', 'storage', 'storage', 'tankless',
+                             'storage', 'storage', 'unknown', 'heat pump water heater', 'storage'],
+        
+        # Flags for clothesDrying
+        'include_clothesDrying_flag': [True, True, True, False, True, True, False, True, True, True],
+        'clothesDrying_retrofit_flag': [True, False, True, False, False, True, False, True, False, True],
+        'clothesDrying_fuel': ['electricity', 'natural gas', 'electricity', 'natural gas', 'electricity',
+                              'natural gas', 'electricity', 'unknown', 'electricity', 'natural gas'],
+        'clothesDrying_tech': ['heat pump dryer', 'standard', 'standard', 'standard', 'standard',
+                              'standard', 'standard', 'standard', 'unknown', 'standard'],
+        
+        # Flags for cooking
+        'include_cooking_flag': [True, True, True, True, False, False, True, True, True, True],
+        'cooking_retrofit_flag': [True, False, True, False, False, False, True, False, True, True],
+        'cooking_fuel': ['electricity', 'natural gas', 'electricity', 'natural gas', 'electricity',
+                        'natural gas', 'electricity', 'unknown', 'electricity', 'natural gas'],
+        'cooking_tech': ['induction', 'standard', 'standard', 'standard', 'standard',
+                        'standard', 'induction', 'standard', 'unknown', 'standard'],
+        
+        # Consumption columns for all measure packages
+        'mp0_heating_consumption': [1000, 1200, 900, 800, 1100, 950, 850, 1050, 1150, 1300],
+        'mp0_waterHeating_consumption': [500, 600, 450, 400, 550, 475, 425, 525, 575, 650],
+        'mp0_clothesDrying_consumption': [250, 300, 225, 200, 275, 237, 213, 262, 287, 325],
+        'mp0_cooking_consumption': [100, 120, 90, 80, 110, 95, 85, 105, 115, 130],
+        
+        'mp8_heating_consumption': [800, 1000, 720, 640, 880, 760, 680, 840, 920, 1040],
+        'mp8_waterHeating_consumption': [400, 500, 360, 320, 440, 380, 340, 420, 460, 520],
+        'mp8_clothesDrying_consumption': [200, 250, 180, 160, 220, 190, 170, 210, 230, 260],
+        'mp8_cooking_consumption': [80, 100, 72, 64, 88, 76, 68, 84, 92, 104],
+    }
+    
+    return pd.DataFrame(data)
+
+@pytest.fixture
+def category_data(request):
+    """
+    Parameterized fixture that provides test data for different categories.
+    
+    Args:
+        request: Pytest request object
+        
+    Returns:
+        Dict with category-specific test data
+    """
+    # Dictionary mapping categories to their specific test data
+    data = {
+        'heating': {
+            'valid_fuels': ['electricity', 'natural gas', 'propane', 'fuel oil'],
+            'valid_techs': ['furnace', 'boiler', 'heat pump', 'resistance'],
+            'consumption_col': 'mp0_heating_consumption',
+            'lifecycle': 20
+        },
+        'waterHeating': {
+            'valid_fuels': ['electricity', 'natural gas', 'propane', 'fuel oil'],
+            'valid_techs': ['storage', 'tankless', 'heat pump water heater'],
+            'consumption_col': 'mp0_waterHeating_consumption',
+            'lifecycle': 15
+        },
+        'clothesDrying': {
+            'valid_fuels': ['electricity', 'natural gas'],
+            'valid_techs': ['standard', 'heat pump dryer'],
+            'consumption_col': 'mp0_clothesDrying_consumption',
+            'lifecycle': 12
+        },
+        'cooking': {
+            'valid_fuels': ['electricity', 'natural gas'],
+            'valid_techs': ['standard', 'induction'],
+            'consumption_col': 'mp0_cooking_consumption',
+            'lifecycle': 15
+        }
+    }
+    
+    # Return data for the requested category
+    return data.get(request.param, {})
+
+@pytest.fixture(params=['heating', 'waterHeating', 'clothesDrying', 'cooking'])
+def category(request):
+    """Parameterized fixture that cycles through all equipment categories."""
+    return request.param
+
+@pytest.fixture(params=[0, 8])
+def menu_mp(request):
+    """Parameterized fixture that provides measure package IDs."""
+    return request.param
+
+
+# -------------------------------------------------------------------------
+#                   MASK INITIALIZATION TESTS
+# -------------------------------------------------------------------------
+
+class TestMaskInitialization:
+    """Tests for the mask initialization step of the validation framework."""
+    
+    def test_basic_validation_mask(self, sample_homes_df, monkeypatch):
+        """Test basic mask initialization with a common category."""
+        category = 'heating'
+        menu_mp = 0
+        
+        # Get validation tracking results
+        result_df, valid_mask, columns_to_mask, retrofit_cols = initialize_validation_tracking(
+            sample_homes_df, category, menu_mp)
+        
+        # Check that result_df is a copy
+        assert id(result_df) != id(sample_homes_df)
+        
+        # Check that the mask is correctly created based on include flag and valid fuel and tech
+        expected_mask = pd.Series([True, True, True, True, False, False, False, False, True, True], 
+                                 index=sample_homes_df.index)
+        pd.testing.assert_series_equal(valid_mask, expected_mask)
+        
+        # Check that columns_to_mask contains the right category
+        assert category in columns_to_mask
+        
+        # Check that retrofit_cols contains the consumption column
+        assert f'mp{menu_mp}_{category}_consumption' in retrofit_cols
+    
+    def test_get_valid_calculation_mask(self, sample_homes_df):
+        """Test the get_valid_calculation_mask function directly."""
+        category = 'waterHeating'
+        menu_mp = 0
+        
+        # Get valid calculation mask
+        valid_mask = get_valid_calculation_mask(sample_homes_df, category, menu_mp)
+        
+        # Expected mask based on include flag and valid fuel/tech
+        expected_mask = pd.Series([True, True, False, True, False, True, False, False, True, True], 
+                                 index=sample_homes_df.index)
+        pd.testing.assert_series_equal(valid_mask, expected_mask)
+    
+    def test_get_retrofit_homes_mask(self, sample_homes_df):
+        """Test the get_retrofit_homes_mask function directly."""
+        category = 'clothesDrying'
+        menu_mp = 8
+        
+        # Get retrofit mask
+        retrofit_mask = get_retrofit_homes_mask(sample_homes_df, category, menu_mp)
+        
+        # Expected mask based on include flag and retrofit flag
+        expected_mask = pd.Series([True, False, True, False, False, True, False, True, False, True], 
+                                 index=sample_homes_df.index)
+        pd.testing.assert_series_equal(retrofit_mask, expected_mask)
+    
+    def test_different_categories(self, sample_homes_df, category):
+        """Test mask initialization with different equipment categories."""
+        menu_mp = 0
+        
+        # Get validation tracking results
+        result_df, valid_mask, columns_to_mask, retrofit_cols = initialize_validation_tracking(
+            sample_homes_df, category, menu_mp)
+        
+        # Check that the category is in columns_to_mask
+        assert category in columns_to_mask
+        
+        # Check that retrofit_cols contains the correct consumption column
+        assert f'mp{menu_mp}_{category}_consumption' in retrofit_cols
+    
+    def test_missing_include_flag(self, sample_homes_df):
+        """Test mask initialization with missing include flag."""
+        category = 'heating'
+        menu_mp = 0
+        
+        # Create a copy without the include flag
+        df_no_flag = sample_homes_df.drop(columns=['include_heating_flag'])
+        
+        # Missing flag should raise a KeyError
+        with pytest.raises(KeyError):
+            initialize_validation_tracking(df_no_flag, category, menu_mp)
+    
+    def test_empty_dataframe(self):
+        """Test mask initialization with an empty DataFrame."""
+        empty_df = pd.DataFrame()
+        category = 'heating'
+        menu_mp = 0
+        
+        # Empty DataFrame should raise a KeyError
+        with pytest.raises(KeyError):
+            initialize_validation_tracking(empty_df, category, menu_mp)
+    
+    def test_invalid_category(self, sample_homes_df):
+        """Test mask initialization with an invalid category."""
+        invalid_category = 'invalid_category'
+        menu_mp = 0
+        
+        # Invalid category should raise a ValueError
+        with pytest.raises(ValueError):
+            initialize_validation_tracking(sample_homes_df, invalid_category, menu_mp)
+
+
+# -------------------------------------------------------------------------
+#                   SERIES INITIALIZATION TESTS
+# -------------------------------------------------------------------------
+
+class TestSeriesInitialization:
+    """Tests for the series initialization step of the validation framework."""
+    
+    def test_basic_series_initialization(self, sample_homes_df):
+        """Test basic series initialization using retrofit mask."""
+        category = 'heating'
+        menu_mp = 0
+        
+        # Get retrofit mask
+        retrofit_mask = get_retrofit_homes_mask(sample_homes_df, category, menu_mp)
+        
+        # Create retrofit-only series
+        result_series = create_retrofit_only_series(sample_homes_df, retrofit_mask)
+        
+        # Check that series has zeros for retrofit homes and NaN for others
+        expected_values = [0.0, np.nan, 0.0, 0.0, np.nan, np.nan, 0.0, np.nan, 0.0, 0.0]
+        expected_series = pd.Series(expected_values, index=sample_homes_df.index)
+        pd.testing.assert_series_equal(result_series, expected_series)
+    
+    def test_all_valid_homes(self, sample_homes_df):
+        """Test series initialization with all homes being valid."""
+        # Create a mask with all True values
+        all_valid_mask = pd.Series([True] * len(sample_homes_df), index=sample_homes_df.index)
+        
+        # Create retrofit-only series
+        result_series = create_retrofit_only_series(sample_homes_df, all_valid_mask)
+        
+        # Check that all values are 0.0 (no NaN)
+        expected_series = pd.Series([0.0] * len(sample_homes_df), index=sample_homes_df.index)
+        pd.testing.assert_series_equal(result_series, expected_series)
+    
+    def test_all_invalid_homes(self, sample_homes_df):
+        """Test series initialization with all homes being invalid."""
+        # Create a mask with all False values
+        all_invalid_mask = pd.Series([False] * len(sample_homes_df), index=sample_homes_df.index)
+        
+        # Create retrofit-only series
+        result_series = create_retrofit_only_series(sample_homes_df, all_invalid_mask)
+        
+        # Check that all values are NaN
+        expected_values = [np.nan] * len(sample_homes_df)
+        expected_series = pd.Series(expected_values, index=sample_homes_df.index)
+        pd.testing.assert_series_equal(result_series, expected_series)
+    
+    def test_empty_dataframe(self):
+        """Test series initialization with an empty DataFrame."""
+        empty_df = pd.DataFrame()
+        empty_mask = pd.Series(dtype=bool)
+        
+        # Create retrofit-only series
+        result_series = create_retrofit_only_series(empty_df, empty_mask)
+        
+        # Check that result is an empty series
+        assert len(result_series) == 0
+        assert isinstance(result_series, pd.Series)
+    
+    def test_non_standard_index(self):
+        """Test series initialization with a non-standard index."""
+        # Create DataFrame with string index
+        df = pd.DataFrame({
+            'col1': [1, 2, 3, 4]
+        }, index=['a', 'b', 'c', 'd'])
+        
+        # Create mask with same index
+        mask = pd.Series([True, False, True, False], index=['a', 'b', 'c', 'd'])
+        
+        # Create retrofit-only series
+        result_series = create_retrofit_only_series(df, mask)
+        
+        # Check that series has correct values and index
+        expected_values = [0.0, np.nan, 0.0, np.nan]
+        expected_series = pd.Series(expected_values, index=['a', 'b', 'c', 'd'])
+        pd.testing.assert_series_equal(result_series, expected_series)
+    
+    def test_from_category_directly(self, sample_homes_df):
+        """Test series initialization using category and menu_mp directly."""
+        category = 'cooking'
+        menu_mp = 8
+        
+        # Create retrofit-only series
+        result_series = create_retrofit_only_series(
+            sample_homes_df, category=category, menu_mp=menu_mp)
+        
+        # Expected values based on cooking_retrofit_flag
+        expected_values = [0.0, np.nan, 0.0, np.nan, np.nan, np.nan, 0.0, np.nan, 0.0, 0.0]
+        expected_series = pd.Series(expected_values, index=sample_homes_df.index)
+        pd.testing.assert_series_equal(result_series, expected_series)
+
+
+# -------------------------------------------------------------------------
+#                   VALID-ONLY CALCULATION TESTS
+# -------------------------------------------------------------------------
+
+class TestValidOnlyCalculation:
+    """Tests for the valid-only calculation step of the validation framework."""
+    
+    def test_calculations_on_valid_homes_only(self, sample_homes_df):
+        """Test performing calculations only on valid homes."""
+        category = 'heating'
+        menu_mp = 0
+        
+        # Initialize validation tracking
+        _, valid_mask, _, _ = initialize_validation_tracking(
+            sample_homes_df, category, menu_mp)
+        
+        # Initialize result series
+        result_series = create_retrofit_only_series(sample_homes_df, valid_mask)
+        
+        # Perform calculation only on valid homes (multiply consumption by 2)
+        consumption_col = f'mp{menu_mp}_{category}_consumption'
+        valid_indices = valid_mask[valid_mask].index
+        result_series.loc[valid_indices] = sample_homes_df.loc[valid_indices, consumption_col] * 2
+        
+        # Expected values: consumption * 2 for valid homes, NaN for others
+        expected_values = [2000, 2400, 1800, 1600, np.nan, np.nan, 
+                          np.nan, np.nan, 2300, 2600]
+        expected_series = pd.Series(expected_values, index=sample_homes_df.index)
+        pd.testing.assert_series_equal(result_series, expected_series)
+    
+    def test_avoided_values_calculation(self, sample_homes_df):
+        """Test the calculate_avoided_values utility function."""
+        category = 'waterHeating'
+        menu_mp = 8
+        
+        # Initialize validation tracking
+        _, valid_mask, _, _ = initialize_validation_tracking(
+            sample_homes_df, category, menu_mp)
+        
+        # Get baseline and retrofit consumption columns
+        baseline_col = f'mp0_{category}_consumption'
+        retrofit_col = f'mp{menu_mp}_{category}_consumption'
+        
+        # Calculate avoided values (baseline - retrofit)
+        avoided_series = calculate_avoided_values(
+            sample_homes_df, baseline_col, retrofit_col, valid_mask)
+        
+        # Expected values: baseline - retrofit for valid homes, NaN for others
+        expected_values = [100, 100, np.nan, 80, np.nan, 95, 
+                          np.nan, np.nan, 115, 130]
+        expected_series = pd.Series(expected_values, index=sample_homes_df.index)
+        pd.testing.assert_series_equal(avoided_series, expected_series)
+    
+    def test_replace_small_values(self, sample_homes_df):
+        """Test the replace_small_values_with_nan function."""
+        # Create a series with some small values
+        values = [0.001, 1.0, 0.0001, 5.0, 0.005, 10.0]
+        series = pd.Series(values, index=sample_homes_df.index[:6])
+        
+        # Replace values < 0.01 with NaN
+        result = replace_small_values_with_nan(series, threshold=0.01)
+        
+        # Expected: small values replaced with NaN
+        expected_values = [np.nan, 1.0, np.nan, 5.0, np.nan, 10.0]
+        expected_series = pd.Series(expected_values, index=sample_homes_df.index[:6])
+        pd.testing.assert_series_equal(result, expected_series)
+
+
+# -------------------------------------------------------------------------
+#                   FINAL MASKING TESTS
+# -------------------------------------------------------------------------
+
+class TestFinalMasking:
+    """Tests for the final masking step of the validation framework."""
+    
+    def test_basic_final_masking(self, sample_homes_df):
+        """Test basic application of final masking to result columns."""
+        # Create sample results DataFrame
+        results_df = sample_homes_df.copy()
+        results_df['heating_cost'] = range(10)
+        results_df['heating_savings'] = range(10, 20)
+        
+        # Define columns to mask
+        columns_to_mask = {
+            'heating': ['heating_cost', 'heating_savings']
+        }
+        
+        # Create a mask for heating category
+        heating_mask = pd.Series([True, True, True, True, False, False, 
+                                 False, False, True, True], 
+                                index=sample_homes_df.index)
+        
+        # Apply the mask to the DataFrame inplace
+        with mock.patch('cmu_tare_model.utils.validation_framework.get_valid_calculation_mask',
+                       return_value=heating_mask):
+            masked_df = apply_final_masking(results_df, columns_to_mask)
+        
+        # Check that heating columns are masked correctly
+        for i in range(10):
+            if i in [4, 5, 6, 7]:  # Invalid homes
+                assert pd.isna(masked_df.loc[i, 'heating_cost'])
+                assert pd.isna(masked_df.loc[i, 'heating_savings'])
+            else:  # Valid homes
+                assert masked_df.loc[i, 'heating_cost'] == i
+                assert masked_df.loc[i, 'heating_savings'] == i + 10
+    
+    def test_multiple_categories_masking(self, sample_homes_df):
+        """Test applying masks for multiple categories simultaneously."""
+        # Create sample results DataFrame
+        results_df = sample_homes_df.copy()
+        results_df['heating_cost'] = range(10)
+        results_df['waterHeating_cost'] = range(10, 20)
+        
+        # Define columns to mask
+        columns_to_mask = {
+            'heating': ['heating_cost'],
+            'waterHeating': ['waterHeating_cost']
+        }
+        
+        # Create masks for each category
+        heating_mask = pd.Series([True, True, True, True, False, False, 
+                                 False, False, True, True], 
+                                index=sample_homes_df.index)
+        
+        waterHeating_mask = pd.Series([True, True, False, True, False, True, 
+                                      False, False, True, True], 
+                                     index=sample_homes_df.index)
+        
+        # Mock get_valid_calculation_mask to return appropriate masks
+        def mock_get_mask(df, category, *args, **kwargs):
+            if category == 'heating':
+                return heating_mask
+            elif category == 'waterHeating':
+                return waterHeating_mask
+            return pd.Series([True] * len(df), index=df.index)
+        
+        # Apply the masks to the DataFrame inplace
+        with mock.patch('cmu_tare_model.utils.validation_framework.get_valid_calculation_mask',
+                       side_effect=mock_get_mask):
+            masked_df = apply_final_masking(results_df, columns_to_mask)
+        
+        # Check heating columns
+        for i in range(10):
+            if i in [4, 5, 6, 7]:  # Invalid homes for heating
+                assert pd.isna(masked_df.loc[i, 'heating_cost'])
+            else:  # Valid homes for heating
+                assert masked_df.loc[i, 'heating_cost'] == i
+        
+        # Check waterHeating columns
+        for i in range(10):
+            if i in [2, 4, 6, 7]:  # Invalid homes for waterHeating
+                assert pd.isna(masked_df.loc[i, 'waterHeating_cost'])
+            else:  # Valid homes for waterHeating
+                assert masked_df.loc[i, 'waterHeating_cost'] == i + 10
+    
+    def test_empty_columns_to_mask(self, sample_homes_df):
+        """Test final masking with empty columns_to_mask dictionary."""
+        # Create sample results DataFrame
+        results_df = sample_homes_df.copy()
+        results_df['heating_cost'] = range(10)
+        
+        # Apply masking with empty dictionary
+        columns_to_mask = {}
+        masked_df = apply_final_masking(results_df, columns_to_mask)
+        
+        # Check that no values were masked
+        assert (masked_df['heating_cost'] == range(10)).all()
+    
+    def test_apply_new_columns(self, sample_homes_df):
+        """Test applying new columns to a DataFrame with proper masking."""
+        category = 'heating'
+        
+        # Create a DataFrame with new columns
+        new_columns_df = pd.DataFrame({
+            'heating_cost': range(10),
+            'heating_savings': range(10, 20)
+        }, index=sample_homes_df.index)
+        
+        # Define columns to mask for this category
+        category_columns_to_mask = ['heating_cost', 'heating_savings']
+        all_columns_to_mask = {}
+        
+        # Apply new columns to the DataFrame
+        result_df, updated_columns_to_mask = apply_new_columns_to_dataframe(
+            sample_homes_df, new_columns_df, category, 
+            category_columns_to_mask, all_columns_to_mask)
+        
+        # Check that new columns were added correctly
+        assert 'heating_cost' in result_df.columns
+        assert 'heating_savings' in result_df.columns
+        
+        # Check that columns_to_mask was updated correctly
+        assert category in updated_columns_to_mask
+        assert set(updated_columns_to_mask[category]) == set(category_columns_to_mask)
+
+
+# -------------------------------------------------------------------------
+#                   INTEGRATION TESTS
+# -------------------------------------------------------------------------
+
+class TestValidationFrameworkIntegration:
+    """Integration tests for the complete validation framework workflow."""
+    
+    def test_end_to_end_workflow(self, sample_homes_df):
+        """Test the complete 5-step validation framework workflow."""
+        category = 'heating'
+        menu_mp = 0
+        
+        # Step 1: Mask Initialization
+        result_df, valid_mask, columns_to_mask, retrofit_cols = initialize_validation_tracking(
+            sample_homes_df, category, menu_mp)
+        
+        # Step 2: Series Initialization
+        result_series = create_retrofit_only_series(result_df, valid_mask)
+        
+        # Step 3: Valid-Only Calculation
+        # For this test, calculate heating cost = consumption * 0.15 (cost per unit)
+        consumption_col = f'mp{menu_mp}_{category}_consumption'
+        cost_per_unit = 0.15
+        valid_indices = valid_mask[valid_mask].index
+        result_series.loc[valid_indices] = result_df.loc[valid_indices, consumption_col] * cost_per_unit
+        
+        # Step 4: Valid-Only Updates
+        result_df['heating_cost'] = result_series
+        columns_to_mask[category].append('heating_cost')
+        
+        # Step 5: Final Masking
+        final_df = apply_final_masking(result_df, columns_to_mask)
+        
+        # Verify final results
+        for i in range(len(sample_homes_df)):
+            if i in [0, 1, 2, 3, 8, 9]:  # Valid homes
+                expected_cost = sample_homes_df.loc[i, consumption_col] * cost_per_unit
+                assert abs(final_df.loc[i, 'heating_cost'] - expected_cost) < 1e-10
+            else:  # Invalid homes
+                assert pd.isna(final_df.loc[i, 'heating_cost'])
+    
+    def test_complete_lifecycle_with_multiple_categories(self, sample_homes_df):
+        """Test the validation framework across multiple categories."""
+        categories = ['heating', 'waterHeating']
+        menu_mp = 0
+        
+        # Initialize combined results DataFrame
+        result_df = sample_homes_df.copy()
+        all_columns_to_mask = {}
+        
+        for category in categories:
+            # Step 1: Mask Initialization
+            _, valid_mask, category_columns_to_mask, _ = initialize_validation_tracking(
+                result_df, category, menu_mp)
+            
+            # Add category to all_columns_to_mask
+            all_columns_to_mask[category] = []
+            
+            # Step 2: Series Initialization
+            result_series = create_retrofit_only_series(result_df, valid_mask)
+            
+            # Step 3 & 4: Valid-Only Calculation and Updates
+            consumption_col = f'mp{menu_mp}_{category}_consumption'
+            cost_per_unit = 0.15 if category == 'heating' else 0.10
+            valid_indices = valid_mask[valid_mask].index
+            result_series.loc[valid_indices] = result_df.loc[valid_indices, consumption_col] * cost_per_unit
+            
+            # Add result to DataFrame
+            cost_column = f'{category}_cost'
+            result_df[cost_column] = result_series
+            all_columns_to_mask[category].append(cost_column)
+        
+        # Step 5: Final Masking
+        final_df = apply_final_masking(result_df, all_columns_to_mask)
+        
+        # Verify heating results
+        heating_valid = [0, 1, 2, 3, 8, 9]
+        for i in range(len(sample_homes_df)):
+            if i in heating_valid:  # Valid heating homes
+                expected_cost = sample_homes_df.loc[i, f'mp{menu_mp}_heating_consumption'] * 0.15
+                assert abs(final_df.loc[i, 'heating_cost'] - expected_cost) < 1e-10
+            else:  # Invalid heating homes
+                assert pd.isna(final_df.loc[i, 'heating_cost'])
+        
+        # Verify waterHeating results
+        waterHeating_valid = [0, 1, 3, 5, 8, 9]
+        for i in range(len(sample_homes_df)):
+            if i in waterHeating_valid:  # Valid waterHeating homes
+                expected_cost = sample_homes_df.loc[i, f'mp{menu_mp}_waterHeating_consumption'] * 0.10
+                assert abs(final_df.loc[i, 'waterHeating_cost'] - expected_cost) < 1e-10
+            else:  # Invalid waterHeating homes
+                assert pd.isna(final_df.loc[i, 'waterHeating_cost'])

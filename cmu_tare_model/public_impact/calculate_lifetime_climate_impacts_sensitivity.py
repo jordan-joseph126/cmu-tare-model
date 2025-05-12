@@ -207,8 +207,9 @@ def calculate_lifetime_climate_impacts(
                 if yearly_emissions_lists[mer_type]:
                     # Convert list of Series to DataFrame and sum
                     emissions_df = pd.concat(yearly_emissions_lists[mer_type], axis=1)
-                    total_emissions = emissions_df.sum(axis=1)
-                    
+                    # total_emissions = emissions_df.sum(axis=1)                    
+                    total_emissions = emissions_df.sum(axis=1, skipna=False)  # Use skipna=False to propagate NaN values
+
                     # Apply validation mask for measure packages
                     if menu_mp != 0:
                         total_emissions = pd.Series(
@@ -225,8 +226,9 @@ def calculate_lifetime_climate_impacts(
                 if yearly_damages_lists[key]:
                     # Convert list of Series to DataFrame and sum
                     damages_df = pd.concat(yearly_damages_lists[key], axis=1)
-                    total_damages = damages_df.sum(axis=1)
-                    
+                    # total_damages = damages_df.sum(axis=1)
+                    total_damages = damages_df.sum(axis=1, skipna=False)  # Use skipna=False to propagate NaN values
+
                     # Apply validation mask for measure packages
                     if menu_mp != 0:
                         total_damages = pd.Series(

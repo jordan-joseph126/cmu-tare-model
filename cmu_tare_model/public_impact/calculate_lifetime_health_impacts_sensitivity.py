@@ -227,7 +227,8 @@ def calculate_lifetime_health_impacts(
                 if yearly_health_damages_lists[key]:
                     # Convert list of Series to DataFrame and sum
                     damages_df = pd.concat(yearly_health_damages_lists[key], axis=1)
-                    total_damages = damages_df.sum(axis=1)
+                    # total_damages = damages_df.sum(axis=1)
+                    total_damages = damages_df.sum(axis=1, skipna=False)  # Use skipna=False to propagate NaN values
                     
                     # Apply validation mask for measure packages
                     if menu_mp != 0:

@@ -1,113 +1,205 @@
-import numpy as np
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 
-"""
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-FUNCTIONS: VISUALIZATION USING DATAFRAMES AND SUBPLOTS
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-"""
+from typing import List, Optional, Tuple, Dict, Any, Union
 
-# LAST UPDATED DECEMBER 26, 2024 @ 9:10 PM
-def create_df_adoption(df, menu_mp, category):
+from cmu_tare_model.adoption_potential.data_processing.visuals_adoption_potential_utils import (
+    verify_columns_exist,
+    detect_adoption_columns,
+    filter_columns,
+    filter_by_fuel,
+    plot_adoption_rate_bar
+)
+
+# =========================================================================
+# FUNCTIONS: VISUALIZATION USING DATAFRAMES AND SUBPLOTS
+# =========================================================================
+
+def create_df_adoption(
+        df: pd.DataFrame, 
+        menu_mp: int, 
+        category: str,
+        scc: str = 'upper', 
+        rcm_model: str = 'AP2', 
+        cr_function: str = 'acs'
+) -> pd.DataFrame:
     """
-    Generates a new DataFrame with specific adoption columns based on provided parameters.
+    Generates a new DataFrame with specific adoption columns.
+    
+    Supports both new column naming pattern with sensitivity dimensions and
+    falls back to the original pattern for backward compatibility.
     
     Args:
-    df (pd.DataFrame): Original DataFrame.
-    menu_mp (int): Measure package identifier.
+        df: Original DataFrame
+        menu_mp: Measure package identifier
+        category: Equipment category (e.g., 'heating', 'waterHeating')
+        scc: Social cost of carbon assumption ('lower', 'central', or 'upper')
+        rcm_model: RCM model ('AP2', 'EASIUR', or 'InMAP')
+        cr_function: Concentration-response function ('acs' or 'h6c')
 
     Returns:
-    pd.DataFrame: A DataFrame with the selected columns.
-
-    UPDATES:
-    - Removed reference to EPA_SCC_USD2023_PER_MT as it is a constant and doesnt need to be a dataframe column.
-    - Removed code that calculates the cost effectiveness of CO2e abatement for each equipment category. (now done in adoption_decision)
-
-    """    
+        DataFrame with selected columns related to adoption
+    """
     # Create a copy of the dataframe
     df_copy = df.copy()
-
-    # Begin df with these cols
-    summary_cols = ['state', 'city', 'county', 'puma', 'percent_AMI', 'lowModerateIncome_designation']
-
-    cols_to_add = [f'base_{category}_fuel',
-                   f'preIRA_mp{menu_mp}_{category}_private_npv_lessWTP', # PRE-IRA PRIVATE
-                   f'preIRA_mp{menu_mp}_{category}_total_capitalCost', 
-                   f'preIRA_mp{menu_mp}_{category}_private_npv_moreWTP', 
-                   f'preIRA_mp{menu_mp}_{category}_net_capitalCost',
-                   f'preIRA_mp{menu_mp}_{category}_avoided_mt_co2e_lrmer', # LRMER
-                   f'preIRA_mp{menu_mp}_{category}_public_npv_lrmer',
-                   f'preIRA_mp{menu_mp}_{category}_adoption_lrmer',
-                   f'preIRA_mp{menu_mp}_{category}_avoided_mt_co2e_srmer', # SRMER
-                   f'preIRA_mp{menu_mp}_{category}_public_npv_srmer',
-                   f'preIRA_mp{menu_mp}_{category}_adoption_srmer',
-                   f'mp{menu_mp}_{category}_rebate_amount', # IRA-REFERENCE PRIVATE
-                   f'iraRef_mp{menu_mp}_{category}_private_npv_lessWTP', 
-                   f'iraRef_mp{menu_mp}_{category}_total_capitalCost', 
-                   f'iraRef_mp{menu_mp}_{category}_private_npv_moreWTP', 
-                   f'iraRef_mp{menu_mp}_{category}_net_capitalCost',
-                   f'iraRef_mp{menu_mp}_{category}_avoided_mt_co2e_lrmer', # LRMER
-                   f'iraRef_mp{menu_mp}_{category}_usd2023_per_mtCO2e_lrmer',
-                   f'iraRef_mp{menu_mp}_{category}_public_npv_lrmer',
-                   f'iraRef_mp{menu_mp}_{category}_additional_public_benefit_lrmer',
-                   f'iraRef_mp{menu_mp}_{category}_adoption_lrmer',
-                   f'iraRef_mp{menu_mp}_{category}_avoided_mt_co2e_srmer', # SRMER
-                   f'iraRef_mp{menu_mp}_{category}_usd2023_per_mtCO2e_srmer',
-                   f'iraRef_mp{menu_mp}_{category}_public_npv_srmer',
-                   f'iraRef_mp{menu_mp}_{category}_additional_public_benefit_srmer',
-                   f'iraRef_mp{menu_mp}_{category}_adoption_srmer',
-                   ]
-            
-    # Use extend instead of append to add each element of cols_to_add to summary_cols
-    summary_cols.extend(cols_to_add)
-
-    # Select the relevant columns
-    df_copy = df_copy[summary_cols]
-
-    return df_copy
-
-# UPDATED SEPTEMBER 20, 2024 @ 1:30 AM
-import pandas as pd
-
-def filter_columns(df):
-    keep_columns = [col for col in df.columns if 'Tier 1: Feasible' in col[1] or 
-                    'Tier 2: Feasible vs. Alternative' in col[1] or 
-                    'Tier 3: Subsidy-Dependent Feasibility' in col[1] or 
-                    'Total Adoption Potential' in col[1] or 
-                    'Total Adoption Potential (Additional Subsidy)' in col[1]]    
     
-    return df.loc[:, keep_columns]
+    print(f"\nCreating adoption DataFrame for {category}:")
+    
+    # Begin with basic columns if available
+    base_cols = ['state', 'city', 'county', 'puma', 'percent_AMI', 'lowModerateIncome_designation']
+    base_cols = [col for col in base_cols if col in df_copy.columns]
+    
+    # Try to find columns matching both new and old patterns
+    adoption_col_new_pre = f'preIRA_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}'
+    adoption_col_new_ira = f'iraRef_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}'
+    
+    adoption_col_old_pre = f'preIRA_mp{menu_mp}_{category}_adoption_lrmer'
+    adoption_col_old_ira = f'iraRef_mp{menu_mp}_{category}_adoption_lrmer'
+    
+    # Check if new pattern columns exist
+    new_pattern_exists = (adoption_col_new_pre in df_copy.columns and 
+                          adoption_col_new_ira in df_copy.columns)
+    
+    if new_pattern_exists:
+        print(f"- Using new column naming pattern with sensitivity dimensions")
+        cols_to_add = [
+            f'base_{category}_fuel',
+            f'include_{category}',
+            f'preIRA_mp{menu_mp}_{category}_public_npv_{scc}_{rcm_model}_{cr_function}',
+            f'preIRA_mp{menu_mp}_{category}_total_capitalCost', 
+            f'preIRA_mp{menu_mp}_{category}_private_npv_lessWTP',
+            adoption_col_new_pre,
+            f'mp{menu_mp}_{category}_rebate_amount',
+            f'iraRef_mp{menu_mp}_{category}_public_npv_{scc}_{rcm_model}_{cr_function}',
+            f'iraRef_mp{menu_mp}_{category}_total_capitalCost', 
+            f'iraRef_mp{menu_mp}_{category}_private_npv_lessWTP',
+            adoption_col_new_ira
+        ]
+    else:
+        # Fall back to old pattern for backward compatibility
+        print(f"- Using original column naming pattern (backward compatibility)")
+        cols_to_add = [
+            f'base_{category}_fuel',
+            f'include_{category}',
+            f'preIRA_mp{menu_mp}_{category}_public_npv_lrmer',
+            f'preIRA_mp{menu_mp}_{category}_total_capitalCost', 
+            f'preIRA_mp{menu_mp}_{category}_private_npv_lessWTP',
+            adoption_col_old_pre,
+            f'mp{menu_mp}_{category}_rebate_amount',
+            f'iraRef_mp{menu_mp}_{category}_public_npv_lrmer',
+            f'iraRef_mp{menu_mp}_{category}_total_capitalCost', 
+            f'iraRef_mp{menu_mp}_{category}_private_npv_lessWTP',
+            adoption_col_old_ira
+        ]
+    
+    # Filter to only include columns that exist in the DataFrame
+    cols_to_add = [col for col in cols_to_add if col in df_copy.columns]
+    
+    # Check if we have at least one adoption column
+    adoption_cols = []
+    if new_pattern_exists:
+        adoption_cols = [adoption_col_new_pre, adoption_col_new_ira]
+    else:
+        adoption_cols = [adoption_col_old_pre, adoption_col_old_ira]
+    
+    found_adoption_cols = [col for col in adoption_cols if col in df_copy.columns]
+    if not found_adoption_cols:
+        raise ValueError(f"No adoption columns found for {category} with menu_mp={menu_mp}")
+    
+    # Combine base columns with filtered columns
+    all_cols = base_cols + cols_to_add
+    
+    # Select columns that exist in the DataFrame
+    existing_cols = [col for col in all_cols if col in df_copy.columns]
+    print(f"- Selected {len(existing_cols)} columns for {category}")
+    
+    return df_copy[existing_cols]
 
-def create_multiIndex_adoption_df(df, menu_mp, category, mer_type):
-    # Explicitly set 'lowModerateIncome_designation' as a categorical type with order
+
+def create_multiIndex_adoption_df(
+        df: pd.DataFrame,
+        menu_mp: int,
+        category: str,
+        scc: str = 'upper',
+        rcm_model: str = 'AP2',
+        cr_function: str = 'acs',
+        mer_type: str = 'lrmer'  # For backward compatibility
+) -> pd.DataFrame:
+    """
+    Creates a multi-index DataFrame for adoption visualization.
+    
+    Supports both new and old column naming patterns for backward compatibility.
+    
+    Args:
+        df: Input DataFrame with adoption columns
+        menu_mp: Measure package identifier
+        category: Equipment category (e.g., 'heating', 'waterHeating')
+        scc: Social cost of carbon assumption ('lower', 'central', or 'upper')
+        rcm_model: RCM model ('AP2', 'EASIUR', or 'InMAP')
+        cr_function: Concentration-response function ('acs' or 'h6c')
+        mer_type: Marginal emission rate type (for backward compatibility)
+        
+    Returns:
+        Multi-index DataFrame with adoption percentages
+    """
+    # Set up income categories as ordinal
     income_categories = ['Low-Income', 'Moderate-Income', 'Middle-to-Upper-Income']
-
-    df['lowModerateIncome_designation'] = pd.Categorical(df['lowModerateIncome_designation'], categories=income_categories, ordered=True)
+    
+    if 'lowModerateIncome_designation' in df.columns:
+        df['lowModerateIncome_designation'] = pd.Categorical(
+            df['lowModerateIncome_designation'], 
+            categories=income_categories, 
+            ordered=True
+        )
+    
+    # Try both new and old column naming patterns
+    # First try new pattern with sensitivity dimensions
+    new_pre_col = f'preIRA_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}'
+    new_ira_col = f'iraRef_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}'
+    
+    # Check if new pattern columns exist
+    new_pattern_exists = (new_pre_col in df.columns and new_ira_col in df.columns)
     
     # Define the columns for adoption data
-    adoption_cols = [f'preIRA_mp{menu_mp}_{category}_adoption_{mer_type}', 
-                     f'iraRef_mp{menu_mp}_{category}_adoption_{mer_type}']
-
-    # Group by f'base_{category}_fuel' and 'lowModerateIncome_designation', calculate normalized counts
-    percentages_df = df.groupby([f'base_{category}_fuel', 'lowModerateIncome_designation'], observed=False)[adoption_cols].apply(
+    if new_pattern_exists:
+        print(f"Using new column pattern with sensitivity dimensions")
+        adoption_cols = [new_pre_col, new_ira_col]
+    else:
+        print(f"Using original column pattern (backward compatibility)")
+        old_pre_col = f'preIRA_mp{menu_mp}_{category}_adoption_{mer_type}'
+        old_ira_col = f'iraRef_mp{menu_mp}_{category}_adoption_{mer_type}'
+        adoption_cols = [old_pre_col, old_ira_col]
+    
+    # Check if adoption columns exist
+    missing_cols = [col for col in adoption_cols if col not in df.columns]
+    if missing_cols:
+        raise ValueError(f"Missing adoption columns: {missing_cols}")
+    
+    # Determine the fuel column name
+    fuel_col = f'base_{category}_fuel'
+    if fuel_col not in df.columns:
+        raise ValueError(f"Required column '{fuel_col}' not found")
+    
+    # Group by fuel type and income designation, calculate normalized counts
+    percentages_df = df.groupby([fuel_col, 'lowModerateIncome_designation'], observed=False)[adoption_cols].apply(
         lambda x: x.apply(lambda y: y.value_counts(normalize=True))).unstack().fillna(0) * 100
     percentages_df = percentages_df.round(0)
 
-    # Ensure 'Tier 1: Feasible' columns exist, set to 0 if they don't
+    # Ensure all tier columns exist
+    tiers = ['Tier 1: Feasible', 'Tier 2: Feasible vs. Alternative', 'Tier 3: Subsidy-Dependent Feasibility']
     for column in adoption_cols:
-        if (column, 'Tier 1: Feasible') not in percentages_df.columns:
-            percentages_df[(column, 'Tier 1: Feasible')] = 0
-        if (column, 'Tier 2: Feasible vs. Alternative') not in percentages_df.columns:
-            percentages_df[(column, 'Tier 2: Feasible vs. Alternative')] = 0
-        if (column, 'Tier 3: Subsidy-Dependent Feasibility') not in percentages_df.columns:
-            percentages_df[(column, 'Tier 3: Subsidy-Dependent Feasibility')] = 0
+        for tier in tiers:
+            if (column, tier) not in percentages_df.columns:
+                percentages_df[(column, tier)] = 0
 
+        # Calculate total adoption potential
         percentages_df[(column, 'Total Adoption Potential')] = (
             percentages_df[(column, 'Tier 1: Feasible')] + 
             percentages_df[(column, 'Tier 2: Feasible vs. Alternative')]
         )
 
+        # Calculate total with additional subsidy
         percentages_df[(column, 'Total Adoption Potential (Additional Subsidy)')] = (
             percentages_df[(column, 'Tier 1: Feasible')] + 
             percentages_df[(column, 'Tier 2: Feasible vs. Alternative')] + 
@@ -117,138 +209,224 @@ def create_multiIndex_adoption_df(df, menu_mp, category, mer_type):
     # Rebuild the column MultiIndex
     percentages_df.columns = pd.MultiIndex.from_tuples(percentages_df.columns)
     
-    # Filter DataFrame to keep relevant columns only
+    # Filter and reorder columns
     filtered_df = filter_columns(percentages_df)
+    
+    # Sort by index
+    sorted_df = filtered_df.sort_index(level=[fuel_col, 'lowModerateIncome_designation'])
+    
+    return sorted_df
 
-    new_order = []
-    for prefix in ['preIRA_mp', 'iraRef_mp']:
-        for suffix in ['Tier 1: Feasible', 'Tier 2: Feasible vs. Alternative', 'Tier 3: Subsidy-Dependent Feasibility', 'Total Adoption Potential', 'Total Adoption Potential (Additional Subsidy)']:
-            col = (f'{prefix}{menu_mp}_{category}_adoption_{mer_type}', suffix)
-            if col in filtered_df.columns:
-                new_order.append(col)
 
-    # Check if new_order is empty before reordering columns
-    if new_order:
-        # Reorder columns based on new_order
-        filtered_df = filtered_df.loc[:, pd.MultiIndex.from_tuples(new_order)]
-                    
-        # Sort DataFrame by the entire index
-        filtered_df.sort_index(level=[f'base_{category}_fuel', 'lowModerateIncome_designation'], inplace=True)
-    else:
-        print("Warning: No matching columns found for reordering")
-
-    return filtered_df
-
-# Usage example (assuming df_basic_adoption_heating is properly formatted and loaded):
-# df_multiIndex_heating_adoption = create_multiIndex_adoption_df(df_basic_adoption_heating, 8, 'heating')
-# df_multiIndex_heating_adoption
-
-# UPDATED SEPTEMBER 14, 2024 @ 12:46 AM
-def subplot_grid_adoption_vBar(dataframes, scenarios_list, subplot_positions, filter_fuel=None, x_labels=None, plot_titles=None, y_labels=None, suptitle=None, figure_size=(12, 10), sharex=False, sharey=False):
+def subplot_grid_adoption_vBar(
+        dataframes: List[pd.DataFrame],
+        subplot_positions: List[Tuple[int, int]],
+        categories: Optional[List[str]] = None,
+        menu_mp: Optional[int] = None,
+        scenarios_list: Optional[List[List[str]]] = None,
+        scc: str = 'upper',
+        rcm_model: str = 'AP2',
+        cr_function: str = 'acs',
+        filter_fuel: Optional[List[str]] = None,
+        x_labels: Optional[List[str]] = None,
+        plot_titles: Optional[List[str]] = None,
+        y_labels: Optional[List[str]] = None,
+        suptitle: Optional[str] = None,
+        figure_size: Tuple[int, int] = (12, 10),
+        sharex: bool = False,
+        sharey: bool = False
+) -> None:
     """
-    Creates a grid of subplots to visualize adoption rates across different scenarios, with an option to plot specific data related to adoption.
+    Creates a grid of subplots to visualize adoption rates across different categories.
 
-    Parameters:
-    - dataframes (list of pd.DataFrame): List of pandas DataFrames, each DataFrame is assumed to be formatted for use in plot_adoption_rate_bar.
-    - scenarios_list (list of list): List of scenarios corresponding to each DataFrame.
-    - subplot_positions (list of tuples): Positions of subplots in the grid, specified as (row, col) tuples.
-    - filter_fuel (list of str, optional): List of fuel types to filter the DataFrames by 'base_fuel' column in a multi-index.
-    - x_labels (list of str, optional): Labels for the x-axis of each subplot.
-    - plot_titles (list of str, optional): Titles for each subplot.
-    - y_labels (list of str, optional): Labels for the y-axis of each subplot.
-    - suptitle (str, optional): A central title for the entire figure.
-    - figure_size (tuple, optional): Size of the entire figure (width, height) in inches.
-    - sharex (bool, optional): Whether subplots should share the same x-axis.
-    - sharey (bool, optional): Whether subplots should share the same y-axis.
-
-    Returns:
-    None. Displays the figure based on the provided parameters.
+    Args:
+        dataframes: List of DataFrames with adoption data
+        subplot_positions: Positions of subplots as (row, col) tuples
+        categories: List of equipment categories (e.g., ['heating', 'waterHeating'])
+                   Required if scenarios_list is not provided.
+        menu_mp: Measure package identifier
+                 Required if scenarios_list is not provided.
+        scenarios_list: List of lists of column names for each DataFrame 
+                      If provided, overrides categories and menu_mp.
+        scc: Social cost of carbon assumption ('lower', 'central', or 'upper')
+        rcm_model: RCM model ('AP2', 'EASIUR', or 'InMAP')
+        cr_function: Concentration-response function ('acs' or 'h6c')
+        filter_fuel: List of fuel types to filter by
+        x_labels: Labels for the x-axis of each subplot
+        plot_titles: Titles for each subplot
+        y_labels: Labels for the y-axis of each subplot
+        suptitle: Central title for the entire figure
+        figure_size: Size of the figure as (width, height)
+        sharex: Whether subplots should share the same x-axis
+        sharey: Whether subplots should share the same y-axis
     """
-    # Define the color mapping as specified
+    print(f"\nCreating subplot grid for adoption visualization:")
+    print(f"- Number of dataframes: {len(dataframes)}")
+    print(f"- Number of subplot positions: {len(subplot_positions)}")
+    if categories:
+        print(f"- Categories: {categories}")
+    print(f"- menu_mp: {menu_mp}")
+    print(f"- scc: {scc}, rcm_model: {rcm_model}, cr_function: {cr_function}")
+    if filter_fuel:
+        print(f"- Filtering for fuel types: {filter_fuel}")
+    
+    # Define color mapping for legend
     color_mapping = {
         'Tier 1: Feasible': 'steelblue',
         'Tier 2: Feasible vs. Alternative': 'lightblue',
         'Tier 3: Subsidy-Dependent Feasibility': 'lightsalmon'
     }
 
+    # Validate inputs
+    if not dataframes or len(dataframes) != len(subplot_positions):
+        print("! Error: Invalid input parameters. Check dataframes and positions.")
+        return
+        
+    # Derive scenarios from categories if scenarios_list not provided
+    derived_scenarios_list = []
+    if scenarios_list is None:
+        if categories is None or menu_mp is None:
+            print("! Error: Must provide either scenarios_list or both categories and menu_mp.")
+            return
+            
+        if len(categories) != len(dataframes):
+            print("! Warning: Length of categories doesn't match length of dataframes.")
+            if len(categories) < len(dataframes):
+                print(f"  Truncating to {len(categories)} dataframes")
+                dataframes = dataframes[:len(categories)]
+                subplot_positions = subplot_positions[:len(categories)]
+            else:
+                print(f"  Using only {len(dataframes)} categories")
+                categories = categories[:len(dataframes)]
+            
+        # Derive scenarios for each DataFrame
+        for df, category in zip(dataframes, categories):
+            try:
+                adoption_cols = detect_adoption_columns(
+                    df, menu_mp, category, scc, rcm_model, cr_function
+                )
+                derived_scenarios_list.append(adoption_cols)
+                print(f"- Detected adoption columns for {category}: {adoption_cols}")
+            except Exception as e:
+                print(f"! Error detecting adoption columns for {category}: {str(e)}")
+                derived_scenarios_list.append([])
+        
+        # Use derived scenarios
+        scenarios_list = derived_scenarios_list
+    
+    # Ensure scenarios_list matches dataframes length
+    if len(scenarios_list) != len(dataframes):
+        print("! Warning: Length of scenarios_list doesn't match length of dataframes.")
+        min_len = min(len(scenarios_list), len(dataframes))
+        dataframes = dataframes[:min_len]
+        subplot_positions = subplot_positions[:min_len]
+        scenarios_list = scenarios_list[:min_len]
+        if categories:
+            categories = categories[:min_len]
+    
+    # Determine grid dimensions
     num_cols = max(pos[1] for pos in subplot_positions) + 1
     num_rows = max(pos[0] for pos in subplot_positions) + 1
+    
+    print(f"- Creating {num_rows}x{num_cols} subplot grid")
 
-    fig, axes = plt.subplots(nrows=num_rows, ncols=num_cols, figsize=figure_size, sharex=sharex, sharey=sharey)
-    axes = np.array(axes).reshape(num_rows, num_cols)  # Ensure axes is always 2D
-
-    for idx, (df, scenarios) in enumerate(zip(dataframes, scenarios_list)):
-        # Apply the filter_fuel if provided
-        if filter_fuel:
-            df = df.loc[(df.index.get_level_values('base_fuel').isin(filter_fuel)), :]
+    # Create figure and axes
+    fig, axes = plt.subplots(nrows=num_rows, ncols=num_cols, figsize=figure_size, 
+                           sharex=sharex, sharey=sharey)
+    
+    # Handle single subplot case
+    if num_rows == 1 and num_cols == 1:
+        axes = np.array([[axes]])
+    elif num_rows == 1:
+        axes = np.array([axes])
+    elif num_cols == 1:
+        axes = np.array([[ax] for ax in axes])
         
-        pos = subplot_positions[idx]
-        ax = axes[pos[0], pos[1]]
-        x_label = x_labels[idx] if x_labels else ""
-        y_label = y_labels[idx] if y_labels else ""
-        title = plot_titles[idx] if plot_titles else ""
-
-        plot_adoption_rate_bar(df, scenarios, title, x_label, y_label, ax)
-
-    if suptitle:
-        plt.suptitle(suptitle, fontweight='bold')
-
-    # Add a legend for the color mapping at the bottom of the entire figure
-    legend_labels = list(color_mapping.keys())
-    legend_handles = [plt.Rectangle((0, 0), 1, 1, color=color_mapping[label]) for label in legend_labels]
+    # Process each subplot
+    for idx, (df, scenarios) in enumerate(zip(dataframes, scenarios_list)):
+        # Skip if no scenarios found
+        if not scenarios:
+            print(f"! Warning: No scenarios for DataFrame {idx}. Skipping.")
+            continue
             
-    fig.legend(legend_handles, legend_labels, loc='lower center', ncol=len(legend_labels), prop={'size': 20}, labelspacing=0.5, bbox_to_anchor=(0.5, -0.05))
+        # Apply fuel filter if provided
+        if filter_fuel and not df.empty:
+            df = filter_by_fuel(df, filter_fuel)
+            
+        # Skip if filtered DataFrame is empty
+        if df.empty:
+            print(f"! Warning: No data after fuel filtering for DataFrame {idx}. Skipping.")
+            continue
+            
+        try:
+            # Get subplot position and configure
+            pos = subplot_positions[idx]
+            ax = axes[pos[0], pos[1]]
+            
+            # Set labels if provided
+            x_label = x_labels[idx] if x_labels and idx < len(x_labels) else ""
+            y_label = y_labels[idx] if y_labels and idx < len(y_labels) else ""
+            
+            # Set title - use category if available, otherwise use provided title
+            if plot_titles and idx < len(plot_titles):
+                title = plot_titles[idx]
+            elif categories and idx < len(categories):
+                title = categories[idx].capitalize()
+            else:
+                title = f"Plot {idx+1}"
 
-    # Adjust the layout
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])  # Adjust the layout to leave space for the suptitle
+            # Plot the data
+            plot_adoption_rate_bar(df, scenarios, title, x_label, y_label, ax)
+            
+        except Exception as e:
+            print(f"! Error plotting at position {pos}: {str(e)}")
+            # Get subplot position
+            pos = subplot_positions[idx]
+            ax = axes[pos[0], pos[1]]
+            # Display error message on plot
+            ax.text(0.5, 0.5, f"Error: {str(e)}", ha='center', va='center', 
+                  transform=ax.transAxes, color='red')
+
+    # Add title and legend
+    if suptitle:
+        plt.suptitle(suptitle, fontweight='bold', fontsize=20)
+
+    # Create legend
+    legend_labels = list(color_mapping.keys())
+    legend_handles = [plt.Rectangle((0, 0), 1, 1, color=color_mapping[label]) 
+                    for label in legend_labels]
+            
+    fig.legend(legend_handles, legend_labels, loc='lower center', 
+             ncol=len(legend_labels), prop={'size': 20}, 
+             labelspacing=0.5, bbox_to_anchor=(0.5, -0.05))
+
+    # Adjust layout and display
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
 
-def plot_adoption_rate_bar(df, scenarios, title, x_label, y_label, ax):
-    # Assume the DataFrame 'df' has a suitable structure, similar to earlier examples
-    adoption_data = df.loc[:, df.columns.get_level_values(1).isin(['Tier 1: Feasible', 'Tier 2: Feasible vs. Alternative', 'Tier 3: Subsidy-Dependent Feasibility'])]
-    adoption_data.columns = adoption_data.columns.remove_unused_levels()
-
-    # Define the color mapping as specified
-    global color_mapping
-    color_mapping = {
-        'Tier 1: Feasible': 'steelblue',
-        'Tier 2: Feasible vs. Alternative': 'lightblue',
-        'Tier 3: Subsidy-Dependent Feasibility': 'lightsalmon'
-    }
-
-    # Plotting logic
-    n = len(adoption_data.index)
-    bar_width = 0.35  # Width of bars
-    index = list(range(n))  # Base index for bars
-
-    for i, scenario in enumerate(scenarios):
-        if (scenario, 'Tier 1: Feasible') in adoption_data.columns and (scenario, 'Tier 2: Feasible vs. Alternative') in adoption_data.columns and (scenario, 'Tier 3: Subsidy-Dependent Feasibility') in adoption_data.columns:
-            tier1 = adoption_data[scenario, 'Tier 1: Feasible'].values
-            tier2 = adoption_data[scenario, 'Tier 2: Feasible vs. Alternative'].values
-            tier3 = adoption_data[scenario, 'Tier 3: Subsidy-Dependent Feasibility'].values
-
-            # Adjust the index for this scenario
-            scenario_index = np.array(index) + i * bar_width
-            
-            # Plot the bars for the scenario
-            ax.bar(scenario_index, tier1, bar_width, color=color_mapping['Tier 1: Feasible'], edgecolor='white')
-            ax.bar(scenario_index, tier2, bar_width, bottom=tier1, color=color_mapping['Tier 2: Feasible vs. Alternative'], edgecolor='white')
-            ax.bar(scenario_index, tier3, bar_width, bottom=(tier1+tier2), color=color_mapping['Tier 3: Subsidy-Dependent Feasibility'], edgecolor='white')
-
-
-    ax.set_xlabel(x_label, fontweight='bold', fontsize=20)
-    ax.set_ylabel(y_label, fontweight='bold', fontsize=20)
-    ax.set_title(title, fontweight='bold', fontsize=20)
     
-    ax.set_xticks([i + bar_width / 2 for i in range(n)])
-    ax.set_xticklabels([f'{name[1]}' for name in adoption_data.index.tolist()], rotation=90, ha='right')
+# ========================================================================
+# EXAMPLE USAGE
+# ========================================================================
+# # Create adoption DataFrames for various categories
+# df_heating = create_df_adoption(df_euss_am_mp8_home_easiur, menu_mp=8, category='heating', 
+#                                rcm_model='EASIUR', cr_function='acs')
+# df_water = create_df_adoption(df_euss_am_mp8_home_easiur, menu_mp=8, category='waterHeating', 
+#                              rcm_model='EASIUR', cr_function='acs')
 
-    # Set font size for tick labels on the x-axis
-    ax.tick_params(axis='x', labelsize=20)
+# # Convert to multi-index format for visualization
+# mi_heating = create_multiIndex_adoption_df(df_heating, menu_mp=8, category='heating',
+#                                          rcm_model='EASIUR', cr_function='acs')
+# mi_water = create_multiIndex_adoption_df(df_water, menu_mp=8, category='waterHeating',
+#                                        rcm_model='EASIUR', cr_function='acs')
 
-    # Set font size for tick labels on the y-axis
-    ax.tick_params(axis='y', labelsize=20)
-
-    # Set y-ticks from 0 to 100 in steps of 10%
-    ax.set_yticks(np.arange(0, 101, 10))
-    ax.set_ylim(0, 100)
+# # Create visualization
+# subplot_grid_adoption_vBar(
+#     dataframes=[mi_heating, mi_water],
+#     subplot_positions=[(0, 0), (0, 1)],
+#     categories=['heating', 'waterHeating'],
+#     menu_mp=8,
+#     rcm_model='EASIUR',  # Now correctly passed to detect_adoption_columns
+#     suptitle='Adoption Potential by Tier',
+#     filter_fuel=['Electricity', 'Natural Gas']
+# )

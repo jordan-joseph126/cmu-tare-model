@@ -315,8 +315,9 @@ def calculate_lifetime_damages_grid_scenario(
                 if yearly_climate_avoided:
                     # Convert list of Series to DataFrame and sum
                     climate_df = pd.concat(yearly_climate_avoided, axis=1)
-                    climate_npv = climate_df.sum(axis=1)
-                    
+                    # climate_npv = climate_df.sum(axis=1)
+                    climate_npv = climate_df.sum(axis=1, skipna=False)  # Use skipna=False to propagate NaN values
+
                     # Apply validation mask for measure packages
                     if menu_mp != 0:
                         climate_npv = pd.Series(
@@ -329,7 +330,8 @@ def calculate_lifetime_damages_grid_scenario(
                 if yearly_health_avoided:
                     # Convert list of Series to DataFrame and sum
                     health_df = pd.concat(yearly_health_avoided, axis=1)
-                    health_npv = health_df.sum(axis=1)
+                    # health_npv = health_df.sum(axis=1)
+                    health_npv = health_df.sum(axis=1, skipna=False)  # Use skipna=False to propagate NaN values
                     
                     # Apply validation mask for measure packages
                     if menu_mp != 0:

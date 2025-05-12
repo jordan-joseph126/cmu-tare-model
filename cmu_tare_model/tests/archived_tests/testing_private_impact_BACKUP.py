@@ -64,9 +64,9 @@ def create_test_data(menu_mp, input_mp):
     df = pd.concat([df, pd.DataFrame(capital_cost_data, index=range(n))], axis=1)
     
     # Create fuel costs dataframe all at once
-    df_fuelCosts = pd.DataFrame(fuel_cost_data, index=range(n))
+    df_fuel_costs = pd.DataFrame(fuel_cost_data, index=range(n))
     
-    return df, df_fuelCosts
+    return df, df_fuel_costs
 
 # Function to compare the outputs of both implementations
 def compare_outputs(df_current, df_backup):
@@ -117,7 +117,7 @@ def compare_outputs(df_current, df_backup):
 # Main test function
 def test_equivalence(menu_mp, input_mp):
     print("Creating test data...")
-    df, df_fuelCosts = create_test_data()
+    df, df_fuel_costs = create_test_data()
     
     # Parameters for both functions
     policy_scenarios = ['No Inflation Reduction Act', 'AEO2023 Reference Case']
@@ -127,11 +127,11 @@ def test_equivalence(menu_mp, input_mp):
     for policy_scenario in policy_scenarios:
         print(f"\n\nTesting with policy scenario: {policy_scenario}")
         # Run backup implementation
-        # def calculate_private_NPV(df, df_fuelCosts, interest_rate, input_mp, menu_mp, policy_scenario)
+        # def calculate_private_NPV(df, df_fuel_costs, interest_rate, input_mp, menu_mp, policy_scenario)
         interest_rate = 0.07  # 7% for private fixed rate
         df_backup_result = backup.calculate_private_NPV(
             df=df.copy(), 
-            df_fuelCosts=df_fuelCosts.copy(),
+            df_fuel_costs=df_fuel_costs.copy(),
             interest_rate=interest_rate,
             input_mp=input_mp,
             menu_mp=menu_mp,
@@ -139,10 +139,10 @@ def test_equivalence(menu_mp, input_mp):
         )
         
         # Run current implementation
-        # def calculate_private_NPV(df, df_fuelCosts, input_mp, menu_mp, policy_scenario, discounting_method, base_year=2024):
+        # def calculate_private_NPV(df, df_fuel_costs, input_mp, menu_mp, policy_scenario, discounting_method, base_year=2024):
         df_current_result = current.calculate_private_NPV(
             df=df.copy(), 
-            df_fuelCosts=df_fuelCosts.copy(),
+            df_fuel_costs=df_fuel_costs.copy(),
             input_mp=input_mp,
             menu_mp=menu_mp,
             policy_scenario=policy_scenario,
@@ -179,7 +179,7 @@ Below is the snippet from the updated test script that calls the current version
 
 python
 Copy
-df_current_result = current.calculate_private_NPV( df=df.copy(), df_fuelCosts=df_fuelCosts.copy(), input_mp=input_mp, menu_mp=menu_mp, policy_scenario=policy_scenario, discounting_method='private_fixed', # Equivalent to 0.07 interest rate base_year=2024 # Base year )
+df_current_result = current.calculate_private_NPV( df=df.copy(), df_fuel_costs=df_fuel_costs.copy(), input_mp=input_mp, menu_mp=menu_mp, policy_scenario=policy_scenario, discounting_method='private_fixed', # Equivalent to 0.07 interest rate base_year=2024 # Base year )
 Could you please help me troubleshoot the following points?
 * Discrepancies in Calculation: Several columns (e.g., preIRA_mp5_clothesDrying_net_capitalCost, preIRA_mp5_heating_total_capitalCost, and others) are producing different values between the current and backup implementations. What might be causing these numerical discrepancies? Is it possible that there have been changes in the formula or the order in which costs and rebates are applied?
 * Impact of Scenario Prefixes: The test output logs both iraRef_mp5_... and preIRA_mp5_... columns. Could the differences be due to differences in how scenario prefixes are applied or handled between the two implementations?
@@ -208,7 +208,7 @@ In calculate_and_update_npv(), you're missing the menu_mp parameter when called 
 python
 calculate_and_update_npv(
     df_new_columns=df_new_columns,
-    df_fuel_costs_copy=df_fuelCosts_copy,
+    df_fuel_costs_copy=df_fuel_costs_copy,
     category=category,
     lifetime=lifetime,
     total_capital_cost=total_capital_cost,

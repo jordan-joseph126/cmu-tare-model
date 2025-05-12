@@ -30,7 +30,7 @@ def mock_define_scenario_settings(monkeypatch):
         return scenario_prefix, "MidCase", {}, {}, {}, {}
     
     monkeypatch.setattr(
-        "cmu_tare_model.public_impact.calculate_public_npv_sensitivity_simple.define_scenario_params",
+        "cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity.define_scenario_params",
         mock_function
     )
     return mock_function
@@ -121,7 +121,7 @@ def mock_discount_factor(monkeypatch):
             return 1.0 / ((1 + 0.07) ** years_diff)  # 7% discount rate
     
     monkeypatch.setattr(
-        "cmu_tare_model.public_impact.calculate_public_npv_sensitivity_simple.calculate_discount_factor",
+        "cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity.calculate_discount_factor",
         mock_function
     )
     return mock_function
@@ -136,7 +136,7 @@ def custom_equipment_specs(monkeypatch):
         test_specs = EQUIPMENT_SPECS.copy()
         test_specs.update(specs_update)
         monkeypatch.setattr(
-            "cmu_tare_model.public_impact.calculate_public_npv_sensitivity_simple.EQUIPMENT_SPECS",
+            "cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity.EQUIPMENT_SPECS",
             test_specs
         )
         return test_specs

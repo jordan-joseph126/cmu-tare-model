@@ -371,8 +371,9 @@ def calculate_and_update_npv(
     if yearly_avoided_costs:
         # Convert list of Series to DataFrame and sum
         avoided_costs_df = pd.concat(yearly_avoided_costs, axis=1)
-        total_discounted_savings = avoided_costs_df.sum(axis=1)
-        
+        # total_discounted_savings = avoided_costs_df.sum(axis=1)
+        total_discounted_savings = avoided_costs_df.sum(axis=1, skipna=False)  # Use skipna=False to propagate NaN values
+
         # Apply validation mask for measure packages
         if menu_mp != 0:
             total_discounted_savings = pd.Series(

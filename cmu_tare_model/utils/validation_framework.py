@@ -63,6 +63,7 @@ def initialize_validation_tracking(
     
     return df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask
 
+
 def get_valid_fuel_types(category: str) -> List[str]:
     """
     Returns the list of valid fuel types for a category.
@@ -93,6 +94,7 @@ def get_valid_fuel_types(category: str) -> List[str]:
     else:
         raise ValueError(f"Invalid category. Must be one of the following: {EQUIPMENT_SPECS.keys()}")
 
+
 def get_valid_calculation_mask(
     df: pd.DataFrame, 
     category: str, 
@@ -120,9 +122,9 @@ def get_valid_calculation_mask(
         ValueError: If the inclusion flag for the given category doesn't exist in the DataFrame.
     """
     # Standardize menu_mp to facilitate comparisons
-    menu_mp_str = str(menu_mp)
-    is_baseline = menu_mp_str == "0"
-    
+    menu_mp_str = str(menu_mp).lower()
+    is_baseline = menu_mp_str == "0" or menu_mp_str == "baseline"
+        
     # Check if inclusion flag exists
     include_col = f'include_{category}'
     if include_col not in df.columns:
@@ -131,7 +133,7 @@ def get_valid_calculation_mask(
     
     # Get data validation mask
     data_valid_mask = df[include_col]
-    
+
     # For baseline scenarios, only use data validation
     if is_baseline:
         if verbose:
@@ -154,7 +156,7 @@ def get_valid_calculation_mask(
             final_count = combined_mask.sum()
             
             print(f"Measure package calculation for {category}:")
-            print(f"  - {valid_data_count} homes have valid baseline data")
+            print(f"  - {valid_data_count} homes have valid data")
             print(f"  - {retrofit_count} homes will receive retrofits")
             print(f"  - {final_count} homes have both valid data AND will receive retrofits")
             print(f"  - {len(df) - final_count} homes excluded (values will be NaN)")
@@ -164,6 +166,7 @@ def get_valid_calculation_mask(
             print(f"WARNING: All homes excluded for {category}. Check data quality and retrofit criteria.")
         
         return combined_mask
+    
 
 def get_retrofit_homes_mask(
     df: pd.DataFrame, 
@@ -293,6 +296,7 @@ def apply_final_masking(
     
     return df
 
+
 def mask_category_specific_data(
         df: pd.DataFrame, 
         columns: List[str], 
@@ -415,6 +419,7 @@ def apply_new_columns_to_dataframe(
     
     return df_updated, all_columns_to_mask
 
+
 def replace_small_values_with_nan(
     series_or_dict: Union[pd.Series, pd.DataFrame, Dict[Any, pd.Series]], 
     threshold: float = 1e-10
@@ -431,39 +436,81 @@ def replace_small_values_with_nan(
         
     Raises:
         TypeError: If input is not a pandas Series, DataFrame, or dictionary of Series.
-    """
+    """    
     if isinstance(series_or_dict, pd.Series):
         return series_or_dict.where(abs(series_or_dict) > threshold, np.nan)
     elif isinstance(series_or_dict, pd.DataFrame):
-        return series_or_dict.where(abs(series_or_dict) > threshold, np.nan)
+        # Process each column individually and return a new DataFrame
+        result_df = pd.DataFrame(index=series_or_dict.index)
+        for col in series_or_dict.columns:
+            # Apply column-wise replacement directly with the same threshold
+            result_df[col] = series_or_dict[col].where(abs(series_or_dict[col]) > threshold, np.nan)
+        return result_df
     elif isinstance(series_or_dict, dict):
         return {k: replace_small_values_with_nan(v, threshold) for k, v in series_or_dict.items()}
     else:
         raise TypeError("Input must be a pandas Series, DataFrame, or dictionary of Series")
 
+
+# =====================================================================================================
+# UPDATED: NOW HANDLES NONE VALUES FOR RETROFIT_MASK
+# ====================================================================================================
 def calculate_avoided_values(
     baseline_values: pd.Series,
     measure_values: pd.Series,
-    retrofit_mask: pd.Series
+    retrofit_mask: Optional[pd.Series] = None
 ) -> pd.Series:
     """
     Calculate avoided values (baseline - measure) only for retrofitted homes.
-    
+
     Args:
         baseline_values: Series of baseline values.
         measure_values: Series of measure package values.
         retrofit_mask: Boolean Series indicating which homes get retrofits.
-        
+                      If None, calculates for all homes.
+
     Returns:
         Series with avoided values for retrofitted homes and NaN for others.
     """
     # Initialize with NaN
     avoided_values = pd.Series(np.nan, index=baseline_values.index)
-    
-    # Calculate only for homes with retrofits
+
+    # For baseline scenarios (when retrofit_mask is None), calculate for all homes
+    if retrofit_mask is None:
+        return baseline_values - measure_values
+        
+    # For measure package scenarios, calculate only for homes with retrofits
     if retrofit_mask.any():
         avoided_values.loc[retrofit_mask] = (
             baseline_values.loc[retrofit_mask] - measure_values.loc[retrofit_mask]
         )
-        
+    
     return avoided_values
+
+
+# def calculate_avoided_values(
+#     baseline_values: pd.Series,
+#     measure_values: pd.Series,
+#     retrofit_mask: pd.Series
+# ) -> pd.Series:
+#     """
+#     Calculate avoided values (baseline - measure) only for retrofitted homes.
+    
+#     Args:
+#         baseline_values: Series of baseline values.
+#         measure_values: Series of measure package values.
+#         retrofit_mask: Boolean Series indicating which homes get retrofits.
+        
+#     Returns:
+#         Series with avoided values for retrofitted homes and NaN for others.
+#     """
+#     # Initialize with NaN
+#     avoided_values = pd.Series(np.nan, index=baseline_values.index)
+    
+#     # Calculate only for homes with retrofits
+#     if retrofit_mask.any():
+#         avoided_values.loc[retrofit_mask] = (
+#             baseline_values.loc[retrofit_mask] - measure_values.loc[retrofit_mask]
+#         )
+        
+#     return avoided_values

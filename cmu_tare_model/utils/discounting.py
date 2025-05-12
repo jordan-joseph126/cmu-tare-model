@@ -1,4 +1,5 @@
-# For climate and health impacts module
+# For private discounting, we use a fixed rate of 7% as per the provided information.
+# For public discounting, we use a fixed rate of 2% as per the provided information.
 def calculate_discount_factor(base_year: int, target_year: int, discounting_method: str) -> float:
     """
     Calculate the discount factor to convert future values to present values.

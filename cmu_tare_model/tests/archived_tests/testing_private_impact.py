@@ -19,7 +19,7 @@ def create_test_data(menu_mp, policy_scenario):
         menu_mp (int): Measure package identifier to use in column names.
         
     Returns:
-        tuple: (df, df_fuelCosts) containing the test data
+        tuple: (df, df_fuel_costs) containing the test data
     """
     # Create a small synthetic DataFrame with the necessary columns
     np.random.seed(42)  # For reproducibility
@@ -77,9 +77,9 @@ def create_test_data(menu_mp, policy_scenario):
     df = pd.concat([df, pd.DataFrame(capital_cost_data, index=range(n))], axis=1)
         
     # Create fuel costs dataframe all at once
-    df_fuelCosts = pd.DataFrame(fuel_cost_data, index=range(n))
+    df_fuel_costs = pd.DataFrame(fuel_cost_data, index=range(n))
     
-    return df, df_fuelCosts
+    return df, df_fuel_costs
 
 # Function to compare the outputs of both implementations
 def compare_outputs(df_current, df_backup):
@@ -166,7 +166,7 @@ def test_equivalence(menu_mp, input_mp):
         print(f"\n\nTesting with policy scenario: {policy_scenario}, menu_mp={menu_mp}, input_mp={input_mp}")
         
         # Create test data
-        df, df_fuelCosts = create_test_data(menu_mp=menu_mp,
+        df, df_fuel_costs = create_test_data(menu_mp=menu_mp,
                                             policy_scenario=policy_scenario
                                             )
 
@@ -174,7 +174,7 @@ def test_equivalence(menu_mp, input_mp):
         interest_rate = 0.07  # 7% for private fixed rate (equivalent to 'private_fixed')
         df_backup_result = backup.calculate_private_NPV(
             df=df.copy(), 
-            df_fuelCosts=df_fuelCosts.copy(),
+            df_fuel_costs=df_fuel_costs.copy(),
             interest_rate=interest_rate,
             input_mp=input_mp,
             menu_mp=menu_mp,
@@ -184,7 +184,7 @@ def test_equivalence(menu_mp, input_mp):
         # Run current implementation
         df_current_result = current.calculate_private_NPV(
             df=df.copy(), 
-            df_fuelCosts=df_fuelCosts.copy(),
+            df_fuel_costs=df_fuel_costs.copy(),
             input_mp=input_mp,
             menu_mp=menu_mp,
             policy_scenario=policy_scenario,

@@ -120,13 +120,12 @@ def adoption_decision(
         
         # Determine which SCC assumptions to use based on climate sensitivity
         if climate_sensitivity:
-            scc_assumptions = SCC_ASSUMPTIONS
+            scc_assumptions = SCC_ASSUMPTIONS.copy()  # Create a copy to avoid modifying the original
+            # Validate that SCC_ASSUMPTIONS is not empty
+            if len(scc_assumptions) == 0:
+                raise ValueError("SCC_ASSUMPTIONS is empty. Cannot perform climate sensitivity analysis.")
         else:
             scc_assumptions = ['upper']  # Default to upper bound for climate sensitivity
-            
-        # Validate that SCC_ASSUMPTIONS is not empty
-        if len(scc_assumptions) == 0:
-            raise ValueError("SCC_ASSUMPTIONS is empty. Cannot perform climate sensitivity analysis.")
         
         # ========== PROCESS EACH EQUIPMENT CATEGORY ==========
         for category, upgrade_column in UPGRADE_COLUMNS.items():
@@ -232,10 +231,6 @@ def adoption_decision(
                         )
 
                         # ========== DETERMINE ADOPTION TIERS AND PUBLIC IMPACTS ==========
-                        # # Initialize with more descriptive default values for ALL homes
-                        # df_new_columns[new_col_names['adoption']] = 'N/A: Invalid Fuel/Tech or No Upgrade'
-                        # df_new_columns[new_col_names['impact']] = 'N/A: Invalid Fuel/Tech or No Upgrade'
-
                         # Initialize with more descriptive default values for ALL homes
                         df_new_columns[new_col_names['adoption']] = 'N/A: Invalid Baseline Fuel/Tech'
                         df_new_columns[new_col_names['impact']] = 'N/A: Invalid Baseline Fuel/Tech'
@@ -298,6 +293,24 @@ def adoption_decision(
                 print(f"Error processing equipment category {category}: {str(e)}")
                 # Continue with next equipment category rather than failing completely
                 continue
+                
+        # ========== FILTER COLUMNS BASED ON CLIMATE SENSITIVITY ==========
+        # Filter columns before final masking (memory efficient approach)
+        if not climate_sensitivity:
+            print(f"\nFiltering DataFrame columns: current count = {len(df_copy.columns)}")
+            
+            # Get columns to drop (anything with lower or central SCC)
+            drop_cols = []
+            for col in df_copy.columns:
+                if any(f'_{scc}_' in col for scc in ['lower', 'central']):
+                    drop_cols.append(col)
+            
+            # Drop columns in-place (much more memory efficient)
+            if drop_cols:
+                print(f"Dropping {len(drop_cols)} columns for non-upper SCC values")
+                df_copy.drop(columns=drop_cols, inplace=True)
+                
+            print(f"Finished filtering: new column count = {len(df_copy.columns)}")
         
         # ========== APPLY FINAL VERIFICATION MASKING ==========
         # Step 5.) Apply final verification masking for all tracked columns
@@ -306,8 +319,12 @@ def adoption_decision(
         # Return the updated DataFrame
         return df_copy
         
+    except ValueError as e:
+        # Propagate ValueError directly instead of wrapping it in RuntimeError
+        print(f"ERROR: {str(e)}")
+        raise
     except Exception as e:
-        # Catch any unhandled exceptions
+        # Catch any other unhandled exceptions
         error_message = f"An unexpected error occurred in adoption_decision: {str(e)}"
         print(f"ERROR: {error_message}")
         raise RuntimeError(error_message) from e
