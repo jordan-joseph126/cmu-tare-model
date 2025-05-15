@@ -71,7 +71,7 @@ def df_baseline_costs(sample_homes_df: pd.DataFrame) -> pd.DataFrame:
     for category in ['heating', 'waterHeating', 'clothesDrying', 'cooking']:
         # Generate annual fuel costs (2024-2026)
         for year in range(2024, 2027):
-            col_name = f'baseline_{year}_{category}_fuelCost'
+            col_name = f'baseline_{year}_{category}_fuel_cost'
             data[col_name] = [
                 (1000 + (home_idx * 100)) * (0.2 if category == 'heating' else 
                                             0.15 if category == 'waterHeating' else
@@ -87,9 +87,9 @@ def df_baseline_costs(sample_homes_df: pd.DataFrame) -> pd.DataFrame:
             'cooking': 2
         }[category]
         
-        col_name = f'baseline_{category}_lifetime_fuelCost'
+        col_name = f'baseline_{category}_lifetime_fuel_cost'
         data[col_name] = [
-            sum(data[f'baseline_{year}_{category}_fuelCost'][home_idx] 
+            sum(data[f'baseline_{year}_{category}_fuel_cost'][home_idx] 
                 for year in range(2024, 2024 + lifetime_factor))
             for home_idx in range(5)
         ]
@@ -249,7 +249,7 @@ def mock_annual_calculation(monkeypatch: pytest.MonkeyPatch) -> None:
         
         # Create results dictionary and cost column
         annual_costs = {}
-        cost_col = f"{scenario_prefix}{year_label}_{category}_fuelCost"
+        cost_col = f"{scenario_prefix}{year_label}_{category}_fuel_cost"
         
         # Create a Series with zeros for all homes
         cost_series = pd.Series(0.0, index=df.index)
@@ -267,7 +267,7 @@ def mock_annual_calculation(monkeypatch: pytest.MonkeyPatch) -> None:
         
         # For measure packages, add savings column
         if menu_mp != 0:
-            savings_col = f"{scenario_prefix}{year_label}_{category}_savings_fuelCost"
+            savings_col = f"{scenario_prefix}{year_label}_{category}_savings_fuel_cost"
             savings_series = pd.Series(0.0, index=df.index)
             
             for idx in valid_mask[valid_mask].index:
@@ -440,7 +440,7 @@ def test_valid_only_calculation_implementation(
         scenario_prefix = kwargs.get('scenario_prefix', '')
         
         # Create a cost column with zeros
-        cost_col = f"{scenario_prefix}{year_label}_{category}_fuelCost"
+        cost_col = f"{scenario_prefix}{year_label}_{category}_fuel_cost"
         cost_series = pd.Series(0.0, index=df.index)
         
         return {cost_col: cost_series}, cost_series
@@ -570,7 +570,7 @@ def test_final_masking_implementation(
     
     # Verify lifetime columns are tracked for masking
     category = 'heating'  # Test one category for clarity
-    expected_col = f'iraRef_mp{menu_mp}_{category}_lifetime_fuelCost'
+    expected_col = f'iraRef_mp{menu_mp}_{category}_lifetime_fuel_cost'
     
     assert category in masking_columns_captured, \
         f"Category '{category}' should be in masking columns"
@@ -717,13 +717,13 @@ def test_annual_fuel_costs_baseline(
     )
     
     # Verify result structure
-    cost_col = f'{scenario_prefix}{year_label}_{category}_fuelCost'
+    cost_col = f'{scenario_prefix}{year_label}_{category}_fuel_cost'
     assert cost_col in annual_costs, f"Result should contain column '{cost_col}'"
     assert isinstance(annual_cost_value, pd.Series), "annual_cost_value should be a Series"
     assert len(annual_cost_value) == len(df), "annual_cost_value should have same length as DataFrame"
     
     # Verify savings column is not created for baseline
-    savings_col = f'{scenario_prefix}{year_label}_{category}_savings_fuelCost'
+    savings_col = f'{scenario_prefix}{year_label}_{category}_savings_fuel_cost'
     assert savings_col not in annual_costs, f"Baseline results should not include savings column '{savings_col}'"
 
 
@@ -778,7 +778,7 @@ def test_annual_fuel_costs_measure_package(
     )
     
     # Verify result structure
-    cost_col = f'{scenario_prefix}{year_label}_{category}_fuelCost'
+    cost_col = f'{scenario_prefix}{year_label}_{category}_fuel_cost'
     assert cost_col in annual_costs, f"Result should contain column '{cost_col}'"
     
     # Measure packages use state-based electricity prices
@@ -877,7 +877,7 @@ def test_lifetime_fuel_costs_basic(
     
     # Verify result contains lifetime columns for all categories
     for category in ['heating', 'waterHeating', 'clothesDrying', 'cooking']:
-        lifetime_col = f'baseline_{category}_lifetime_fuelCost'
+        lifetime_col = f'baseline_{category}_lifetime_fuel_cost'
         
         # Check if column exists before testing it
         if lifetime_col in df_main.columns:
@@ -929,15 +929,15 @@ def test_lifetime_fuel_costs_with_baseline(
     # Check for all expected columns
     for category in ['heating', 'waterHeating']:  # Check subset for brevity
         # Measure package cost column
-        costs_col = f'iraRef_mp{menu_mp}_{category}_lifetime_fuelCost'
+        costs_col = f'iraRef_mp{menu_mp}_{category}_lifetime_fuel_cost'
         assert costs_col in df_main.columns, f"df_main should have column '{costs_col}'"
         
         # Savings column
-        savings_col = f'iraRef_mp{menu_mp}_{category}_lifetime_savings_fuelCost'
+        savings_col = f'iraRef_mp{menu_mp}_{category}_lifetime_savings_fuel_cost'
         assert savings_col in df_main.columns, f"df_main should have column '{savings_col}'"
         
         # Baseline cost column should be in detailed DataFrame
-        baseline_col = f'baseline_{category}_lifetime_fuelCost'
+        baseline_col = f'baseline_{category}_lifetime_fuel_cost'
         assert baseline_col in df_detailed.columns, f"df_detailed should have column '{baseline_col}'"
         
         # Verify savings = baseline - measure for valid homes
@@ -996,7 +996,7 @@ def test_lifetime_fuel_costs_list_collection(
         valid_mask = kwargs.get('valid_mask', pd.Series(True, index=df.index))
         
         # Create predictable values
-        cost_col = f"{scenario_prefix}{year_label}_{category}_fuelCost"
+        cost_col = f"{scenario_prefix}{year_label}_{category}_fuel_cost"
         cost_series = pd.Series(0.0, index=df.index)
         
         # Set values for valid homes only - using simpler pattern
@@ -1031,7 +1031,7 @@ def test_lifetime_fuel_costs_list_collection(
     )
     
     # Verify results
-    lifetime_col = f'iraRef_mp{menu_mp}_{category}_lifetime_fuelCost'
+    lifetime_col = f'iraRef_mp{menu_mp}_{category}_lifetime_fuel_cost'
     valid_mask = sample_homes_df[f'include_{category}']
     valid_indices = valid_mask[valid_mask].index
     
@@ -1086,7 +1086,7 @@ def test_different_categories(
     )
     
     # Verify result has lifetime column for this category
-    lifetime_col = f'baseline_{category}_lifetime_fuelCost'
+    lifetime_col = f'baseline_{category}_lifetime_fuel_cost'
     assert lifetime_col in df_main.columns, f"Result should have column '{lifetime_col}'"
     
     # Verify values are masked based on inclusion flags
@@ -1140,7 +1140,7 @@ def test_different_menu_mps(
     
     # Verify result uses correct column naming
     category = 'heating'  # Test with one category for brevity
-    lifetime_col = f'{expected_prefix}{category}_lifetime_fuelCost'
+    lifetime_col = f'{expected_prefix}{category}_lifetime_fuel_cost'
     assert lifetime_col in df_main.columns, f"Result should have column '{lifetime_col}'"
     
     # Verify values are masked based on inclusion flags
@@ -1194,7 +1194,7 @@ def test_different_policy_scenarios(
     
     # Verify result uses correct column naming
     category = 'heating'  # Test with one category for brevity
-    lifetime_col = f'{expected_prefix}{category}_lifetime_fuelCost'
+    lifetime_col = f'{expected_prefix}{category}_lifetime_fuel_cost'
     assert lifetime_col in df_main.columns, f"Result should have column '{lifetime_col}'"
     
     # Verify values are masked based on inclusion flags
@@ -1297,7 +1297,7 @@ def test_all_invalid_homes(
     
     # Verify that all result columns have NaN values
     for category in ['heating', 'waterHeating', 'clothesDrying', 'cooking']:
-        lifetime_col = f'baseline_{category}_lifetime_fuelCost'
+        lifetime_col = f'baseline_{category}_lifetime_fuel_cost'
         if lifetime_col in df_main.columns:
             # Count non-NaN values explicitly
             non_nan_count = df_main[lifetime_col].notna().sum()

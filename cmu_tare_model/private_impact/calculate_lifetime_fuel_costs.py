@@ -122,15 +122,15 @@ def calculate_lifetime_fuel_costs(
                     print(f"Warning: All homes are invalid for category '{category}'. Results will be all NaN.")
                 
                 # Create NaN columns for lifetime fuel costs
-                costs_col = f'{scenario_prefix}{category}_lifetime_fuelCost'
+                costs_col = f'{scenario_prefix}{category}_lifetime_fuel_cost'
                 lifetime_fuel_costs = pd.Series(np.nan, index=df_copy.index)
                 lifetime_dict = {costs_col: lifetime_fuel_costs}
                 
                 # Add savings column for measure packages
                 if menu_mp != 0 and df_baseline_costs is not None:
-                    baseline_costs_col = f'baseline_{category}_lifetime_fuelCost'
+                    baseline_costs_col = f'baseline_{category}_lifetime_fuel_cost'
                     if baseline_costs_col in df_baseline_costs.columns:
-                        savings_cost_col = f'{scenario_prefix}{category}_lifetime_savings_fuelCost'
+                        savings_cost_col = f'{scenario_prefix}{category}_lifetime_savings_fuel_cost'
                         lifetime_dict[savings_cost_col] = pd.Series(np.nan, index=df_copy.index)
                         lifetime_dict[baseline_costs_col] = df_baseline_costs[baseline_costs_col]
                         
@@ -211,7 +211,7 @@ def calculate_lifetime_fuel_costs(
 
                     # If baseline costs are provided, include baseline annual costs for reference only
                     if menu_mp != 0 and df_baseline_costs is not None:
-                        baseline_col = f'baseline_{year_label}_{category}_fuelCost'
+                        baseline_col = f'baseline_{year_label}_{category}_fuel_cost'
                         if baseline_col in df_baseline_costs.columns:
                             annual_costs[baseline_col] = df_baseline_costs[baseline_col]
                             category_columns_to_mask.append(baseline_col)
@@ -248,16 +248,16 @@ def calculate_lifetime_fuel_costs(
 
             # Prepare lifetime columns
             lifetime_dict = {}
-            costs_col = f'{scenario_prefix}{category}_lifetime_fuelCost'
+            costs_col = f'{scenario_prefix}{category}_lifetime_fuel_cost'
             lifetime_dict[costs_col] = lifetime_fuel_costs
             category_columns_to_mask.append(costs_col)
                 
             # Calculate avoided costs at lifetime level if baseline data is provided
             # This is consistent with how climate and health modules handle avoided calculations
             if menu_mp != 0 and df_baseline_costs is not None:
-                baseline_costs_col = f'baseline_{category}_lifetime_fuelCost'
+                baseline_costs_col = f'baseline_{category}_lifetime_fuel_cost'
                 if baseline_costs_col in df_baseline_costs.columns:
-                    savings_cost_col = f'{scenario_prefix}{category}_lifetime_savings_fuelCost'
+                    savings_cost_col = f'{scenario_prefix}{category}_lifetime_savings_fuel_cost'
 
                     # Use calculate_avoided_values function for consistency with climate and health modules
                     lifetime_dict[savings_cost_col] = calculate_avoided_values(
@@ -291,7 +291,7 @@ def calculate_lifetime_fuel_costs(
     
     # Before applying final masking, ensure all lifetime columns are tracked
     for category in EQUIPMENT_SPECS.keys():
-        lifetime_col = f'{scenario_prefix}{category}_lifetime_fuelCost'
+        lifetime_col = f'{scenario_prefix}{category}_lifetime_fuel_cost'
         if lifetime_col in df_lifetime.columns:
             if lifetime_col not in all_columns_to_mask[category]:
                 all_columns_to_mask[category].append(lifetime_col)
@@ -433,7 +433,7 @@ def calculate_annual_fuel_costs(
         fuel_costs = consumption * df['_temp_price']
         
         # Store the result
-        cost_col = f'{scenario_prefix}{year_label}_{category}_fuelCost'
+        cost_col = f'{scenario_prefix}{year_label}_{category}_fuel_cost'
         annual_costs[cost_col] = fuel_costs
         
         # Note: No baseline or avoided cost calculations here - consistent with climate and health modules

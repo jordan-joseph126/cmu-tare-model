@@ -71,7 +71,7 @@ Private NPV calculation completed. Added 27 new columns.
 ## Function Signature
 
 ```python
-def calculate_private_NPV(
+def calculate_private_npv(
         df: pd.DataFrame,
         df_fuel_costs: pd.DataFrame,
         df_baseline_costs: pd.DataFrame,

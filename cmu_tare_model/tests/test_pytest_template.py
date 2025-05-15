@@ -205,19 +205,19 @@ def fuel_costs_df() -> pd.DataFrame:
         for year in range(2024, 2040):  # Years from 2024 to 2039
             for category in ['heating', 'waterHeating', 'clothesDrying', 'cooking']:
                 # Annual fuel cost columns
-                data[f'{prefix}{year}_{category}_fuelCost'] = [100, 200, 150, 120, 80]
+                data[f'{prefix}{year}_{category}_fuel_cost'] = [100, 200, 150, 120, 80]
                 
                 # Add savings columns for measure packages
                 if prefix != 'baseline_':
-                    data[f'{prefix}{year}_{category}_savings_fuelCost'] = [20, 40, 30, 25, 15]
+                    data[f'{prefix}{year}_{category}_savings_fuel_cost'] = [20, 40, 30, 25, 15]
         
         # Add lifetime fuel cost columns
         for category in ['heating', 'waterHeating', 'clothesDrying', 'cooking']:
-            data[f'{prefix}{category}_lifetime_fuelCost'] = [1500, 3000, 2250, 1800, 1200]
+            data[f'{prefix}{category}_lifetime_fuel_cost'] = [1500, 3000, 2250, 1800, 1200]
             
             # Add savings columns for measure packages
             if prefix != 'baseline_':
-                data[f'{prefix}{category}_lifetime_savings_fuelCost'] = [300, 600, 450, 360, 240]
+                data[f'{prefix}{category}_lifetime_savings_fuel_cost'] = [300, 600, 450, 360, 240]
     
     return pd.DataFrame(data)
 
@@ -1265,7 +1265,7 @@ def test_your_main_function(sample_homes_df, fuel_costs_df, capital_costs_df):
     This is a placeholder test - modify it to test your actual function.
     """
     # This is a placeholder - you'll need to replace with your actual function
-    # For example, a call to calculate_private_NPV() or adoption_decision()
+    # For example, a call to calculate_private_npv() or adoption_decision()
     
     # result = your_main_function(
     #     df=sample_homes_df,

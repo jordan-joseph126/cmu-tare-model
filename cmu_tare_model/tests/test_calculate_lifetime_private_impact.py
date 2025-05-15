@@ -81,7 +81,7 @@ def df_fuel_costs(sample_homes_df: pd.DataFrame) -> pd.DataFrame:
         lifetime = EQUIPMENT_SPECS[category]
         
         # Generate lifetime fuel costs (baseline)
-        base_lifetime = f'baseline_{category}_lifetime_fuelCost'
+        base_lifetime = f'baseline_{category}_lifetime_fuel_cost'
         data[base_lifetime] = [
             (1000 + (home_idx * 100)) * lifetime * (
                 1.0 if category == 'heating' else 
@@ -92,24 +92,24 @@ def df_fuel_costs(sample_homes_df: pd.DataFrame) -> pd.DataFrame:
         ]
         
         # Generate lifetime fuel costs (measure)
-        mp_lifetime = f'iraRef_mp8_{category}_lifetime_fuelCost'
+        mp_lifetime = f'iraRef_mp8_{category}_lifetime_fuel_cost'
         data[mp_lifetime] = [
             data[base_lifetime][home_idx] * 0.6  # 40% savings
             for home_idx in range(5)
         ]
         
         # Generate lifetime savings
-        savings_lifetime = f'iraRef_mp8_{category}_lifetime_savings_fuelCost'
+        savings_lifetime = f'iraRef_mp8_{category}_lifetime_savings_fuel_cost'
         data[savings_lifetime] = [
             data[base_lifetime][home_idx] - data[mp_lifetime][home_idx]
             for home_idx in range(5)
         ]
         
         # Also generate pre-IRA versions
-        preira_lifetime = f'preIRA_mp8_{category}_lifetime_fuelCost'
+        preira_lifetime = f'preIRA_mp8_{category}_lifetime_fuel_cost'
         data[preira_lifetime] = data[mp_lifetime].copy()
         
-        preira_savings = f'preIRA_mp8_{category}_lifetime_savings_fuelCost'
+        preira_savings = f'preIRA_mp8_{category}_lifetime_savings_fuel_cost'
         data[preira_savings] = data[savings_lifetime].copy()
         
         # Generate annual costs for several years
@@ -118,7 +118,7 @@ def df_fuel_costs(sample_homes_df: pd.DataFrame) -> pd.DataFrame:
             if year - 2024 < lifetime:
                 # Baseline annual cost with 2% increase per year
                 year_factor = 1.0 + (year - 2024) * 0.02
-                base_annual = f'baseline_{year}_{category}_fuelCost'
+                base_annual = f'baseline_{year}_{category}_fuel_cost'
                 data[base_annual] = [
                     (1000 + (home_idx * 100)) * year_factor * (
                         1.0 if category == 'heating' else 
@@ -129,24 +129,24 @@ def df_fuel_costs(sample_homes_df: pd.DataFrame) -> pd.DataFrame:
                 ]
                 
                 # Measure package annual cost (60% of baseline)
-                mp_annual = f'iraRef_mp8_{year}_{category}_fuelCost'
+                mp_annual = f'iraRef_mp8_{year}_{category}_fuel_cost'
                 data[mp_annual] = [
                     data[base_annual][home_idx] * 0.6
                     for home_idx in range(5)
                 ]
                 
                 # Savings
-                savings_annual = f'iraRef_mp8_{year}_{category}_savings_fuelCost'
+                savings_annual = f'iraRef_mp8_{year}_{category}_savings_fuel_cost'
                 data[savings_annual] = [
                     data[base_annual][home_idx] - data[mp_annual][home_idx]
                     for home_idx in range(5)
                 ]
                 
                 # Pre-IRA versions
-                preria_annual = f'preIRA_mp8_{year}_{category}_fuelCost'
+                preria_annual = f'preIRA_mp8_{year}_{category}_fuel_cost'
                 data[preria_annual] = data[mp_annual].copy()
                 
-                preria_savings_annual = f'preIRA_mp8_{year}_{category}_savings_fuelCost'
+                preria_savings_annual = f'preIRA_mp8_{year}_{category}_savings_fuel_cost'
                 data[preria_savings_annual] = data[savings_annual].copy()
     
     # Create DataFrame
@@ -452,7 +452,7 @@ def test_mask_initialization_implementation(
         mock_apply_masking
     )
     
-    calculate_private_NPV(
+    calculate_private_npv(
         df=sample_homes_df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -523,8 +523,8 @@ def test_series_initialization_implementation(
     # Add test columns for all years in the lifetime
     for year_offset in range(lifetime):
         year = base_year + year_offset
-        df_fuel_costs[f'{scenario_prefix}{year}_{category}_fuelCost'] = 1000 - (year_offset * 50)
-        df_baseline_costs[f'baseline_{year}_{category}_fuelCost'] = 2000 - (year_offset * 100)
+        df_fuel_costs[f'{scenario_prefix}{year}_{category}_fuel_cost'] = 1000 - (year_offset * 50)
+        df_baseline_costs[f'baseline_{year}_{category}_fuel_cost'] = 2000 - (year_offset * 100)
     
     # Add validation columns
     df_fuel_costs[f'include_{category}'] = valid_mask
@@ -703,7 +703,7 @@ def test_valid_only_calculation_implementation(
         mock_calculate_npv
     )
     
-    calculate_private_NPV(
+    calculate_private_npv(
         df=df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -909,7 +909,7 @@ def test_final_masking_implementation(
     input_mp = 'upgrade08'
     
     # Call the function
-    result = calculate_private_NPV(
+    result = calculate_private_npv(
         df=df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -1013,7 +1013,7 @@ def test_all_validation_steps_integrated(
         
         m.setattr('cmu_tare_model.utils.discounting.calculate_discount_factor', mock_discount_factor)
         
-        calculate_private_NPV(
+        calculate_private_npv(
             df=df,
             df_fuel_costs=df_fuel_costs,
             df_baseline_costs=df_baseline_costs,
@@ -1400,7 +1400,7 @@ def test_calculate_private_npv_basic(
     policy_scenario = 'AEO2023 Reference Case'
     
     # Call the function
-    result_df = calculate_private_NPV(
+    result_df = calculate_private_npv(
         df=df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -1513,7 +1513,7 @@ def test_rebate_application(
     category = 'heating'
     
     # Calculate costs for No IRA scenario
-    result_no_ira = calculate_private_NPV(
+    result_no_ira = calculate_private_npv(
         df=df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -1524,7 +1524,7 @@ def test_rebate_application(
     )
     
     # Calculate costs for IRA scenario
-    result_ira = calculate_private_NPV(
+    result_ira = calculate_private_npv(
         df=df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -1618,7 +1618,7 @@ def test_weatherization_costs(
     policy_scenario = 'AEO2023 Reference Case'
     
     # Calculate costs for upgrade08 (no weatherization)
-    result_upgrade08 = calculate_private_NPV(
+    result_upgrade08 = calculate_private_npv(
         df=df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -1629,7 +1629,7 @@ def test_weatherization_costs(
     )
     
     # Calculate costs for upgrade09 (includes weatherization)
-    result_upgrade09 = calculate_private_NPV(
+    result_upgrade09 = calculate_private_npv(
         df=df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -1728,7 +1728,7 @@ def test_across_categories(
     policy_scenario = 'AEO2023 Reference Case'
     
     # Call the function
-    result_df = calculate_private_NPV(
+    result_df = calculate_private_npv(
         df=df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -1822,7 +1822,7 @@ def test_across_policy_scenarios(
     expected_prefix = 'preIRA_mp8_' if policy_scenario == 'No Inflation Reduction Act' else 'iraRef_mp8_'
     
     # Call the function
-    result_df = calculate_private_NPV(
+    result_df = calculate_private_npv(
         df=df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -1895,7 +1895,7 @@ def test_empty_dataframe(
     
     # Expect a KeyError or ValueError due to missing columns
     with pytest.raises((KeyError, ValueError)) as excinfo:
-        calculate_private_NPV(
+        calculate_private_npv(
             df=df_empty,
             df_fuel_costs=df_fuel_costs_empty,
             df_baseline_costs=df_baseline_costs_empty,
@@ -1974,7 +1974,7 @@ def test_all_invalid_homes(
     policy_scenario = 'AEO2023 Reference Case'
     
     # Call the function
-    result_df = calculate_private_NPV(
+    result_df = calculate_private_npv(
         df=df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -2034,14 +2034,14 @@ def test_missing_fuel_cost_data(
     
     # Remove all savings columns for this category
     savings_cols = [col for col in df_fuel_costs_modified.columns 
-                   if col.startswith('iraRef_mp8_') and col.endswith('_savings_fuelCost')
+                   if col.startswith('iraRef_mp8_') and col.endswith('_savings_fuel_cost')
                    and category in col]
     
     df_fuel_costs_modified = df_fuel_costs_modified.drop(columns=savings_cols)
     
     # Also remove all fuel cost columns for this category to ensure zero savings
     cost_cols = [col for col in df_fuel_costs_modified.columns 
-                if col.startswith('iraRef_mp8_') and col.endswith('_fuelCost')
+                if col.startswith('iraRef_mp8_') and col.endswith('_fuel_cost')
                 and category in col]
     
     df_fuel_costs_modified = df_fuel_costs_modified.drop(columns=cost_cols)
@@ -2073,7 +2073,7 @@ def test_missing_fuel_cost_data(
     policy_scenario = 'AEO2023 Reference Case'
     
     # Call the function with modified fuel costs
-    result_df = calculate_private_NPV(
+    result_df = calculate_private_npv(
         df=df,
         df_fuel_costs=df_fuel_costs_modified,
         df_baseline_costs=df_baseline_costs,
@@ -2161,7 +2161,7 @@ def test_negative_cost_scenarios(
     policy_scenario = 'AEO2023 Reference Case'
     
     # Call the function
-    result_df = calculate_private_NPV(
+    result_df = calculate_private_npv(
         df=df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,

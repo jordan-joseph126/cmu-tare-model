@@ -158,7 +158,8 @@ def plot_adoption_rate_bar(
         title: str, 
         x_label: str, 
         y_label: str, 
-        ax: plt.Axes) -> None:
+        ax: plt.Axes
+) -> None:
     """
     Creates a stacked bar chart visualizing adoption rates by tier.
     
@@ -170,139 +171,85 @@ def plot_adoption_rate_bar(
         y_label: Label for y-axis
         ax: Matplotlib axes to plot on
     """
-    # Print detailed diagnostics about the input DataFrame
-    print(f"\nPlotting '{title}':")
-    print(f"- Shape: {df.shape}")
-    print(f"- Index: {type(df.index)}")
-    if isinstance(df.columns, pd.MultiIndex):
-        print(f"- Column levels: {df.columns.names}")
-        print(f"- First few columns: {[col for col in df.columns[:3]]}")
-    else:
-        print(f"- Columns: {list(df.columns[:5])}")
+    # Verify DataFrame structure
+    if df.empty or not isinstance(df.columns, pd.MultiIndex):
+        ax.text(0.5, 0.5, "No data available", ha='center', va='center', transform=ax.transAxes)
+        return
     
-    # Print requested scenarios
-    print(f"- Requested scenarios: {scenarios}")
-    
-    # Define tiers and their display order
-    adoption_tiers = [
+    # Define tiers and colors (for consistency)
+    tiers = [
         'Tier 1: Feasible', 
         'Tier 2: Feasible vs. Alternative',
         'Tier 3: Subsidy-Dependent Feasibility'
     ]
     
-    # Define color mapping
-    color_mapping = {
+    colors = {
         'Tier 1: Feasible': 'steelblue',
         'Tier 2: Feasible vs. Alternative': 'lightblue',
         'Tier 3: Subsidy-Dependent Feasibility': 'lightsalmon'
     }
-
-    # Check if DataFrame has expected MultiIndex structure
-    if df.empty or not isinstance(df.columns, pd.MultiIndex):
-        ax.text(0.5, 0.5, "No data or incorrect column structure", 
-              ha='center', va='center', transform=ax.transAxes)
-        print("  Error: DataFrame is empty or doesn't have MultiIndex columns")
-        return
     
-    # Check if tiers exist in data
-    available_tiers = set([col[1] for col in df.columns if isinstance(col, tuple) and len(col) > 1])
-    print(f"- Available tiers: {available_tiers}")
-    missing_tiers = set(adoption_tiers) - available_tiers
-    if missing_tiers:
-        print(f"  Warning: Missing tiers: {missing_tiers}")
-    
-    # Print some diagnostic info about tiers
-    tier_check = []
-    for scenario in scenarios:
-        tier_check.append(f"Scenario {scenario} tiers:")
-        for tier in adoption_tiers:
-            if (scenario, tier) in df.columns:
-                values = df[(scenario, tier)]
-                non_zero = (values > 0).sum()
-                total = len(values)
-                tier_check.append(f"  - {tier}: {non_zero}/{total} non-zero values ({non_zero/total*100:.1f}%)")
-                # Print min/max/mean for non-zero values
-                if non_zero > 0:
-                    non_zero_values = values[values > 0]
-                    tier_check.append(f"    Min: {non_zero_values.min():.1f}, Max: {non_zero_values.max():.1f}, Mean: {non_zero_values.mean():.1f}")
-            else:
-                tier_check.append(f"  - {tier}: Missing from DataFrame")
-    
-    print("\n".join(tier_check))
-    
-    # Filter columns to ensure proper ordering
-    try:
-        # Filter columns only if they have tier information
-        tier_columns = [col for col in df.columns if col[1] in adoption_tiers]
-        if tier_columns:
-            df_filtered = filter_columns(df)
-        else:
-            print("  Warning: No tier columns found. Using original DataFrame.")
-            df_filtered = df
-    except Exception as e:
-        print(f"  Error filtering columns: {str(e)}")
-        df_filtered = df
-    
-    # Get rows and prepare for plotting
-    n = len(df_filtered.index)
+    # Basic plotting parameters
+    n = len(df.index)
     bar_width = 0.35
     index = list(range(n))
     
     # Plot each scenario
     for i, scenario in enumerate(scenarios):
-        # Verify scenario exists in columns
-        scenario_columns = [col for col in df_filtered.columns if col[0] == scenario]
-        if not scenario_columns:
-            print(f"  Warning: Scenario '{scenario}' not found in columns")
+        # Skip if scenario doesn't exist in columns
+        if not any(col[0] == scenario for col in df.columns):
             continue
             
         # Position bars for this scenario
         scenario_index = np.array(index) + i * bar_width
         
-        # Initialize bottom values for stacking
+        # Start with bottom of stack at zero
         bottom = np.zeros(n)
         
         # Plot each tier as a stacked bar
-        for tier in adoption_tiers:
-            if (scenario, tier) in df_filtered.columns:
-                tier_values = df_filtered[(scenario, tier)].values
-                ax.bar(scenario_index, tier_values, bar_width, 
-                     bottom=bottom, color=color_mapping[tier], 
-                     edgecolor='white', label=tier if i == 0 else "")
-                # Update bottom for next tier
-                bottom += tier_values
-            else:
-                print(f"  Warning: Tier '{tier}' not found for scenario '{scenario}'")
+        for tier in tiers:
+            # Skip if this tier doesn't exist for this scenario
+            if (scenario, tier) not in df.columns:
+                continue
+                
+            # Get values and plot
+            values = df[(scenario, tier)].values
+            ax.bar(
+                scenario_index, 
+                values, 
+                bar_width, 
+                bottom=bottom, 
+                color=colors[tier], 
+                edgecolor='white', 
+                label=tier if i == 0 else ""
+            )
+            
+            # Update bottom for next tier
+            bottom += values
     
-    # Configure plot appearance
+    # Configure axes and labels
     ax.set_xlabel(x_label, fontweight='bold', fontsize=20)
     ax.set_ylabel(y_label, fontweight='bold', fontsize=20)
     ax.set_title(title, fontweight='bold', fontsize=20)
     
-    # Set x-ticks at the middle of each group
+    # Set x-ticks at middle of bars
     ax.set_xticks([i + bar_width / 2 * (len(scenarios) - 1) for i in range(n)])
     
-    # Handle different index structures for x-tick labels
-    if isinstance(df_filtered.index, pd.MultiIndex):
-        # For MultiIndex, use all levels but format them nicely
+    # Create x-tick labels from index
+    if isinstance(df.index, pd.MultiIndex):
         x_labels = []
-        for idx in df_filtered.index:
-            # Join the index levels, but skip None or empty values
-            label_parts = [str(level) for level in idx if level is not None and str(level).strip()]
+        for idx in df.index:
+            label_parts = [str(part) for part in idx if part is not None]
             x_labels.append('\n'.join(label_parts))
     else:
-        # For regular index, use index values directly
-        x_labels = [str(idx) for idx in df_filtered.index]
+        x_labels = [str(idx) for idx in df.index]
     
-    ax.set_xticklabels(x_labels, rotation=45, ha='right')
-
-    # Configure tick labels
-    ax.tick_params(axis='x', labelsize=20)
-    ax.tick_params(axis='y', labelsize=20)
-
-    # Set y-axis limits
+    ax.set_xticklabels(x_labels, rotation=90, ha='right', fontsize=20)
+    
+    # Configure y-axis
     ax.set_yticks(np.arange(0, 101, 10))
     ax.set_ylim(0, 100)
+    ax.tick_params(axis='y', labelsize=20)
 
 
 def filter_by_fuel(

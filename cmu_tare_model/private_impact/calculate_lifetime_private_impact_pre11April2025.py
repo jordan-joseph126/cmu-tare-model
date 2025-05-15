@@ -10,7 +10,7 @@ LIFETIME PRIVATE IMPACT: NPV OF CAPITAL COST INVESTMENT AND LIFETIME FUEL COSTS
 """
 
 # UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
-def calculate_private_NPV(df, df_fuel_costs, interest_rate, input_mp, menu_mp, policy_scenario):
+def calculate_private_npv(df, df_fuel_costs, interest_rate, input_mp, menu_mp, policy_scenario):
     """
     Calculate the private net present value (NPV) for various equipment categories,
     considering different cost assumptions and potential IRA rebates. 

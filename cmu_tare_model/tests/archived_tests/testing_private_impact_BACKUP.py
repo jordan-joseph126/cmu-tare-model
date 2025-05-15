@@ -127,9 +127,9 @@ def test_equivalence(menu_mp, input_mp):
     for policy_scenario in policy_scenarios:
         print(f"\n\nTesting with policy scenario: {policy_scenario}")
         # Run backup implementation
-        # def calculate_private_NPV(df, df_fuel_costs, interest_rate, input_mp, menu_mp, policy_scenario)
+        # def calculate_private_npv(df, df_fuel_costs, interest_rate, input_mp, menu_mp, policy_scenario)
         interest_rate = 0.07  # 7% for private fixed rate
-        df_backup_result = backup.calculate_private_NPV(
+        df_backup_result = backup.calculate_private_npv(
             df=df.copy(), 
             df_fuel_costs=df_fuel_costs.copy(),
             interest_rate=interest_rate,
@@ -139,8 +139,8 @@ def test_equivalence(menu_mp, input_mp):
         )
         
         # Run current implementation
-        # def calculate_private_NPV(df, df_fuel_costs, input_mp, menu_mp, policy_scenario, discounting_method, base_year=2024):
-        df_current_result = current.calculate_private_NPV(
+        # def calculate_private_npv(df, df_fuel_costs, input_mp, menu_mp, policy_scenario, discounting_method, base_year=2024):
+        df_current_result = current.calculate_private_npv(
             df=df.copy(), 
             df_fuel_costs=df_fuel_costs.copy(),
             input_mp=input_mp,
@@ -179,7 +179,7 @@ Below is the snippet from the updated test script that calls the current version
 
 python
 Copy
-df_current_result = current.calculate_private_NPV( df=df.copy(), df_fuel_costs=df_fuel_costs.copy(), input_mp=input_mp, menu_mp=menu_mp, policy_scenario=policy_scenario, discounting_method='private_fixed', # Equivalent to 0.07 interest rate base_year=2024 # Base year )
+df_current_result = current.calculate_private_npv( df=df.copy(), df_fuel_costs=df_fuel_costs.copy(), input_mp=input_mp, menu_mp=menu_mp, policy_scenario=policy_scenario, discounting_method='private_fixed', # Equivalent to 0.07 interest rate base_year=2024 # Base year )
 Could you please help me troubleshoot the following points?
 * Discrepancies in Calculation: Several columns (e.g., preIRA_mp5_clothesDrying_net_capitalCost, preIRA_mp5_heating_total_capitalCost, and others) are producing different values between the current and backup implementations. What might be causing these numerical discrepancies? Is it possible that there have been changes in the formula or the order in which costs and rebates are applied?
 * Impact of Scenario Prefixes: The test output logs both iraRef_mp5_... and preIRA_mp5_... columns. Could the differences be due to differences in how scenario prefixes are applied or handled between the two implementations?

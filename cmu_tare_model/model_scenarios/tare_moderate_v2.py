@@ -270,7 +270,7 @@ print("\n", "Creating dataframe to store marginal damages calculations ...")
 df_mp9_scenario_damages = df_mp9_scenario_consumption.copy()
 
 print("\n", "Creating dataframe to store annual fuel cost calculations ...")
-df_mp9_scenario_fuelCosts = df_mp9_scenario_consumption.copy()
+df_mp9_scenario_fuel_costs = df_mp9_scenario_consumption.copy()
 
 # %% [markdown]
 # ## Future Climate Damages: No IRA and IRA-Reference
@@ -333,10 +333,10 @@ Private Perspective: Annual Energy Costs
 
 # calculate_annual_fuelCost(df, menu_mp, policy_scenario)
 print("\n", "Modeling Scenario: No Inflation Reduction Act")
-df_mp9_scenario_fuelCosts = calculate_annual_fuelCost(df=df_mp9_scenario_fuelCosts, menu_mp=menu_mp, policy_scenario='No Inflation Reduction Act', drop_fuel_cost_columns=False)
+df_mp9_scenario_fuel_costs = calculate_annual_fuelCost(df=df_mp9_scenario_fuel_costs, menu_mp=menu_mp, policy_scenario='No Inflation Reduction Act', drop_fuel_cost_columns=False)
 
 print("\n","Modeling Scenario: AEO2023 Reference Case")
-df_mp9_scenario_fuelCosts = calculate_annual_fuelCost(df=df_mp9_scenario_fuelCosts, menu_mp=menu_mp, policy_scenario='AEO2023 Reference Case', drop_fuel_cost_columns=False)
+df_mp9_scenario_fuel_costs = calculate_annual_fuelCost(df=df_mp9_scenario_fuel_costs, menu_mp=menu_mp, policy_scenario='AEO2023 Reference Case', drop_fuel_cost_columns=False)
 
 print(f"""  
 ====================================================================================================================================================================
@@ -346,8 +346,8 @@ Scenario: No Inflation Reduction Act and AEO2023 Reference Case
 calculate_fuel_costs.py file contains the definition for the calculate_annual_fuelCost function.
 Additional information on fuel cost lookups can be found in the calculate_fuel_costs.py file as well.
 
-DATAFRAME FOR MP9 Fuel Costs: df_mp9_scenario_fuelCosts
-{df_mp9_scenario_fuelCosts}
+DATAFRAME FOR MP9 Fuel Costs: df_mp9_scenario_fuel_costs
+{df_mp9_scenario_fuel_costs}
       ====================================================================================================================================================================
 """)
 
@@ -774,8 +774,8 @@ DATAFRAME FOR MP9 AFTER CALCULATING PUBLIC NPV: df_euss_am_mp9_home
 from cmu_tare_model.private_impact.calculate_private_npv_sensitivity import *
 
 # calculate_private_npv(df, df_fuel_costs, menu_mp, policy_scenario, equipment_specs, interest_rate=0.07)
-df_euss_am_mp9_home = calculate_private_NPV(df=df_euss_am_mp9_home,
-                                            df_fuel_costs=df_mp9_scenario_fuelCosts,
+df_euss_am_mp9_home = calculate_private_npv(df=df_euss_am_mp9_home,
+                                            df_fuel_costs=df_mp9_scenario_fuel_costs,
                                             menu_mp=menu_mp,
                                             input_mp=input_mp,
                                             policy_scenario='No Inflation Reduction Act',
@@ -868,8 +868,8 @@ DATAFRAME FOR MP9 AFTER CALCULATING PUBLIC NPV: df_euss_am_mp9_home
 # from cmu_tare_model.private_impact.calculate_lifetime_private_impact import *
 
 # calculate_private_npv(df, df_fuel_costs, menu_mp, policy_scenario, equipment_specs, interest_rate=0.07)
-df_euss_am_mp9_home = calculate_private_NPV(df=df_euss_am_mp9_home,
-                                            df_fuel_costs=df_mp9_scenario_fuelCosts,
+df_euss_am_mp9_home = calculate_private_npv(df=df_euss_am_mp9_home,
+                                            df_fuel_costs=df_mp9_scenario_fuel_costs,
                                             menu_mp=menu_mp,
                                             input_mp=input_mp,
                                             policy_scenario='AEO2023 Reference Case',

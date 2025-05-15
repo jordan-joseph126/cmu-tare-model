@@ -10,7 +10,7 @@ LIFETIME PRIVATE IMPACT: NPV OF CAPITAL COST INVESTMENT AND LIFETIME FUEL COSTS
 """
 
 # UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
-def calculate_private_NPV(df, df_fuel_costs, interest_rate, input_mp, menu_mp, policy_scenario):
+def calculate_private_npv(df, df_fuel_costs, interest_rate, input_mp, menu_mp, policy_scenario):
     """
     Calculate the private net present value (NPV) for various equipment categories,
     considering different cost assumptions and potential IRA rebates. 
@@ -167,7 +167,7 @@ def calculate_and_update_npv(df_new_columns, df_fuel_costs_copy, category, menu_
     discounted_savings = []
     for year in range(1, lifetime + 1):
         year_label = year + 2023  # Adjust the start year as necessary
-        annual_savings = df_fuel_costs_copy[f'{scenario_prefix}{year_label}_{category}_savings_fuelCost'].fillna(0)
+        annual_savings = df_fuel_costs_copy[f'{scenario_prefix}{year_label}_{category}_savings_fuel_cost'].fillna(0)
         discount_factor = (1 / ((1 + interest_rate) ** year))
         discounted_savings.append(annual_savings * discount_factor)
         # print(f"Year {year_label} savings for {category}: {annual_savings}, discounted: {annual_savings * discount_factor}")

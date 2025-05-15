@@ -1131,9 +1131,9 @@ def test_apply_final_masking_basic(sample_homes_df: pd.DataFrame) -> None:
     for category in ['heating', 'waterHeating', 'clothesDrying', 'cooking']:
         # Create columns to mask
         column_names = [
-            f"baseline_{category}_lifetime_fuelCost",
-            f"mp8_{category}_lifetime_fuelCost",
-            f"mp8_{category}_lifetime_savings_fuelCost"
+            f"baseline_{category}_lifetime_fuel_cost",
+            f"mp8_{category}_lifetime_fuel_cost",
+            f"mp8_{category}_lifetime_savings_fuel_cost"
         ]
         
         # Add to tracking dictionary

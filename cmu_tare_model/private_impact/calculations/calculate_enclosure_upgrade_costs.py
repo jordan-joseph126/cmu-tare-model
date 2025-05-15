@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from scipy.stats import norm
+from typing import List, Dict, Tuple
 
 from cmu_tare_model.utils.validation_framework import (
     create_retrofit_only_series,
@@ -141,9 +142,11 @@ def get_enclosure_parameters(
 
 def calculate_enclosure_retrofit_upgradeCosts(
         df: pd.DataFrame,
+        menu_mp: int,
         cost_dict: dict,
         retrofit_col: str,
-        params_col: str) -> pd.DataFrame:
+        params_col: str
+) -> pd.DataFrame:
     """
     Calculate the enclosure retrofit upgrade costs based on given parameters and conditions.
 
@@ -153,6 +156,7 @@ def calculate_enclosure_retrofit_upgradeCosts(
 
     Args:
         df: DataFrame containing data for different scenarios
+        menu_mp: Measure package identifier (0 for baseline, 8/9/10 for retrofits)
         cost_dict: Dictionary with cost information for different technology and efficiency combinations
         retrofit_col: Column name for the retrofit cost to be calculated
         params_col: Column name for the parameter to use in the cost calculation
@@ -171,14 +175,11 @@ def calculate_enclosure_retrofit_upgradeCosts(
         3. Calculates values only for valid homes with identifiable technology
         4. Applies final verification masking
     """
-    # Extract category from retrofit_col (e.g., 'insulation_atticFloor_upgradeCost' -> 'insulation')
-    category = retrofit_col.split('_')[0]
-    
-    # Use zero as menu_mp for enclosure components as they don't follow the standard menu package approach
-    menu_mp = 0
+    # Category for enclosure upgrades is 'heating' because they are related to heating system performance and total upgrade costs
+    category = 'heating'
     
     # Add logging for calculation start
-    print(f"Starting {category} enclosure retrofit calculation with validation framework")
+    print(f"Calculating enclosure retrofit upgrade costs with validation framework ('include_{category}' flags): {retrofit_col}")
 
     # Initialize validation tracking
     df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(

@@ -67,7 +67,7 @@ def sample_fuel_costs():
     for prefix in ['baseline_', 'preIRA_mp8_', 'preIRA_mp9_', 'preIRA_mp10_', 'iraRef_mp8_', 'iraRef_mp9_', 'iraRef_mp10_']:
         for year in range(2024, 2040):  # Future years from 2024 to 2039
             for category in EQUIPMENT_SPECS.keys():
-                col_name = f'{prefix}{year}_{category}_savings_fuelCost'
+                col_name = f'{prefix}{year}_{category}_savings_fuel_cost'
                 # Generating increasing savings over time
                 data[col_name] = [500 + (year - 2024) * 100, 
                                  600 + (year - 2024) * 120, 
@@ -145,7 +145,7 @@ def empty_columns_df():
 def test_calculate_private_NPV_with_valid_parameters(sample_df, sample_fuel_costs):
     """Test that calculate_private_NPV works with valid parameters."""
     # Valid parameters should not raise exceptions
-    result = calculate_private_NPV(
+    result = calculate_private_npv(
         df=sample_df,
         df_fuel_costs=sample_fuel_costs,
         input_mp='upgrade09',
@@ -178,7 +178,7 @@ def test_calculate_private_NPV_with_invalid_menu_mp(sample_df, sample_fuel_costs
                           mock_calculate_capital_costs)
                 
                 # Now call the function to test ValueError raising
-                calculate_private_NPV(
+                calculate_private_npv(
                     df=sample_df,
                     df_fuel_costs=sample_fuel_costs,
                     input_mp='upgrade09',
@@ -189,7 +189,7 @@ def test_calculate_private_NPV_with_invalid_menu_mp(sample_df, sample_fuel_costs
                 )
         else:
             # For other invalid values, test normally
-            calculate_private_NPV(
+            calculate_private_npv(
                 df=sample_df,
                 df_fuel_costs=sample_fuel_costs,
                 input_mp='upgrade09',
@@ -204,7 +204,7 @@ def test_calculate_private_NPV_with_invalid_policy_scenario(sample_df, sample_fu
     """Test that calculate_private_NPV raises ValueError for invalid policy_scenario values."""
     # Invalid policy_scenario should raise ValueError
     with pytest.raises(ValueError, match=r"Invalid policy_scenario.*"):
-        calculate_private_NPV(
+        calculate_private_npv(
             df=sample_df,
             df_fuel_costs=sample_fuel_costs,
             input_mp='upgrade09',
@@ -219,7 +219,7 @@ def test_calculate_private_NPV_with_invalid_discounting_method(sample_df, sample
     """Test that calculate_private_NPV raises ValueError for invalid discounting_method values."""
     # Invalid discounting_method should raise ValueError
     with pytest.raises(ValueError, match=r"Invalid discounting_method.*"):
-        calculate_private_NPV(
+        calculate_private_npv(
             df=sample_df,
             df_fuel_costs=sample_fuel_costs,
             input_mp='upgrade09',
@@ -235,7 +235,7 @@ def test_calculate_private_NPV_with_invalid_discounting_method(sample_df, sample
 
 def test_calculate_private_NPV_required_columns_present(sample_df, sample_fuel_costs):
     """Test that required output columns are present and correctly named in the results."""
-    result = calculate_private_NPV(
+    result = calculate_private_npv(
         df=sample_df,
         df_fuel_costs=sample_fuel_costs,
         input_mp='upgrade09',
@@ -268,7 +268,7 @@ def test_calculate_private_NPV_missing_columns_handling(empty_columns_df, sample
                   mock_calculate_capital_costs)
         
         # Now call the function with our empty_columns_df
-        result = calculate_private_NPV(
+        result = calculate_private_npv(
             df=empty_columns_df,
             df_fuel_costs=sample_fuel_costs,
             input_mp='upgrade09',
@@ -299,7 +299,7 @@ def test_calculate_private_NPV_missing_columns_handling(empty_columns_df, sample
 )
 def test_calculate_private_NPV_column_name_generation(sample_df, sample_fuel_costs, policy_scenario, menu_mp, expected_prefix):
     """Test that column names are generated correctly based on policy scenario and menu_mp."""
-    result = calculate_private_NPV(
+    result = calculate_private_npv(
         df=sample_df,
         df_fuel_costs=sample_fuel_costs,
         input_mp='upgrade09',
@@ -320,7 +320,7 @@ def test_calculate_private_NPV_overlapping_columns_handling(sample_df, sample_fu
     modified_df = sample_df.copy()
     modified_df['preIRA_mp8_heating_total_capitalCost'] = [100, 200, 300]
     
-    result = calculate_private_NPV(
+    result = calculate_private_npv(
         df=modified_df,
         df_fuel_costs=sample_fuel_costs,
         input_mp='upgrade09',
@@ -444,9 +444,9 @@ def test_calculate_and_update_npv_discount_factor_application():
     # Create simple test dataframes
     df_new_columns = pd.DataFrame(index=[0])
     data = {
-        'preIRA_mp8_2024_heating_savings_fuelCost': [1000],
-        'preIRA_mp8_2025_heating_savings_fuelCost': [1100],
-        'preIRA_mp8_2026_heating_savings_fuelCost': [1210]
+        'preIRA_mp8_2024_heating_savings_fuel_cost': [1000],
+        'preIRA_mp8_2025_heating_savings_fuel_cost': [1100],
+        'preIRA_mp8_2026_heating_savings_fuel_cost': [1210]
     }
     df_fuel_costs = pd.DataFrame(data)
     
@@ -497,7 +497,7 @@ def test_calculate_and_update_npv_equipment_lifetime_handling():
     # Create fuel cost savings for many years
     data = {}
     for year in range(2024, 2050):
-        data[f'preIRA_mp8_{year}_heating_savings_fuelCost'] = [1000]
+        data[f'preIRA_mp8_{year}_heating_savings_fuel_cost'] = [1000]
     df_fuel_costs = pd.DataFrame(data)
     
     # Pre-calculate discount factors for maximum years
@@ -587,7 +587,7 @@ def test_calculate_and_update_npv_missing_year_columns():
     # Create fuel costs with only even years
     data = {}
     for year in range(2024, 2039, 2):  # Only even years
-        data[f'preIRA_mp8_{year}_heating_savings_fuelCost'] = [1000]
+        data[f'preIRA_mp8_{year}_heating_savings_fuel_cost'] = [1000]
     df_fuel_costs = pd.DataFrame(data)
     
     # Pre-calculate discount factors
@@ -689,7 +689,7 @@ def test_calculate_private_NPV_empty_dataframe(sample_df, sample_fuel_costs):
     
     # Empty main DataFrame should raise KeyError due to missing required columns
     with pytest.raises(KeyError):
-        calculate_private_NPV(
+        calculate_private_npv(
             df=empty_df,
             df_fuel_costs=sample_fuel_costs,
             input_mp='upgrade09',
@@ -700,7 +700,7 @@ def test_calculate_private_NPV_empty_dataframe(sample_df, sample_fuel_costs):
         )
     
     # Empty fuel costs DataFrame should calculate NPV with zero fuel savings
-    result = calculate_private_NPV(
+    result = calculate_private_npv(
         df=sample_df,
         df_fuel_costs=pd.DataFrame(index=sample_df.index),
         input_mp='upgrade09',
@@ -722,7 +722,7 @@ def test_calculate_private_NPV_empty_dataframe(sample_df, sample_fuel_costs):
 def test_calculate_private_NPV_extreme_values(edge_case_df, sample_fuel_costs):
     """Test that calculate_private_NPV handles extreme values appropriately."""
     # Calculate NPV with extreme values
-    result = calculate_private_NPV(
+    result = calculate_private_npv(
         df=edge_case_df,
         df_fuel_costs=sample_fuel_costs,
         input_mp='upgrade09',
@@ -752,11 +752,11 @@ def test_calculate_private_NPV_different_base_year(sample_df, sample_fuel_costs)
     for prefix in ['preIRA_mp9_']:
         for year in range(2030, 2050):  # Different year range
             for category in EQUIPMENT_SPECS.keys():
-                col_name = f'{prefix}{year}_{category}_savings_fuelCost'
+                col_name = f'{prefix}{year}_{category}_savings_fuel_cost'
                 df_fuel_costs_different_years[col_name] = 1000  # Constant value for simplicity
     
     # Calculate NPV with different base year
-    result = calculate_private_NPV(
+    result = calculate_private_npv(
         df=sample_df,
         df_fuel_costs=df_fuel_costs_different_years,
         input_mp='upgrade09',
@@ -783,7 +783,7 @@ def test_calculate_private_NPV_different_base_year(sample_df, sample_fuel_costs)
 def test_calculate_private_NPV_results_structure(sample_df, sample_fuel_costs):
     """Test the structure of results from calculate_private_NPV."""
     # Call the function with valid parameters
-    result = calculate_private_NPV(
+    result = calculate_private_npv(
         df=sample_df,
         df_fuel_costs=sample_fuel_costs,
         input_mp='upgrade09',
@@ -812,7 +812,7 @@ def test_calculate_private_NPV_original_dataframe_unchanged(sample_df, sample_fu
     fuel_costs_copy_before = sample_fuel_costs.copy()
     
     # Call the function
-    _ = calculate_private_NPV(
+    _ = calculate_private_npv(
         df=sample_df,
         df_fuel_costs=sample_fuel_costs,
         input_mp='upgrade09',
@@ -829,7 +829,7 @@ def test_calculate_private_NPV_original_dataframe_unchanged(sample_df, sample_fu
 def test_calculate_private_NPV_end_to_end_calculation(sample_df, sample_fuel_costs):
     """Test end-to-end calculation for a specific category and row."""
     # Call the function
-    result = calculate_private_NPV(
+    result = calculate_private_npv(
         df=sample_df,
         df_fuel_costs=sample_fuel_costs,
         input_mp='upgrade09',
@@ -857,7 +857,7 @@ def test_calculate_private_NPV_end_to_end_calculation(sample_df, sample_fuel_cos
     total_discounted_savings = 0
     for year in range(1, lifetime + 1):
         year_label = year + (2024 - 1)
-        savings_col = f'preIRA_mp8_{year_label}_{category}_savings_fuelCost'
+        savings_col = f'preIRA_mp8_{year_label}_{category}_savings_fuel_cost'
         if savings_col in sample_fuel_costs.columns:
             discount_factor = calculate_discount_factor(2024, year_label, 'private_fixed')
             total_discounted_savings += sample_fuel_costs.loc[row_idx, savings_col] * discount_factor
@@ -889,7 +889,7 @@ def test_calculate_private_NPV_end_to_end_calculation(sample_df, sample_fuel_cos
 )
 def test_calculate_private_NPV_all_components_integration(sample_df, sample_fuel_costs, policy_scenario, input_mp, menu_mp):
     """Test integration across all components with various parameter combinations."""
-    result = calculate_private_NPV(
+    result = calculate_private_npv(
         df=sample_df,
         df_fuel_costs=sample_fuel_costs,
         input_mp=input_mp,

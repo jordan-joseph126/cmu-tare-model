@@ -40,7 +40,7 @@ considering different cost assumptions and potential IRA rebates.
 # ========================================================================================================================================================================
 
 # UPDATED
-def calculate_private_NPV(
+def calculate_private_npv(
         df: pd.DataFrame,
         df_fuel_costs: pd.DataFrame,
         input_mp: str,

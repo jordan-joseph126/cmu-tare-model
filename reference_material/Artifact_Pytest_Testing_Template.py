@@ -1265,7 +1265,7 @@ def test_your_main_function(sample_homes_df, fuel_costs_df, capital_costs_df):
     This is a placeholder test - modify it to test your actual function.
     """
     # This is a placeholder - you'll need to replace with your actual function
-    # For example, a call to calculate_private_NPV() or adoption_decision()
+    # For example, a call to calculate_private_npv() or adoption_decision()
     
     # result = your_main_function(
     #     df=sample_homes_df,

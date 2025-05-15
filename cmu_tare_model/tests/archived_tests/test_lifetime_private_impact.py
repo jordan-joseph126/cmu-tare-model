@@ -131,18 +131,18 @@ def fuel_costs_data(sample_homes_df) -> Dict[str, List[Any]]:
     # Generate baseline and measure package fuel cost data
     for category in ['heating', 'waterHeating', 'clothesDrying', 'cooking']:
         # Baseline lifetime costs
-        data[f'baseline_{category}_lifetime_fuelCost'] = [20000, 25000, 22000, 18000, 19000]
+        data[f'baseline_{category}_lifetime_fuel_cost'] = [20000, 25000, 22000, 18000, 19000]
         
         # Measure package (mp8) lifetime costs
-        data[f'iraRef_mp8_{category}_lifetime_fuelCost'] = [12000, 15000, 13200, 10800, 11400]
+        data[f'iraRef_mp8_{category}_lifetime_fuel_cost'] = [12000, 15000, 13200, 10800, 11400]
         
         # Savings (baseline - measure)
-        data[f'iraRef_mp8_{category}_lifetime_savings_fuelCost'] = [8000, 10000, 8800, 7200, 7600]
+        data[f'iraRef_mp8_{category}_lifetime_savings_fuel_cost'] = [8000, 10000, 8800, 7200, 7600]
         
         # Add annual data for a few years
         for year in range(2024, 2030):
             # Annual baseline costs
-            data[f'baseline_{year}_{category}_fuelCost'] = [
+            data[f'baseline_{year}_{category}_fuel_cost'] = [
                 1000 + (year - 2024) * 50,
                 1200 + (year - 2024) * 60,
                 1100 + (year - 2024) * 55,
@@ -151,7 +151,7 @@ def fuel_costs_data(sample_homes_df) -> Dict[str, List[Any]]:
             ]
             
             # Annual measure package costs
-            data[f'iraRef_mp8_{year}_{category}_fuelCost'] = [
+            data[f'iraRef_mp8_{year}_{category}_fuel_cost'] = [
                 600 + (year - 2024) * 30,
                 720 + (year - 2024) * 36,
                 660 + (year - 2024) * 33,
@@ -160,7 +160,7 @@ def fuel_costs_data(sample_homes_df) -> Dict[str, List[Any]]:
             ]
             
             # Annual savings
-            data[f'iraRef_mp8_{year}_{category}_savings_fuelCost'] = [
+            data[f'iraRef_mp8_{year}_{category}_savings_fuel_cost'] = [
                 400 + (year - 2024) * 20,
                 480 + (year - 2024) * 24,
                 440 + (year - 2024) * 22,
@@ -586,7 +586,7 @@ def test_calculate_and_update_npv_basic(sample_homes_df, df_fuel_costs, df_basel
     
     # For this test, simplified NPV calculation
     # Using the lifetime savings value as a proxy for discounted lifetime savings
-    savings_col = f'{scenario_prefix}{category}_lifetime_savings_fuelCost'
+    savings_col = f'{scenario_prefix}{category}_lifetime_savings_fuel_cost'
     savings = df_fuel_costs[savings_col].iloc[0]
     
     # Apply a simplified discount factor
@@ -727,8 +727,8 @@ def test_list_based_collection_in_npv(sample_homes_df, df_fuel_costs, df_baselin
         
         for year in years_to_process:
             # Get column names for baseline and measure package fuel costs
-            base_cost_col = f'baseline_{year}_{category}_fuelCost'
-            measure_cost_col = f'{scenario_prefix}{year}_{category}_fuelCost'
+            base_cost_col = f'baseline_{year}_{category}_fuel_cost'
+            measure_cost_col = f'{scenario_prefix}{year}_{category}_fuel_cost'
             
             # Check if columns exist
             if base_cost_col in df_baseline_costs.columns and measure_cost_col in df_measure_costs.columns:
@@ -819,7 +819,7 @@ def test_final_masking(sample_homes_df, df_fuel_costs, df_baseline_costs, mock_c
     base_year = 2024
     
     # Call the function
-    result_df = calculate_private_NPV(
+    result_df = calculate_private_npv(
         df=sample_homes_df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -871,7 +871,7 @@ def test_calculate_private_npv_basic(sample_homes_df, df_fuel_costs, df_baseline
     base_year = 2024
     
     # Call the function
-    result_df = calculate_private_NPV(
+    result_df = calculate_private_npv(
         df=sample_homes_df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -934,7 +934,7 @@ def test_rebate_application(sample_homes_df, df_fuel_costs, df_baseline_costs, m
     # Test with No IRA scenario
     policy_scenario_no_ira = 'No Inflation Reduction Act'
     
-    result_df_no_ira = calculate_private_NPV(
+    result_df_no_ira = calculate_private_npv(
         df=sample_homes_df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -949,7 +949,7 @@ def test_rebate_application(sample_homes_df, df_fuel_costs, df_baseline_costs, m
     # Test with IRA scenario
     policy_scenario_ira = 'AEO2023 Reference Case'
     
-    result_df_ira = calculate_private_NPV(
+    result_df_ira = calculate_private_npv(
         df=sample_homes_df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -1003,7 +1003,7 @@ def test_weatherization_costs(sample_homes_df, df_fuel_costs, df_baseline_costs,
     input_mp_08 = 'upgrade08'
     policy_scenario = 'AEO2023 Reference Case'
     
-    result_df_08 = calculate_private_NPV(
+    result_df_08 = calculate_private_npv(
         df=sample_homes_df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -1018,7 +1018,7 @@ def test_weatherization_costs(sample_homes_df, df_fuel_costs, df_baseline_costs,
     # Test with upgrade09 (includes weatherization)
     input_mp_09 = 'upgrade09'
     
-    result_df_09 = calculate_private_NPV(
+    result_df_09 = calculate_private_npv(
         df=sample_homes_df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -1078,7 +1078,7 @@ def test_across_categories(sample_homes_df, df_fuel_costs, df_baseline_costs, mo
     base_year = 2024
     
     # Call the function
-    result_df = calculate_private_NPV(
+    result_df = calculate_private_npv(
         df=sample_homes_df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -1128,7 +1128,7 @@ def test_across_policy_scenarios(sample_homes_df, df_fuel_costs, df_baseline_cos
     category = 'heating'
     
     # Call the function
-    result_df = calculate_private_NPV(
+    result_df = calculate_private_npv(
         df=sample_homes_df,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,
@@ -1181,7 +1181,7 @@ def test_empty_dataframe(df_fuel_costs, df_baseline_costs, mock_calculate_discou
     
     # Expect a KeyError or ValueError
     with pytest.raises((KeyError, ValueError)) as excinfo:
-        calculate_private_NPV(
+        calculate_private_npv(
             df=df_empty,
             df_fuel_costs=df_fuel_costs_empty,
             df_baseline_costs=df_baseline_costs_empty,
@@ -1232,7 +1232,7 @@ def test_all_invalid_homes(sample_homes_df, df_fuel_costs, df_baseline_costs, mo
     base_year = 2024
     
     # Call the function
-    result_df = calculate_private_NPV(
+    result_df = calculate_private_npv(
         df=df,
         df_fuel_costs=df_fuel_costs_mod,
         df_baseline_costs=df_baseline_costs_mod,
@@ -1270,7 +1270,7 @@ def test_missing_fuel_cost_data(sample_homes_df, df_fuel_costs, df_baseline_cost
     category = 'heating'
     
     # Remove all savings columns for this category
-    savings_cols = [col for col in df_fuel_costs_mod.columns if f'{category}_savings_fuelCost' in col]
+    savings_cols = [col for col in df_fuel_costs_mod.columns if f'{category}_savings_fuel_cost' in col]
     df_fuel_costs_mod = df_fuel_costs_mod.drop(columns=savings_cols)
     
     # Test parameters
@@ -1281,7 +1281,7 @@ def test_missing_fuel_cost_data(sample_homes_df, df_fuel_costs, df_baseline_cost
     base_year = 2024
     
     # Call the function (should handle missing data gracefully)
-    result_df = calculate_private_NPV(
+    result_df = calculate_private_npv(
         df=sample_homes_df,
         df_fuel_costs=df_fuel_costs_mod,
         df_baseline_costs=df_baseline_costs,
@@ -1335,7 +1335,7 @@ def test_negative_cost_scenarios(sample_homes_df, df_fuel_costs, df_baseline_cos
     base_year = 2024
     
     # Call the function
-    result_df = calculate_private_NPV(
+    result_df = calculate_private_npv(
         df=df_mod,
         df_fuel_costs=df_fuel_costs,
         df_baseline_costs=df_baseline_costs,

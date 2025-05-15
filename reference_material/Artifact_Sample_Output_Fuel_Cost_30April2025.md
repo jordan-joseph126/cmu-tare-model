@@ -104,7 +104,7 @@ bldg_id
 [15651 rows x 10 columns]
 ```
 
-## df_detailed_test DataFrame (created using df_mp8_IRA_fuelCosts)
+## df_detailed_test DataFrame (created using df_mp8_IRA_fuel_costs)
 
 ```
          include_cooking  valid_fuel_cooking  \

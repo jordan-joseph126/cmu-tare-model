@@ -74,10 +74,10 @@ def sample_home_data() -> Dict[str, List[Any]]:
         'baseline_2024_cooking_consumption': [200, 300, 250, 180, 150],
         
         # Baseline fuel costs (current year)
-        'baseline_2024_heating_fuelCost': [200, 300, 250, 180, 120],
-        'baseline_2024_waterHeating_fuelCost': [100, 150, 120, 90, 70],
-        'baseline_2024_clothesDrying_fuelCost': [60, 80, 70, 50, 40],
-        'baseline_2024_cooking_fuelCost': [40, 60, 50, 36, 30],
+        'baseline_2024_heating_fuel_cost': [200, 300, 250, 180, 120],
+        'baseline_2024_waterHeating_fuel_cost': [100, 150, 120, 90, 70],
+        'baseline_2024_clothesDrying_fuel_cost': [60, 80, 70, 50, 40],
+        'baseline_2024_cooking_fuel_cost': [40, 60, 50, 36, 30],
         
         # Consumption data - measure package 8 (current year)
         'mp8_2024_heating_consumption': [800, 1600, 1200, 1000, 700],
@@ -127,8 +127,8 @@ def multi_year_homes_df(sample_homes_df) -> pd.DataFrame:
             df[baseline_col] = df[current_year_col] * year_factor
             
             # Baseline costs
-            baseline_cost_col = f'baseline_{year}_{category}_fuelCost'
-            current_cost_col = f'baseline_2024_{category}_fuelCost'
+            baseline_cost_col = f'baseline_{year}_{category}_fuel_cost'
+            current_cost_col = f'baseline_2024_{category}_fuel_cost'
             df[baseline_cost_col] = df[current_cost_col] * year_factor * 1.02  # 2% price increase
             
             # Measure package consumption (mp8)
@@ -469,7 +469,7 @@ def test_calculate_annual_fuel_costs_basic(sample_homes_df, mock_fuel_prices, mo
     )
     
     # Verify the result contains the expected column
-    cost_col = f'{scenario_prefix}{year_label}_{category}_fuelCost'
+    cost_col = f'{scenario_prefix}{year_label}_{category}_fuel_cost'
     assert cost_col in annual_costs, f"Result should contain column '{cost_col}'"
     
     # Verify calculations for specific homes
@@ -520,7 +520,7 @@ def test_calculate_annual_fuel_costs_with_validation(sample_homes_df, mock_fuel_
     )
     
     # Verify the result contains the expected column
-    cost_col = f'{scenario_prefix}{year_label}_{category}_fuelCost'
+    cost_col = f'{scenario_prefix}{year_label}_{category}_fuel_cost'
     assert cost_col in annual_costs, f"Result should contain column '{cost_col}'"
     
     # Verify values for invalid homes are zero
@@ -628,8 +628,8 @@ def test_final_masking(sample_homes_df, mock_fuel_prices, mock_scenario_params):
         df, category, menu_mp, verbose=False)
     
     # Create sample results DataFrame with cost columns
-    yearly_cols = [f'iraRef_mp8_202{i}_{category}_fuelCost' for i in range(4, 7)]
-    lifetime_col = f'iraRef_mp8_{category}_lifetime_fuelCost'
+    yearly_cols = [f'iraRef_mp8_202{i}_{category}_fuel_cost' for i in range(4, 7)]
+    lifetime_col = f'iraRef_mp8_{category}_lifetime_fuel_cost'
     
     results_data = {}
     for col in yearly_cols + [lifetime_col]:
@@ -690,9 +690,9 @@ def test_lifetime_fuel_costs_basic(multi_year_homes_df, mock_fuel_prices, mock_s
     
     # Verify the main result DataFrame has the expected columns
     for category in ['heating', 'waterHeating', 'clothesDrying', 'cooking']:
-        baseline_col = f'baseline_{category}_lifetime_fuelCost'
-        measure_col = f'iraRef_mp8_{category}_lifetime_fuelCost'
-        savings_col = f'iraRef_mp8_{category}_lifetime_savings_fuelCost'
+        baseline_col = f'baseline_{category}_lifetime_fuel_cost'
+        measure_col = f'iraRef_mp8_{category}_lifetime_fuel_cost'
+        savings_col = f'iraRef_mp8_{category}_lifetime_savings_fuel_cost'
         
         assert baseline_col in df_baseline_main.columns, \
             f"Baseline result should contain column '{baseline_col}'"
@@ -705,8 +705,8 @@ def test_lifetime_fuel_costs_basic(multi_year_homes_df, mock_fuel_prices, mock_s
     
     # Verify values for invalid homes are NaN
     for category in ['heating', 'waterHeating', 'clothesDrying', 'cooking']:
-        baseline_col = f'baseline_{category}_lifetime_fuelCost'
-        measure_col = f'iraRef_mp8_{category}_lifetime_fuelCost'
+        baseline_col = f'baseline_{category}_lifetime_fuel_cost'
+        measure_col = f'iraRef_mp8_{category}_lifetime_fuel_cost'
         valid_mask = multi_year_homes_df[f'include_{category}']
         
         for idx in valid_mask.index:
@@ -743,7 +743,7 @@ def test_detailed_dataframe_structure(multi_year_homes_df, mock_fuel_prices, moc
     # Verify the detailed DataFrame has yearly columns
     category = 'heating'
     for year in range(2024, 2040):
-        yearly_col = f'iraRef_mp8_{year}_{category}_fuelCost'
+        yearly_col = f'iraRef_mp8_{year}_{category}_fuel_cost'
         
         # Only check years that should be included based on lifetime
         if year <= 2024 + 15:  # EQUIPMENT_SPECS['heating'] = 15
@@ -751,7 +751,7 @@ def test_detailed_dataframe_structure(multi_year_homes_df, mock_fuel_prices, moc
                 f"Detailed result should contain column '{yearly_col}'"
     
     # Verify the detailed DataFrame also has lifetime columns
-    lifetime_col = f'iraRef_mp8_{category}_lifetime_fuelCost'
+    lifetime_col = f'iraRef_mp8_{category}_lifetime_fuel_cost'
     assert lifetime_col in df_detailed.columns, \
         f"Detailed result should contain column '{lifetime_col}'"
 
@@ -790,9 +790,9 @@ def test_consistency_with_baseline(multi_year_homes_df, mock_fuel_prices, mock_s
     
     # Verify avoided costs are baseline - measure
     category = 'heating'
-    baseline_col = f'baseline_{category}_lifetime_fuelCost'
-    measure_col = f'iraRef_mp8_{category}_lifetime_fuelCost'
-    savings_col = f'iraRef_mp8_{category}_lifetime_savings_fuelCost'
+    baseline_col = f'baseline_{category}_lifetime_fuel_cost'
+    measure_col = f'iraRef_mp8_{category}_lifetime_fuel_cost'
+    savings_col = f'iraRef_mp8_{category}_lifetime_savings_fuel_cost'
     
     # Get the valid mask from the sample data
     valid_mask = multi_year_homes_df[f'include_{category}']
@@ -836,7 +836,7 @@ def test_across_categories(multi_year_homes_df, mock_fuel_prices, mock_scenario_
     )
     
     # Verify the result contains the expected column for this category
-    lifetime_col = f'baseline_{category}_lifetime_fuelCost'
+    lifetime_col = f'baseline_{category}_lifetime_fuel_cost'
     assert lifetime_col in df_main.columns, \
         f"Result should contain column '{lifetime_col}'"
     
@@ -882,7 +882,7 @@ def test_across_measure_packages(multi_year_homes_df, mock_fuel_prices, mock_sce
         prefix = f'iraRef_mp{menu_mp}_'
     
     # Verify the result contains the expected column for this measure package
-    lifetime_col = f'{prefix}{category}_lifetime_fuelCost'
+    lifetime_col = f'{prefix}{category}_lifetime_fuel_cost'
     assert lifetime_col in df_main.columns, \
         f"Result should contain column '{lifetime_col}'"
 
@@ -917,7 +917,7 @@ def test_across_policy_scenarios(multi_year_homes_df, mock_fuel_prices, mock_sce
         prefix = f'iraRef_mp{menu_mp}_'
     
     # Verify the result contains the expected column for this policy scenario
-    lifetime_col = f'{prefix}{category}_lifetime_fuelCost'
+    lifetime_col = f'{prefix}{category}_lifetime_fuel_cost'
     assert lifetime_col in df_main.columns, \
         f"Result should contain column '{lifetime_col}'"
 
@@ -984,7 +984,7 @@ def test_all_invalid_homes(multi_year_homes_df, mock_fuel_prices, mock_scenario_
     )
     
     # Verify lifetime column exists but all values are NaN
-    lifetime_col = f'iraRef_mp8_{category}_lifetime_fuelCost'
+    lifetime_col = f'iraRef_mp8_{category}_lifetime_fuel_cost'
     assert lifetime_col in df_main.columns, \
         f"Result should contain column '{lifetime_col}'"
     

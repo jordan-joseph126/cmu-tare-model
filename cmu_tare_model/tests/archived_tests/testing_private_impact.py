@@ -172,7 +172,7 @@ def test_equivalence(menu_mp, input_mp):
 
         # Run backup implementation
         interest_rate = 0.07  # 7% for private fixed rate (equivalent to 'private_fixed')
-        df_backup_result = backup.calculate_private_NPV(
+        df_backup_result = backup.calculate_private_npv(
             df=df.copy(), 
             df_fuel_costs=df_fuel_costs.copy(),
             interest_rate=interest_rate,
@@ -182,7 +182,7 @@ def test_equivalence(menu_mp, input_mp):
         )
         
         # Run current implementation
-        df_current_result = current.calculate_private_NPV(
+        df_current_result = current.calculate_private_npv(
             df=df.copy(), 
             df_fuel_costs=df_fuel_costs.copy(),
             input_mp=input_mp,

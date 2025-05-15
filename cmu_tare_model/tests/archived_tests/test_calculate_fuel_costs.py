@@ -78,16 +78,16 @@ With the above details, you can write more comprehensive and robust pytest tests
 # PROMPT FOR CALCUATE_FUEL_COSTS FUNCTION
 # =====================================================================================================================================================================
 
-Below is an **updated prompt** that provides clearer context, objectives, and requirements for generating pytest tests specifically for the `calculate_annual_fuelCost` function, following best practices in prompt engineering.
+Below is an **updated prompt** that provides clearer context, objectives, and requirements for generating pytest tests specifically for the `calculate_annual_fuel_cost` function, following best practices in prompt engineering.
 
 ---
 
 ## **Prompt**
 
-I have a Python function named `calculate_annual_fuelCost` with the following signature:
+I have a Python function named `calculate_annual_fuel_cost` with the following signature:
 
 ```python
-calculate_annual_fuelCost(df, menu_mp, policy_scenario, drop_fuel_cost_columns)
+calculate_annual_fuel_cost(df, menu_mp, policy_scenario, drop_fuel_cost_columns)
 ```
 
 where:
@@ -99,7 +99,7 @@ where:
 The function:
 1. Calculates annual fuel costs for baseline (when `menu_mp = 0`) or for a specific measure package (when `menu_mp != 0`).
 2. Looks up fuel prices from dictionaries (`lookup_fuel_prices_preIRA` or `lookup_fuel_prices_iraRef`), keyed by state or census division.
-3. Multiplies the per-year fuel consumption by the respective price to derive a cost column (e.g., `baseline_2024_heating_fuelCost`).
+3. Multiplies the per-year fuel consumption by the respective price to derive a cost column (e.g., `baseline_2024_heating_fuel_cost`).
 4. Optionally calculates savings when comparing baseline to measure packages.
 5. May drop intermediate columns if `drop_fuel_cost_columns` is `True`.
 

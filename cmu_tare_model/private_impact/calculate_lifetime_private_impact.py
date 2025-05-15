@@ -43,7 +43,7 @@ considering different cost assumptions and potential IRA rebates.
 # LIFETIME PRIVATE IMPACT: NPV OF CAPITAL COST INVESTMENT AND LIFETIME FUEL COSTS
 # ========================================================================================================================================================================
 
-def calculate_private_NPV(
+def calculate_private_npv(
         df: pd.DataFrame,
         df_fuel_costs: pd.DataFrame,
         df_baseline_costs: pd.DataFrame,
@@ -331,8 +331,8 @@ def calculate_and_update_npv(
         discount_factor = discount_factors[year_label]
         
         # Get column names for baseline and measure package fuel costs
-        base_cost_col = f'baseline_{year_label}_{category}_fuelCost'
-        measure_cost_col = f'{scenario_prefix}{year_label}_{category}_fuelCost'
+        base_cost_col = f'baseline_{year_label}_{category}_fuel_cost'
+        measure_cost_col = f'{scenario_prefix}{year_label}_{category}_fuel_cost'
         
         # Check if columns exist before calculation
         cols_exist = (base_cost_col in df_baseline_costs.columns and 
