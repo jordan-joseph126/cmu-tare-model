@@ -327,7 +327,7 @@ def calculate_health_damages_for_pair(
         scenario_prefix (str): Prefix for naming output columns (e.g., 'baseline_' or 'preIRA_mp1_').
         total_fossil_fuel_emissions (dict): Mapping of pollutant to Series of fossil fuel emissions.
         menu_mp (int): Measure package identifier.
-        rcm (str): Regional climate model identifier (e.g., 'AP2', 'EASIUR', 'InMAP').
+        rcm (str): Regional climate model identifier (e.g., 'ap2', 'easiur', 'inmap').
         cr (str): Concentration-response function identifier (e.g., 'acs' or 'h6c').
 
     Returns:

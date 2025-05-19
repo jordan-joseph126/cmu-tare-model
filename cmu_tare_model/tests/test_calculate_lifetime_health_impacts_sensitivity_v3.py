@@ -76,7 +76,7 @@ def mock_constants(monkeypatch):
     }
     
     # Mock RCM models for health impact calculations
-    mock_rcm_models = ['AP2', 'EASIUR', 'InMAP']  # Added 'EASIUR' to match expected models
+    mock_rcm_models = ['ap2', 'easiur', 'inmap']  # Added 'easiur' to match expected models
     
     # Mock CR functions for health impact calculations
     mock_cr_functions = ['acs', 'h6c']
@@ -429,7 +429,7 @@ def policy_scenario(request):
     return request.param
 
 
-@pytest.fixture(params=['AP2', 'InMAP'])
+@pytest.fixture(params=['ap2', 'inmap'])
 def rcm_model(request):
     """
     Parametrized fixture for RCM models.
@@ -847,7 +847,7 @@ def test_calculate_health_damages_for_pair_success(
     category = 'heating'
     year_label = 2024
     adjusted_hdd_factor = pd.Series(1.0, index=sample_homes_df.index)
-    rcm = RCM_MODELS[0]  # e.g., 'AP2'
+    rcm = RCM_MODELS[0]  # e.g., 'ap2'
     cr = CR_FUNCTIONS[0]  # e.g., 'acs'
     
     # Get scenario parameters directly without calling the fixture as a function

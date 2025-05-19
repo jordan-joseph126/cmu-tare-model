@@ -11,7 +11,7 @@ from config import PROJECT_ROOT
 # Set print_verbose to True for detailed output, or False for minimal output
 # By default, verbose is set to False because define_scenario_params is imported multiple times in the codebase
 # and we don't want to print the same information multiple times.
-print_verbose = False
+print_verbose = True
 # ====================================================================================================================================================================================
 
 
@@ -60,6 +60,9 @@ def process_rcm_data(filename: str, PROJECT_ROOT: str) -> pd.DataFrame:
 
     # Create new column 'damage_usd2023' from the 'damage' column to clarify dollar year of VSL
     df_rcm_msc_data['damage_usd2023'] = df_rcm_msc_data['damage']
+    
+    # Convert model names to lowercase for consistency
+    df_rcm_msc_data['model'] = df_rcm_msc_data['model'].str.lower()
 
     return df_rcm_msc_data
 
@@ -166,7 +169,7 @@ def get_health_impact_with_fallback(
     Args:
         lookup_dict: The nested lookup dictionary from create_lookup_nested.
         county_key: Tuple of (county_fips, state).
-        model: Model name (e.g., 'AP2', 'EASIUR', 'InMAP').
+        model: Model name (e.g., 'ap2', 'easiur', 'inmap').
         pollutant: Pollutant name (will be converted to lowercase).
         debug: If True, print diagnostic information.
         

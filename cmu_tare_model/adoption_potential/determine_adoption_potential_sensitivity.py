@@ -73,7 +73,7 @@ def adoption_decision(
         policy_scenario (str): Policy scenario that determines electricity grid projections.
             Accepted values: 'AEO2023 Reference Case', 'No Inflation Reduction Act'.
         rcm_model (str): The RCM model to use for the analysis. 
-            Accepted values: ['AP2', 'EASIUR', 'InMAP']
+            Accepted values: ['ap2', 'easiur', 'inmap']
         cr_function (str): The concentration response function to use for the analysis. 
             Accepted values: ['acs', 'h6c']
         climate_sensitivity (bool): Whether to consider multiple climate sensitivity assumptions.

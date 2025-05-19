@@ -59,7 +59,7 @@ def validate_damage_dataframes(
                 example_baseline_climate = base_climate_col
             
             # Check health damage columns (baseline)
-            base_health_col = f'baseline_{year_label}_{category}_damages_health_AP2_acs'
+            base_health_col = f'baseline_{year_label}_{category}_damages_health_ap2_acs'
             if base_health_col in df_baseline_health.columns:
                 found_baseline_health = True
             elif not example_baseline_health:
@@ -73,7 +73,7 @@ def validate_damage_dataframes(
                 example_retrofit_climate = retrofit_climate_col
             
             # Check health damage columns (retrofit)
-            retrofit_health_col = f'{scenario_prefix}{year_label}_{category}_damages_health_AP2_acs'
+            retrofit_health_col = f'{scenario_prefix}{year_label}_{category}_damages_health_ap2_acs'
             if retrofit_health_col in df_mp_health.columns:
                 found_retrofit_health = True
             elif not example_retrofit_health:

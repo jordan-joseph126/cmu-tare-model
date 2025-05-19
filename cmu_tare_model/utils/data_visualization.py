@@ -340,3 +340,4 @@ def plot_co2_abatement(df, x_col, y_col, hue, EPA_SCC_USD2023_PER_MT, ax=None):
 
     # Remove the individual legend for each subplot
     ax.legend_.remove()
+    

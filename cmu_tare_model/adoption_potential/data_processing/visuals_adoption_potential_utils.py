@@ -48,7 +48,7 @@ def detect_adoption_columns(
     menu_mp: int,
     category: str,
     scc: str = 'upper',
-    rcm_model: str = 'AP2',
+    rcm_model: str = 'ap2',
     cr_function: str = 'acs'
 ) -> List[str]:
     """

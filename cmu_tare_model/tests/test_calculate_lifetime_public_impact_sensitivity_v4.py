@@ -76,7 +76,7 @@ def mock_constants(monkeypatch):
     }
     
     # Mock RCM models for health impact calculations
-    mock_rcm_models = ['AP2', 'EASIUR', 'InMAP']
+    mock_rcm_models = ['ap2', 'easiur', 'inmap']
     
     # Mock CR functions for health impact calculations
     mock_cr_functions = ['acs', 'h6c']
@@ -494,7 +494,7 @@ def policy_scenario(request):
     return request.param
 
 
-@pytest.fixture(params=['AP2', 'InMAP'])
+@pytest.fixture(params=['ap2', 'inmap'])
 def rcm_model(request):
     """
     Parametrized fixture for RCM models.

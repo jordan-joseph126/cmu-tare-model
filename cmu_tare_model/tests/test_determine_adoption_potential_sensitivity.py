@@ -79,7 +79,7 @@ def mock_constants(monkeypatch: pytest.MonkeyPatch) -> None:
     }
     
     # Mock RCM models for health impact calculations
-    mock_rcm_models = ['AP2', 'EASIUR', 'InMAP']
+    mock_rcm_models = ['ap2', 'easiur', 'inmap']
     
     # Mock CR functions for health impact calculations
     mock_cr_functions = ['acs', 'h6c']
@@ -159,31 +159,31 @@ def sample_homes_df() -> pd.DataFrame:
     # Heating NPVs - showcase all tiers
     df['iraRef_mp8_heating_private_npv_lessWTP'] = [500, -300, -800, -1200, np.nan]
     df['iraRef_mp8_heating_private_npv_moreWTP'] = [800, 200, -300, -800, np.nan]
-    df['iraRef_mp8_heating_public_npv_upper_AP2_acs'] = [1000, 800, 600, 400, np.nan]
+    df['iraRef_mp8_heating_public_npv_upper_ap2_acs'] = [1000, 800, 600, 400, np.nan]
     
     # Water Heating NPVs - different patterns
     df['iraRef_mp8_waterHeating_private_npv_lessWTP'] = [-100, -300, np.nan, 400, -700]
     df['iraRef_mp8_waterHeating_private_npv_moreWTP'] = [200, -100, np.nan, 600, -400]
-    df['iraRef_mp8_waterHeating_public_npv_upper_AP2_acs'] = [400, 200, np.nan, -200, 600]
+    df['iraRef_mp8_waterHeating_public_npv_upper_ap2_acs'] = [400, 200, np.nan, -200, 600]
     
     # Clothes Drying NPVs - with negative public values
     df['iraRef_mp8_clothesDrying_private_npv_lessWTP'] = [np.nan, -100, 300, -500, np.nan]
     df['iraRef_mp8_clothesDrying_private_npv_moreWTP'] = [np.nan, 100, 500, -300, np.nan]
-    df['iraRef_mp8_clothesDrying_public_npv_upper_AP2_acs'] = [np.nan, -200, -100, -300, np.nan]
+    df['iraRef_mp8_clothesDrying_public_npv_upper_ap2_acs'] = [np.nan, -200, -100, -300, np.nan]
     
     # Cooking NPVs - more variations
     df['iraRef_mp8_cooking_private_npv_lessWTP'] = [-500, -200, -600, np.nan, 300]
     df['iraRef_mp8_cooking_private_npv_moreWTP'] = [-300, 100, -400, np.nan, 500] 
-    df['iraRef_mp8_cooking_public_npv_upper_AP2_acs'] = [800, 0, 600, np.nan, -100]
+    df['iraRef_mp8_cooking_public_npv_upper_ap2_acs'] = [800, 0, 600, np.nan, -100]
     
     # Add same structure for pre-IRA scenario (different values to test both scenarios)
     df['preIRA_mp8_heating_private_npv_lessWTP'] = [400, -400, -900, -1300, np.nan]
     df['preIRA_mp8_heating_private_npv_moreWTP'] = [700, 100, -400, -900, np.nan]
-    df['preIRA_mp8_heating_public_npv_upper_AP2_acs'] = [800, 600, 400, 200, np.nan]
+    df['preIRA_mp8_heating_public_npv_upper_ap2_acs'] = [800, 600, 400, 200, np.nan]
     
     # Add total NPV columns (will be calculated but we add them for testing specific functions)
-    df['iraRef_mp8_heating_total_npv_lessWTP_upper_AP2_acs'] = [1500, 500, -200, -800, np.nan]
-    df['iraRef_mp8_heating_total_npv_moreWTP_upper_AP2_acs'] = [1800, 1000, 300, -400, np.nan]
+    df['iraRef_mp8_heating_total_npv_lessWTP_upper_ap2_acs'] = [1500, 500, -200, -800, np.nan]
+    df['iraRef_mp8_heating_total_npv_moreWTP_upper_ap2_acs'] = [1800, 1000, 300, -400, np.nan]
     
     return df
 
@@ -346,7 +346,7 @@ def policy_scenario(request: pytest.FixtureRequest) -> str:
     return request.param
 
 
-@pytest.fixture(params=['AP2', 'EASIUR', 'InMAP'])
+@pytest.fixture(params=['ap2', 'easiur', 'inmap'])
 def rcm_model(request: pytest.FixtureRequest) -> str:
     """
     Parametrized fixture for RCM models.
@@ -390,7 +390,7 @@ def test_validate_input_parameters_valid() -> None:
         validate_input_parameters(
             menu_mp=8,
             policy_scenario='AEO2023 Reference Case',
-            rcm_model='AP2',
+            rcm_model='ap2',
             cr_function='acs'
         )
     except Exception as e:
@@ -408,7 +408,7 @@ def test_validate_input_parameters_invalid_policy_scenario() -> None:
         validate_input_parameters(
             menu_mp=8,
             policy_scenario='Invalid Scenario',
-            rcm_model='AP2',
+            rcm_model='ap2',
             cr_function='acs'
         )
     
@@ -450,7 +450,7 @@ def test_validate_input_parameters_invalid_cr_function() -> None:
         validate_input_parameters(
             menu_mp=8,
             policy_scenario='AEO2023 Reference Case',
-            rcm_model='AP2',
+            rcm_model='ap2',
             cr_function='Invalid Function'
         )
     
@@ -471,7 +471,7 @@ def test_validate_input_parameters_invalid_menu_mp() -> None:
         validate_input_parameters(
             menu_mp="not_a_number",
             policy_scenario='AEO2023 Reference Case',
-            rcm_model='AP2',
+            rcm_model='ap2',
             cr_function='acs'
         )
     
@@ -492,7 +492,7 @@ def test_validate_input_parameters_convertible_menu_mp() -> None:
         validate_input_parameters(
             menu_mp="8",  # String representation of an integer
             policy_scenario='AEO2023 Reference Case',
-            rcm_model='AP2',
+            rcm_model='ap2',
             cr_function='acs'
         )
     except Exception as e:
@@ -530,7 +530,7 @@ def test_mask_initialization_implementation(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
@@ -566,7 +566,7 @@ def test_series_initialization_implementation(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
@@ -622,7 +622,7 @@ def test_valid_only_calculation_implementation(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
@@ -673,7 +673,7 @@ def test_final_masking_implementation(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
@@ -708,7 +708,7 @@ def test_all_validation_steps(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
@@ -754,14 +754,14 @@ def test_adoption_tier1_classification(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
     
     # Check Tier 1 classification
     category = 'heating'  # For simplicity, focus on heating
-    tier1_col = 'iraRef_mp8_heating_adoption_upper_AP2_acs'
+    tier1_col = 'iraRef_mp8_heating_adoption_upper_ap2_acs'
     
     # Verify the column exists
     assert tier1_col in result.columns, f"Column {tier1_col} should exist in result DataFrame"
@@ -802,14 +802,14 @@ def test_adoption_tier2_classification(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
     
     # Check Tier 2 classification
     category = 'heating'  # For simplicity, focus on heating
-    tier2_col = 'iraRef_mp8_heating_adoption_upper_AP2_acs'
+    tier2_col = 'iraRef_mp8_heating_adoption_upper_ap2_acs'
     
     # Verify the column exists
     assert tier2_col in result.columns, f"Column {tier2_col} should exist in result DataFrame"
@@ -851,14 +851,14 @@ def test_adoption_tier3_classification(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
     
     # Check Tier 3 classification
     category = 'heating'  # For simplicity, focus on heating
-    tier3_col = 'iraRef_mp8_heating_adoption_upper_AP2_acs'
+    tier3_col = 'iraRef_mp8_heating_adoption_upper_ap2_acs'
     
     # Verify the column exists
     assert tier3_col in result.columns, f"Column {tier3_col} should exist in result DataFrame"
@@ -868,7 +868,7 @@ def test_adoption_tier3_classification(
         sample_homes_df['include_heating'] & 
         (sample_homes_df['iraRef_mp8_heating_private_npv_lessWTP'] < 0) &
         (sample_homes_df['iraRef_mp8_heating_private_npv_moreWTP'] < 0) &
-        (sample_homes_df['iraRef_mp8_heating_total_npv_moreWTP_upper_AP2_acs'] > 0) &
+        (sample_homes_df['iraRef_mp8_heating_total_npv_moreWTP_upper_ap2_acs'] > 0) &
         sample_homes_df['upgrade_hvac_heating_efficiency'].notna()
     ]
     
@@ -901,14 +901,14 @@ def test_adoption_tier4_classification(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
     
     # Check Tier 4 classification
     category = 'heating'  # For simplicity, focus on heating
-    tier4_col = 'iraRef_mp8_heating_adoption_upper_AP2_acs'
+    tier4_col = 'iraRef_mp8_heating_adoption_upper_ap2_acs'
     
     # Verify the column exists
     assert tier4_col in result.columns, f"Column {tier4_col} should exist in result DataFrame"
@@ -918,7 +918,7 @@ def test_adoption_tier4_classification(
         sample_homes_df['include_heating'] & 
         (sample_homes_df['iraRef_mp8_heating_private_npv_lessWTP'] < 0) &
         (sample_homes_df['iraRef_mp8_heating_private_npv_moreWTP'] < 0) &
-        (sample_homes_df['iraRef_mp8_heating_total_npv_moreWTP_upper_AP2_acs'] < 0) &
+        (sample_homes_df['iraRef_mp8_heating_total_npv_moreWTP_upper_ap2_acs'] < 0) &
         sample_homes_df['upgrade_hvac_heating_efficiency'].notna()
     ]
     
@@ -951,14 +951,14 @@ def test_homes_with_no_upgrades_classification(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
     
     # Check classification of homes with no upgrades
     category = 'heating'  # For simplicity, focus on heating
-    adoption_col = 'iraRef_mp8_heating_adoption_upper_AP2_acs'
+    adoption_col = 'iraRef_mp8_heating_adoption_upper_ap2_acs'
     
     # Verify the column exists
     assert adoption_col in result.columns, f"Column {adoption_col} should exist in result DataFrame"
@@ -998,14 +998,14 @@ def test_invalid_homes_classification(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
     
     # Check classification of invalid homes
     category = 'heating'  # For simplicity, focus on heating
-    adoption_col = 'iraRef_mp8_heating_adoption_upper_AP2_acs'
+    adoption_col = 'iraRef_mp8_heating_adoption_upper_ap2_acs'
     
     # Verify the column exists
     assert adoption_col in result.columns, f"Column {adoption_col} should exist in result DataFrame"
@@ -1047,14 +1047,14 @@ def test_public_benefit_classification(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
     
     # Check Public Benefit classification
     category = 'heating'  # For simplicity, focus on heating
-    impact_col = 'iraRef_mp8_heating_impact_upper_AP2_acs'
+    impact_col = 'iraRef_mp8_heating_impact_upper_ap2_acs'
     
     # Verify the column exists
     assert impact_col in result.columns, f"Column {impact_col} should exist in result DataFrame"
@@ -1062,7 +1062,7 @@ def test_public_benefit_classification(
     # Find homes with positive public NPV (Public Benefit)
     benefit_homes = sample_homes_df[
         sample_homes_df['include_heating'] & 
-        (sample_homes_df['iraRef_mp8_heating_public_npv_upper_AP2_acs'] > 0) &
+        (sample_homes_df['iraRef_mp8_heating_public_npv_upper_ap2_acs'] > 0) &
         sample_homes_df['upgrade_hvac_heating_efficiency'].notna()
     ]
     
@@ -1090,7 +1090,7 @@ def test_public_detriment_classification(
     # Create modified test data with negative public NPV
     df = sample_homes_df.copy()
     # Set negative public NPV for at least one home
-    df.loc[3, 'iraRef_mp8_heating_public_npv_upper_AP2_acs'] = -500
+    df.loc[3, 'iraRef_mp8_heating_public_npv_upper_ap2_acs'] = -500
     
     # Mock print function to avoid cluttering test output
     monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
@@ -1100,14 +1100,14 @@ def test_public_detriment_classification(
         df=df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
     
     # Check Public Detriment classification
     category = 'heating'  # For simplicity, focus on heating
-    impact_col = 'iraRef_mp8_heating_impact_upper_AP2_acs'
+    impact_col = 'iraRef_mp8_heating_impact_upper_ap2_acs'
     
     # Verify the column exists
     assert impact_col in result.columns, f"Column {impact_col} should exist in result DataFrame"
@@ -1115,7 +1115,7 @@ def test_public_detriment_classification(
     # Find homes with negative public NPV (Public Detriment)
     detriment_homes = df[
         df['include_heating'] & 
-        (df['iraRef_mp8_heating_public_npv_upper_AP2_acs'] < 0) &
+        (df['iraRef_mp8_heating_public_npv_upper_ap2_acs'] < 0) &
         df['upgrade_hvac_heating_efficiency'].notna()
     ]
     
@@ -1143,7 +1143,7 @@ def test_zero_public_npv_classification(
     # Create modified test data with zero public NPV
     df = sample_homes_df.copy()
     # Set zero public NPV for at least one home
-    df.loc[3, 'iraRef_mp8_heating_public_npv_upper_AP2_acs'] = 0
+    df.loc[3, 'iraRef_mp8_heating_public_npv_upper_ap2_acs'] = 0
     
     # Mock print function to avoid cluttering test output
     monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
@@ -1153,14 +1153,14 @@ def test_zero_public_npv_classification(
         df=df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
     
     # Check zero public NPV classification
     category = 'heating'  # For simplicity, focus on heating
-    impact_col = 'iraRef_mp8_heating_impact_upper_AP2_acs'
+    impact_col = 'iraRef_mp8_heating_impact_upper_ap2_acs'
     
     # Verify the column exists
     assert impact_col in result.columns, f"Column {impact_col} should exist in result DataFrame"
@@ -1168,7 +1168,7 @@ def test_zero_public_npv_classification(
     # Find homes with zero public NPV
     zero_npv_homes = df[
         df['include_heating'] & 
-        (df['iraRef_mp8_heating_public_npv_upper_AP2_acs'] == 0) &
+        (df['iraRef_mp8_heating_public_npv_upper_ap2_acs'] == 0) &
         df['upgrade_hvac_heating_efficiency'].notna()
     ]
     
@@ -1201,14 +1201,14 @@ def test_already_upgraded_impact_classification(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
     
     # Check impact classification for already upgraded homes
     category = 'heating'  # For simplicity, focus on heating
-    impact_col = 'iraRef_mp8_heating_impact_upper_AP2_acs'
+    impact_col = 'iraRef_mp8_heating_impact_upper_ap2_acs'
     
     # Verify the column exists
     assert impact_col in result.columns, f"Column {impact_col} should exist in result DataFrame"
@@ -1248,7 +1248,7 @@ def test_additional_public_benefit_calculation(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
@@ -1258,14 +1258,14 @@ def test_additional_public_benefit_calculation(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='No Inflation Reduction Act',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
     
     # Check benefit calculation for IRA scenario
     category = 'heating'  # For simplicity, focus on heating
-    benefit_col_ira = 'iraRef_mp8_heating_benefit_upper_AP2_acs'
+    benefit_col_ira = 'iraRef_mp8_heating_benefit_upper_ap2_acs'
     
     # Verify the column exists in IRA result
     assert benefit_col_ira in result_ira.columns, f"Column {benefit_col_ira} should exist in IRA result DataFrame"
@@ -1273,13 +1273,13 @@ def test_additional_public_benefit_calculation(
     # Find valid homes with public NPV and rebate
     valid_homes = sample_homes_df[
         sample_homes_df['include_heating'] & 
-        sample_homes_df['iraRef_mp8_heating_public_npv_upper_AP2_acs'].notna() &
+        sample_homes_df['iraRef_mp8_heating_public_npv_upper_ap2_acs'].notna() &
         sample_homes_df['mp8_heating_rebate_amount'].notna()
     ]
     
     # Verify benefit calculation for IRA scenario
     for idx in valid_homes.index:
-        public_npv = sample_homes_df.loc[idx, 'iraRef_mp8_heating_public_npv_upper_AP2_acs']
+        public_npv = sample_homes_df.loc[idx, 'iraRef_mp8_heating_public_npv_upper_ap2_acs']
         rebate = sample_homes_df.loc[idx, 'mp8_heating_rebate_amount']
         expected_benefit = max(0, public_npv - rebate)  # .clip(lower=0)
         
@@ -1287,7 +1287,7 @@ def test_additional_public_benefit_calculation(
             f"Home at index {idx} should have benefit {expected_benefit} in IRA scenario"
     
     # Check benefit calculation for non-IRA scenario
-    benefit_col_no_ira = 'preIRA_mp8_heating_benefit_upper_AP2_acs'
+    benefit_col_no_ira = 'preIRA_mp8_heating_benefit_upper_ap2_acs'
     
     # Verify the column exists in non-IRA result
     assert benefit_col_no_ira in result_no_ira.columns, f"Column {benefit_col_no_ira} should exist in non-IRA result DataFrame"
@@ -1331,7 +1331,7 @@ def test_missing_required_columns(
             df=df_missing,
             menu_mp=8,
             policy_scenario='AEO2023 Reference Case',
-            rcm_model='AP2',
+            rcm_model='ap2',
             cr_function='acs',
             climate_sensitivity=False
         )
@@ -1383,7 +1383,7 @@ def test_invalid_data_type_handling(
             df=df_invalid_type,
             menu_mp=8,
             policy_scenario='AEO2023 Reference Case',
-            rcm_model='AP2',
+            rcm_model='ap2',
             cr_function='acs',
             climate_sensitivity=False
         )
@@ -1425,7 +1425,7 @@ def test_error_handling_for_invalid_scc(
             df=sample_homes_df,
             menu_mp=8,
             policy_scenario='AEO2023 Reference Case',
-            rcm_model='AP2',
+            rcm_model='ap2',
             cr_function='acs',
             climate_sensitivity=True  # This triggers the use of SCC_ASSUMPTIONS
         )
@@ -1482,7 +1482,7 @@ def test_category_error_graceful_continuation(
             df=sample_homes_df,
             menu_mp=8,
             policy_scenario='AEO2023 Reference Case',
-            rcm_model='AP2',
+            rcm_model='ap2',
             cr_function='acs',
             climate_sensitivity=False
         )
@@ -1524,7 +1524,7 @@ def test_end_to_end_processing(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
@@ -1536,11 +1536,11 @@ def test_end_to_end_processing(
     for category in EQUIPMENT_SPECS.keys():
         expected_cols = [
             f'iraRef_mp8_{category}_health_sensitivity',
-            f'iraRef_mp8_{category}_benefit_upper_AP2_acs',
-            f'iraRef_mp8_{category}_total_npv_lessWTP_upper_AP2_acs',
-            f'iraRef_mp8_{category}_total_npv_moreWTP_upper_AP2_acs',
-            f'iraRef_mp8_{category}_adoption_upper_AP2_acs',
-            f'iraRef_mp8_{category}_impact_upper_AP2_acs'
+            f'iraRef_mp8_{category}_benefit_upper_ap2_acs',
+            f'iraRef_mp8_{category}_total_npv_lessWTP_upper_ap2_acs',
+            f'iraRef_mp8_{category}_total_npv_moreWTP_upper_ap2_acs',
+            f'iraRef_mp8_{category}_adoption_upper_ap2_acs',
+            f'iraRef_mp8_{category}_impact_upper_ap2_acs'
         ]
         
         for col in expected_cols:
@@ -1578,7 +1578,7 @@ def test_across_policy_scenarios(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario=policy_scenario,
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
@@ -1690,7 +1690,7 @@ def test_climate_sensitivity_parameter(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=False
     )
@@ -1706,7 +1706,7 @@ def test_climate_sensitivity_parameter(
         df=sample_homes_df,
         menu_mp=8,
         policy_scenario='AEO2023 Reference Case',
-        rcm_model='AP2',
+        rcm_model='ap2',
         cr_function='acs',
         climate_sensitivity=True
     )
@@ -1735,7 +1735,7 @@ def test_health_sensitivity_column(
     monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
     
     # Call adoption_decision
-    rcm_model = 'AP2'
+    rcm_model = 'ap2'
     cr_function = 'acs'
     result = adoption_decision(
         df=sample_homes_df,

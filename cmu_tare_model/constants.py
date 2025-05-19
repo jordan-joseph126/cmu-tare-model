@@ -31,7 +31,7 @@ FUEL_PRICE_ASSUMPTIONS = ['lower', 'central', 'upper']
 POLLUTANTS = ['so2', 'nox', 'pm25', 'co2e']
 MER_TYPES = ['lrmer', 'srmer']
 CR_FUNCTIONS = ['acs', 'h6c']
-RCM_MODELS = ['AP2', 'EASIUR', 'InMAP']
+RCM_MODELS = ['ap2', 'easiur', 'inmap']
 SCC_ASSUMPTIONS = ['lower', 'central', 'upper']
 
 # DOLLAR_YEAR = 2023

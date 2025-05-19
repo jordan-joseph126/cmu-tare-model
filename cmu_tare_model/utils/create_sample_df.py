@@ -115,7 +115,7 @@ def generate_column_patterns(
             # Health damage patterns
             if 'damages_health' in metrics:
                 # Generate patterns for different health models and concentration-response functions
-                for model in ['AP2', 'EASIUR', 'InMAP']:  # Air pollution models
+                for model in ['ap2', 'easiur', 'inmap']:  # Air pollution models
                     for cr in ['acs', 'h6c']:  # Concentration-response functions
                         # Lifetime health damages
                         patterns['health_damages'].append(

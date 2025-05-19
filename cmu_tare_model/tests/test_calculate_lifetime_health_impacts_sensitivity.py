@@ -182,7 +182,7 @@ def test_calculate_health_damages_for_pair_success(sample_df, dummy_define_scena
     adjusted_hdd_factor = pd.Series(1.0, index=sample_df.index)
     # Dummy fossil fuel emissions: zero for all pollutants.
     total_fossil_fuel_emissions = {p: pd.Series(0.0, index=sample_df.index) for p in POLLUTANTS}
-    rcm = RCM_MODELS[0]  # e.g., 'AP2'
+    rcm = RCM_MODELS[0]  # e.g., 'ap2'
     cr = CR_FUNCTIONS[0]  # e.g., 'acs'
     # Get dummy scenario params.
     scenario_prefix, _, _, _, dummy_lookup_emissions_electricity_health = dummy_define_scenario_settings(0, "No Inflation Reduction Act")
