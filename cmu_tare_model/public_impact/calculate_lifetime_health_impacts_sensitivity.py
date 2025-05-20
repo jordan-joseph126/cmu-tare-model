@@ -151,10 +151,11 @@ def calculate_lifetime_health_impacts(
                 try:
                     # Calculate the calendar year label (e.g., 2024, 2025, etc.)
                     year_label = year + (base_year - 1)
-                    
+
                     # Check that an HDD factor exists for the current year
                     if year_label not in hdd_factors_per_year:
-                        raise KeyError(f"HDD factor for year {year_label} not found.")
+                        raise RuntimeError(f"""HDD factor for year {year_label} not found in precomputed HDD factors.
+                                           "Ensure the precompute_hdd_factors function includes all required years.""")
 
                     # Retrieve HDD factor for the current year
                     # Apply factor only for heating/waterHeating categories
@@ -172,7 +173,7 @@ def calculate_lifetime_health_impacts(
                         verbose=verbose
                     ) 
                     
-                    #===== STEP 3: Valid-Only Calculation =====
+                    # ===== STEP 3: Valid-Only Calculation =====
                     # For each (rcm, cr) combination, compute health damages for this year
                     for rcm in RCM_MODELS:
                         for cr in CR_FUNCTIONS:
@@ -201,11 +202,6 @@ def calculate_lifetime_health_impacts(
                                     health_values.loc[~valid_mask] = 0.0
                                 yearly_health_damages_lists[(rcm, cr)].append(health_values)
 
-                            # # Add annual results to the detailed DataFrame
-                            # for col_name, values in health_results_pair.items():
-                            #     df_detailed[col_name] = values
-                            #     category_columns_to_mask.append(col_name)
-
                             # Store annual health results in a temporary dictionary
                             annual_health_columns = {}
                             for col_name, values in health_results_pair.items():
@@ -227,8 +223,8 @@ def calculate_lifetime_health_impacts(
                 if yearly_health_damages_lists[key]:
                     # Convert list of Series to DataFrame and sum
                     damages_df = pd.concat(yearly_health_damages_lists[key], axis=1)
-                    # total_damages = damages_df.sum(axis=1)
-                    total_damages = damages_df.sum(axis=1, skipna=False)  # Use skipna=False to propagate NaN values
+                    # Use skipna=False to properly propagate NaN values
+                    total_damages = damages_df.sum(axis=1, skipna=False)
                     
                     # Apply validation mask for measure packages
                     if menu_mp != 0:
@@ -240,6 +236,7 @@ def calculate_lifetime_health_impacts(
                 else:
                     lifetime_health_damages[key] = lifetime_health_templates[key]
 
+            # ===== UPDATED TO ADD LIFETIME RESULTS TO df_detailed =====
             # After processing all years, prepare lifetime results for the category
             lifetime_dict = {}
 
@@ -247,26 +244,28 @@ def calculate_lifetime_health_impacts(
             if menu_mp != 0 and df_baseline_damages is not None:
                 for rcm in RCM_MODELS:
                     for cr in CR_FUNCTIONS:
-                        # Record overall lifetime damages for each (rcm, cr) pair
+                        # Record overall lifetime damages
                         overall_health_col = f'{scenario_prefix}{category}_lifetime_damages_health_{rcm}_{cr}'
                         lifetime_dict[overall_health_col] = lifetime_health_damages[(rcm, cr)]
                         category_columns_to_mask.append(overall_health_col)
                         
                         # Calculate avoided damages
                         baseline_health_col = f'baseline_{category}_lifetime_damages_health_{rcm}_{cr}'
-                        if baseline_health_col in df_baseline_damages.columns:
-                            avoided_health_damages_col = f'{scenario_prefix}{category}_avoided_damages_health_{rcm}_{cr}'
-                            
-                            # Calculate avoided damages only for homes with retrofits
+                        avoided_health_damages_col = f'{scenario_prefix}{category}_avoided_damages_health_{rcm}_{cr}'
+                        
+                        # In the fail-fast approach, we simply try to access the column
+                        # If it doesn't exist, it will raise a KeyError (which is caught by the outer try/except)
+                        try:
                             lifetime_dict[avoided_health_damages_col] = calculate_avoided_values(
                                 baseline_values=df_baseline_damages[baseline_health_col],
                                 measure_values=lifetime_dict[overall_health_col],
                                 retrofit_mask=valid_mask
                             )
                             category_columns_to_mask.append(avoided_health_damages_col)
-                        else:
+                        except KeyError:
                             if verbose:
-                                print(f"Warning: Missing baseline for {category} ({cr}, {rcm}). Avoided health values skipped.")
+                                print(f"Warning: Missing baseline column '{baseline_health_col}'. Avoided health values skipped.")
+
             else:
                 # If no baseline data or not a measure package, just record lifetime damages
                 for rcm in RCM_MODELS:
@@ -274,6 +273,10 @@ def calculate_lifetime_health_impacts(
                         overall_health_col = f'{scenario_prefix}{category}_lifetime_damages_health_{rcm}_{cr}'
                         lifetime_dict[overall_health_col] = lifetime_health_damages[(rcm, cr)]
                         category_columns_to_mask.append(overall_health_col)
+
+            # CRITICAL ADDITION: Add lifetime results to df_detailed
+            lifetime_df = pd.DataFrame(lifetime_dict, index=df_copy.index)
+            df_detailed = pd.concat([df_detailed, lifetime_df], axis=1)
 
             # Add the lifetime results for the category to the global dictionary
             lifetime_columns_data.update(lifetime_dict)
@@ -288,7 +291,7 @@ def calculate_lifetime_health_impacts(
     # Create a DataFrame from the lifetime results
     df_lifetime = pd.DataFrame(lifetime_columns_data, index=df_copy.index)
     
-    #===== STEP 5: Apply final masking using the improved utility function =====
+    # ===== STEP 5: Apply final masking using the improved utility function =====
     df_main = apply_temporary_validation_and_mask(df_copy, df_lifetime, all_columns_to_mask, verbose=verbose)
     df_detailed = apply_final_masking(df_detailed, all_columns_to_mask, verbose=verbose)
 
@@ -341,9 +344,9 @@ def calculate_health_damages_for_pair(
     """
     # Retrieve the VSL adjustment factor for the current year
     if year_label not in lookup_health_vsl_adjustment:
-        raise KeyError(f"VSL adjustment factor not found for year {year_label}")
-    vsl_adjustment_factor = lookup_health_vsl_adjustment[year_label]
-    
+        raise KeyError(f"VSL adjustment factor not found for year {year_label} in lookup_health_vsl_adjustment dictionary")
+    vsl_adjustment_factor = lookup_health_vsl_adjustment[year_label]    
+
     # Select lookup dictionaries based on the provided concentration-response function
     if cr == 'acs':
         lookup_msc_fossil_fuel = lookup_health_fossil_fuel_acs

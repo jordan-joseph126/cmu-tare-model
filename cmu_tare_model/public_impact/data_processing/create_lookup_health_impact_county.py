@@ -108,7 +108,7 @@ def create_lookup_nested(df_rcm_msc_data: pd.DataFrame) -> dict:
     lookup_health_rcm_msc = {}
     for _, row in df_rcm_msc_data.iterrows():
         county_key = (row['county_fips'], row['state'])
-        model = row['model']
+        model = row['model'].lower()  # Ensure model is stored as lowercase
 
         # Make sure pollutant is stored as lowercase
         pollutant = row['pollutant'].lower()
@@ -177,6 +177,7 @@ def get_health_impact_with_fallback(
         float: The health impact value, or None if not found even with fallback.
     """
     pollutant = pollutant.lower()
+    model = model.lower()
     
     # First try exact county lookup
     county_value = lookup_dict.get(county_key, {}).get(model, {}).get(pollutant)
