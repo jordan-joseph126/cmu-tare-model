@@ -42,7 +42,8 @@ for region in ["7B_urban", "7AK_suburban"]:
 
     menu_mp = 0
     input_mp = "baseline"
-    data_folder_file_path = os.path.join("/home","arnavgautam","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence")
+    data_folder_file_path = os.path.join("/ocean","projects", "eng220005p", "agautam3","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence")
+    # data_folder_file_path = os.path.join("/home","arnavgautam","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence")
     print(data_folder_file_path)
 
     # Load the annual metadata associated with this case. This will be loading my custom data format from my own ResStock runs
@@ -59,7 +60,7 @@ for region in ["7B_urban", "7AK_suburban"]:
     # Upgrade scenario
     menu_mp = 8
     input_mp = "default_option_closest_to_sales_volume_weighted_heat_pump_device"
-    data_folder_file_path = os.path.join("/home","arnavgautam","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence_ASHP")
+    data_folder_file_path = os.path.join("/ocean","projects", "eng220005p", "agautam3","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence_ASHP")
     print(data_folder_file_path)
 
     # Load the annual metadata associated with this case. This will be loading my custom data format from my own ResStock runs
