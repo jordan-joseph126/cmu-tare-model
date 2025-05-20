@@ -24,7 +24,7 @@ with Notebook():
 
     import tare_model_functions_v1_4_1 as base_TARE
 
-NUM_RESIDENCES = 8000
+NUM_RESIDENCES = 8
 PUBLIC_INTEREST_RATE = 0.02
 
 
@@ -37,7 +37,7 @@ MMPV_filename = 'MMPV_ALPHA0pt2_BETA0pt3_DISCOUNT0pt07'
 unit_num = "all"
 # region = "urban_ohio"
 
-for region in ["national_ASHP"]:
+for region in ["7B_urban", "7AK_suburban"]:
     output_filepath = os.path.join("output_results",f"{region}_{NUM_RESIDENCES}_all_unit_residence", f"alpha_beta_{MMPV_filename if USING_MMPV else 'NPV'}_tare_output.csv")
 
     menu_mp = 0
