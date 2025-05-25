@@ -1,323 +1,482 @@
-import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from typing import List, Optional, Tuple, Dict, Any, Union
 
+"""
+Enhanced Histogram Visualization Module with Multiple DataFrame Support
+
+This module provides enhanced histogram visualization functions following the same
+architectural patterns as the adoption potential visualization refactoring, now
+with support for multiple DataFrames to enable complex sensitivity analyses.
+
+Key improvements:
+- Multiple DataFrame support with flexible mapping
+- Comprehensive type annotations
+- Robust error handling with informative messages
+- Backward compatibility with single DataFrame usage
+- Flexible parameter design
+- Proper figure management and return types
+"""
 
 # ===================================================================================================================================================================================
-# FUNCTIONS FOR DATA VISUALIZATION
-# ===================================================================================================================================================================================
-# FOR PUBLIC CLIMATE AND HEALTH IMPACTS NPV AND TOTAL NPV SENSITIVITY ANALYSIS
+# ENHANCED HISTOGRAM FUNCTIONS WITH MULTIPLE DATAFRAME SUPPORT
 # ===================================================================================================================================================================================
 
-import os
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-# Import the updated visualization functions
-# from histogram_visualization import create_subplot_grid_histogram
-
-def iraRef_public_npv_sensitivity_grid(df, menu_mp=8, category='heating', scc='upper'):
-    """
-    Creates a grid of histograms comparing PUBLIC NPV values across different
-    RCM models (AP2, EASIUR, InMAP) and CR functions (acs, h6c).
-    
-    Parameters:
-    df: DataFrame containing the data
-    menu_mp: Measure package identifier (default: 8)
-    category: Equipment category (default: 'heating')
-    scc: SCC assumption to use (default: 'upper')
-    """
-    # Set up subplot positions:
-    # - Top row (acs): columns for AP2, EASIUR, InMAP
-    # - Bottom row (h6c): columns for AP2, EASIUR, InMAP
-    subplot_positions = [
-        (0,0), (0,1), (0,2),  # Top row (acs)
-        (1,0), (1,1), (1,2)   # Bottom row (h6c)
-    ]
-    
-    # Define column names with sensitivity parameters
-    x_cols = [
-        # Top row (acs)
-        'iraRef_mp{menu_mp}_{category}_public_npv_{scc}_AP2_acs',
-        'iraRef_mp{menu_mp}_{category}_public_npv_{scc}_EASIUR_acs',
-        'iraRef_mp{menu_mp}_{category}_public_npv_{scc}_InMAP_acs',
-        # Bottom row (h6c)
-        'iraRef_mp{menu_mp}_{category}_public_npv_{scc}_AP2_h6c',
-        'iraRef_mp{menu_mp}_{category}_public_npv_{scc}_EASIUR_h6c',
-        'iraRef_mp{menu_mp}_{category}_public_npv_{scc}_InMAP_h6c'
-    ]
-    
-    # Define x-axis labels for each subplot
-    x_labels = [
-        # Top row (acs)
-        'Public NPV (AP2, acs)',
-        'Public NPV (EASIUR, acs)',
-        'Public NPV (InMAP, acs)',
-        # Bottom row (h6c)
-        'Public NPV (AP2, h6c)',
-        'Public NPV (EASIUR, h6c)',
-        'Public NPV (InMAP, h6c)'
-    ]
-    
-    # Create the visualization
-    create_subplot_grid_histogram(
-        df=df,
-        menu_mp=menu_mp,
-        category=category,
-        scc=scc,
-        subplot_positions=subplot_positions,
-        x_cols=x_cols,
-        x_labels=x_labels,
-        y_label='Count',
-        bin_number=30,
-        suptitle=f'IRA Reference Public NPV Sensitivity Analysis ({category.capitalize()})',
-        column_titles=["AP2 Model", "EASIUR Model", "InMAP Model"],
-        color_code=f'base_{category}_fuel',
-        include_zero=False,
-        figure_size=(18, 12),
-        sharex='col',  # Share x-axis within columns
-        sharey='row'   # Share y-axis within rows
-    )
-
-# # Example usage:
-# # iraRef_public_npv_sensitivity_grid(df_euss_am_mp8_home_ap2, category='heating')
-
-# # To run the analysis for different equipment categories:
-# def run_all_equipment_sensitivity(df, menu_mp=8, scc='upper'):
-#     """
-#     Runs the sensitivity grid visualization for all equipment categories
-    
-#     Parameters:
-#     df: DataFrame containing the data
-#     menu_mp: Measure package identifier (default: 8)
-#     scc: SCC assumption to use (default: 'upper')
-#     """
-#     for category in ['heating', 'waterHeating', 'clothesDrying', 'cooking']:
-#         print(f"Creating visualization for {category}...")
-#         iraRef_public_npv_sensitivity_grid(df, menu_mp, category, scc)
-
-# Example:
-# run_all_equipment_sensitivity(df_euss_am_mp8_home_ap2)
-
-# Implementation of create_subplot_grid_histogram with sensitivity parameters
-# (copy from the updated histogram_visualization.py file)
-
-# Added base fuel color-coded legend
-color_map_fuel = {
+# Color mapping for fuel types (moved from global to function parameter with default)
+DEFAULT_COLOR_MAP_FUEL = {
     'Electricity': 'seagreen',
     'Natural Gas': 'steelblue',
     'Propane': 'orange',
     'Fuel Oil': 'firebrick',
 }
 
-# Define a function to plot the histogram and percentile subplot with sensitivity parameters
-def create_subplot_histogram(ax, df, x_col, bin_number, x_label=None, y_label=None, lower_percentile=2.5, 
-                            upper_percentile=97.5, color_code='base_fuel', statistic='count', 
-                            include_zero=False, show_legend=False, category=None, scc='upper', rcm_model='AP2', cr_function='h6c', menu_mp=8):
+
+def create_subplot_histogram(
+    ax: plt.Axes,
+    df: pd.DataFrame,
+    x_col: str,
+    bin_number: int = 20,
+    x_label: Optional[str] = None,
+    y_label: Optional[str] = None,
+    lower_percentile: float = 2.5,
+    upper_percentile: float = 97.5,
+    color_code: str = 'base_fuel',
+    statistic: str = 'count',
+    include_zero: bool = False,
+    show_legend: bool = False,
+    color_map: Optional[Dict[str, str]] = None
+) -> None:
+    """
+    Creates a histogram visualization on the provided axes with enhanced error handling.
+    
+    This function applies the same architectural improvements as the adoption potential
+    refactoring: comprehensive type hints, robust error handling, and flexible
+    parameter design.
+    
+    Args:
+        ax: Matplotlib axes to plot on
+        df: DataFrame containing the data to visualize
+        x_col: Column name for the data to plot
+        bin_number: Number of histogram bins
+        x_label: Optional label for x-axis
+        y_label: Optional label for y-axis
+        lower_percentile: Lower percentile for data range filtering
+        upper_percentile: Upper percentile for data range filtering
+        color_code: Column name for color coding (usually fuel type)
+        statistic: Statistic to compute ('count', 'density', 'probability', etc.)
+        include_zero: Whether to include zero values in the visualization
+        show_legend: Whether to show legend on this subplot
+        color_map: Optional color mapping dictionary (uses default if None)
+        
+    Returns:
+        None. The plot is created on the provided axes.
+        
+    Raises:
+        ValueError: If required columns are not found or data is invalid
+        TypeError: If input parameters are of wrong type
+    """
+    # Input validation (following adoption potential pattern)
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("df must be a pandas DataFrame")
+    
+    if df.empty:
+        raise ValueError("DataFrame is empty")
+    
+    if not isinstance(ax, plt.Axes):
+        raise TypeError("ax must be a matplotlib Axes object")
+    
+    # Validate required columns exist
+    if x_col not in df.columns:
+        available_cols = list(df.columns)
+        raise ValueError(f"Column '{x_col}' not found in DataFrame. "
+                        f"Available columns: {available_cols}")
+    
+    if color_code not in df.columns:
+        available_cols = list(df.columns)
+        raise ValueError(f"Color coding column '{color_code}' not found in DataFrame. "
+                        f"Available columns: {available_cols}")
+    
+    # Use default color map if none provided
+    if color_map is None:
+        color_map = DEFAULT_COLOR_MAP_FUEL.copy()
+    
+    # Data preparation (following adoption potential defensive copying pattern)
     df_copy = df.copy()
     
-    # If the x_col contains sensitivity placeholders, replace them
-    if '{menu_mp}' in x_col:
-        x_col = x_col.replace('{menu_mp}', str(menu_mp))
-    if '{category}' in x_col:
-        x_col = x_col.replace('{category}', category)
-    if '{scc}' in x_col:
-        x_col = x_col.replace('{scc}', scc)
-        
-    # If the column doesn't exist, try fallback options
-    if x_col not in df_copy.columns:
-        # Define potential fallback patterns
-        fallback_patterns = [
-            x_col.replace(f'_{scc}', ''),
-            x_col.replace(f'_public_npv_{scc}', '_public_npv'),
-            x_col.replace(f'_public_npv_{scc}', '_climate_npv'),
-            x_col.replace(f'mp{menu_mp}_', '')
-        ]
-        
-        for fallback in fallback_patterns:
-            if fallback in df_copy.columns:
-                print(f"Using fallback column: {fallback} instead of {x_col}")
-                x_col = fallback
-                break
-        
-        # If still not found, draw an empty plot with a message
-        if x_col not in df_copy.columns:
-            ax.text(0.5, 0.5, f"Column not found: {x_col}", ha='center', va='center')
-            if x_label is not None:
-                ax.set_xlabel(x_label, fontsize=22)
-            if y_label is not None:
-                ax.set_ylabel(y_label, fontsize=22)
-            ax.tick_params(axis='both', labelsize=22)
-            sns.despine()
-            return
-    
-    # If color_code includes category placeholders, replace them
-    if isinstance(color_code, str) and '{category}' in color_code and category is not None:
-        color_code = color_code.replace('{category}', category)
-    
-    # Handle missing color code column
-    if color_code not in df_copy.columns:
-        # Try to find a base fuel column
-        if category is not None:
-            potential_fuel_col = f'base_{category}_fuel'
-            if potential_fuel_col in df_copy.columns:
-                color_code = potential_fuel_col
-                print(f"Using {color_code} for color coding")
-            else:
-                # No suitable column found, use a default color
-                color_code = None
-                print(f"No suitable fuel column found for color coding. Using default color.")
-    
+    # Handle zero values
     if not include_zero:
         df_copy[x_col] = df_copy[x_col].replace(0, np.nan)
-
-    # Skip if all values are NaN after filtering
-    if df_copy[x_col].isna().all():
-        ax.text(0.5, 0.5, "No valid data after filtering", ha='center', va='center')
-        if x_label is not None:
-            ax.set_xlabel(x_label, fontsize=22)
-        if y_label is not None:
-            ax.set_ylabel(y_label, fontsize=22)
-        ax.tick_params(axis='both', labelsize=22)
-        sns.despine()
-        return
-
-    lower_limit = df_copy[x_col].quantile(lower_percentile / 100)
-    upper_limit = df_copy[x_col].quantile(upper_percentile / 100)
-
+    
+    # Remove any non-finite values
+    initial_count = len(df_copy)
+    df_copy = df_copy[df_copy[x_col].notna() & np.isfinite(df_copy[x_col])]
+    final_count = len(df_copy)
+    
+    if final_count == 0:
+        raise ValueError(f"No valid data remaining after filtering for column '{x_col}'. "
+                        f"Original count: {initial_count}")
+    
+    if final_count < initial_count * 0.1:  # Less than 10% of data remaining
+        print(f"Warning: Only {final_count}/{initial_count} ({final_count/initial_count*100:.1f}%) "
+              f"of data points are valid for column '{x_col}'")
+    
+    # Calculate percentile limits
+    try:
+        lower_limit = df_copy[x_col].quantile(lower_percentile / 100)
+        upper_limit = df_copy[x_col].quantile(upper_percentile / 100)
+    except Exception as e:
+        raise ValueError(f"Error calculating percentiles for column '{x_col}': {str(e)}")
+    
+    # Filter data to percentile range
     valid_data = df_copy[x_col][(df_copy[x_col] >= lower_limit) & (df_copy[x_col] <= upper_limit)]
-
-    # If no color coding or color_code column doesn't exist
-    if color_code is None or color_code not in df_copy.columns:
-        ax = sns.histplot(data=df_copy, x=valid_data, kde=False, bins=bin_number, 
-                         stat=statistic, color='steelblue', ax=ax)
-    else:
-        # Get the corresponding color for each fuel category
-        colors = [color_map_fuel.get(fuel, 'gray') for fuel in df_copy[color_code].unique()]
-
-        # Set the hue_order to match the unique fuel categories and their corresponding colors
-        hue_order = [fuel for fuel in df_copy[color_code].unique() if fuel in color_map_fuel]
-
-        ax = sns.histplot(data=df_copy, x=valid_data, kde=False, bins=bin_number, 
-                         hue=color_code, hue_order=hue_order, stat=statistic, 
-                         multiple="stack", palette=colors, ax=ax, legend=show_legend)
-
+    
+    if len(valid_data) == 0:
+        raise ValueError(f"No data points within percentile range [{lower_percentile}, {upper_percentile}] "
+                        f"for column '{x_col}'")
+    
+    # Prepare color mapping (following adoption potential color handling pattern)
+    unique_categories = df_copy[color_code].unique()
+    colors = [color_map.get(fuel, 'gray') for fuel in unique_categories]
+    hue_order = [fuel for fuel in unique_categories if fuel in color_map]
+    
+    if not hue_order:
+        print(f"Warning: No colors defined for categories {unique_categories}. Using default colors.")
+        hue_order = list(unique_categories)
+        colors = plt.cm.Set1(np.linspace(0, 1, len(hue_order)))
+    
+    # Create the histogram
+    try:
+        sns.histplot(
+            data=df_copy, 
+            x=valid_data, 
+            kde=False, 
+            bins=bin_number, 
+            hue=color_code, 
+            hue_order=hue_order, 
+            stat=statistic, 
+            multiple="stack", 
+            palette=colors, 
+            ax=ax, 
+            legend=show_legend
+        )
+    except Exception as e:
+        raise ValueError(f"Error creating histogram for column '{x_col}': {str(e)}")
+    
+    # Set labels and formatting
     if x_label is not None:
-        ax.set_xlabel(x_label, fontsize=22)  # Set font size for x-axis label
-
+        ax.set_xlabel(x_label, fontsize=22)
     if y_label is not None:
-        ax.set_ylabel(y_label, fontsize=22)  # Set font size for y-axis label
-
+        ax.set_ylabel(y_label, fontsize=22)
+    
+    # Set axis limits and styling
     ax.set_xlim(left=lower_limit, right=upper_limit)
-
-    # Set font size for tick labels
     ax.tick_params(axis='both', labelsize=22)
+    sns.despine(ax=ax)
 
-    sns.despine()
 
-def create_subplot_grid_histogram(df, subplot_positions, x_cols, x_labels, menu_mp=8, category=None, 
-                                 scc='upper', rcm_model='AP2', cr_function='h6c', 
-                                 y_label=None, bin_number=20, lower_percentile=2.5, upper_percentile=97.5, 
-                                 statistic='count', color_code='base_fuel', include_zero=False, 
-                                 suptitle=None, sharex=False, sharey=False, column_titles=None, 
-                                 show_legend=True, figure_size=(12, 10), export_filename=None, 
-                                 export_format='png', dpi=300, save_figure_directory=None):
-    num_subplots = len(subplot_positions)
+def create_subplot_grid_histogram(
+    df: Optional[pd.DataFrame] = None,
+    dataframes: Optional[List[pd.DataFrame]] = None,
+    dataframe_indices: Optional[List[int]] = None,
+    subplot_positions: List[Tuple[int, int]] = None,
+    x_cols: List[str] = None,
+    x_labels: Optional[List[str]] = None,
+    y_label: Optional[str] = None,  # Keep for backward compatibility
+    y_labels: Optional[List[str]] = None,  # NEW: Individual y-labels
+    bin_number: int = 20,
+    lower_percentile: float = 2.5,
+    upper_percentile: float = 97.5,
+    statistic: str = 'count',
+    color_code: str = 'base_fuel',
+    include_zero: bool = False,
+    suptitle: Optional[str] = None,
+    sharex: bool = False,
+    sharey: bool = False,
+    column_titles: Optional[List[str]] = None,
+    show_legend: bool = False,  # CHANGED: Default to False for cleaner multi-panel appearance
+    figure_size: Tuple[int, int] = (12, 10),
+    color_map: Optional[Dict[str, str]] = None
+) -> plt.Figure:
+    """
+    Creates a grid of histogram subplots with support for multiple DataFrames.
+    
+    ENHANCED with 4 key improvements:
+    1. Individual y-labels for each subplot (similar to x_labels functionality)
+    2. Proper y-axis tick visibility and formatting
+    3. Cleaner legend management (no individual subplot legends by default)
+    4. Optimized whitespace management for better space utilization
+    
+    Args:
+        df: Single DataFrame for backward compatibility (mutually exclusive with dataframes)
+        dataframes: List of DataFrames for multiple-source visualization
+        dataframe_indices: List of indices mapping each subplot to a DataFrame in dataframes list
+        subplot_positions: List of (row, col) tuples specifying subplot positions
+        x_cols: List of column names for x-axis data in each subplot
+        x_labels: Optional list of x-axis labels for each subplot
+        y_label: Optional label for y-axis (applied to all subplots if y_labels not provided)
+        y_labels: Optional list of y-axis labels for each subplot (takes precedence over y_label)
+        bin_number: Number of histogram bins for all subplots
+        lower_percentile: Lower percentile for data range filtering
+        upper_percentile: Upper percentile for data range filtering
+        statistic: Statistic to compute for all histograms
+        color_code: Column name for color coding
+        include_zero: Whether to include zero values
+        suptitle: Optional super title for the entire figure
+        sharex: Whether subplots should share x-axis
+        sharey: Whether subplots should share y-axis
+        column_titles: Optional list of column titles
+        show_legend: Whether to show individual subplot legends (default: False for cleaner multi-panel appearance)
+                    Note: Main legend is always shown at figure level regardless of this setting
+        figure_size: Figure size as (width, height) in inches
+        color_map: Optional color mapping dictionary
+        
+    Returns:
+        Matplotlib Figure object containing the visualization
+        
+    Raises:
+        ValueError: If inputs are incompatible or improperly formatted
+        TypeError: If input parameters are of wrong type
+    """
+    # ========== INPUT VALIDATION AND COMPATIBILITY LOGIC ==========
+    
+    # Validate that we have either single or multiple DataFrame setup, but not both
+    if df is not None and dataframes is not None:
+        raise ValueError("Cannot specify both 'df' and 'dataframes'. Use either single or multiple DataFrame mode.")
+    
+    if df is None and dataframes is None:
+        raise ValueError("Must specify either 'df' (single DataFrame) or 'dataframes' (multiple DataFrames).")
+    
+    # Validate required parameters exist
+    if subplot_positions is None:
+        raise ValueError("subplot_positions is required")
+    if x_cols is None:
+        raise ValueError("x_cols is required")
+    
+    # Set up DataFrame list and indices based on input mode
+    if df is not None:
+        # Single DataFrame mode (backward compatibility)
+        df_list = [df]
+        df_indices = [0] * len(subplot_positions)  # All subplots use the same DataFrame
+        
+    else:
+        # Multiple DataFrame mode
+        if not isinstance(dataframes, list):
+            raise TypeError("dataframes must be a list of pandas DataFrames")
+        
+        if not dataframes:
+            raise ValueError("dataframes list cannot be empty")
+        
+        # Validate all items in dataframes are actually DataFrames
+        for i, dataframe in enumerate(dataframes):
+            if not isinstance(dataframe, pd.DataFrame):
+                raise TypeError(f"dataframes[{i}] must be a pandas DataFrame, got {type(dataframe)}")
+            if dataframe.empty:
+                raise ValueError(f"dataframes[{i}] is empty")
+        
+        df_list = dataframes
+        
+        # Handle dataframe_indices
+        if dataframe_indices is None:
+            # Default: positional mapping (subplot i uses dataframe i % len(dataframes))
+            df_indices = [i % len(dataframes) for i in range(len(subplot_positions))]
+        else:
+            if not isinstance(dataframe_indices, list):
+                raise TypeError("dataframe_indices must be a list of integers")
+            
+            if len(dataframe_indices) != len(subplot_positions):
+                raise ValueError(f"Length mismatch: dataframe_indices ({len(dataframe_indices)}) "
+                               f"must match subplot_positions ({len(subplot_positions)})")
+            
+            # Validate that all indices are valid
+            for i, idx in enumerate(dataframe_indices):
+                if not isinstance(idx, int):
+                    raise TypeError(f"dataframe_indices[{i}] must be an integer, got {type(idx)}")
+                if idx < 0 or idx >= len(dataframes):
+                    raise ValueError(f"dataframe_indices[{i}] = {idx} is out of range. "
+                                   f"Must be between 0 and {len(dataframes)-1}")
+            
+            df_indices = dataframe_indices
+    
+    # ========== STANDARD INPUT VALIDATION ==========
+    
+    if not isinstance(subplot_positions, list):
+        raise TypeError("subplot_positions must be a list")
+    
+    if not isinstance(x_cols, list):
+        raise TypeError("x_cols must be a list")
+    
+    # Validate input lengths
+    if len(subplot_positions) != len(x_cols):
+        raise ValueError(f"Length mismatch: subplot_positions ({len(subplot_positions)}) and "
+                        f"x_cols ({len(x_cols)}) must have the same length")
+    
+    if x_labels and len(x_labels) != len(subplot_positions):
+        raise ValueError(f"Length mismatch: x_labels ({len(x_labels)}) must match "
+                        f"subplot_positions ({len(subplot_positions)})")
+    
+    # NEW: Validate y_labels length
+    if y_labels and len(y_labels) != len(subplot_positions):
+        raise ValueError(f"Length mismatch: y_labels ({len(y_labels)}) must match "
+                        f"subplot_positions ({len(subplot_positions)})")
+    
+    # Use default color map if none provided
+    if color_map is None:
+        color_map = DEFAULT_COLOR_MAP_FUEL.copy()
+    
+    # ========== COLUMN VALIDATION ACROSS DATAFRAMES ==========
+    
+    # Validate that all required columns exist in their respective DataFrames
+    for idx, (x_col, df_idx) in enumerate(zip(x_cols, df_indices)):
+        current_df = df_list[df_idx]
+        
+        # Check x_col exists
+        if x_col not in current_df.columns:
+            available_cols = list(current_df.columns)
+            raise ValueError(f"Subplot {idx}: Column '{x_col}' not found in DataFrame {df_idx}. "
+                           f"Available columns: {available_cols}")
+        
+        # Check color_code exists
+        if color_code not in current_df.columns:
+            available_cols = list(current_df.columns)
+            raise ValueError(f"Subplot {idx}: Color coding column '{color_code}' not found in DataFrame {df_idx}. "
+                           f"Available columns: {available_cols}")
+    
+    # ========== GRID SETUP ==========
+    
+    # Determine grid dimensions
+    if not subplot_positions:
+        raise ValueError("subplot_positions cannot be empty")
+    
     num_cols = max(pos[1] for pos in subplot_positions) + 1
     num_rows = max(pos[0] for pos in subplot_positions) + 1
-
-    fig, axes = plt.subplots(nrows=num_rows, ncols=num_cols, figsize=figure_size, sharex=sharex, sharey=sharey)
     
-    # Make sure axes is a 2D array even if there's only one row or column
+    # Create figure and axes
+    fig, axes = plt.subplots(
+        nrows=num_rows, 
+        ncols=num_cols, 
+        figsize=figure_size, 
+        sharex=sharex, 
+        sharey=sharey
+    )
+    
+    # Ensure axes is always 2D for consistent indexing
     if num_rows == 1 and num_cols == 1:
         axes = np.array([[axes]])
     elif num_rows == 1:
         axes = np.array([axes])
     elif num_cols == 1:
         axes = np.array([[ax] for ax in axes])
-
-    # Create a dictionary to map subplot positions to their respective axes
-    subplot_axes = {(pos[0], pos[1]): axes[pos[0], pos[1]] for pos in subplot_positions}
-
-    # If category is provided and color_code is 'base_fuel', make it category-specific
-    if category is not None and color_code == 'base_fuel':
-        color_code = f'base_{category}_fuel'
-
-    # Define the parameters for each histogram subplot
-    plot_params = []
-    for pos, col, label in zip(subplot_positions, x_cols, x_labels):
-        params = {
-            'ax': subplot_axes[pos], 
-            'x_col': col, 
-            'x_label': label, 
-            'y_label': y_label, 
-            'bin_number': bin_number, 
-            'lower_percentile': lower_percentile, 
-            'upper_percentile': upper_percentile, 
-            'statistic': statistic, 
-            'color_code': color_code, 
-            'include_zero': include_zero, 
-            'show_legend': show_legend,
-            'category': category,
-            'scc': scc,
-            'rcm_model': rcm_model,
-            'cr_function': cr_function,
-            'menu_mp': menu_mp
-        }
-        plot_params.append(params)
-
-    # Plot each histogram subplot using the defined parameters
-    for params in plot_params:
-        create_subplot_histogram(df=df, **params)
-
-    # Add a super title to the entire figure if suptitle is provided
+    else:
+        axes = np.array(axes)
+    
+    # ========== CREATE SUBPLOTS ==========
+    
+    # Create plots for each subplot
+    for idx, (pos, x_col, df_idx) in enumerate(zip(subplot_positions, x_cols, df_indices)):
+        try:
+            # Get the subplot position and axes
+            row, col = pos
+            ax = axes[row, col]
+            
+            # Get the appropriate DataFrame for this subplot
+            current_df = df_list[df_idx]
+            
+            # Get labels (UPDATED: Individual y-label logic)
+            x_label = x_labels[idx] if x_labels and idx < len(x_labels) else None
+            
+            # NEW: Individual y-label logic
+            if y_labels and idx < len(y_labels):
+                current_y_label = y_labels[idx]
+            else:
+                current_y_label = y_label  # Fallback to global y_label for backward compatibility
+            
+            # Create the histogram subplot
+            create_subplot_histogram(
+                ax=ax,
+                df=current_df,  # Use the DataFrame specific to this subplot
+                x_col=x_col,
+                bin_number=bin_number,
+                x_label=x_label,
+                y_label=current_y_label,  # Use the determined y-label
+                lower_percentile=lower_percentile,
+                upper_percentile=upper_percentile,
+                color_code=color_code,
+                statistic=statistic,
+                include_zero=include_zero,
+                show_legend=show_legend,
+                color_map=color_map
+            )
+            
+            # UPDATED: Fix missing Y-axis ticks (ISSUE 2 FIX)
+            # WHY: Seaborn histplot may not show y-ticks clearly in subplot grids
+            # HOW: Ensure y-axis visibility and proper tick formatting, but let matplotlib handle tick placement
+            
+            # Make sure y-axis ticks are visible with proper formatting
+            ax.tick_params(axis='y', which='major', labelsize=20, direction='out', length=6, width=1)
+            
+            # Ensure y-axis is visible (let matplotlib handle automatic tick placement)
+            ax.spines['left'].set_visible(True)
+            ax.yaxis.set_visible(True)
+            
+        except Exception as e:
+            print(f"Error creating subplot at position {pos} for column '{x_col}' from DataFrame {df_idx}: {str(e)}")
+            # Create an error plot
+            ax.text(0.5, 0.5, f"Error: {str(e)}", ha='center', va='center', 
+                   transform=ax.transAxes, fontsize=12, color='red')
+            ax.set_xticks([])
+            ax.set_yticks([])
+    
+    # ========== FIGURE FORMATTING ==========
+    
+    # Add super title
     if suptitle:
-        plt.suptitle(suptitle, fontweight='bold', fontsize=24)
-
-    # Add titles over the columns
+        fig.suptitle(suptitle, fontweight='bold', fontsize=22)
+    
+    # Add column titles
     if column_titles:
-        for col_index, title in enumerate(column_titles):
-            if col_index < num_cols:
-                axes[0, col_index].set_title(title, fontsize=22, fontweight='bold')
+        if len(column_titles) != num_cols:
+            print(f"Warning: Number of column titles ({len(column_titles)}) doesn't match "
+                  f"number of columns ({num_cols})")
+        else:
+            for col_index, title in enumerate(column_titles):
+                if col_index < num_cols:
+                    axes[0, col_index].set_title(title, fontsize=22, fontweight='bold')
     
-    # Add row titles on the left side
-    if num_rows >= 2:
-        fig.text(0.01, 0.75, "ACS Function", fontsize=22, fontweight='bold', rotation=90, va='center')
-        fig.text(0.01, 0.25, "H6C Function", fontsize=22, fontweight='bold', rotation=90, va='center')
-    
-    # If sharey is True, remove y-axis labels on all subplots except the leftmost ones in each row
-    if sharey == 'row':
+    # Handle shared y-axis labels
+    if sharey:
         for row_index in range(num_rows):
             for col_index in range(num_cols):
                 if col_index > 0:
-                    axes[row_index, col_index].set_ylabel('')
+                    axes[row_index, col_index].set_yticklabels([])
     
-    # Only add the legend if there are valid color mappings
-    if show_legend and color_code is not None and color_code in df.columns:
-        # Get the unique fuel values that are actually in the data
-        unique_fuels = df[color_code].unique()
-        # Filter to only include fuels that are in our color map
-        legend_labels = [fuel for fuel in unique_fuels if fuel in color_map_fuel]
-        
-        if legend_labels:
-            legend_handles = [plt.Rectangle((0, 0), 1, 1, color=color_map_fuel[label]) for label in legend_labels]
-            fig.legend(legend_handles, legend_labels, loc='lower center', ncol=len(legend_labels), 
-                      prop={'size': 22}, labelspacing=0.5, bbox_to_anchor=(0.5, -0.05))             
+    # UPDATED: Optimize whitespace management (ISSUE 4 FIX)
+    # WHY: Reduce excessive whitespace between plot area and legend for better space utilization
+    # HOW: Fine-tune layout parameters for optimal balance between readability and efficiency
     
-    # Adjust the layout
-    plt.tight_layout(rect=[0.03, 0.03, 1, 0.95])  # Adjust for suptitle, row labels, and legend
+    # Add global legend with optimized positioning
+    legend_labels = list(color_map.keys())
+    legend_handles = [plt.Rectangle((0, 0), 1, 1, color=color_map[label]) for label in legend_labels]
     
-    # Export the figure if export_filename is provided
-    if export_filename:
-        if save_figure_directory:
-            save_figure_path = os.path.join(save_figure_directory, export_filename)
-        else:
-            save_figure_path = export_filename
-        plt.savefig(save_figure_path, format=export_format, dpi=dpi)
-    # Otherwise show the plot in Jupyter Notebook
-    else:
-        plt.show()
+    # Position legend closer to plot area (reduced bbox_to_anchor y-value)
+    fig.legend(
+        legend_handles, 
+        legend_labels, 
+        loc='lower center', 
+        ncol=len(legend_labels), 
+        prop={'size': 20}, 
+        labelspacing=0.5, 
+        bbox_to_anchor=(0.5, -0.01)  # CHANGED: Reduced from -0.05 to -0.01
+    )
+    
+    # Optimize layout with reduced bottom margin
+    plt.tight_layout(rect=[0, 0.01, 1, 0.98])  # CHANGED: Reduced bottom from 0.12 to 0.01
+    fig.subplots_adjust(bottom=0.15)  # CHANGED: Reduced from 0.25 to 0.15
+    
+    # Reduce excessive padding between x-tick labels and axis labels
+    for i in range(num_rows):
+        for j in range(num_cols):
+            axes[i, j].xaxis.labelpad = 10  # CHANGED: Reduced from 20 to 10
+    
+    return fig

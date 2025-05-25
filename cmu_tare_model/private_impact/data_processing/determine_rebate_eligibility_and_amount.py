@@ -99,34 +99,58 @@ def fill_na_with_hierarchy(
 
 def calculate_percent_AMI(df_results_IRA: pd.DataFrame) -> pd.DataFrame:
     """
-    Calculates the percentage of Area Median Income (AMI) and assigns a designation based on the income level.
+    Calculates the percentage of Area Median Income (AMI) and assigns income level designations.
+
+    This function processes household income data, calculates the percentage relative to 
+    Area Median Income, and creates two categorical classifications:
+    1. Detailed income level categories (Low, Moderate, Middle-to-Upper Income)
+    2. Binary Low-to-Moderate Income (LMI) or Middle-to-Upper Income (MUI) classification for policy analysis
 
     Args:
-        df_results_IRA: Input DataFrame containing income information
+        df_results_IRA: Input DataFrame containing income information with columns:
+                       - 'income': Income data (ranges or values)
+                       - Other demographic/geographic columns for median income lookup
 
     Returns:
-        DataFrame: Modified DataFrame with additional columns for income calculations and designation
+        DataFrame: Modified DataFrame with additional columns:
+                  - 'household_income': Calculated household income (float)
+                  - 'census_area_medianIncome': Area median income (float)
+                  - 'percent_AMI': Percentage of AMI (float)
+                  - 'income_level': Detailed income category (str)
+                  - 'lmi_or_mui': Binary Low-to-Moderate Income (LMI) or Middle-to-Upper Income (MUI) (str)
         
     Raises:
-        ValueError: If an unexpected income format is encountered
+        ValueError: If an unexpected income format is encountered during processing
     """
-    # Create a mapping for income ranges
+    # Create a mapping for special income ranges
     income_map = {
         '<10000': (9999.0, 9999.0),
         '200000+': (200000.0, 200000.0)
     }
 
-    # Split the income ranges and map values
     def split_income_range(income):
+        """
+        Processes income data which may be ranges, special values, or direct floats.
+        
+        Args:
+            income: Income value (str, float, or special format)
+            
+        Returns:
+            tuple: (low_income, high_income) for range calculation
+            
+        Raises:
+            ValueError: If income format cannot be parsed
+        """
         if isinstance(income, float):  # Handle float income directly
             return income, income
         if income in income_map:
             return income_map[income]
         try:
+            # Parse income ranges like "50000-75000"
             low, high = map(float, income.split('-'))
             return low, high
-        except Exception as e:
-            raise ValueError(f"Unexpected income format: {income}") from e
+        except (ValueError, AttributeError) as e:
+            raise ValueError(f"Unexpected income format: {income}. Expected format: 'low-high', '<10000', '200000+', or numeric value.") from e
 
     # Apply the income range split
     income_ranges = df_results_IRA['income'].apply(split_income_range)
@@ -141,7 +165,12 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame) -> pd.DataFrame:
 
     # Fill NaNs in 'census_area_medianIncome' with the hierarchical lookup
     # Attempt to match median income for puma, then county, then state
-    df_results_IRA = fill_na_with_hierarchy(df_results_IRA, df_puma=df_puma_medianIncome, df_county=df_county_medianIncome, df_state=df_state_medianIncome)
+    df_results_IRA = fill_na_with_hierarchy(
+        df_results_IRA, 
+        df_puma=df_puma_medianIncome, 
+        df_county=df_county_medianIncome, 
+        df_state=df_state_medianIncome
+    )
 
     # Ensure income and census_area_medianIncome columns are float
     df_results_IRA['household_income'] = df_results_IRA['household_income'].astype(float).round(2)
@@ -150,18 +179,30 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame) -> pd.DataFrame:
     # Calculate percent_AMI
     df_results_IRA['percent_AMI'] = ((df_results_IRA['household_income'] / df_results_IRA['census_area_medianIncome']) * 100).round(2)
 
-    # Categorize the income level based on percent_AMI
-    conditions_lmi = [
+    # Create detailed income level categories
+    income_conditions = [
         df_results_IRA['percent_AMI'] <= 80.0,
         (df_results_IRA['percent_AMI'] > 80.0) & (df_results_IRA['percent_AMI'] <= 150.0)
     ]
-    choices_lmi = ['Low-Income', 'Moderate-Income']
+    income_choices = ['Low-Income', 'Moderate-Income']
 
-    df_results_IRA['lowModerateIncome_designation'] = np.select(
-        conditions_lmi, choices_lmi, default='Middle-to-Upper-Income'
+    df_results_IRA['income_level'] = np.select(
+        income_conditions, 
+        income_choices, 
+        default='Middle-to-Upper-Income'
     )
 
-    # Output the modified DataFrame
+    # Create binary LMI/MUI classification
+    # Method 1: Using the income_level column we just created
+    df_results_IRA['lmi_or_mui'] = df_results_IRA['income_level'].apply(
+        lambda x: 'LMI' if x in ['Low-Income', 'Moderate-Income'] else 'MUI'
+    )
+    
+    # Alternative Method 2: Direct threshold-based approach (more efficient for large datasets)
+    # df_results_IRA['lmi_or_mui'] = np.where(
+    #     df_results_IRA['percent_AMI'] <= 150.0, 'LMI', 'MUI'
+    # )
+
     return df_results_IRA
 
 
@@ -307,7 +348,7 @@ def calculate_rebateIRA(
         if not valid_mask.loc[row.name]:
             return
             
-        income_designation = row['lowModerateIncome_designation']
+        income_designation = row['income_level']
         if income_designation == 'Low-Income':
             calculate_rebate(df_copy, row, category, menu_mp, 1.00)
         elif income_designation == 'Moderate-Income':

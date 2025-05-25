@@ -1,3 +1,6 @@
+# Updated V2 Working as of May 22, 2024
+# Wanted to update the function to add flexibility for lmi or mui instead of income level and provide x-tick label flexibility
+# =========================================================================
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,7 +20,7 @@ def create_multiIndex_adoption_df(
         cr_function: str
 ) -> pd.DataFrame:
     """
-    Creates a multi-index DataFrame showing adoption percentages by LMI/MUI classification and fuel type.
+    Creates a multi-index DataFrame showing adoption percentages by income level and fuel type.
     
     Args:
         df: DataFrame with adoption data
@@ -29,24 +32,17 @@ def create_multiIndex_adoption_df(
         
     Returns:
         Multi-index DataFrame with adoption percentages
-        
-    Raises:
-        ValueError: If required columns are not found in the DataFrame
     """
-    # Define LMI/MUI categories for sorting
-    lmi_mui_categories = ['LMI', 'MUI']
-    
-    # Validate that the required column exists
-    if 'lmi_or_mui' not in df.columns:
-        raise ValueError("Required column 'lmi_or_mui' not found in DataFrame. "
-                        "Please ensure the DataFrame has been processed with the updated calculate_percent_AMI function.")
+    # Define income categories for sorting
+    income_categories = ['Low-Income', 'Moderate-Income', 'Middle-to-Upper-Income']
     
     # Convert to categorical for proper sorting
-    df['lmi_or_mui'] = pd.Categorical(
-        df['lmi_or_mui'],
-        categories=lmi_mui_categories,
-        ordered=True
-    )
+    if 'income_level' in df.columns:
+        df['income_level'] = pd.Categorical(
+            df['income_level'],
+            categories=income_categories,
+            ordered=True
+        )
     
     # Define column names with sensitivity dimensions
     adoption_cols = [
@@ -65,14 +61,13 @@ def create_multiIndex_adoption_df(
             adoption_cols = old_cols
             print(f"Using backward-compatible column names for {category}")
         else:
-            available_cols = [col for col in df.columns if 'adoption' in col]
-            raise ValueError(f"Required adoption columns not found for {category}. "
-                           f"Expected: {adoption_cols}. Available adoption columns: {available_cols}")
+            print(f"Error: Required adoption columns not found for {category}")
+            return pd.DataFrame()  # Return empty DataFrame if columns not found
     
     try:
-        # Group by fuel and LMI/MUI classification, calculate normalized counts
+        # Group by fuel and income, calculate normalized counts
         percentages_df = df.groupby(
-            [f'base_{category}_fuel', 'lmi_or_mui'],
+            [f'base_{category}_fuel', 'income_level'],
             observed=False
         )[adoption_cols].apply(
             lambda x: x.apply(lambda y: y.value_counts(normalize=True))
@@ -80,8 +75,8 @@ def create_multiIndex_adoption_df(
         
         percentages_df = percentages_df.round(0)
     except Exception as e:
-        raise ValueError(f"Error calculating percentages for {category}: {str(e)}. "
-                        f"Check that required columns exist and contain expected values.")
+        print(f"Error calculating percentages: {str(e)}")
+        return pd.DataFrame()
     
     # Ensure all tiers exist, add if missing
     tiers = [
@@ -91,12 +86,12 @@ def create_multiIndex_adoption_df(
     ]
     
     for column in adoption_cols:
-        # Add missing tiers with zero values
+        # Add missing tiers
         for tier in tiers:
             if (column, tier) not in percentages_df.columns:
                 percentages_df[(column, tier)] = 0
         
-        # Calculate adoption potential totals
+        # Calculate totals
         percentages_df[(column, 'Total Adoption Potential')] = (
             percentages_df[(column, 'Tier 1: Feasible')] + 
             percentages_df[(column, 'Tier 2: Feasible vs. Alternative')]
@@ -111,7 +106,7 @@ def create_multiIndex_adoption_df(
     # Rebuild the MultiIndex and filter columns
     percentages_df.columns = pd.MultiIndex.from_tuples(percentages_df.columns)
     
-    # Keep only columns with tiers and totals
+    # Keep only columns with tiers
     keep_tiers = tiers + ['Total Adoption Potential', 'Total Adoption Potential (Additional Subsidy)']
     keep_cols = [(col, tier) for col in adoption_cols for tier in keep_tiers 
                 if (col, tier) in percentages_df.columns]
@@ -121,11 +116,16 @@ def create_multiIndex_adoption_df(
     else:
         print(f"Warning: No tier columns found for {category}")
         return percentages_df  # Return unfiltered if no tiers found
+    
+    # # Sort by index
+    # filtered_df.sort_index(level=[f'base_{category}_fuel', 'income_level'], inplace=True)
+    
+    # return filtered_df
 
-    # Sort by index (fuel type and LMI/MUI classification)
-    filtered_df.sort_index(level=[f'base_{category}_fuel', 'lmi_or_mui'], inplace=True)
+    # Sort by index
+    filtered_df.sort_index(level=[f'base_{category}_fuel', 'income_level'], inplace=True)
 
-    # Filter to include only specific fuel types
+    # ADDED: Filter to include only specific fuel types
     allowed_fuels = ['Electricity', 'Fuel Oil', 'Natural Gas', 'Propane']
     fuel_level = f'base_{category}_fuel'
     if isinstance(filtered_df.index, pd.MultiIndex) and fuel_level in filtered_df.index.names:
@@ -141,7 +141,7 @@ def plot_adoption_rate_bar(
     x_label: str,
     y_label: str,
     ax: plt.Axes,
-    x_tick_format: str = "lmi_only"  # Updated default to reflect LMI/MUI usage
+    x_tick_format: str = "income_only"  # New parameter with default
 ) -> None:
     """
     Plots stacked bar chart for adoption tiers on the given axes.
@@ -154,9 +154,9 @@ def plot_adoption_rate_bar(
         y_label: Label for y-axis
         ax: Matplotlib axes to plot on
         x_tick_format: Format for x-tick labels. Options:
-                      "lmi_only" - Show only LMI/MUI classification
+                      "income_only" - Show only income level
                       "fuel_only" - Show only fuel type
-                      "combined" - Show "Fuel Type, LMI/MUI"
+                      "combined" - Show "Fuel Type, Income Level"
                       "all" - Show all index levels separated by commas
         
     Returns:
@@ -196,6 +196,7 @@ def plot_adoption_rate_bar(
     for i, scenario in enumerate(scenarios):
         try:
             # Find tier columns for this scenario
+            # First, check if first-level columns contain the exact scenario string
             tier1_col = None
             tier2_col = None
             tier3_col = None
@@ -220,14 +221,13 @@ def plot_adoption_rate_bar(
                 # Adjust the index for this scenario
                 scenario_index = np.array(index) + i * bar_width
                 
-                # Plot the stacked bars for the scenario
+                # Plot the bars for the scenario
                 ax.bar(
                     scenario_index, 
                     tier1, 
                     bar_width, 
                     color=color_mapping['Tier 1: Feasible'], 
-                    edgecolor='white',
-                    label='Tier 1: Feasible' if i == 0 else ""  # Only label once for legend
+                    edgecolor='white'
                 )
                 ax.bar(
                     scenario_index, 
@@ -235,8 +235,7 @@ def plot_adoption_rate_bar(
                     bar_width, 
                     bottom=tier1, 
                     color=color_mapping['Tier 2: Feasible vs. Alternative'], 
-                    edgecolor='white',
-                    label='Tier 2: Feasible vs. Alternative' if i == 0 else ""
+                    edgecolor='white'
                 )
                 ax.bar(
                     scenario_index, 
@@ -244,8 +243,7 @@ def plot_adoption_rate_bar(
                     bar_width, 
                     bottom=(tier1+tier2), 
                     color=color_mapping['Tier 3: Subsidy-Dependent Feasibility'], 
-                    edgecolor='white',
-                    label='Tier 3: Subsidy-Dependent Feasibility' if i == 0 else ""
+                    edgecolor='white'
                 )
             else:
                 print(f"Warning: Missing tier columns for scenario {scenario}")
@@ -258,21 +256,24 @@ def plot_adoption_rate_bar(
     ax.set_xlabel(x_label, fontweight='bold', fontsize=20)
     ax.set_ylabel(y_label, fontweight='bold', fontsize=20)
     ax.set_title(title, fontweight='bold', fontsize=20)
-
+       
     # Set x-ticks and labels
     if n > 0:
         ax.set_xticks([i + bar_width / 2 for i in range(n)])
         
         # Format x-tick labels based on index structure and format choice
         if isinstance(adoption_data.index, pd.MultiIndex):
+            # Get the index names for reference (they might be None)
+            index_names = adoption_data.index.names
+            
             # Format tick labels based on the selected format
-            if x_tick_format == "lmi_only" and adoption_data.index.nlevels > 1:
-                # Use only the second level (LMI/MUI classification)
+            if x_tick_format == "income_only" and adoption_data.index.nlevels > 1:
+                # Use only the second level (typically income designation)
                 ax.set_xticklabels([name[1] for name in adoption_data.index.tolist()], 
                                    rotation=90, ha='right')
             
             elif x_tick_format == "fuel_only" and adoption_data.index.nlevels > 0:
-                # Use only the first level (fuel type)
+                # Use only the first level (typically fuel type)
                 ax.set_xticklabels([name[0] for name in adoption_data.index.tolist()], 
                                    rotation=90, ha='right')
             
@@ -298,6 +299,8 @@ def plot_adoption_rate_bar(
             # For non-MultiIndex, just use the index values
             ax.set_xticklabels(adoption_data.index.tolist(), rotation=90, ha='right')
     
+    # [Rest of the function remains the same]
+
     # Set font size for tick labels
     ax.tick_params(axis='x', labelsize=20)
     ax.tick_params(axis='y', labelsize=20)
@@ -318,11 +321,10 @@ def subplot_grid_adoption_vBar(
     suptitle: Optional[str] = None,
     figure_size: Tuple[int, int] = (12, 10),
     sharex: bool = False,
-    sharey: bool = False,
-    x_tick_format: str = "lmi_only"  # New parameter to control x-tick formatting across all subplots
+    sharey: bool = False
 ) -> plt.Figure:
     """
-    Creates a grid of subplots to visualize adoption rates across different scenarios using LMI/MUI classification.
+    Creates a grid of subplots to visualize adoption rates across different scenarios.
     
     Args:
         dataframes: List of DataFrames, each formatted for use in plot_adoption_rate_bar
@@ -336,8 +338,6 @@ def subplot_grid_adoption_vBar(
         figure_size: Size of entire figure (width, height) in inches
         sharex: Whether subplots should share same x-axis
         sharey: Whether subplots should share same y-axis
-        x_tick_format: Format for x-tick labels across all subplots. Options:
-                      "lmi_only", "fuel_only", "combined", "all"
         
     Returns:
         Matplotlib Figure object containing the visualization
@@ -363,7 +363,7 @@ def subplot_grid_adoption_vBar(
     # Create figure and axes
     fig, axes = plt.subplots(nrows=num_rows, ncols=num_cols, figsize=figure_size, sharex=sharex, sharey=sharey)
     
-    # Ensure axes is always 2D for consistent indexing
+    # Ensure axes is always 2D
     if num_rows == 1 and num_cols == 1:
         axes = np.array([[axes]])
     elif num_rows == 1:
@@ -380,23 +380,21 @@ def subplot_grid_adoption_vBar(
             ax = axes[pos[0], pos[1]]
             
             # Apply additional fuel filtering if requested
-            # (create_multiIndex_adoption_df already filters, but this allows further filtering)
-            filtered_df = df.copy()
+            # (new create_multiIndex_adoption_df already filters, but this allows further filtering)
             if filter_fuel:
                 # Check if fuel is in index and filter
                 fuel_level_names = [name for name in df.index.names if 'fuel' in name.lower()]
                 if fuel_level_names:
                     fuel_level = fuel_level_names[0]
-                    filtered_df = filtered_df[filtered_df.index.get_level_values(fuel_level).isin(filter_fuel)]
+                    df = df[df.index.get_level_values(fuel_level).isin(filter_fuel)]
             
             # Set labels and title if provided
             x_label = x_labels[idx] if x_labels and idx < len(x_labels) else ""
             y_label = y_labels[idx] if y_labels and idx < len(y_labels) else ""
             title = plot_titles[idx] if plot_titles and idx < len(plot_titles) else ""
             
-            # Plot the data with consistent x-tick formatting
-            plot_adoption_rate_bar(filtered_df, scenarios, title, x_label, y_label, ax, x_tick_format)
-            
+            # Plot the data
+            plot_adoption_rate_bar(df, scenarios, title, x_label, y_label, ax)
         except Exception as e:
             print(f"Error plotting subplot at position {pos}: {str(e)}")
             # Create an empty plot with error message
@@ -422,15 +420,7 @@ def subplot_grid_adoption_vBar(
         bbox_to_anchor=(0.5, -0.05)
     )
 
-    # First apply tight_layout with reasonable rect parameters
-    plt.tight_layout(rect=[0, 0.12, 1, 0.98])
+    # Adjust the layout
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])  # Adjust the layout to leave space for the suptitle
     
-    # Add appropriate bottom padding for x-tick labels
-    fig.subplots_adjust(bottom=0.25)
-    
-    # Loop through all axes to add more padding between tick labels and axis label
-    for i in range(num_rows):
-        for j in range(num_cols):
-            axes[i,j].xaxis.labelpad = 20  # Increase space between ticks and label
-
     return fig

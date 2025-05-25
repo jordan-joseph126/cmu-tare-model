@@ -77,7 +77,7 @@ def adoption_decision(
         cr_function (str): The concentration response function to use for the analysis. 
             Accepted values: ['acs', 'h6c']
         climate_sensitivity (bool): Whether to consider multiple climate sensitivity assumptions.
-            Default is False, which uses only the 'upper' bound ($190USD2020/mt) as per Joseph et al. (2025).
+            Default is False, which uses only the 'central' bound ($190USD2020/mt) as per Joseph et al. (2025).
     
     Returns:
         pandas.DataFrame: The modified DataFrame with additional columns for adoption decisions and public impacts.
@@ -125,7 +125,7 @@ def adoption_decision(
             if len(scc_assumptions) == 0:
                 raise ValueError("SCC_ASSUMPTIONS is empty. Cannot perform climate sensitivity analysis.")
         else:
-            scc_assumptions = ['upper']  # Default to upper bound for climate sensitivity
+            scc_assumptions = ['central']  # Default to upper bound for climate sensitivity
         
         # ========== PROCESS EACH EQUIPMENT CATEGORY ==========
         for category, upgrade_column in UPGRADE_COLUMNS.items():
