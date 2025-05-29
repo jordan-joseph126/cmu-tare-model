@@ -166,11 +166,14 @@ def calculate_lifetime_climate_impacts(
                     )
 
                     # ===== STEP 3 & 4: Store annual emissions and damages in lists =====
+                    # REVIEW AND FIX
                     for mer_type in MER_TYPES:
+                        # FIX: Should this be np.nan instead of 0.0?
                         emissions_values = annual_emissions.get(mer_type, 0.0).copy()
                         # Apply validation mask for measure packages
                         if menu_mp != 0:  
-                            emissions_values.loc[~valid_mask] = 0.0
+                            # emissions_values.loc[~valid_mask] = 0.0
+                            emissions_values.loc[~valid_mask] = np.nan  # Use NaN for consistency
                         yearly_emissions_lists[mer_type].append(emissions_values)
 
                     # Store annual damages in lists
@@ -178,14 +181,10 @@ def calculate_lifetime_climate_impacts(
                         damages_values = value.copy()
                         # Apply validation mask for measure packages
                         if menu_mp != 0:
-                            damages_values.loc[~valid_mask] = 0.0
+                            # damages_values.loc[~valid_mask] = 0.0
+                            damages_values.loc[~valid_mask] = np.nan  # Use NaN for consistency
                         yearly_damages_lists[key].append(damages_values)
                     
-                    # # Add columns to detailed DataFrame
-                    # for col_name, values in climate_results.items():
-                    #     df_detailed[col_name] = values
-                    #     category_columns_to_mask.append(col_name)
-
                     # Store annual results in a temporary dictionary
                     annual_detailed_columns = {}
                     for col_name, values in climate_results.items():
@@ -279,10 +278,6 @@ def calculate_lifetime_climate_impacts(
 
             # Store in global lifetime dictionary
             lifetime_columns_data.update(lifetime_dict)
-
-            # # Append these columns to df_detailed for completeness
-            # for col_name, values in lifetime_dict.items():
-            #     df_detailed[col_name] = values
 
             # Create a temporary DataFrame from lifetime_dict and then concatenate
             lifetime_df = pd.DataFrame(lifetime_dict, index=df_copy.index)

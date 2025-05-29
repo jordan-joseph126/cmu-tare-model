@@ -208,6 +208,16 @@ def calculate_lifetime_damages_grid_scenario(
     Raises:
         ValueError: If required columns are missing from input DataFrames.
         RuntimeError: If processing fails for a specific category or SCC assumption.
+
+    IMPORTANT ECONOMIC METHODOLOGY:
+    - Climate damages: Use emission-year SCC values that already represent the net present 
+    value of all future climate damages. NO additional discounting is applied.
+    - Health damages: Use annual marginal social costs that represent damages in the year 
+    they occur. These MUST be discounted to present value.
+
+    This distinction arises from fundamental differences in how these values are calculated:
+    - SCC = ∫(future damages) x discount_factor dt (already integrated and discounted)
+    - Health MSC = annual damage cost (needs discounting for NPV)
     """
     # Initialize the masking dictionary if None is provided
     if all_columns_to_mask is None:
@@ -282,18 +292,19 @@ def calculate_lifetime_damages_grid_scenario(
                                         retrofit_health_col in df_mp_health.columns)
                                         
                     # ===== STEP 4: Valid-Only Updates =====
-                    # NOTES: WE ARE DISCOUNTING THE AVOIDED DAMAGES HERE. USING MARGINAL SOCIAL COSTS SO MAY NOT BE NECESSARY.
                     # Calculate avoided climate damages if columns exist (store in list instead of incremental update)
                     if climate_cols_exist:
-                        # Use calculate_avoided_values function for consistency 
+                        # Climate damages use SCC which already represents NPV of future damages
+                        # Do NOT apply discount factor to avoid double-discounting
                         avoided_climate = calculate_avoided_values(
                             baseline_values=df_baseline_climate[base_climate_col],
                             measure_values=df_mp_climate[retrofit_climate_col],
                             retrofit_mask=(valid_mask if menu_mp != 0 else None)
-                        ) * discount_factor
-                    
+                        )  # No discount_factor multiplication
+                        
                         yearly_climate_avoided.append(avoided_climate)
                         climate_years_processed += 1
+
                     elif verbose:
                         print(f"    Warning: Climate data missing for year {year_label}")
                     

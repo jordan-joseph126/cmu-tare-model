@@ -199,7 +199,8 @@ def calculate_lifetime_health_impacts(
 
                                 # Apply validation mask for measure packages
                                 if menu_mp != 0:
-                                    health_values.loc[~valid_mask] = 0.0
+                                    # health_values.loc[~valid_mask] = 0.0
+                                    health_values.loc[~valid_mask] = np.nan
                                 yearly_health_damages_lists[(rcm, cr)].append(health_values)
 
                             # Store annual health results in a temporary dictionary
@@ -379,13 +380,20 @@ def calculate_health_damages_for_pair(
         # --- FOSSIL FUEL MSC Lookup (Vectorized) ---
         # Get unique county keys for an efficient vectorized lookup
         unique_counties = df['county_key'].unique()
-        
+
         # Create a mapping of county keys to their MSC values
-        msc_lookup_fossil = {
-            key: get_health_impact_with_fallback(lookup_msc_fossil_fuel, key, rcm, pollutant.lower())
-            for key in unique_counties
-        }
-        
+        # msc_lookup_fossil = {
+        #     key: get_health_impact_with_fallback(lookup_msc_fossil_fuel, key, rcm, pollutant.lower())
+        #     for key in unique_counties
+        # }
+
+        # AFTER: Explicit NaN handling ensures consistent behavior across all RCM/CR combinations
+        msc_lookup_fossil = {}
+        for key in unique_counties:
+            value = get_health_impact_with_fallback(lookup_msc_fossil_fuel, key, rcm, pollutant.lower())
+            # Convert None to NaN for consistent handling
+            msc_lookup_fossil[key] = value if value is not None else np.nan
+
         # Map the lookup dictionary to the county_key column to retrieve MSC values
         fossil_fuel_msc = df['county_key'].map(msc_lookup_fossil)
         
@@ -428,10 +436,18 @@ def calculate_health_damages_for_pair(
         
         # --- ELECTRICITY MSC Lookup (Vectorized) ---
         # Build a lookup dictionary for electricity MSC values
-        msc_lookup_electricity = {
-            key: get_health_impact_with_fallback(lookup_msc_electricity, key, rcm, pollutant.lower())
-            for key in unique_counties
-        }
+        # msc_lookup_electricity = {
+        #     key: get_health_impact_with_fallback(lookup_msc_electricity, key, rcm, pollutant.lower())
+        #     for key in unique_counties
+        # }
+
+        # AFTER: Explicit NaN handling ensures consistent behavior across all RCM/CR combinations
+        msc_lookup_electricity = {}
+        for key in unique_counties:
+            value = get_health_impact_with_fallback(lookup_msc_electricity, key, rcm, pollutant.lower())
+            # Convert None to NaN for consistent handling
+            msc_lookup_electricity[key] = value if value is not None else np.nan
+
 
         # Map the lookup dictionary to retrieve electricity MSC values
         electricity_msc = df['county_key'].map(msc_lookup_electricity)
