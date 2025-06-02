@@ -27,7 +27,8 @@ def project_future_consumption(
 
     This function calculates projected energy consumption for each equipment category (heating,
     water heating, clothes drying, and cooking) for future years based on their expected lifetime.
-    It applies climate adjustment factors for heating and water heating categories.
+    
+    UPDATED: It applies climate adjustment factors for SPACE HEATING ONLY. (previously also applied to water heating)
 
     Args:
         df: The input DataFrame containing baseline consumption data.
@@ -101,9 +102,9 @@ def project_future_consumption(
                 if year_label not in hdd_factors_per_year.columns:
                     raise KeyError(f"HDD factor for year {year_label} not found.")
 
-                # Retrieve HDD factor for the current year; use factor only for heating/waterHeating categories
+                # Retrieve HDD factor for the current year; use factor only for HEATING categories
                 hdd_factor = hdd_factors_per_year[year_label]
-                adjusted_hdd_factor = hdd_factor if category in ['heating', 'waterHeating'] else pd.Series(1.0, index=df_copy.index)
+                adjusted_hdd_factor = hdd_factor if category in ['heating'] else pd.Series(1.0, index=df_copy.index)
 
                 # Initialize with NaN for all homes
                 new_columns[projected_baseline_cons_col] = pd.Series(np.nan, index=df_copy.index)
@@ -144,9 +145,9 @@ def project_future_consumption(
                 if year_label not in hdd_factors_per_year.columns:
                     raise KeyError(f"HDD factor for year {year_label} not found.")
 
-                # Retrieve HDD factor for the current year; use factor only for heating/waterHeating categories
+                # Retrieve HDD factor for the current year; use factor only for HEATING categories
                 hdd_factor = hdd_factors_per_year[year_label]
-                adjusted_hdd_factor = hdd_factor if category in ['heating', 'waterHeating'] else pd.Series(1.0, index=df_copy.index)
+                adjusted_hdd_factor = hdd_factor if category in ['heating'] else pd.Series(1.0, index=df_copy.index)
 
                 # Initialize with NaN for all homes
                 valid_indices = valid_mask[valid_mask].index

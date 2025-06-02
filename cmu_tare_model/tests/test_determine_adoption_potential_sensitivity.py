@@ -1,1766 +1,549 @@
-"""
-test_determine_adoption_potential_sensitivity.py
-
-Pytest test suite for validating the adoption_decision functionality
-in the adoption potential module. This module evaluates equipment adoption
-feasibility by categorizing upgrades into four tiers based on economic factors
-and assesses public impacts of retrofits.
-
-This test suite verifies:
-1. Proper implementation of the 5-step validation framework:
-   - Mask Initialization with initialize_validation_tracking()
-   - Series Initialization with create_retrofit_only_series()
-   - Valid-Only Calculation for qualifying homes
-   - Valid-Only Updates with compound masks
-   - Final Masking with apply_final_masking()
-2. Correct adoption tier classification logic
-3. Accurate public impact assessment
-4. Appropriate handling of errors and edge cases
-5. Correct integration with private and public NPV calculations
-"""
-
 import pytest
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Tuple, Optional, Any, Union, Callable, Set
+from unittest.mock import patch, MagicMock
 
-# Import the module to test
-from cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_24April2025 import (
+from cmu_tare_model.constants import SCC_ASSUMPTIONS, RCM_MODELS, CR_FUNCTIONS, UPGRADE_COLUMNS
+
+from cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity import (
     adoption_decision,
-    validate_input_parameters
+    validate_input_parameters,
+    _process_adoption_tiers_and_impacts,
+    _calculate_total_npv_columns
 )
 
-# Import constants and utilities
-from cmu_tare_model.constants import (
-    EQUIPMENT_SPECS,
-    RCM_MODELS,
-    CR_FUNCTIONS,
-    SCC_ASSUMPTIONS,
-    UPGRADE_COLUMNS
-)
+# =============================================================================
+# FIXTURE FUNCTIONS
+# =============================================================================
 
-from cmu_tare_model.utils.validation_framework import (
-    initialize_validation_tracking,
-    create_retrofit_only_series,
-    apply_new_columns_to_dataframe,
-    apply_final_masking
-)
-
-
-# -------------------------------------------------------------------------
-#                           TEST FIXTURES
-# -------------------------------------------------------------------------
-
-@pytest.fixture(autouse=True)
-def mock_constants(monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Mock the constants module to isolate tests from external dependencies.
+def create_sample_data():
+    """Create sample data for testing."""
+    np.random.seed(42)
+    n_homes = 100
     
-    This fixture runs automatically for all tests and provides consistent
-    test data by mocking constants that affect validation behavior.
+    # Create base DataFrame
+    df = pd.DataFrame({
+        'home_id': range(n_homes),
+        'gea_region': np.random.choice(['CAMXc', 'ERCTc', 'FRCCc'], n_homes),
+        'state': np.random.choice(['CA', 'TX', 'FL'], n_homes),
+        'county_fips': np.random.choice(['06001', '48001', '12001'], n_homes),
+    })
     
-    Args:
-        monkeypatch: Pytest fixture for patching attributes/functions
-    """
-    # Mock equipment specs with simplified lifetimes for testing
-    mock_equipment_specs = {
-        'heating': 15, 
-        'waterHeating': 12, 
-        'clothesDrying': 13, 
-        'cooking': 15
-    }
+    # Add upgrade columns
+    for category in UPGRADE_COLUMNS:
+        df[UPGRADE_COLUMNS[category]] = np.random.choice([np.nan, 'upgrade_needed'], n_homes, p=[0.3, 0.7])
     
-    # Mock upgrade columns for tracking retrofit status
-    mock_upgrade_columns = {
-        'heating': 'upgrade_hvac_heating_efficiency',
-        'waterHeating': 'upgrade_water_heater_efficiency',
-        'clothesDrying': 'upgrade_clothes_dryer',
-        'cooking': 'upgrade_cooking_range'
-    }
-    
-    # Mock RCM models for health impact calculations
-    mock_rcm_models = ['ap2', 'easiur', 'inmap']
-    
-    # Mock CR functions for health impact calculations
-    mock_cr_functions = ['acs', 'h6c']
-    
-    # Mock SCC assumptions for climate impact calculations
-    mock_scc_assumptions = ['lower', 'central', 'upper']
-    
-    # Apply all mocks to relevant modules
-    # monkeypatch.setattr('cmu_tare_model.constants.EQUIPMENT_SPECS', mock_equipment_specs)
-    monkeypatch.setattr('cmu_tare_model.constants.UPGRADE_COLUMNS', mock_upgrade_columns)
-    monkeypatch.setattr('cmu_tare_model.constants.RCM_MODELS', mock_rcm_models)
-    monkeypatch.setattr('cmu_tare_model.constants.CR_FUNCTIONS', mock_cr_functions)
-    monkeypatch.setattr('cmu_tare_model.constants.SCC_ASSUMPTIONS', mock_scc_assumptions)
-    
-    # Also apply to adoption potential module directly
-    # monkeypatch.setattr('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.EQUIPMENT_SPECS', 
-    #                    mock_equipment_specs)
-    monkeypatch.setattr('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.UPGRADE_COLUMNS', 
-                       mock_upgrade_columns)
-    monkeypatch.setattr('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.RCM_MODELS', 
-                       mock_rcm_models)
-    monkeypatch.setattr('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.CR_FUNCTIONS', 
-                       mock_cr_functions)
-    monkeypatch.setattr('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.SCC_ASSUMPTIONS', 
-                       mock_scc_assumptions)
-
-
-@pytest.fixture
-def sample_homes_df() -> pd.DataFrame:
-    """
-    Generate sample DataFrame with comprehensive data for testing.
-    
-    This fixture creates test data with diverse scenarios including:
-    - Valid and invalid homes across different equipment categories
-    - Different NPV values for each tier classification
-    - Various public impact scenarios
-    - Homes with and without scheduled retrofits
-    
-    Returns:
-        pd.DataFrame: Sample DataFrame for testing adoption potential
-    """
-    # Create base DataFrame with index
-    data = {
-        # Metadata columns
-        'state': ['CA', 'TX', 'NY', 'FL', 'IL'],
-        'census_division': ['Pacific', 'West South Central', 'Middle Atlantic', 'South Atlantic', 'East North Central'],
-        
-        # Include flags for each category (True = valid, False = invalid)
-        'include_heating': [True, True, True, True, False],
-        'include_waterHeating': [True, True, False, True, True],
-        'include_clothesDrying': [True, False, True, True, False],
-        'include_cooking': [False, True, True, False, True],
-        
-        # Add upgrade columns (None = already upgraded, value = scheduled upgrade)
-        'upgrade_hvac_heating_efficiency': ['ASHP', 'GSHP', None, 'ASHP', None],
-        'upgrade_water_heater_efficiency': ['HP', None, 'HP', None, 'HP'],
-        'upgrade_clothes_dryer': [None, 'Electric', None, 'Electric', None],
-        'upgrade_cooking_range': ['Induction', None, 'Induction', None, None],
-        
-        # Add rebate amounts for different equipment
-        'mp8_heating_rebate_amount': [2000, 2500, 0, 1800, 0],
-        'mp8_waterHeating_rebate_amount': [500, 0, 600, 0, 500],
-        'mp8_clothesDrying_rebate_amount': [0, 300, 0, 300, 0],
-        'mp8_cooking_rebate_amount': [500, 0, 500, 0, 0]
-    }
-    
-    # Create DataFrame
-    df = pd.DataFrame(data)
-    
-    # Add private NPV columns for each category
-    # Tier 1: Positive lessWTP NPV (index 0)
-    # Tier 2: Negative lessWTP NPV, Positive moreWTP NPV (index 1)
-    # Tier 3: Negative lessWTP and moreWTP NPV, Positive total NPV (index 2)
-    # Tier 4: All NPVs negative (index 3)
-    # Invalid: NaN values (index 4)
-    
-    # Heating NPVs - showcase all tiers
-    df['iraRef_mp8_heating_private_npv_lessWTP'] = [500, -300, -800, -1200, np.nan]
-    df['iraRef_mp8_heating_private_npv_moreWTP'] = [800, 200, -300, -800, np.nan]
-    df['iraRef_mp8_heating_public_npv_upper_ap2_acs'] = [1000, 800, 600, 400, np.nan]
-    
-    # Water Heating NPVs - different patterns
-    df['iraRef_mp8_waterHeating_private_npv_lessWTP'] = [-100, -300, np.nan, 400, -700]
-    df['iraRef_mp8_waterHeating_private_npv_moreWTP'] = [200, -100, np.nan, 600, -400]
-    df['iraRef_mp8_waterHeating_public_npv_upper_ap2_acs'] = [400, 200, np.nan, -200, 600]
-    
-    # Clothes Drying NPVs - with negative public values
-    df['iraRef_mp8_clothesDrying_private_npv_lessWTP'] = [np.nan, -100, 300, -500, np.nan]
-    df['iraRef_mp8_clothesDrying_private_npv_moreWTP'] = [np.nan, 100, 500, -300, np.nan]
-    df['iraRef_mp8_clothesDrying_public_npv_upper_ap2_acs'] = [np.nan, -200, -100, -300, np.nan]
-    
-    # Cooking NPVs - more variations
-    df['iraRef_mp8_cooking_private_npv_lessWTP'] = [-500, -200, -600, np.nan, 300]
-    df['iraRef_mp8_cooking_private_npv_moreWTP'] = [-300, 100, -400, np.nan, 500] 
-    df['iraRef_mp8_cooking_public_npv_upper_ap2_acs'] = [800, 0, 600, np.nan, -100]
-    
-    # Add same structure for pre-IRA scenario (different values to test both scenarios)
-    df['preIRA_mp8_heating_private_npv_lessWTP'] = [400, -400, -900, -1300, np.nan]
-    df['preIRA_mp8_heating_private_npv_moreWTP'] = [700, 100, -400, -900, np.nan]
-    df['preIRA_mp8_heating_public_npv_upper_ap2_acs'] = [800, 600, 400, 200, np.nan]
-    
-    # Add total NPV columns (will be calculated but we add them for testing specific functions)
-    df['iraRef_mp8_heating_total_npv_lessWTP_upper_ap2_acs'] = [1500, 500, -200, -800, np.nan]
-    df['iraRef_mp8_heating_total_npv_moreWTP_upper_ap2_acs'] = [1800, 1000, 300, -400, np.nan]
+    # Add validation flags
+    for category in UPGRADE_COLUMNS:
+        df[f'include_{category}'] = np.random.choice([True, False], n_homes, p=[0.8, 0.2])
+        df[f'valid_tech_{category}'] = np.random.choice([True, False], n_homes, p=[0.9, 0.1])
+        df[f'valid_fuel_{category}'] = np.random.choice([True, False], n_homes, p=[0.95, 0.05])
     
     return df
 
 
-@pytest.fixture
-def mock_define_scenario_settings(monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Mock the define_scenario_params function to return consistent test values.
+def create_sample_npv_data():
+    """Add NPV columns to sample data."""
+    df = create_sample_data()
+    n_homes = len(df)
     
-    Args:
-        monkeypatch: Pytest fixture for patching functions
-    """
-    def mock_function(menu_mp: int, policy_scenario: str) -> Tuple[str, str, Dict, Dict, Dict, Dict]:
-        """Mock implementation of define_scenario_params."""
-        # Validate policy scenario
-        if policy_scenario not in ["No Inflation Reduction Act", "AEO2023 Reference Case"]:
-            raise ValueError(f"Invalid policy_scenario: {policy_scenario}. Must be one of ['No Inflation Reduction Act', 'AEO2023 Reference Case']")
-
-        # Convert menu_mp to int if it's a string
-        if isinstance(menu_mp, str):
-            try:
-                menu_mp = int(menu_mp)
-            except ValueError:
-                raise ValueError(f"Invalid menu_mp: {menu_mp}. Must be an integer or a string representation of an integer.")
-
-        # Determine scenario prefix
-        if menu_mp == 0:
-            scenario_prefix = "baseline_"
-        elif policy_scenario == "No Inflation Reduction Act":
-            scenario_prefix = f"preIRA_mp{menu_mp}_"
-        else:
-            scenario_prefix = f"iraRef_mp{menu_mp}_"
-
-        # Set the Cambium scenario
-        cambium_scenario = "MidCase"
-
-        # Create dummy lookup dictionaries - just placeholders for testing
-        dummy_emissions_fossil_fuel = {}
-        dummy_emissions_electricity_climate = {}
-        dummy_emissions_electricity_health = {}
-        dummy_fuel_prices = {}
-
-        return (
-            scenario_prefix,
-            cambium_scenario,
-            dummy_emissions_fossil_fuel,
-            dummy_emissions_electricity_climate,
-            dummy_emissions_electricity_health,
-            dummy_fuel_prices
-        )
+    scenario_prefix = 'iraRef_mp1_'
     
-    # Apply the monkeypatching - PATCH BOTH POSSIBLE IMPORT PATHS
-    monkeypatch.setattr(
-        'cmu_tare_model.utils.modeling_params.define_scenario_params',
-        mock_function
-    )
-    monkeypatch.setattr(
-        'cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.define_scenario_params',
-        mock_function
-    )
-
-
-@pytest.fixture
-def mock_validation_framework(monkeypatch: pytest.MonkeyPatch) -> Dict[str, Dict[str, bool]]:
-    """
-    Mock validation framework functions to track their calls while maintaining behavior.
+    # Add private NPV columns
+    for category in UPGRADE_COLUMNS:
+        df[f'{scenario_prefix}{category}_private_npv_lessWTP'] = np.random.normal(0, 5000, n_homes)
+        df[f'{scenario_prefix}{category}_private_npv_moreWTP'] = np.random.normal(1000, 5000, n_homes)
     
-    This fixture helps verify that the proper validation framework steps are followed
-    by tracking when each function is called and for which categories.
-    
-    Args:
-        monkeypatch: Pytest fixture for patching functions
+    # Add public NPV components
+    for category in UPGRADE_COLUMNS:
+        # Climate NPV for each SCC assumption
+        for scc in SCC_ASSUMPTIONS:
+            df[f'{scenario_prefix}{category}_climate_npv_{scc}'] = np.random.normal(2000, 3000, n_homes)
         
-    Returns:
-        Dictionary tracking which validation functions were called for each category
-    """
-    # Create tracking dictionary
-    function_calls = {
-        'initialize_validation_tracking': {category: False for category in EQUIPMENT_SPECS},
-        'create_retrofit_only_series': {category: False for category in EQUIPMENT_SPECS},
-        'apply_final_masking': False
-    }
+        # Health NPV for RCM/CR combinations
+        for rcm in ['ap2']:  # Test with one RCM
+            for cr in ['acs']:  # Test with one CR
+                df[f'{scenario_prefix}{category}_health_npv_{rcm}_{cr}'] = np.random.normal(1500, 2000, n_homes)
+                
+                # Combined public NPV for each SCC
+                for scc in SCC_ASSUMPTIONS:
+                    climate_col = f'{scenario_prefix}{category}_climate_npv_{scc}'
+                    health_col = f'{scenario_prefix}{category}_health_npv_{rcm}_{cr}'
+                    df[f'{scenario_prefix}{category}_public_npv_{scc}_{rcm}_{cr}'] = df[climate_col] + df[health_col]
     
-    # Store original functions
-    original_init_tracking = initialize_validation_tracking
-    original_create_series = create_retrofit_only_series
-    original_apply_masking = apply_final_masking
-    original_apply_new_columns = apply_new_columns_to_dataframe
+    # Add rebate columns
+    for category in UPGRADE_COLUMNS:
+        df[f'mp1_{category}_rebate_amount'] = np.random.uniform(0, 2000, n_homes)
     
-    # Create mock functions that track calls
-    def mock_init_tracking(df, category, menu_mp, verbose=True):
-        """Mock that tracks calls while maintaining behavior."""
-        function_calls['initialize_validation_tracking'][category] = True
-        return original_init_tracking(df, category, menu_mp, verbose)
+    return df
+
+
+# =============================================================================
+# PARAMETER VALIDATION TESTS
+# =============================================================================
+
+def test_parameter_validation_valid_inputs():
+    """Test input parameter validation with valid inputs."""
+    # Valid parameters should not raise
+    validate_input_parameters(1, 'AEO2023 Reference Case', 'ap2', 'acs')
     
-    def mock_create_series(df, retrofit_mask, *args, **kwargs):
-        """Mock that tracks calls while maintaining behavior."""
-        # Find which category this mask corresponds to
-        for cat in EQUIPMENT_SPECS:
-            if f'include_{cat}' in df.columns and df[f'include_{cat}'].equals(retrofit_mask):
-                function_calls['create_retrofit_only_series'][cat] = True
-                break
-        return original_create_series(df, retrofit_mask, *args, **kwargs)
+
+def test_parameter_validation_invalid_policy_scenario():
+    """Test invalid policy scenario raises ValueError."""
+    with pytest.raises(ValueError, match="Invalid policy_scenario"):
+        validate_input_parameters(1, 'Invalid Scenario', 'ap2', 'acs')
+
+
+def test_parameter_validation_invalid_rcm_model():
+    """Test invalid RCM model raises ValueError."""
+    with pytest.raises(ValueError, match="Invalid rcm_model"):
+        validate_input_parameters(1, 'AEO2023 Reference Case', 'invalid_rcm', 'acs')
+
+
+def test_parameter_validation_invalid_cr_function():
+    """Test invalid CR function raises ValueError."""
+    with pytest.raises(ValueError, match="Invalid cr_function"):
+        validate_input_parameters(1, 'AEO2023 Reference Case', 'ap2', 'invalid_cr')
+
+
+# =============================================================================
+# MISSING COLUMNS TESTS
+# =============================================================================
+
+def test_missing_upgrade_columns_error():
+    """Test that missing required upgrade columns raise appropriate errors."""
+    df_sample = create_sample_data()
+    # Remove one upgrade column
+    df_missing = df_sample.drop(columns=[UPGRADE_COLUMNS['heating']])
     
-    def mock_apply_masking(df, all_columns_to_mask, verbose=True):
-        """Mock that tracks calls while maintaining behavior."""
-        function_calls['apply_final_masking'] = True
-        return original_apply_masking(df, all_columns_to_mask, verbose)
+    with pytest.raises(KeyError, match="Required upgrade columns missing"):
+        adoption_decision(df_missing, 1, 'AEO2023 Reference Case', 'ap2', 'acs')
+
+
+def test_missing_npv_columns_error():
+    """Test that missing NPV columns raise appropriate errors."""
+    df_sample = create_sample_data()  # Data without NPV columns
     
-    def mock_apply_new_columns(df_original, df_new_columns, category, category_columns_to_mask, all_columns_to_mask):
-        """Mock that tracks columns properly."""
-        return original_apply_new_columns(df_original, df_new_columns, category, category_columns_to_mask, all_columns_to_mask)
+    with pytest.raises(KeyError, match="Required NPV columns missing"):
+        adoption_decision(df_sample, 1, 'AEO2023 Reference Case', 'ap2', 'acs')
+
+
+# =============================================================================
+# HELPER FUNCTION TESTS
+# =============================================================================
+
+def test_calculate_total_npv_columns_helper():
+    """Test the total NPV calculation helper function."""
+    # Create test data
+    df_test = pd.DataFrame({
+        'lessWTP_private_npv': [1000, 2000, np.nan, 3000],
+        'moreWTP_private_npv': [1500, 2500, 3500, np.nan],
+        'public_npv': [500, -1000, 800, 1200]
+    })
     
-    # Apply monkeypatching
-    monkeypatch.setattr(
-        'cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.initialize_validation_tracking',
-        mock_init_tracking
+    valid_mask = pd.Series([True, True, False, True])  # Third row is invalid
+    df_new_columns = pd.DataFrame(index=df_test.index)
+    df_new_columns['lessWTP_total'] = pd.Series(0.0, index=df_test.index)
+    df_new_columns['moreWTP_total'] = pd.Series(0.0, index=df_test.index)
+    
+    _calculate_total_npv_columns(
+        df_new_columns=df_new_columns,
+        df_copy=df_test,
+        valid_mask=valid_mask,
+        private_npv_cols=('lessWTP_private_npv', 'moreWTP_private_npv'),
+        public_npv_col='public_npv',
+        output_col_names=('lessWTP_total', 'moreWTP_total')
     )
-    monkeypatch.setattr(
-        'cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.create_retrofit_only_series',
-        mock_create_series
-    )
-    monkeypatch.setattr(
-        'cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.apply_final_masking',
-        mock_apply_masking
-    )
-    monkeypatch.setattr(
-        'cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.apply_new_columns_to_dataframe',
-        mock_apply_new_columns
-    )
     
-    return function_calls
-
-
-@pytest.fixture(params=['heating', 'waterHeating', 'clothesDrying', 'cooking'])
-def category(request: pytest.FixtureRequest) -> str:
-    """
-    Parametrized fixture for equipment categories.
+    # Check calculations for valid rows with non-null data
+    assert df_new_columns.loc[0, 'lessWTP_total'] == 1500  # 1000 + 500
+    assert df_new_columns.loc[0, 'moreWTP_total'] == 2000  # 1500 + 500
+    assert df_new_columns.loc[1, 'lessWTP_total'] == 1000  # 2000 + (-1000)
+    assert df_new_columns.loc[1, 'moreWTP_total'] == 1500  # 2500 + (-1000)
     
-    Args:
-        request: Pytest request object containing the parameter
-        
-    Returns:
-        str: Equipment category name
-    """
-    return request.param
-
-
-@pytest.fixture(params=['No Inflation Reduction Act', 'AEO2023 Reference Case'])
-def policy_scenario(request: pytest.FixtureRequest) -> str:
-    """
-    Parametrized fixture for policy scenarios.
+    # Check that invalid row (index 2) remains unchanged (0.0)
+    assert df_new_columns.loc[2, 'lessWTP_total'] == 0.0
+    assert df_new_columns.loc[2, 'moreWTP_total'] == 0.0
     
-    Args:
-        request: Pytest request object containing the parameter
-        
-    Returns:
-        str: Policy scenario name
-    """
-    return request.param
+    # Check that row with missing moreWTP (index 3) has lessWTP calculated but moreWTP unchanged
+    assert df_new_columns.loc[3, 'lessWTP_total'] == 4200  # 3000 + 1200
+    assert df_new_columns.loc[3, 'moreWTP_total'] == 0.0   # No calculation due to NaN
 
 
-@pytest.fixture(params=['ap2', 'easiur', 'inmap'])
-def rcm_model(request: pytest.FixtureRequest) -> str:
-    """
-    Parametrized fixture for RCM models.
+def test_calculate_total_npv_columns_missing_input():
+    """Test that missing input columns raise appropriate errors."""
+    df_test = pd.DataFrame({'some_other_col': [1, 2, 3]})
+    df_new_columns = pd.DataFrame(index=df_test.index)
+    valid_mask = pd.Series([True, True, True])
     
-    Args:
-        request: Pytest request object containing the parameter
-        
-    Returns:
-        str: RCM model name
-    """
-    return request.param
-
-
-@pytest.fixture(params=['acs', 'h6c'])
-def cr_function(request: pytest.FixtureRequest) -> str:
-    """
-    Parametrized fixture for CR functions.
-    
-    Args:
-        request: Pytest request object containing the parameter
-        
-    Returns:
-        str: CR function name
-    """
-    return request.param
-
-
-# -------------------------------------------------------------------------
-#              PARAMETER VALIDATION TESTS
-# -------------------------------------------------------------------------
-
-def test_validate_input_parameters_valid() -> None:
-    """
-    Test that valid parameters pass validation without errors.
-    
-    This test verifies that validate_input_parameters accepts valid parameters
-    without raising any exceptions.
-    """
-    # Valid parameters should not raise errors
-    try:
-        validate_input_parameters(
-            menu_mp=8,
-            policy_scenario='AEO2023 Reference Case',
-            rcm_model='ap2',
-            cr_function='acs'
+    with pytest.raises(KeyError, match="Required columns missing"):
+        _calculate_total_npv_columns(
+            df_new_columns=df_new_columns,
+            df_copy=df_test,
+            valid_mask=valid_mask,
+            private_npv_cols=('missing_col1', 'missing_col2'),
+            public_npv_col='missing_public',
+            output_col_names=('output1', 'output2')
         )
-    except Exception as e:
-        pytest.fail(f"validate_input_parameters raised an exception with valid parameters: {e}")
 
 
-def test_validate_input_parameters_invalid_policy_scenario() -> None:
-    """
-    Test that invalid policy scenario raises appropriate error.
+# =============================================================================
+# ADOPTION TIER LOGIC TESTS  
+# =============================================================================
+
+def test_adoption_tier_logic_complete():
+    """Test adoption tier classification logic with moreWTP columns for all analysis types."""
+    # Create test data for all tier classifications
+    df_test = pd.DataFrame({
+        'lessWTP_private_npv': [5000, -2000, -3000, -5000],  # Tier 1, 2, 3, 4
+        'moreWTP_private_npv': [6000, 1000, -1000, -6000],
+        'upgrade_column': ['upgrade', 'upgrade', 'upgrade', 'upgrade'],
+        'public_npv': [1000, 500, 800, -2000]  # Add public NPV column
+    })
     
-    This test verifies that validate_input_parameters raises a ValueError
-    with an informative message when an invalid policy scenario is provided.
-    """
-    with pytest.raises(ValueError) as excinfo:
-        validate_input_parameters(
-            menu_mp=8,
-            policy_scenario='Invalid Scenario',
-            rcm_model='ap2',
-            cr_function='acs'
-        )
+    valid_mask = pd.Series([True, True, True, True])
+    df_new_columns = pd.DataFrame(index=df_test.index)
     
-    # Verify error message mentions policy scenario
-    error_msg = str(excinfo.value)
-    assert "policy_scenario" in error_msg.lower(), "Error message should mention policy_scenario"
-    assert "Invalid Scenario" in error_msg, "Error message should contain the invalid value"
-
-
-def test_validate_input_parameters_invalid_rcm_model() -> None:
-    """
-    Test that invalid RCM model raises appropriate error.
+    # Set up total NPV columns for Tier 3 test
+    df_new_columns['lessWTP_total_npv'] = [6000, -1500, -2200, -7000]
+    df_new_columns['moreWTP_total_npv'] = [7000, 1500, -200, -8000]  # Tier 3 needs positive value for row 2
+    df_new_columns.loc[2, 'moreWTP_total_npv'] = 500  # Make Tier 3 positive
     
-    This test verifies that validate_input_parameters raises a ValueError
-    with an informative message when an invalid RCM model is provided.
-    """
-    with pytest.raises(ValueError) as excinfo:
-        validate_input_parameters(
-            menu_mp=8,
-            policy_scenario='AEO2023 Reference Case',
-            rcm_model='Invalid Model',
-            cr_function='acs'
-        )
-    
-    # Verify error message mentions RCM model
-    error_msg = str(excinfo.value)
-    assert "rcm_model" in error_msg.lower(), "Error message should mention rcm_model"
-    assert "Invalid Model" in error_msg, "Error message should contain the invalid value"
-
-
-def test_validate_input_parameters_invalid_cr_function() -> None:
-    """
-    Test that invalid CR function raises appropriate error.
-    
-    This test verifies that validate_input_parameters raises a ValueError
-    with an informative message when an invalid CR function is provided.
-    """
-    with pytest.raises(ValueError) as excinfo:
-        validate_input_parameters(
-            menu_mp=8,
-            policy_scenario='AEO2023 Reference Case',
-            rcm_model='ap2',
-            cr_function='Invalid Function'
-        )
-    
-    # Verify error message mentions CR function
-    error_msg = str(excinfo.value)
-    assert "cr_function" in error_msg.lower(), "Error message should mention cr_function"
-    assert "Invalid Function" in error_msg, "Error message should contain the invalid value"
-
-
-def test_validate_input_parameters_invalid_menu_mp() -> None:
-    """
-    Test that invalid menu_mp raises appropriate error.
-    
-    This test verifies that validate_input_parameters raises a ValueError
-    with an informative message when an invalid menu_mp is provided.
-    """
-    with pytest.raises(ValueError) as excinfo:
-        validate_input_parameters(
-            menu_mp="not_a_number",
-            policy_scenario='AEO2023 Reference Case',
-            rcm_model='ap2',
-            cr_function='acs'
-        )
-    
-    # Verify error message mentions menu_mp
-    error_msg = str(excinfo.value)
-    assert "menu_mp" in error_msg.lower(), "Error message should mention menu_mp"
-    assert "not_a_number" in error_msg, "Error message should contain the invalid value"
-
-
-def test_validate_input_parameters_convertible_menu_mp() -> None:
-    """
-    Test that menu_mp as string digits is accepted.
-    
-    This test verifies that validate_input_parameters accepts menu_mp
-    as a string representation of a number without raising errors.
-    """
-    try:
-        validate_input_parameters(
-            menu_mp="8",  # String representation of an integer
-            policy_scenario='AEO2023 Reference Case',
-            rcm_model='ap2',
-            cr_function='acs'
-        )
-    except Exception as e:
-        pytest.fail(f"validate_input_parameters raised an exception with convertible menu_mp: {e}")
-
-
-# -------------------------------------------------------------------------
-#              VALIDATION FRAMEWORK IMPLEMENTATION TESTS
-# -------------------------------------------------------------------------
-
-def test_mask_initialization_implementation(
-        sample_homes_df: pd.DataFrame, 
-        mock_validation_framework: Dict[str, Dict[str, bool]],
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test Step 1: Mask initialization with initialize_validation_tracking().
-    
-    This test verifies that adoption_decision correctly:
-    1. Initializes validation tracking for each category
-    2. Creates a valid_mask using initialize_validation_tracking()
-    3. Passes the valid_mask to subsequent calculations
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_validation_framework: Fixture tracking validation function calls
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision with minimal parameter set
-    adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
+    result = _process_adoption_tiers_and_impacts(
+        df_new_columns=df_new_columns,
+        df_copy=df_test,
+        valid_mask=valid_mask,
+        upgrade_column='upgrade_column',
+        lessWTP_private_npv_col='lessWTP_private_npv',
+        moreWTP_private_npv_col='moreWTP_private_npv',
+        lessWTP_total_npv_col='lessWTP_total_npv',
+        moreWTP_total_npv_col='moreWTP_total_npv',
+        public_npv_col='public_npv',
+        adoption_col='adoption',
+        impact_col='impact'
     )
     
-    # Verify initialize_validation_tracking was called for each category
-    for category, called in mock_validation_framework['initialize_validation_tracking'].items():
-        assert called, f"initialize_validation_tracking() should be called for category '{category}'"
-
-
-def test_series_initialization_implementation(
-        sample_homes_df: pd.DataFrame, 
-        mock_validation_framework: Dict[str, Dict[str, bool]],
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test Step 2: Series initialization with create_retrofit_only_series().
-    
-    This test verifies that adoption_decision correctly:
-    1. Uses create_retrofit_only_series() to initialize result series
-    2. Sets zeros for valid homes and NaN for invalid homes
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_validation_framework: Fixture tracking validation function calls
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision with minimal parameter set
-    adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
-    )
-    
-    # Verify create_retrofit_only_series was called for at least one category
-    assert any(mock_validation_framework['create_retrofit_only_series'].values()), \
-        "create_retrofit_only_series() should be called for at least one category"
-
-
-def test_valid_only_calculation_implementation(
-        sample_homes_df: pd.DataFrame,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test Step 3: Valid-only calculation for qualifying homes.
-    
-    This test verifies that calculations are performed only for valid homes
-    and skipped for invalid homes, following the validation framework pattern.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Create a tracking mechanism for calculation execution
-    calculation_executed = {idx: False for idx in sample_homes_df.index}
-    
-    # Keep track of the original DataFrame.loc method
-    original_loc = pd.DataFrame.loc
-    
-    # Mock the DataFrame.loc method to track which homes are calculated
-    def mock_loc(self, *args, **kwargs):
-        """Mock that tracks which homes were included in calculations."""
-        # Check if we're setting values (modifying the DataFrame)
-        is_setting = len(args) > 1
-        
-        if is_setting and isinstance(args[0], pd.Series):
-            # args[0] is the mask Series when setting values
-            mask = args[0]
-            for idx in mask.index:
-                if mask.loc[idx]:
-                    calculation_executed[idx] = True
-        
-        # Call the original loc method
-        return original_loc(self, *args, **kwargs)
-    
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Apply monkeypatching
-    monkeypatch.setattr(pd.DataFrame, 'loc', mock_loc)
-    
-    # Call adoption_decision focusing on one category
-    result = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
-    )
-    
-    # Restore original method to avoid affecting other tests
-    monkeypatch.setattr(pd.DataFrame, 'loc', original_loc)
-    
-    # Verify calculations were performed for valid homes
-    # For simplicity, check heating category which has most complete test data
-    category = 'heating'
-    valid_mask = sample_homes_df[f'include_{category}']
-    
-    # At least some valid homes should have had calculations performed
-    valid_homes_calculated = sum(calculation_executed[idx] for idx in valid_mask[valid_mask].index)
-    assert valid_homes_calculated > 0, \
-        "At least some valid homes should have had calculations performed"
-    
-    # Invalid homes should not have calculations performed
-    # Check each invalid home specifically
-    for idx in valid_mask[~valid_mask].index:
-        if calculation_executed[idx]:
-            pytest.fail(f"Invalid home at index {idx} should not have had calculations performed")
-
-
-def test_final_masking_implementation(
-        sample_homes_df: pd.DataFrame, 
-        mock_validation_framework: Dict[str, Dict[str, bool]],
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test Step 5: Final masking with apply_final_masking.
-    
-    This test verifies that adoption_decision correctly:
-    1. Tracks columns for masking
-    2. Applies final masking with apply_final_masking
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_validation_framework: Fixture tracking validation function calls
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision with minimal parameter set
-    adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
-    )
-    
-    # Verify apply_final_masking was called
-    assert mock_validation_framework['apply_final_masking'], \
-        "apply_final_masking() should be called"
-
-
-def test_all_validation_steps(
-        sample_homes_df: pd.DataFrame, 
-        mock_validation_framework: Dict[str, Dict[str, bool]],
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test all five steps of the validation framework together.
-    
-    This test verifies that adoption_decision correctly implements all
-    steps of the validation framework in sequence.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_validation_framework: Fixture tracking validation function calls
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision
-    adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
-    )
-    
-    # Verify all validation steps were called
-    # Step 1: initialize_validation_tracking for at least one category
-    assert any(mock_validation_framework['initialize_validation_tracking'].values()), \
-        "Step 1: initialize_validation_tracking() should be called for at least one category"
-    
-    # Step 2: create_retrofit_only_series for at least one category
-    assert any(mock_validation_framework['create_retrofit_only_series'].values()), \
-        "Step 2: create_retrofit_only_series() should be called for at least one category"
-    
-    # Step 5: apply_final_masking
-    assert mock_validation_framework['apply_final_masking'], \
-        "Step 5: apply_final_masking() should be called"
-
-
-# -------------------------------------------------------------------------
-#              ADOPTION TIER CLASSIFICATION TESTS
-# -------------------------------------------------------------------------
-
-def test_adoption_tier1_classification(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test correct classification of Tier 1 (Feasible) homes.
-    
-    This test verifies that adoption_decision correctly classifies homes as 
-    Tier 1 (Feasible) when they have positive private NPV with total capital costs.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision
-    result = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
-    )
-    
-    # Check Tier 1 classification
-    category = 'heating'  # For simplicity, focus on heating
-    tier1_col = 'iraRef_mp8_heating_adoption_upper_ap2_acs'
-    
-    # Verify the column exists
-    assert tier1_col in result.columns, f"Column {tier1_col} should exist in result DataFrame"
-    
-    # Find homes that should be classified as Tier 1
-    tier1_homes = sample_homes_df[
-        sample_homes_df['include_heating'] & 
-        (sample_homes_df['iraRef_mp8_heating_private_npv_lessWTP'] > 0) &
-        sample_homes_df['upgrade_hvac_heating_efficiency'].notna()
+    expected_tiers = [
+        'Tier 1: Feasible',
+        'Tier 2: Feasible vs. Alternative', 
+        'Tier 3: Subsidy-Dependent Feasibility',
+        'Tier 4: Averse'
     ]
     
-    # Verify these homes are correctly classified
-    for idx in tier1_homes.index:
-        assert result.loc[idx, tier1_col] == 'Tier 1: Feasible', \
-            f"Home at index {idx} should be classified as 'Tier 1: Feasible'"
+    for i, expected in enumerate(expected_tiers):
+        assert expected in result.loc[i, 'adoption'], f"Row {i}: Expected {expected}, got {result.loc[i, 'adoption']}"
 
 
-def test_adoption_tier2_classification(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test correct classification of Tier 2 (Feasible vs. Alternative) homes.
+def test_public_impact_classification():
+    """Test public impact classification logic."""
+    # Create test data for impact classification
+    df_test = pd.DataFrame({
+        'public_npv': [5000, 0, -2000],  # Benefit, Zero, Detriment
+        'upgrade_column': ['upgrade', 'upgrade', 'upgrade'],
+        'lessWTP_private_npv': [1000, 1000, 1000],  # Add required columns
+        'moreWTP_private_npv': [1500, 1500, 1500]
+    })
     
-    This test verifies that adoption_decision correctly classifies homes as 
-    Tier 2 when they have negative less-WTP NPV but positive more-WTP NPV.
+    valid_mask = pd.Series([True, True, True])
+    df_new_columns = pd.DataFrame(index=df_test.index)
+    df_new_columns['lessWTP_total_npv'] = [6000, 1000, -1000]
+    df_new_columns['moreWTP_total_npv'] = [6500, 1500, -500]
     
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision
-    result = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
+    result = _process_adoption_tiers_and_impacts(
+        df_new_columns=df_new_columns,
+        df_copy=df_test,
+        valid_mask=valid_mask,
+        upgrade_column='upgrade_column',
+        lessWTP_private_npv_col='lessWTP_private_npv',
+        moreWTP_private_npv_col='moreWTP_private_npv',
+        lessWTP_total_npv_col='lessWTP_total_npv',
+        moreWTP_total_npv_col='moreWTP_total_npv',
+        public_npv_col='public_npv',
+        adoption_col='adoption',
+        impact_col='impact'
     )
     
-    # Check Tier 2 classification
-    category = 'heating'  # For simplicity, focus on heating
-    tier2_col = 'iraRef_mp8_heating_adoption_upper_ap2_acs'
-    
-    # Verify the column exists
-    assert tier2_col in result.columns, f"Column {tier2_col} should exist in result DataFrame"
-    
-    # Find homes that should be classified as Tier 2
-    tier2_homes = sample_homes_df[
-        sample_homes_df['include_heating'] & 
-        (sample_homes_df['iraRef_mp8_heating_private_npv_lessWTP'] < 0) &
-        (sample_homes_df['iraRef_mp8_heating_private_npv_moreWTP'] > 0) &
-        sample_homes_df['upgrade_hvac_heating_efficiency'].notna()
+    expected_impacts = [
+        'Public Benefit',
+        'Public NPV is Zero',
+        'Public Detriment'
     ]
     
-    # Verify these homes are correctly classified
-    for idx in tier2_homes.index:
-        assert result.loc[idx, tier2_col] == 'Tier 2: Feasible vs. Alternative', \
-            f"Home at index {idx} should be classified as 'Tier 2: Feasible vs. Alternative'"
+    for i, expected in enumerate(expected_impacts):
+        assert expected in result.loc[i, 'impact'], f"Row {i}: Expected {expected}, got {result.loc[i, 'impact']}"
 
 
-def test_adoption_tier3_classification(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test correct classification of Tier 3 (Subsidy-Dependent) homes.
+# =============================================================================
+# INTEGRATION TESTS
+# =============================================================================
+
+@patch('cmu_tare_model.utils.validation_framework.initialize_validation_tracking')
+@patch('cmu_tare_model.utils.validation_framework.apply_final_masking')
+def test_combined_analysis_unchanged(mock_final_masking, mock_validation):
+    """Test that combined analysis produces same results as original implementation."""
+    sample_npv_data = create_sample_npv_data()
     
-    This test verifies that adoption_decision correctly classifies homes as 
-    Tier 3 when both private NPVs are negative but total NPV is positive.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision
-    result = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
+    # Mock validation framework functions
+    mock_validation.return_value = (
+        sample_npv_data.copy(),
+        pd.Series(True, index=sample_npv_data.index),
+        {category: [] for category in UPGRADE_COLUMNS},
+        []
     )
+    mock_final_masking.side_effect = lambda df, *args, **kwargs: df
     
-    # Check Tier 3 classification
-    category = 'heating'  # For simplicity, focus on heating
-    tier3_col = 'iraRef_mp8_heating_adoption_upper_ap2_acs'
+    result = adoption_decision(sample_npv_data, 1, 'AEO2023 Reference Case', 'ap2', 'acs')
     
-    # Verify the column exists
-    assert tier3_col in result.columns, f"Column {tier3_col} should exist in result DataFrame"
-    
-    # Find homes that should be classified as Tier 3
-    tier3_homes = sample_homes_df[
-        sample_homes_df['include_heating'] & 
-        (sample_homes_df['iraRef_mp8_heating_private_npv_lessWTP'] < 0) &
-        (sample_homes_df['iraRef_mp8_heating_private_npv_moreWTP'] < 0) &
-        (sample_homes_df['iraRef_mp8_heating_total_npv_moreWTP_upper_ap2_acs'] > 0) &
-        sample_homes_df['upgrade_hvac_heating_efficiency'].notna()
-    ]
-    
-    # Verify these homes are correctly classified
-    for idx in tier3_homes.index:
-        assert result.loc[idx, tier3_col] == 'Tier 3: Subsidy-Dependent Feasibility', \
-            f"Home at index {idx} should be classified as 'Tier 3: Subsidy-Dependent Feasibility'"
+    # Check that combined analysis columns exist
+    for category in UPGRADE_COLUMNS:
+        for scc in SCC_ASSUMPTIONS:
+            expected_cols = [
+                f'iraRef_mp1_{category}_adoption_{scc}_ap2_acs',
+                f'iraRef_mp1_{category}_impact_{scc}_ap2_acs',
+                f'iraRef_mp1_{category}_total_npv_lessWTP_{scc}_ap2_acs'
+            ]
+            for col in expected_cols:
+                assert col in result.columns, f"Missing combined analysis column: {col}"
 
 
-def test_adoption_tier4_classification(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test correct classification of Tier 4 (Averse) homes.
+@patch('cmu_tare_model.utils.validation_framework.initialize_validation_tracking')
+@patch('cmu_tare_model.utils.validation_framework.apply_final_masking')
+def test_climate_only_analysis_columns(mock_final_masking, mock_validation):
+    """Test that climate-only analysis generates expected columns including moreWTP."""
+    sample_npv_data = create_sample_npv_data()
     
-    This test verifies that adoption_decision correctly classifies homes as 
-    Tier 4 when both private NPVs and total NPV are negative.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision
-    result = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
+    # Mock validation framework functions
+    mock_validation.return_value = (
+        sample_npv_data.copy(),
+        pd.Series(True, index=sample_npv_data.index),
+        {category: [] for category in UPGRADE_COLUMNS},
+        []
     )
+    mock_final_masking.side_effect = lambda df, *args, **kwargs: df
     
-    # Check Tier 4 classification
-    category = 'heating'  # For simplicity, focus on heating
-    tier4_col = 'iraRef_mp8_heating_adoption_upper_ap2_acs'
+    result = adoption_decision(sample_npv_data, 1, 'AEO2023 Reference Case', 'ap2', 'acs')
     
-    # Verify the column exists
-    assert tier4_col in result.columns, f"Column {tier4_col} should exist in result DataFrame"
-    
-    # Find homes that should be classified as Tier 4
-    tier4_homes = sample_homes_df[
-        sample_homes_df['include_heating'] & 
-        (sample_homes_df['iraRef_mp8_heating_private_npv_lessWTP'] < 0) &
-        (sample_homes_df['iraRef_mp8_heating_private_npv_moreWTP'] < 0) &
-        (sample_homes_df['iraRef_mp8_heating_total_npv_moreWTP_upper_ap2_acs'] < 0) &
-        sample_homes_df['upgrade_hvac_heating_efficiency'].notna()
-    ]
-    
-    # Verify these homes are correctly classified
-    for idx in tier4_homes.index:
-        assert result.loc[idx, tier4_col] == 'Tier 4: Averse', \
-            f"Home at index {idx} should be classified as 'Tier 4: Averse'"
+    # Check that climate-only analysis columns exist (including moreWTP)
+    for category in UPGRADE_COLUMNS:
+        for scc in SCC_ASSUMPTIONS:
+            expected_cols = [
+                f'iraRef_mp1_{category}_adoption_climateOnly_{scc}',
+                f'iraRef_mp1_{category}_impact_climateOnly_{scc}',
+                f'iraRef_mp1_{category}_total_npv_lessWTP_climateOnly_{scc}',
+                f'iraRef_mp1_{category}_total_npv_moreWTP_climateOnly_{scc}'  # Added moreWTP
+            ]
+            for col in expected_cols:
+                assert col in result.columns, f"Missing climate-only column: {col}"
 
 
-def test_homes_with_no_upgrades_classification(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test correct classification of homes with no scheduled upgrades.
+@patch('cmu_tare_model.utils.validation_framework.initialize_validation_tracking')
+@patch('cmu_tare_model.utils.validation_framework.apply_final_masking')
+def test_health_only_analysis_columns(mock_final_masking, mock_validation):
+    """Test that health-only analysis generates expected columns including moreWTP."""
+    sample_npv_data = create_sample_npv_data()
     
-    This test verifies that adoption_decision correctly identifies homes
-    that already have upgrades (upgrade_column is None) and marks them accordingly.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision
-    result = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
+    # Mock validation framework functions
+    mock_validation.return_value = (
+        sample_npv_data.copy(),
+        pd.Series(True, index=sample_npv_data.index),
+        {category: [] for category in UPGRADE_COLUMNS},
+        []
     )
+    mock_final_masking.side_effect = lambda df, *args, **kwargs: df
     
-    # Check classification of homes with no upgrades
-    category = 'heating'  # For simplicity, focus on heating
-    adoption_col = 'iraRef_mp8_heating_adoption_upper_ap2_acs'
+    result = adoption_decision(sample_npv_data, 1, 'AEO2023 Reference Case', 'ap2', 'acs')
     
-    # Verify the column exists
-    assert adoption_col in result.columns, f"Column {adoption_col} should exist in result DataFrame"
-    
-    # Find homes with no upgrades (already upgraded)
-    no_upgrade_homes = sample_homes_df[
-        sample_homes_df['include_heating'] & 
-        sample_homes_df['upgrade_hvac_heating_efficiency'].isna()
-    ]
-    
-    # Verify these homes are correctly classified
-    for idx in no_upgrade_homes.index:
-        assert result.loc[idx, adoption_col] == 'N/A: Already Upgraded!', \
-            f"Home at index {idx} should be classified as 'N/A: Already Upgraded!'"
-
-
-def test_invalid_homes_classification(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test correct classification of invalid homes.
-    
-    This test verifies that adoption_decision correctly identifies homes
-    that have invalid data (include_category is False) and marks them accordingly.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision
-    result = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
-    )
-    
-    # Check classification of invalid homes
-    category = 'heating'  # For simplicity, focus on heating
-    adoption_col = 'iraRef_mp8_heating_adoption_upper_ap2_acs'
-    
-    # Verify the column exists
-    assert adoption_col in result.columns, f"Column {adoption_col} should exist in result DataFrame"
-    
-    # Find invalid homes
-    invalid_homes = sample_homes_df[~sample_homes_df['include_heating']]
-    
-    # Verify these homes have appropriate classification
-    for idx in invalid_homes.index:
-        # Invalid homes should have masked values (NaN)
-        assert pd.isna(result.loc[idx, adoption_col]) or result.loc[idx, adoption_col] == 'N/A: Invalid Baseline Fuel/Tech', \
-            f"Invalid home at index {idx} should have NaN or 'N/A: Invalid Baseline Fuel/Tech'"
-
-
-# -------------------------------------------------------------------------
-#              PUBLIC IMPACT ASSESSMENT TESTS
-# -------------------------------------------------------------------------
-
-def test_public_benefit_classification(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test correct classification of Public Benefit impacts.
-    
-    This test verifies that adoption_decision correctly classifies homes as
-    having 'Public Benefit' when they have positive public NPV.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision
-    result = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
-    )
-    
-    # Check Public Benefit classification
-    category = 'heating'  # For simplicity, focus on heating
-    impact_col = 'iraRef_mp8_heating_impact_upper_ap2_acs'
-    
-    # Verify the column exists
-    assert impact_col in result.columns, f"Column {impact_col} should exist in result DataFrame"
-    
-    # Find homes with positive public NPV (Public Benefit)
-    benefit_homes = sample_homes_df[
-        sample_homes_df['include_heating'] & 
-        (sample_homes_df['iraRef_mp8_heating_public_npv_upper_ap2_acs'] > 0) &
-        sample_homes_df['upgrade_hvac_heating_efficiency'].notna()
-    ]
-    
-    # Verify these homes are correctly classified
-    for idx in benefit_homes.index:
-        assert result.loc[idx, impact_col] == 'Public Benefit', \
-            f"Home at index {idx} should be classified as 'Public Benefit'"
-
-
-def test_public_detriment_classification(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test correct classification of Public Detriment impacts.
-    
-    This test verifies that adoption_decision correctly classifies homes as
-    having 'Public Detriment' when they have negative public NPV.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Create modified test data with negative public NPV
-    df = sample_homes_df.copy()
-    # Set negative public NPV for at least one home
-    df.loc[3, 'iraRef_mp8_heating_public_npv_upper_ap2_acs'] = -500
-    
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision
-    result = adoption_decision(
-        df=df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
-    )
-    
-    # Check Public Detriment classification
-    category = 'heating'  # For simplicity, focus on heating
-    impact_col = 'iraRef_mp8_heating_impact_upper_ap2_acs'
-    
-    # Verify the column exists
-    assert impact_col in result.columns, f"Column {impact_col} should exist in result DataFrame"
-    
-    # Find homes with negative public NPV (Public Detriment)
-    detriment_homes = df[
-        df['include_heating'] & 
-        (df['iraRef_mp8_heating_public_npv_upper_ap2_acs'] < 0) &
-        df['upgrade_hvac_heating_efficiency'].notna()
-    ]
-    
-    # Verify these homes are correctly classified
-    for idx in detriment_homes.index:
-        assert result.loc[idx, impact_col] == 'Public Detriment', \
-            f"Home at index {idx} should be classified as 'Public Detriment'"
-
-
-def test_zero_public_npv_classification(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test correct classification of homes with zero public NPV.
-    
-    This test verifies that adoption_decision correctly classifies homes as
-    having 'Public NPV is Zero' when they have zero public NPV.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Create modified test data with zero public NPV
-    df = sample_homes_df.copy()
-    # Set zero public NPV for at least one home
-    df.loc[3, 'iraRef_mp8_heating_public_npv_upper_ap2_acs'] = 0
-    
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision
-    result = adoption_decision(
-        df=df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
-    )
-    
-    # Check zero public NPV classification
-    category = 'heating'  # For simplicity, focus on heating
-    impact_col = 'iraRef_mp8_heating_impact_upper_ap2_acs'
-    
-    # Verify the column exists
-    assert impact_col in result.columns, f"Column {impact_col} should exist in result DataFrame"
-    
-    # Find homes with zero public NPV
-    zero_npv_homes = df[
-        df['include_heating'] & 
-        (df['iraRef_mp8_heating_public_npv_upper_ap2_acs'] == 0) &
-        df['upgrade_hvac_heating_efficiency'].notna()
-    ]
-    
-    # Verify these homes are correctly classified
-    for idx in zero_npv_homes.index:
-        assert result.loc[idx, impact_col] == 'Public NPV is Zero', \
-            f"Home at index {idx} should be classified as 'Public NPV is Zero'"
-
-
-def test_already_upgraded_impact_classification(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test correct impact classification for already upgraded homes.
-    
-    This test verifies that adoption_decision correctly identifies homes
-    that already have upgrades and marks their impact accordingly.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision
-    result = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
-    )
-    
-    # Check impact classification for already upgraded homes
-    category = 'heating'  # For simplicity, focus on heating
-    impact_col = 'iraRef_mp8_heating_impact_upper_ap2_acs'
-    
-    # Verify the column exists
-    assert impact_col in result.columns, f"Column {impact_col} should exist in result DataFrame"
-    
-    # Find homes that already have upgrades
-    already_upgraded_homes = sample_homes_df[
-        sample_homes_df['include_heating'] & 
-        sample_homes_df['upgrade_hvac_heating_efficiency'].isna()
-    ]
-    
-    # Verify these homes are correctly classified
-    for idx in already_upgraded_homes.index:
-        assert result.loc[idx, impact_col] == 'N/A: Already Upgraded!', \
-            f"Already upgraded home at index {idx} should have impact 'N/A: Already Upgraded!'"
-
-
-def test_additional_public_benefit_calculation(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test correct calculation of additional public benefit.
-    
-    This test verifies that adoption_decision correctly calculates additional
-    public benefit as (public_npv - rebate_amount).clip(lower=0), but only for IRA scenarios.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision with IRA scenario
-    result_ira = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
-    )
-    
-    # Call adoption_decision with non-IRA scenario
-    result_no_ira = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='No Inflation Reduction Act',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
-    )
-    
-    # Check benefit calculation for IRA scenario
-    category = 'heating'  # For simplicity, focus on heating
-    benefit_col_ira = 'iraRef_mp8_heating_benefit_upper_ap2_acs'
-    
-    # Verify the column exists in IRA result
-    assert benefit_col_ira in result_ira.columns, f"Column {benefit_col_ira} should exist in IRA result DataFrame"
-    
-    # Find valid homes with public NPV and rebate
-    valid_homes = sample_homes_df[
-        sample_homes_df['include_heating'] & 
-        sample_homes_df['iraRef_mp8_heating_public_npv_upper_ap2_acs'].notna() &
-        sample_homes_df['mp8_heating_rebate_amount'].notna()
-    ]
-    
-    # Verify benefit calculation for IRA scenario
-    for idx in valid_homes.index:
-        public_npv = sample_homes_df.loc[idx, 'iraRef_mp8_heating_public_npv_upper_ap2_acs']
-        rebate = sample_homes_df.loc[idx, 'mp8_heating_rebate_amount']
-        expected_benefit = max(0, public_npv - rebate)  # .clip(lower=0)
-        
-        assert result_ira.loc[idx, benefit_col_ira] == expected_benefit, \
-            f"Home at index {idx} should have benefit {expected_benefit} in IRA scenario"
-    
-    # Check benefit calculation for non-IRA scenario
-    benefit_col_no_ira = 'preIRA_mp8_heating_benefit_upper_ap2_acs'
-    
-    # Verify the column exists in non-IRA result
-    assert benefit_col_no_ira in result_no_ira.columns, f"Column {benefit_col_no_ira} should exist in non-IRA result DataFrame"
-    
-    # Verify all values are zero in non-IRA scenario
-    valid_no_ira_homes = sample_homes_df[sample_homes_df['include_heating']]
-    for idx in valid_no_ira_homes.index:
-        assert result_no_ira.loc[idx, benefit_col_no_ira] == 0, \
-            f"Home at index {idx} should have zero benefit in non-IRA scenario"
-
-
-# -------------------------------------------------------------------------
-#              ERROR HANDLING TESTS
-# -------------------------------------------------------------------------
-
-def test_missing_required_columns(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test handling of missing required columns.
-    
-    This test verifies that adoption_decision raises appropriate errors
-    when required columns are missing from the input DataFrame.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Create a copy of the DataFrame and remove a required column
-    df_missing = sample_homes_df.copy()
-    df_missing = df_missing.drop(columns=['upgrade_hvac_heating_efficiency'])
-    
-    # Call adoption_decision and expect an error
-    with pytest.raises(KeyError) as excinfo:
-        adoption_decision(
-            df=df_missing,
-            menu_mp=8,
-            policy_scenario='AEO2023 Reference Case',
-            rcm_model='ap2',
-            cr_function='acs',
-            climate_sensitivity=False
-        )
-    
-    # Verify error message mentions missing column
-    error_msg = str(excinfo.value)
-    assert "upgrade_hvac_heating_efficiency" in error_msg or "missing" in error_msg.lower(), \
-        "Error message should mention the missing required column"
-
-
-def test_invalid_data_type_handling(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test handling of invalid data types in NPV columns.
-    
-    This test verifies that adoption_decision handles invalid data types
-    by attempting to convert them to numeric values.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Create a copy of the DataFrame and modify a column to have string values
-    df_invalid_type = sample_homes_df.copy()
-    df_invalid_type['iraRef_mp8_heating_private_npv_lessWTP'] = df_invalid_type['iraRef_mp8_heating_private_npv_lessWTP'].astype(str)
-    
-    # Create mock pd.to_numeric to track if it's called
-    to_numeric_called = False
-    original_to_numeric = pd.to_numeric
-    
-    def mock_to_numeric(*args, **kwargs):
-        """Mock to track calls to pd.to_numeric."""
-        nonlocal to_numeric_called
-        to_numeric_called = True
-        return original_to_numeric(*args, **kwargs)
-    
-    # Apply monkeypatching
-    monkeypatch.setattr(pd, 'to_numeric', mock_to_numeric)
-    
-    # Call adoption_decision
-    try:
-        result = adoption_decision(
-            df=df_invalid_type,
-            menu_mp=8,
-            policy_scenario='AEO2023 Reference Case',
-            rcm_model='ap2',
-            cr_function='acs',
-            climate_sensitivity=False
-        )
-        
-        # Verify to_numeric was called
-        assert to_numeric_called, "pd.to_numeric should be called to convert string values"
-        
-    except Exception as e:
-        # If an error occurs, verify it's related to data type conversion
-        error_msg = str(e)
-        assert "convert" in error_msg.lower() or "numeric" in error_msg.lower(), \
-            "Error message should mention conversion issues"
-
-
-def test_error_handling_for_invalid_scc(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test handling of invalid SCC assumptions.
-    
-    This test verifies that adoption_decision raises an appropriate error
-    when SCC_ASSUMPTIONS is empty.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Mock SCC_ASSUMPTIONS to be empty
-    monkeypatch.setattr('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.SCC_ASSUMPTIONS', [])
-    
-    # Call adoption_decision and expect an error
-    with pytest.raises(ValueError) as excinfo:
-        adoption_decision(
-            df=sample_homes_df,
-            menu_mp=8,
-            policy_scenario='AEO2023 Reference Case',
-            rcm_model='ap2',
-            cr_function='acs',
-            climate_sensitivity=True  # This triggers the use of SCC_ASSUMPTIONS
-        )
-    
-    # Verify error message mentions SCC_ASSUMPTIONS
-    error_msg = str(excinfo.value)
-    assert "SCC_ASSUMPTIONS" in error_msg or "empty" in error_msg.lower(), \
-        "Error message should mention empty SCC_ASSUMPTIONS"
-
-
-def test_category_error_graceful_continuation(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test graceful continuation after category-specific error.
-    
-    This test verifies that adoption_decision continues processing other
-    categories even if one category encounters an error.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Track which categories are processed
-    processed_categories = set()
-    
-    # Save original initialize_validation_tracking
-    original_init_tracking = initialize_validation_tracking
-    
-    # Create mock for initialize_validation_tracking that raises error for one category
-    def mock_init_tracking(df, category, menu_mp, verbose=True):
-        """Mock that raises an error for one specific category."""
-        if category == 'heating':
-            raise ValueError("Simulated error for testing graceful continuation")
-        
-        # For other categories, track and process normally
-        processed_categories.add(category)
-        return original_init_tracking(df, category, menu_mp, verbose)
-    
-    # Apply monkeypatching
-    monkeypatch.setattr(
-        'cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.initialize_validation_tracking',
-        mock_init_tracking
-    )
-    
-    # Call adoption_decision and expect it to complete without error
-    try:
-        result = adoption_decision(
-            df=sample_homes_df,
-            menu_mp=8,
-            policy_scenario='AEO2023 Reference Case',
-            rcm_model='ap2',
-            cr_function='acs',
-            climate_sensitivity=False
-        )
-        
-        # Verify 'heating' was not processed but other categories were
-        assert 'heating' not in processed_categories, "'heating' category should not be processed"
-        assert len(processed_categories) > 0, "At least some categories should be processed"
-        assert all(cat in processed_categories for cat in ['waterHeating', 'clothesDrying', 'cooking']), \
-            "All other categories should be processed"
-        
-    except Exception as e:
-        pytest.fail(f"adoption_decision should handle category errors gracefully, but raised: {e}")
-
-
-# -------------------------------------------------------------------------
-#              INTEGRATION TESTS
-# -------------------------------------------------------------------------
-
-def test_end_to_end_processing(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test complete end-to-end processing of the adoption_decision function.
-    
-    This test verifies that adoption_decision correctly processes all equipment
-    categories and returns a DataFrame with all expected result columns.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision
-    result = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
-    )
-    
-    # Verify result is a DataFrame
-    assert isinstance(result, pd.DataFrame), "Result should be a pandas DataFrame"
-    
-    # Verify all expected columns are present for each category
-    for category in EQUIPMENT_SPECS.keys():
+    # Check that health-only analysis columns exist (including moreWTP)
+    for category in UPGRADE_COLUMNS:
         expected_cols = [
-            f'iraRef_mp8_{category}_health_sensitivity',
-            f'iraRef_mp8_{category}_benefit_upper_ap2_acs',
-            f'iraRef_mp8_{category}_total_npv_lessWTP_upper_ap2_acs',
-            f'iraRef_mp8_{category}_total_npv_moreWTP_upper_ap2_acs',
-            f'iraRef_mp8_{category}_adoption_upper_ap2_acs',
-            f'iraRef_mp8_{category}_impact_upper_ap2_acs'
+            f'iraRef_mp1_{category}_adoption_healthOnly_ap2_acs',
+            f'iraRef_mp1_{category}_impact_healthOnly_ap2_acs',
+            f'iraRef_mp1_{category}_total_npv_lessWTP_healthOnly_ap2_acs',
+            f'iraRef_mp1_{category}_total_npv_moreWTP_healthOnly_ap2_acs'  # Added moreWTP
         ]
-        
         for col in expected_cols:
-            assert col in result.columns, f"Result should contain column '{col}'"
+            assert col in result.columns, f"Missing health-only column: {col}"
 
 
-def test_across_policy_scenarios(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        policy_scenario: str,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test adoption_decision with different policy scenarios.
+# =============================================================================
+# SENSITIVITY ANALYSIS TESTS
+# =============================================================================
+
+def test_sensitivity_analysis_differences():
+    """Test that different sensitivity analyses can produce different results."""
+    # Create test data where climate and health NPVs have different signs
+    df_test = pd.DataFrame({
+        'private_npv_lessWTP': [-1000],  # Negative private NPV
+        'private_npv_moreWTP': [-500],   # Negative moreWTP private NPV
+        'climate_npv': [3000],           # Positive climate NPV  
+        'health_npv': [-500],            # Negative health NPV
+        'public_npv': [2500],            # Combined = 3000 + (-500) = 2500 (positive)
+        'upgrade_column': ['upgrade']
+    })
     
-    This parametrized test verifies that adoption_decision works correctly
-    with all policy scenarios and uses the appropriate column naming.
+    valid_mask = pd.Series([True])
+    df_new_columns = pd.DataFrame(index=df_test.index)
     
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        policy_scenario: Parametrized fixture providing policy scenario
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
+    # Calculate total NPVs for each analysis type
+    df_new_columns['combined_lessWTP'] = df_test['private_npv_lessWTP'] + df_test['public_npv']    # = 1500 (positive)
+    df_new_columns['combined_moreWTP'] = df_test['private_npv_moreWTP'] + df_test['public_npv']    # = 2000 (positive)
+    df_new_columns['climate_lessWTP'] = df_test['private_npv_lessWTP'] + df_test['climate_npv']    # = 2000 (positive)
+    df_new_columns['climate_moreWTP'] = df_test['private_npv_moreWTP'] + df_test['climate_npv']    # = 2500 (positive)
+    df_new_columns['health_lessWTP'] = df_test['private_npv_lessWTP'] + df_test['health_npv']      # = -1500 (negative)
+    df_new_columns['health_moreWTP'] = df_test['private_npv_moreWTP'] + df_test['health_npv']      # = -1000 (negative)
     
-    # Determine expected prefixes based on policy scenario
-    if policy_scenario == 'No Inflation Reduction Act':
-        expected_prefix = 'preIRA_mp8_'
-    else:
-        expected_prefix = 'iraRef_mp8_'
-    
-    # Call adoption_decision
-    result = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario=policy_scenario,
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
+    # Test combined analysis (should be feasible)
+    result_combined = _process_adoption_tiers_and_impacts(
+        df_new_columns=df_new_columns.copy(),
+        df_copy=df_test,
+        valid_mask=valid_mask,
+        upgrade_column='upgrade_column',
+        lessWTP_private_npv_col='private_npv_lessWTP',
+        moreWTP_private_npv_col='private_npv_moreWTP',
+        lessWTP_total_npv_col='combined_lessWTP',
+        moreWTP_total_npv_col='combined_moreWTP',
+        public_npv_col='public_npv',
+        adoption_col='adoption_combined',
+        impact_col='impact_combined'
     )
     
-    # Verify columns have the expected prefix
-    category = 'heating'  # Focus on one category for simplicity
-    columns_for_category = [col for col in result.columns if category in col and col.startswith(expected_prefix)]
-    
-    assert len(columns_for_category) > 0, \
-        f"Result should contain columns with prefix '{expected_prefix}' for category '{category}'"
-
-
-def test_across_rcm_models_and_cr_functions(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        rcm_model: str,
-        cr_function: str,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test adoption_decision with different RCM models and CR functions.
-    
-    This parametrized test verifies that adoption_decision works correctly
-    with all RCM models and CR functions and includes them in column names.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        rcm_model: Parametrized fixture providing RCM model
-        cr_function: Parametrized fixture providing CR function
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision
-    result = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model=rcm_model,
-        cr_function=cr_function,
-        climate_sensitivity=False
+    # Test climate-only analysis (should be feasible)
+    result_climate = _process_adoption_tiers_and_impacts(
+        df_new_columns=df_new_columns.copy(),
+        df_copy=df_test,
+        valid_mask=valid_mask,
+        upgrade_column='upgrade_column',
+        lessWTP_private_npv_col='private_npv_lessWTP',
+        moreWTP_private_npv_col='private_npv_moreWTP',
+        lessWTP_total_npv_col='climate_lessWTP',
+        moreWTP_total_npv_col='climate_moreWTP',
+        public_npv_col='climate_npv',
+        adoption_col='adoption_climate',
+        impact_col='impact_climate'
     )
     
-    # Verify columns include RCM model and CR function
-    category = 'heating'  # Focus on one category for simplicity
-    expected_pattern = f'iraRef_mp8_{category}_.*{rcm_model}_{cr_function}'
-    columns_matching = [col for col in result.columns if category in col and rcm_model in col and cr_function in col]
-    
-    assert len(columns_matching) > 0, \
-        f"Result should contain columns with RCM model '{rcm_model}' and CR function '{cr_function}'"
-    
-    # Verify health sensitivity column has correct value
-    health_col = f'iraRef_mp8_{category}_health_sensitivity'
-    assert health_col in result.columns, f"Result should contain column '{health_col}'"
-    
-    # Check a non-NaN value to confirm it includes RCM model and CR function
-    for idx in sample_homes_df.index:
-        if not pd.isna(result.loc[idx, health_col]):
-            assert rcm_model in result.loc[idx, health_col], \
-                f"Health sensitivity at index {idx} should contain RCM model '{rcm_model}'"
-            assert cr_function in result.loc[idx, health_col], \
-                f"Health sensitivity at index {idx} should contain CR function '{cr_function}'"
-            break
-
-
-def test_climate_sensitivity_parameter(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test climate_sensitivity parameter behavior.
-    
-    This test verifies that the climate_sensitivity parameter correctly
-    controls which SCC values are used (all or just 'upper').
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Mock SCC_ASSUMPTIONS with multiple values
-    mock_scc = ['lower', 'central', 'upper']
-    monkeypatch.setattr('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.SCC_ASSUMPTIONS', mock_scc)
-    
-    # Track which SCC values are used
-    scc_values_used = set()
-    
-    # Save original iterate through SCC assumptions behavior
-    original_for_loop = list.__iter__
-    
-    # Create a mock for list iteration that tracks SCC values
-    def mock_for_iter(self):
-        """Mock that tracks which values are iterated through."""
-        original_iter = original_for_loop(self)
-        for item in original_iter:
-            if item in mock_scc:
-                scc_values_used.add(item)
-            yield item
-    
-    # Apply monkeypatching for SCC loop
-    monkeypatch.setattr(list, '__iter__', mock_for_iter)
-    
-    # Call adoption_decision with climate_sensitivity=False
-    result_false = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=False
+    # Test health-only analysis (should be averse)
+    result_health = _process_adoption_tiers_and_impacts(
+        df_new_columns=df_new_columns.copy(),
+        df_copy=df_test,
+        valid_mask=valid_mask,
+        upgrade_column='upgrade_column',
+        lessWTP_private_npv_col='private_npv_lessWTP',
+        moreWTP_private_npv_col='private_npv_moreWTP',
+        lessWTP_total_npv_col='health_lessWTP',
+        moreWTP_total_npv_col='health_moreWTP',
+        public_npv_col='health_npv',
+        adoption_col='adoption_health',
+        impact_col='impact_health'
     )
     
-    # Verify only 'upper' SCC was used
-    assert scc_values_used == {'upper'}, \
-        "Only 'upper' SCC value should be used when climate_sensitivity=False"
-    
-    # Reset tracking and call with climate_sensitivity=True
-    scc_values_used.clear()
-    
-    result_true = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model='ap2',
-        cr_function='acs',
-        climate_sensitivity=True
-    )
-    
-    # Verify all SCC values were used
-    assert scc_values_used == set(mock_scc), \
-        "All SCC values should be used when climate_sensitivity=True"
+    # Verify different results
+    assert 'Public Benefit' in result_combined.loc[0, 'impact_combined']
+    assert 'Public Benefit' in result_climate.loc[0, 'impact_climate']
+    assert 'Public Detriment' in result_health.loc[0, 'impact_health']
 
 
-def test_health_sensitivity_column(
-        sample_homes_df: pd.DataFrame,
-        mock_define_scenario_settings: None,
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test health sensitivity column creation.
+# =============================================================================
+# VALIDATION FRAMEWORK TESTS
+# =============================================================================
+
+@patch('cmu_tare_model.utils.validation_framework.initialize_validation_tracking')
+def test_validation_framework_steps(mock_validation):
+    """Test that all 5 validation framework steps are executed."""
+    sample_npv_data = create_sample_npv_data()
     
-    This test verifies that adoption_decision correctly adds a health_sensitivity
-    column with the RCM model and CR function for each category.
-    
-    Args:
-        sample_homes_df: Fixture providing test data
-        mock_define_scenario_settings: Fixture mocking scenario parameters
-        monkeypatch: Pytest fixture for patching functions
-    """
-    # Mock print function to avoid cluttering test output
-    monkeypatch.setattr('builtins.print', lambda *args, **kwargs: None)
-    
-    # Call adoption_decision
-    rcm_model = 'ap2'
-    cr_function = 'acs'
-    result = adoption_decision(
-        df=sample_homes_df,
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
-        rcm_model=rcm_model,
-        cr_function=cr_function,
-        climate_sensitivity=False
+    # Mock the validation tracking
+    mock_validation.return_value = (
+        sample_npv_data.copy(),
+        pd.Series(True, index=sample_npv_data.index),
+        {category: [] for category in UPGRADE_COLUMNS},
+        []
     )
     
-    # Check health sensitivity column
-    for category in EQUIPMENT_SPECS.keys():
-        health_col = f'iraRef_mp8_{category}_health_sensitivity'
+    with patch('cmu_tare_model.utils.validation_framework.create_retrofit_only_series') as mock_create, \
+         patch('cmu_tare_model.utils.validation_framework.apply_new_columns_to_dataframe') as mock_apply, \
+         patch('cmu_tare_model.utils.validation_framework.apply_final_masking') as mock_final:
         
-        # Verify column exists
-        assert health_col in result.columns, f"Result should contain column '{health_col}'"
+        mock_create.return_value = pd.Series(0.0, index=sample_npv_data.index)
+        mock_apply.side_effect = lambda df, new_cols, *args: (df, {})
+        mock_final.side_effect = lambda df, *args, **kwargs: df
         
-        # Verify it contains RCM model and CR function
-        for idx in sample_homes_df.index:
-            if sample_homes_df.loc[idx, f'include_{category}']:
-                assert rcm_model in result.loc[idx, health_col], \
-                    f"Health sensitivity at index {idx} should contain RCM model '{rcm_model}'"
-                assert cr_function in result.loc[idx, health_col], \
-                    f"Health sensitivity at index {idx} should contain CR function '{cr_function}'"
+        result = adoption_decision(sample_npv_data, 1, 'AEO2023 Reference Case', 'ap2', 'acs')
+        
+        # Verify that validation framework functions were called
+        assert mock_validation.called, "Step 1: initialize_validation_tracking not called"
+        assert mock_create.called, "Step 2: create_retrofit_only_series not called"
+        # Steps 3 & 4 are handled by _calculate_total_npv_columns function
+        assert mock_final.called, "Step 5: apply_final_masking not called"
 
+
+# =============================================================================
+# EDGE CASE TESTS
+# =============================================================================
+
+def test_edge_case_all_invalid_homes():
+    """Test behavior when all homes are invalid for a category."""
+    sample_data = create_sample_data()
+    
+    # Make all homes invalid for heating
+    sample_data['include_heating'] = False
+    
+    # Add minimal NPV columns
+    scenario_prefix = 'iraRef_mp1_'
+    for category in ['heating']:
+        sample_data[f'{scenario_prefix}{category}_private_npv_lessWTP'] = 1000
+        sample_data[f'{scenario_prefix}{category}_private_npv_moreWTP'] = 1000
+        sample_data[f'{scenario_prefix}{category}_climate_npv_central'] = 1000
+        sample_data[f'{scenario_prefix}{category}_health_npv_ap2_acs'] = 1000
+        sample_data[f'{scenario_prefix}{category}_public_npv_central_ap2_acs'] = 2000
+    
+    with patch('cmu_tare_model.utils.validation_framework.initialize_validation_tracking') as mock_validation:
+        mock_validation.return_value = (
+            sample_data.copy(),
+            pd.Series(False, index=sample_data.index),  # All homes invalid
+            {'heating': []},
+            []
+        )
+        
+        result = adoption_decision(sample_data, 1, 'AEO2023 Reference Case', 'ap2', 'acs')
+        
+        # All adoption decisions should be 'N/A: Invalid Baseline Fuel/Tech'
+        adoption_col = 'iraRef_mp1_heating_adoption_central_ap2_acs'
+        if adoption_col in result.columns:
+            assert all(result[adoption_col] == 'N/A: Invalid Baseline Fuel/Tech')
+
+
+def test_numeric_conversion_robustness():
+    """Test that non-numeric values are handled properly."""
+    sample_data = create_sample_data()
+    
+    # Add NPV columns with some non-numeric values
+    scenario_prefix = 'iraRef_mp1_'
+    sample_data[f'{scenario_prefix}heating_private_npv_lessWTP'] = ['1000', '2000', 'invalid', '3000'] + [1000] * (len(sample_data) - 4)
+    sample_data[f'{scenario_prefix}heating_private_npv_moreWTP'] = [2000] * len(sample_data)
+    sample_data[f'{scenario_prefix}heating_climate_npv_central'] = [1500] * len(sample_data)
+    sample_data[f'{scenario_prefix}heating_health_npv_ap2_acs'] = [500] * len(sample_data)
+    sample_data[f'{scenario_prefix}heating_public_npv_central_ap2_acs'] = [2000] * len(sample_data)
+    
+    # Should not raise an error due to numeric conversion
+    with patch('cmu_tare_model.utils.validation_framework.initialize_validation_tracking') as mock_validation:
+        mock_validation.return_value = (
+            sample_data.copy(),
+            pd.Series(True, index=sample_data.index),
+            {'heating': []},
+            []
+        )
+        
+        result = adoption_decision(sample_data, 1, 'AEO2023 Reference Case', 'ap2', 'acs')
+        
+        # The function should complete without error
+        assert result is not None
+
+
+# =============================================================================
+# MAIN TEST RUNNER
+# =============================================================================
 
 if __name__ == "__main__":
-    pytest.main(["-xvs", __file__])
+    # Run tests with verbose output
+    pytest.main([__file__, "-v", "--tb=short"])

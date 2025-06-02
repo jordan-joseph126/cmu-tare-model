@@ -35,7 +35,7 @@ def thousands_formatter(x: float, pos: int) -> str:
     try:
         x_float = float(x)
     except (TypeError, ValueError):
-        raise TypeError(f"Input value must be numeric, got {type(x).__name__}: {x}")
+        return str(x)  # Return string representation instead of raising error
     
     if abs(x_float) >= 1000:
         return f'{x_float/1000:g}K'
@@ -47,11 +47,11 @@ def create_subplot_histogram(
     ax: plt.Axes, 
     df: pd.DataFrame, 
     x_col: str, 
-    bin_number: int, 
+    bin_number: Union[int, str] = 'auto',  # CHANGE: Allow 'auto' for intelligent binning
     x_label: Optional[str] = None, 
     y_label: Optional[str] = None, 
-    lower_percentile: float = 2.5, 
-    upper_percentile: float = 97.5, 
+    lower_percentile: Optional[float] = 2.5,  # CHANGE: Allow None 
+    upper_percentile: Optional[float] = 97.5,  # CHANGE: Allow None
     color_code: str = 'base_fuel', 
     statistic: str = 'count', 
     include_zero: bool = False, 
@@ -59,19 +59,19 @@ def create_subplot_histogram(
 ) -> None:
     """Creates a histogram on the provided axes using the specified DataFrame.
     
-    This function is designed to be used within a grid of subplots. It filters
-    data based on percentile ranges and creates a stacked histogram by fuel type
-    with consistent formatting.
+    This function is designed to be used within a grid of subplots. It can optionally
+    limit the display range based on percentiles while showing all data, and creates 
+    a stacked histogram by fuel type with consistent formatting.
     
     Args:
         ax: Matplotlib Axes object where the histogram will be plotted
         df: DataFrame containing the data to plot
         x_col: Column name in df for x-axis data
-        bin_number: Number of bins for the histogram
+        bin_number: Number of bins for the histogram, or 'auto' for intelligent binning
         x_label: Optional label for x-axis
         y_label: Optional label for y-axis
-        lower_percentile: Lower percentile for data range filtering (0-100)
-        upper_percentile: Upper percentile for data range filtering (0-100)
+        lower_percentile: Lower percentile for display range (0-100), or None for no limit
+        upper_percentile: Upper percentile for display range (0-100), or None for no limit
         color_code: Column name for color coding (usually fuel type)
         statistic: Statistic to compute ('count', 'density', 'probability', etc.)
         include_zero: Whether to include zero values in the visualization
@@ -79,7 +79,6 @@ def create_subplot_histogram(
         
     Raises:
         KeyError: If x_col or color_code columns don't exist in the DataFrame
-        ValueError: If percentile values are invalid
     """
     # Minimal validation - just check for column existence
     if x_col not in df.columns:
@@ -88,16 +87,17 @@ def create_subplot_histogram(
     # Create a copy to avoid modifying the original DataFrame
     df_copy = df.copy()
     
-    # Remove zero values if specified
+    # Handle zero values (keep original approach - correct for multi-appliance data)
     if not include_zero:
         df_copy[x_col] = df_copy[x_col].replace(0, np.nan)
 
-    # Calculate data range based on percentiles
-    lower_limit = df_copy[x_col].quantile(lower_percentile / 100)
-    upper_limit = df_copy[x_col].quantile(upper_percentile / 100)
-
-    # Filter data to the specified range
-    valid_data = df_copy[x_col][(df_copy[x_col] >= lower_limit) & (df_copy[x_col] <= upper_limit)]
+    # FIXED: Calculate percentile limits for DISPLAY only (don't filter the data)
+    if lower_percentile is not None and upper_percentile is not None:
+        lower_limit = df_copy[x_col].quantile(lower_percentile / 100)
+        upper_limit = df_copy[x_col].quantile(upper_percentile / 100)
+    else:
+        lower_limit = None
+        upper_limit = None
 
     # Set the hue_order to match the unique fuel categories that exist in color_map
     hue_order = [fuel for fuel in df_copy[color_code].unique() if fuel in color_map_fuel]
@@ -105,12 +105,12 @@ def create_subplot_histogram(
     # Get colors only for the fuels that actually exist in the data (prevents palette warning)
     colors = [color_map_fuel[fuel] for fuel in hue_order]
 
-    # Create the histogram
+    # FIXED: Create the histogram using column name consistently (no filtered Series)
     sns.histplot(
-        data=df_copy, 
-        x=valid_data, 
+        data=df_copy,       # Full DataFrame (NaN values automatically excluded)
+        x=x_col,           # Column name (not filtered Series!)
         kde=False, 
-        bins=bin_number, 
+        bins=bin_number,   # Now supports 'auto' 
         hue=color_code, 
         hue_order=hue_order, 
         stat=statistic, 
@@ -127,8 +127,10 @@ def create_subplot_histogram(
     if y_label is not None:
         ax.set_ylabel(y_label, fontsize=22)
 
-    # Set axis limits based on percentile range
-    ax.set_xlim(left=lower_limit, right=upper_limit)
+    # FIXED: Set axis limits for DISPLAY only (optional, based on percentiles)
+    if lower_limit is not None and upper_limit is not None:
+        ax.set_xlim(left=lower_limit, right=upper_limit)
+    
     ax.tick_params(axis='both', labelsize=22)
 
     # Add vertical reference line at x=0
@@ -144,19 +146,19 @@ def create_subplot_histogram(
 
 def create_subplot_grid_histogram(
     df: Optional[pd.DataFrame] = None,                    # Single DataFrame (backward compatible)
-    dataframes: Optional[List[pd.DataFrame]] = None,      # Multiple DataFrames (NEW)
-    dataframe_indices: Optional[List[int]] = None,        # DataFrame mapping (NEW)
+    dataframes: Optional[List[pd.DataFrame]] = None,      # Multiple DataFrames
+    dataframe_indices: Optional[List[int]] = None,        # DataFrame mapping
     subplot_positions: Optional[List[Tuple[int, int]]] = None, 
     x_cols: Optional[List[str]] = None, 
     x_labels: Optional[List[str]] = None, 
     y_label: Optional[str] = None,
-    y_labels: Optional[List[str]] = None,                 # Individual y-labels (NEW)
-    bin_number: int = 20, 
-    lower_percentile: float = 2.5, 
-    upper_percentile: float = 97.5, 
+    y_labels: Optional[List[str]] = None,                 # Individual y-labels
+    bin_number: Union[int, str] = 'auto',                 # CHANGE: Default to 'auto' for intelligent binning
+    lower_percentile: Optional[float] = None,             # CHANGE: Default to None (show full range)
+    upper_percentile: Optional[float] = None,             # CHANGE: Default to None (show full range)
     statistic: str = 'count', 
     color_code: str = 'base_fuel', 
-    include_zero: bool = False, 
+    include_zero: bool = False,                           # Keep original default (zero → NaN is correct)
     suptitle: Optional[str] = None, 
     sharex: bool = False, 
     sharey: bool = False, 
@@ -169,6 +171,8 @@ def create_subplot_grid_histogram(
     This function creates a customizable grid of histograms with flexible DataFrame handling.
     It supports both single DataFrame (backward compatible) and multiple DataFrame modes.
     
+    UPDATED: Now shows full data range by default, with optional display range limiting.
+    
     Args:
         df: Single DataFrame for backward compatibility
         dataframes: List of DataFrames for multi-DataFrame visualizations
@@ -178,9 +182,9 @@ def create_subplot_grid_histogram(
         x_labels: Optional list of x-axis labels for each subplot
         y_label: Global y-axis label applied to all subplots (if y_labels not provided)
         y_labels: Optional list of individual y-axis labels for each subplot
-        bin_number: Number of bins for the histograms
-        lower_percentile: Lower percentile for data range filtering (0-100)
-        upper_percentile: Upper percentile for data range filtering (0-100)
+        bin_number: Number of bins for the histograms, or 'auto' for intelligent binning
+        lower_percentile: Lower percentile for display range (0-100), or None for full range
+        upper_percentile: Upper percentile for display range (0-100), or None for full range
         statistic: Statistic to compute ('count', 'density', 'probability', etc.)
         color_code: Column name for color coding (usually fuel type)
         include_zero: Whether to include zero values in the visualization
@@ -210,13 +214,13 @@ def create_subplot_grid_histogram(
     if len(subplot_positions) != len(x_cols):
         raise ValueError(f"Number of subplot positions ({len(subplot_positions)}) must match number of x columns ({len(x_cols)})")
     
-    # Set up DataFrame handling (NEW functionality)
+    # Set up DataFrame handling (same as before)
     if df is not None:
         # Single DataFrame mode (original behavior)
         df_list = [df]
         df_indices = [0] * len(subplot_positions)
     else:
-        # Multiple DataFrame mode (NEW)
+        # Multiple DataFrame mode
         df_list = dataframes
         if dataframe_indices is None:
             df_indices = [i % len(dataframes) for i in range(len(subplot_positions))]
@@ -232,8 +236,7 @@ def create_subplot_grid_histogram(
 
     fig, axes = plt.subplots(nrows=num_rows, ncols=num_cols, figsize=figure_size, sharex=sharex, sharey=sharey)
 
-    # FIX: Ensure axes is always 2D for consistent indexing
-    # This handles the matplotlib edge case where single row/column returns 1D array
+    # Ensure axes is always 2D for consistent indexing
     if num_rows == 1 and num_cols == 1:
         axes = np.array([[axes]])  # Single subplot
     elif num_rows == 1:
@@ -241,32 +244,32 @@ def create_subplot_grid_histogram(
     elif num_cols == 1:
         axes = np.array([[ax] for ax in axes])  # Multiple rows, single column
 
-    # Original dictionary mapping approach (now works with normalized 2D axes)
+    # Original dictionary mapping approach
     subplot_axes = {(pos[0], pos[1]): axes[pos[0], pos[1]] for pos in subplot_positions}
 
-    # Enhanced plot creation with multiple DataFrame support
+    # Create histograms with updated function
     for i, (pos, x_col) in enumerate(zip(subplot_positions, x_cols)):
-        # Get the appropriate DataFrame for this subplot (NEW)
+        # Get the appropriate DataFrame for this subplot
         current_df = df_list[df_indices[i]]
         
         # Check column existence just once before calling helper function
         if x_col not in current_df.columns:
             raise KeyError(f"Column '{x_col}' not found in DataFrame at index {df_indices[i]}. Available columns: {list(current_df.columns)}")
         
-        # Get labels (enhanced with individual y-labels)
+        # Get labels
         x_label = x_labels[i] if x_labels else None
-        current_y_label = y_labels[i] if y_labels else y_label  # NEW: individual y-labels
+        current_y_label = y_labels[i] if y_labels else y_label
         
-        # Create histogram using original function
+        # Create histogram using updated function
         create_subplot_histogram(
             ax=subplot_axes[pos],
-            df=current_df,  # Use appropriate DataFrame
+            df=current_df,
             x_col=x_col,
-            bin_number=bin_number,
+            bin_number=bin_number,          # Now supports 'auto'
             x_label=x_label,
-            y_label=current_y_label,  # Use individual or global y-label
-            lower_percentile=lower_percentile,
-            upper_percentile=upper_percentile,
+            y_label=current_y_label,
+            lower_percentile=lower_percentile,  # Now defaults to None
+            upper_percentile=upper_percentile,  # Now defaults to None
             statistic=statistic,
             color_code=color_code,
             include_zero=include_zero,
@@ -277,11 +280,13 @@ def create_subplot_grid_histogram(
     if suptitle:
         plt.suptitle(suptitle, fontweight='bold', fontsize=22)
 
+    # FIXED: Apply subplot titles to individual subplot positions, not just top row  
     if subplot_titles:
-        for col_index, title in enumerate(subplot_titles):
-            axes[0, col_index].set_title(title, fontsize=22, fontweight='bold')
+        for i, (pos, title) in enumerate(zip(subplot_positions, subplot_titles)):
+            if i < len(subplot_titles):
+                subplot_axes[pos].set_title(title, fontsize=22, fontweight='bold')
 
-    # Original legend logic with improved spacing
+    # Original legend logic below (unchanged)
     legend_labels = list(color_map_fuel.keys())
     legend_handles = [plt.Rectangle((0, 0), 1, 1, color=color_map_fuel[label]) for label in legend_labels]
     fig.legend(
@@ -291,13 +296,13 @@ def create_subplot_grid_histogram(
         ncol=len(legend_labels), 
         prop={'size': 22}, 
         labelspacing=0.5, 
-        bbox_to_anchor=(0.5, -0.05)  # IMPROVED: More space between legend and x-ticks
+        bbox_to_anchor=(0.5, -0.05)
     )             
     
     # Original layout logic with room for legend
-    plt.tight_layout(rect=[0, 0.05, 1, 1])  # IMPROVED: Reserve bottom space for legend
+    plt.tight_layout(rect=[0, 0.05, 1, 1])
     
-    return fig  # Return figure object
+    return fig
 
 
 def print_positive_percentages_complete(
@@ -414,4 +419,3 @@ def print_positive_percentages_complete(
         
         print(f"\nHomes with \"Other Fuel\" (Invalid Fuel/Tech) make up the remaining {unaccounted_rows:,} of {total_df_rows:,} total dataframe rows ({unaccounted_percentage:.1f}%).")
         print(f"NaN values in column: {total_df_rows - total_non_nan:,} rows ({((total_df_rows - total_non_nan) / total_df_rows * 100):.1f}% of dataframe)")
-    

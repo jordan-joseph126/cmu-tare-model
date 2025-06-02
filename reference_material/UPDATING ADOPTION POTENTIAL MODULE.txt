@@ -1,0 +1,99 @@
+UPDATING ADOPTION POTENTIAL MODULE TO INCLUDE ADDITIONAL SENSITIVITIES
+
+```
+Hi Claude, I need assistance updating the adoption potential sensitivity program. I would like to add an additional set of sensitivities to examine the impact of climate or health alone on total NPV. Total NPV is the Private NPV plus any monetized public impacts (climate and health). Additional sensitivities:
+
+Total NPV: No Health (+ Low, Central, Upper Climate) --> use Climate NPV instead of Public NPV
+
+Total NPV: No Climate (+ 6 Health Sensitivities) --> Use Health NPV instead of Public NPV
+
+Please retain the following requirements:
+
+1. The module should implement the five-step validation framework:
+   - Step 1: Mask initialization with initialize_validation_tracking()
+   - Step 2: Series initialization with create_retrofit_only_series()
+   - Step 3: Valid-only calculation (calculations only for valid homes)
+   - Step 4: Valid-only updates (updates only for valid homes)
+   - Step 5: Final masking with apply_final_masking()
+
+2. The implementation should calculate these key metrics:
+   - Annual emissions (CO2e, SO2, NOx, PM2.5) for baseline and retrofit scenarios
+   - Lifetime emissions for different equipment types
+   - Avoided emissions (baseline - retrofit) for different policy scenarios
+   - Climate damages based on social cost of carbon
+   - Health damages based on emission factors and health impact models
+
+3. The module should support analysis across different policy scenarios:
+   - "No Inflation Reduction Act" scenario
+   - "AEO2023 Reference Case" scenario
+
+Here is my current implementation draft:
+```python
+[SEE ATTACHED .PY FILE]
+```
+
+Here's an example of the new sensitivity column naming conventions:
+```python
+                            if sensitivity_analysis == 'climate_only':
+                                public_npv_col = f'{scenario_prefix}{category}_climate_npv_{scc}'
+                                suffix = f'climateOnly_{scc}'
+                                sensitivity_label = f'Climate Only: {scc}'
+
+                            elif sensitivity_analysis == 'health_only':
+                                public_npv_col = f'{scenario_prefix}{category}_health_npv_{rcm}_{cr}'
+                                suffix = f'healthOnly_{rcm}_{cr}'
+                                sensitivity_label = f'Health Only: {rcm}, {cr}'
+
+                            elif sensitivity_analysis == 'climate_and_health':
+                                public_npv_col = f'{scenario_prefix}{category}_public_npv_{scc}_{rcm}_{cr}'
+                                suffix = f'{scc}_{rcm}_{cr}'
+                                sensitivity_label = f'Climate: {scc} | Health: {rcm}, {cr}'
+
+                            # REDUCED: Consolidated logging
+                            print(f"    {sensitivity_label}")
+                            
+                            # FIXED: Updated column names to include unique suffix
+                            new_col_names = {
+                                'sensitivity_type': f'{scenario_prefix}{category}_sensitivity_type_{suffix}',
+                                'benefit': f'{scenario_prefix}{category}_benefit_{suffix}',
+                                'lessWTP_total_npv': f'{scenario_prefix}{category}_total_npv_lessWTP_{suffix}',
+                                'moreWTP_total_npv': f'{scenario_prefix}{category}_total_npv_moreWTP_{suffix}',
+                                'adoption': f'{scenario_prefix}{category}_adoption_{suffix}',
+                                'impact': f'{scenario_prefix}{category}_impact_{suffix}'
+                            }
+
+                            # Track all output columns for masking
+                            category_columns_to_mask.extend(new_col_names.values())
+
+```
+
+Additional relevant files:
+- `modeling_params.py` for parameter definitions
+- `constants.py` for system constants
+- `validation_framework.py` for core validation utilities
+
+Please provide:
+- A step-by-step implementation plan
+- Detailed code blocks (with comments) for key functions
+- Recommendations for edge case handling
+- Explanation of WHY each implementation choice is made
+- Advice on performance optimization
+
+Ensure strict adherence to all coding standards, including Google-style docstrings, appropriate type hints, strategic comments, and proper error handling.
+
+Before concluding, please review your entire response to ensure completeness and accuracy. I value thoroughness and correctness over speed.
+```
+
+## RESPONSE QUALITY EXPECTATIONS
+
+**IMPORTANT: Please take your time with this analysis.** I need a thorough, comprehensive response that demonstrates a deep understanding of the issues. I value **thoroughness and accuracy over speed**.
+
+### Quality Standards Required:
+- **Systematic Analysis**: Work through each issue methodically rather than providing quick fixes
+- **Complete Investigation**: Don't skip steps in your diagnostic process - show your full reasoning
+- **Educational Depth**: Explain the underlying principles and WHY each issue occurs, not just HOW to fix it
+- **Comprehensive Coverage**: Address all three critical issues with equal depth and attention
+- **Self-Review**: Before concluding, review your entire response to ensure completeness and accuracy
+
+**Please invest the time needed to provide a response that truly helps me understand both the immediate solutions AND the underlying principles for handling similar issues in the future.**
+
