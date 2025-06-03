@@ -1,1261 +1,622 @@
-# ====================================================================================================================================================================
-# CLIMATE ONLY
-# ====================================================================================================================================================================
-
-
-# ============ FUNCTION CALL ============
-
-
-df_euss_am_mp8_home_inmap = calculate_climate_only_adoption_robust(
-    df=df_euss_am_mp8_home_inmap,
-    menu_mp=menu_mp,
-    policy_scenario='No Inflation Reduction Act',
-    # scc_assumptions=SCC_ASSUMPTIONS,
-    verbose=True  # Set to True for detailed output
-)
-
-print(f"""
+SCENARIO ANALYSIS (NO INFLATION REDUCTION ACT): ADOPTION POTENTIAL
 ====================================================================================================================================================================
-df_euss_am_mp8_home_inmap:
+determine_adoption_potential_sensitivity_robust.py file contains the definitions for:
+- adoption_decision function (combined climate + health analysis)
+- calculate_climate_only_adoption_robust function (climate-only analysis)
+- calculate_health_only_adoption_robust function (health-only analysis)
+      
+RESULTS OUTPUT (NO INFLATION REDUCTION ACT):
 
-{df_euss_am_mp8_home_inmap}
+Processing AP2 model...
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
 
-""")
+Calculating Adoption Potential for heating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+Found 260211 valid homes out of 331531 for heating adoption potential
 
-df_euss_am_mp8_home_inmap = calculate_climate_only_adoption_robust(
-    df=df_euss_am_mp8_home_inmap,
-    menu_mp=menu_mp,
-    policy_scenario='AEO2023 Reference Case',
-    # scc_assumptions=SCC_ASSUMPTIONS,
-    verbose=True  # Set to True for detailed output
-)
+Processing SCC assumption: lower for heating/lower/ap2/acs
 
-print(f"""
-====================================================================================================================================================================
-df_euss_am_mp8_home_inmap:
+Processing SCC assumption: central for heating/central/ap2/acs
 
-{df_euss_am_mp8_home_inmap}
+Processing SCC assumption: upper for heating/upper/ap2/acs
 
-""")
+Calculating Adoption Potential for waterHeating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+Found 322799 valid homes out of 331531 for waterHeating adoption potential
 
+Processing SCC assumption: lower for waterHeating/lower/ap2/acs
 
-# ============ OUTPUT ============
+Processing SCC assumption: central for waterHeating/central/ap2/acs
 
+Processing SCC assumption: upper for waterHeating/upper/ap2/acs
 
-Checking for and fixing duplicate columns...
+Calculating Adoption Potential for clothesDrying under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+Found 316573 valid homes out of 331531 for clothesDrying adoption potential
+
+Processing SCC assumption: lower for clothesDrying/lower/ap2/acs
+
+Processing SCC assumption: central for clothesDrying/central/ap2/acs
+
+Processing SCC assumption: upper for clothesDrying/upper/ap2/acs
+
+Calculating Adoption Potential for cooking under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+Found 126373 valid homes out of 331531 for cooking adoption potential
+
+Processing SCC assumption: lower for cooking/lower/ap2/acs
+
+Processing SCC assumption: central for cooking/central/ap2/acs
+
+Processing SCC assumption: upper for cooking/upper/ap2/acs
+
+Verifying masking for all calculated columns:
+Masking 60 columns for category 'cooking'
+    preIRA_mp10_cooking_health_sensitivity: Masked 205158 values
+    preIRA_mp10_cooking_adoption_lower_ap2_acs: Masked 205158 values
+    preIRA_mp10_cooking_impact_lower_ap2_acs: Masked 205158 values
+    preIRA_mp10_cooking_adoption_central_ap2_acs: Masked 205158 values
+    preIRA_mp10_cooking_impact_central_ap2_acs: Masked 205158 values
+    preIRA_mp10_cooking_adoption_upper_ap2_acs: Masked 205158 values
+    preIRA_mp10_cooking_impact_upper_ap2_acs: Masked 205158 values
+  Total: Masked 1436106 values across 60 columns
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+
+Calculating Adoption Potential for heating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+Found 260211 valid homes out of 331531 for heating adoption potential
+
+Processing SCC assumption: lower for heating/lower/ap2/h6c
+
+Processing SCC assumption: central for heating/central/ap2/h6c
+
+Processing SCC assumption: upper for heating/upper/ap2/h6c
+
+Calculating Adoption Potential for waterHeating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+Found 322799 valid homes out of 331531 for waterHeating adoption potential
+
+Processing SCC assumption: lower for waterHeating/lower/ap2/h6c
+
+Processing SCC assumption: central for waterHeating/central/ap2/h6c
+
+Processing SCC assumption: upper for waterHeating/upper/ap2/h6c
+
+Calculating Adoption Potential for clothesDrying under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+Found 316573 valid homes out of 331531 for clothesDrying adoption potential
+
+Processing SCC assumption: lower for clothesDrying/lower/ap2/h6c
+
+Processing SCC assumption: central for clothesDrying/central/ap2/h6c
+
+Processing SCC assumption: upper for clothesDrying/upper/ap2/h6c
+
+Calculating Adoption Potential for cooking under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+Found 126373 valid homes out of 331531 for cooking adoption potential
+
+Processing SCC assumption: lower for cooking/lower/ap2/h6c
+
+Processing SCC assumption: central for cooking/central/ap2/h6c
+
+Processing SCC assumption: upper for cooking/upper/ap2/h6c
+
+Verifying masking for all calculated columns:
+Masking 60 columns for category 'cooking'
+    preIRA_mp10_cooking_health_sensitivity: Masked 205158 values
+    preIRA_mp10_cooking_adoption_lower_ap2_h6c: Masked 205158 values
+    preIRA_mp10_cooking_impact_lower_ap2_h6c: Masked 205158 values
+    preIRA_mp10_cooking_adoption_central_ap2_h6c: Masked 205158 values
+    preIRA_mp10_cooking_impact_central_ap2_h6c: Masked 205158 values
+    preIRA_mp10_cooking_adoption_upper_ap2_h6c: Masked 205158 values
+    preIRA_mp10_cooking_impact_upper_ap2_h6c: Masked 205158 values
+  Total: Masked 1436106 values across 60 columns
 
 === FIXING DUPLICATE COLUMNS ===
 ✅ No duplicate columns found
 -- Scenario: No Inflation Reduction Act -- 
-              scenario_prefix: f'preIRA_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
               lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
               
 Starting climate-only adoption analysis for No Inflation Reduction Act
 
 Processing climate-only analysis for heating...
 Measure package calculation for heating:
-  - 12266 homes have valid data
-  - 15649 homes will receive retrofits
-  - 12266 homes have both valid data AND will receive retrofits
-  - 3385 homes excluded (values will be NaN)
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
   Processing SCC assumption: lower
-    Checking required columns for heating/lower...
-    ✅ Found column: preIRA_mp8_heating_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_heating_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_heating_climate_npv_lower
-    Converting columns to numeric for heating/lower...
-    ✅ Successfully converted all columns for heating/lower
     ✅ Completed climate-only analysis for heating/lower
   Processing SCC assumption: central
-    Checking required columns for heating/central...
-    ✅ Found column: preIRA_mp8_heating_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_heating_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_heating_climate_npv_central
-    Converting columns to numeric for heating/central...
-    ✅ Successfully converted all columns for heating/central
     ✅ Completed climate-only analysis for heating/central
   Processing SCC assumption: upper
-    Checking required columns for heating/upper...
-    ✅ Found column: preIRA_mp8_heating_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_heating_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_heating_climate_npv_upper
-    Converting columns to numeric for heating/upper...
-    ✅ Successfully converted all columns for heating/upper
     ✅ Completed climate-only analysis for heating/upper
 
 Processing climate-only analysis for waterHeating...
 Measure package calculation for waterHeating:
-  - 14999 homes have valid data
-  - 15551 homes will receive retrofits
-  - 14999 homes have both valid data AND will receive retrofits
-  - 652 homes excluded (values will be NaN)
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
   Processing SCC assumption: lower
-    Checking required columns for waterHeating/lower...
-    ✅ Found column: preIRA_mp8_waterHeating_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_waterHeating_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_waterHeating_climate_npv_lower
-    Converting columns to numeric for waterHeating/lower...
-    ✅ Successfully converted all columns for waterHeating/lower
     ✅ Completed climate-only analysis for waterHeating/lower
   Processing SCC assumption: central
-    Checking required columns for waterHeating/central...
-    ✅ Found column: preIRA_mp8_waterHeating_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_waterHeating_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_waterHeating_climate_npv_central
-    Converting columns to numeric for waterHeating/central...
-    ✅ Successfully converted all columns for waterHeating/central
     ✅ Completed climate-only analysis for waterHeating/central
   Processing SCC assumption: upper
-    Checking required columns for waterHeating/upper...
-    ✅ Found column: preIRA_mp8_waterHeating_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_waterHeating_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_waterHeating_climate_npv_upper
-    Converting columns to numeric for waterHeating/upper...
-    ✅ Successfully converted all columns for waterHeating/upper
     ✅ Completed climate-only analysis for waterHeating/upper
 
 Processing climate-only analysis for clothesDrying...
 Measure package calculation for clothesDrying:
-  - 14743 homes have valid data
-  - 14743 homes will receive retrofits
-  - 14743 homes have both valid data AND will receive retrofits
-  - 908 homes excluded (values will be NaN)
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
   Processing SCC assumption: lower
-    Checking required columns for clothesDrying/lower...
-    ✅ Found column: preIRA_mp8_clothesDrying_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_clothesDrying_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_clothesDrying_climate_npv_lower
-    Converting columns to numeric for clothesDrying/lower...
-    ✅ Successfully converted all columns for clothesDrying/lower
     ✅ Completed climate-only analysis for clothesDrying/lower
   Processing SCC assumption: central
-    Checking required columns for clothesDrying/central...
-    ✅ Found column: preIRA_mp8_clothesDrying_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_clothesDrying_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_clothesDrying_climate_npv_central
-    Converting columns to numeric for clothesDrying/central...
-    ✅ Successfully converted all columns for clothesDrying/central
     ✅ Completed climate-only analysis for clothesDrying/central
   Processing SCC assumption: upper
-    Checking required columns for clothesDrying/upper...
-    ✅ Found column: preIRA_mp8_clothesDrying_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_clothesDrying_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_clothesDrying_climate_npv_upper
-    Converting columns to numeric for clothesDrying/upper...
-    ✅ Successfully converted all columns for clothesDrying/upper
     ✅ Completed climate-only analysis for clothesDrying/upper
 
 Processing climate-only analysis for cooking...
 Measure package calculation for cooking:
-  - 7867 homes have valid data
-  - 7867 homes will receive retrofits
-  - 7867 homes have both valid data AND will receive retrofits
-  - 7784 homes excluded (values will be NaN)
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
   Processing SCC assumption: lower
-    Checking required columns for cooking/lower...
-    ✅ Found column: preIRA_mp8_cooking_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_cooking_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_cooking_climate_npv_lower
-    Converting columns to numeric for cooking/lower...
-    ✅ Successfully converted all columns for cooking/lower
     ✅ Completed climate-only analysis for cooking/lower
   Processing SCC assumption: central
-    Checking required columns for cooking/central...
-    ✅ Found column: preIRA_mp8_cooking_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_cooking_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_cooking_climate_npv_central
-    Converting columns to numeric for cooking/central...
-    ✅ Successfully converted all columns for cooking/central
     ✅ Completed climate-only analysis for cooking/central
   Processing SCC assumption: upper
-    Checking required columns for cooking/upper...
-    ✅ Found column: preIRA_mp8_cooking_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_cooking_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_cooking_climate_npv_upper
-    Converting columns to numeric for cooking/upper...
-    ✅ Successfully converted all columns for cooking/upper
     ✅ Completed climate-only analysis for cooking/upper
 
 Verifying masking for all calculated columns:
-Masking 48 columns for category 'cooking'
-    preIRA_mp8_cooking_adoption_climateOnly_lower: Masked 7784 values
-    preIRA_mp8_cooking_impact_climateOnly_lower: Masked 7784 values
-    preIRA_mp8_cooking_adoption_climateOnly_central: Masked 7784 values
-    preIRA_mp8_cooking_impact_climateOnly_central: Masked 7784 values
-    preIRA_mp8_cooking_adoption_climateOnly_upper: Masked 7784 values
-    preIRA_mp8_cooking_impact_climateOnly_upper: Masked 7784 values
-  Total: Masked 46704 values across 48 columns
+Masking 12 columns for category 'cooking'
 ✅ Climate-only adoption analysis completed successfully
-
-====================================================================================================================================================================
-df_euss_am_mp8_home_inmap:
-
-         square_footage census_region  census_division census_division_recs  \
-bldg_id                                                                       
-119              2152.0     Northeast  Middle Atlantic      Middle Atlantic   
-122              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
-150              1690.0     Northeast  Middle Atlantic      Middle Atlantic   
-153              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
-162              2663.0     Northeast  Middle Atlantic      Middle Atlantic   
-...                 ...           ...              ...                  ...   
-549882           1202.0     Northeast  Middle Atlantic      Middle Atlantic   
-549915           2176.0     Northeast  Middle Atlantic      Middle Atlantic   
-549937            885.0     Northeast  Middle Atlantic      Middle Atlantic   
-549963           1690.0     Northeast  Middle Atlantic      Middle Atlantic   
-549989           1220.0     Northeast  Middle Atlantic      Middle Atlantic   
-
-        building_america_climate_zone  reeds_balancing_area gea_region state  \
-bldg_id                                                                        
-119                       Mixed-Humid                   122      RFCEc    PA   
-122                       Mixed-Humid                   122      RFCEc    PA   
-150                              Cold                   122      RFCEc    PA   
-153                       Mixed-Humid                   122      RFCEc    PA   
-162                       Mixed-Humid                   122      RFCEc    PA   
-...                               ...                   ...        ...   ...   
-549882                           Cold                   122      RFCEc    PA   
-549915                           Cold                   122      RFCEc    PA   
-549937                           Cold                   115      RFCWc    PA   
-549963                           Cold                   115      RFCWc    PA   
-549989                           Cold                   122      RFCEc    PA   
-
-                            city    county  ...  \
-bldg_id                                     ...   
-119        Not in a census Place  G4200450  ...   
-122      In another census Place  G4200450  ...   
-150      In another census Place  G4201190  ...   
-153        Not in a census Place  G4200170  ...   
-162        Not in a census Place  G4200450  ...   
-...                          ...       ...  ...   
-549882     Not in a census Place  G4200110  ...   
-549915                 Lancaster  G4200710  ...   
-549937   In another census Place  G4200050  ...   
-549963   In another census Place  G4201290  ...   
-549989     Not in a census Place  G4201110  ...   
-
-        preIRA_mp8_cooking_adoption_climateOnly_lower  \
-bldg_id                                                 
-119                                    Tier 4: Averse   
-122                                               NaN   
-150                                               NaN   
-153                                               NaN   
-162                                               NaN   
-...                                               ...   
-549882                                            NaN   
-549915                                            NaN   
-549937                                 Tier 4: Averse   
-549963                                            NaN   
-549989                                 Tier 4: Averse   
-
-        preIRA_mp8_cooking_impact_climateOnly_lower  \
-bldg_id                                               
-119                                  Public Benefit   
-122                                             NaN   
-150                                             NaN   
-153                                             NaN   
-162                                             NaN   
-...                                             ...   
-549882                                          NaN   
-549915                                          NaN   
-549937                               Public Benefit   
-549963                                          NaN   
-549989                               Public Benefit   
-
-        preIRA_mp8_cooking_total_npv_lessWTP_climateOnly_central  \
-bldg_id                                                            
-119                                               -2745.42         
-122                                                    NaN         
-150                                                    NaN         
-153                                                    NaN         
-162                                                    NaN         
-...                                                    ...         
-549882                                                 NaN         
-549915                                                 NaN         
-549937                                            -2548.99         
-549963                                                 NaN         
-549989                                            -1861.45         
-
-        preIRA_mp8_cooking_total_npv_moreWTP_climateOnly_central  \
-bldg_id                                                            
-119                                               -1672.88         
-122                                                    NaN         
-150                                                    NaN         
-153                                                    NaN         
-162                                                    NaN         
-...                                                    ...         
-549882                                                 NaN         
-549915                                                 NaN         
-549937                                            -1476.45         
-549963                                                 NaN         
-549989                                             -788.91         
-
-         preIRA_mp8_cooking_adoption_climateOnly_central  \
-bldg_id                                                    
-119                                       Tier 4: Averse   
-122                                                  NaN   
-150                                                  NaN   
-153                                                  NaN   
-162                                                  NaN   
-...                                                  ...   
-549882                                               NaN   
-549915                                               NaN   
-549937                                    Tier 4: Averse   
-549963                                               NaN   
-549989                                    Tier 4: Averse   
-
-         preIRA_mp8_cooking_impact_climateOnly_central  \
-bldg_id                                                  
-119                                     Public Benefit   
-122                                                NaN   
-150                                                NaN   
-153                                                NaN   
-162                                                NaN   
-...                                                ...   
-549882                                             NaN   
-549915                                             NaN   
-549937                                  Public Benefit   
-549963                                             NaN   
-549989                                  Public Benefit   
-
-        preIRA_mp8_cooking_total_npv_lessWTP_climateOnly_upper  \
-bldg_id                                                          
-119                                               -2689.57       
-122                                                    NaN       
-150                                                    NaN       
-153                                                    NaN       
-162                                                    NaN       
-...                                                    ...       
-549882                                                 NaN       
-549915                                                 NaN       
-549937                                            -2511.83       
-549963                                                 NaN       
-549989                                            -1725.55       
-
-         preIRA_mp8_cooking_total_npv_moreWTP_climateOnly_upper  \
-bldg_id                                                           
-119                                               -1617.03        
-122                                                    NaN        
-150                                                    NaN        
-153                                                    NaN        
-162                                                    NaN        
-...                                                    ...        
-549882                                                 NaN        
-549915                                                 NaN        
-549937                                            -1439.29        
-549963                                                 NaN        
-549989                                             -653.01        
-
-        preIRA_mp8_cooking_adoption_climateOnly_upper  \
-bldg_id                                                 
-119                                    Tier 4: Averse   
-122                                               NaN   
-150                                               NaN   
-153                                               NaN   
-162                                               NaN   
-...                                               ...   
-549882                                            NaN   
-549915                                            NaN   
-549937                                 Tier 4: Averse   
-549963                                            NaN   
-549989                                 Tier 4: Averse   
-
-        preIRA_mp8_cooking_impact_climateOnly_upper  
-bldg_id                                              
-119                                  Public Benefit  
-122                                             NaN  
-150                                             NaN  
-153                                             NaN  
-162                                             NaN  
-...                                             ...  
-549882                                          NaN  
-549915                                          NaN  
-549937                               Public Benefit  
-549963                                          NaN  
-549989                               Public Benefit  
-
-[15651 rows x 1062 columns]
-
-
-Checking for and fixing duplicate columns...
 
 === FIXING DUPLICATE COLUMNS ===
 ✅ No duplicate columns found
--- Scenario: Inflation Reduction Act (IRA) Reference -- 
-              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
-              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
               
-Starting climate-only adoption analysis for AEO2023 Reference Case
+Starting health-only adoption analysis for No Inflation Reduction Act, ap2, acs
+
+Processing health-only analysis for heating...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+  Processing health model: ap2, acs
+    ✅ Completed health-only analysis for heating/ap2/acs
+
+Processing health-only analysis for waterHeating...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+  Processing health model: ap2, acs
+    ✅ Completed health-only analysis for waterHeating/ap2/acs
+
+Processing health-only analysis for clothesDrying...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+  Processing health model: ap2, acs
+    ✅ Completed health-only analysis for clothesDrying/ap2/acs
+
+Processing health-only analysis for cooking...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+  Processing health model: ap2, acs
+    ✅ Completed health-only analysis for cooking/ap2/acs
+
+Verifying masking for all calculated columns:
+Masking 2 columns for category 'cooking'
+✅ Health-only adoption analysis completed successfully
+
+=== FIXING DUPLICATE COLUMNS ===
+✅ No duplicate columns found
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+Starting health-only adoption analysis for No Inflation Reduction Act, ap2, h6c
+
+Processing health-only analysis for heating...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+  Processing health model: ap2, h6c
+    ✅ Completed health-only analysis for heating/ap2/h6c
+
+Processing health-only analysis for waterHeating...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+  Processing health model: ap2, h6c
+    ✅ Completed health-only analysis for waterHeating/ap2/h6c
+
+Processing health-only analysis for clothesDrying...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+  Processing health model: ap2, h6c
+    ✅ Completed health-only analysis for clothesDrying/ap2/h6c
+
+Processing health-only analysis for cooking...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+  Processing health model: ap2, h6c
+    ✅ Completed health-only analysis for cooking/ap2/h6c
+
+Verifying masking for all calculated columns:
+Masking 2 columns for category 'cooking'
+✅ Health-only adoption analysis completed successfully
+Processing EASIUR model...
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+
+Calculating Adoption Potential for heating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+Found 260211 valid homes out of 331531 for heating adoption potential
+
+Processing SCC assumption: lower for heating/lower/easiur/acs
+
+Processing SCC assumption: central for heating/central/easiur/acs
+
+Processing SCC assumption: upper for heating/upper/easiur/acs
+
+Calculating Adoption Potential for waterHeating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+Found 322799 valid homes out of 331531 for waterHeating adoption potential
+
+Processing SCC assumption: lower for waterHeating/lower/easiur/acs
+
+Processing SCC assumption: central for waterHeating/central/easiur/acs
+
+Processing SCC assumption: upper for waterHeating/upper/easiur/acs
+
+Calculating Adoption Potential for clothesDrying under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+Found 316573 valid homes out of 331531 for clothesDrying adoption potential
+
+Processing SCC assumption: lower for clothesDrying/lower/easiur/acs
+
+Processing SCC assumption: central for clothesDrying/central/easiur/acs
+
+Processing SCC assumption: upper for clothesDrying/upper/easiur/acs
+
+Calculating Adoption Potential for cooking under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+Found 126373 valid homes out of 331531 for cooking adoption potential
+
+Processing SCC assumption: lower for cooking/lower/easiur/acs
+
+Processing SCC assumption: central for cooking/central/easiur/acs
+
+Processing SCC assumption: upper for cooking/upper/easiur/acs
+
+Verifying masking for all calculated columns:
+Masking 60 columns for category 'cooking'
+    preIRA_mp10_cooking_health_sensitivity: Masked 205158 values
+    preIRA_mp10_cooking_adoption_lower_easiur_acs: Masked 205158 values
+    preIRA_mp10_cooking_impact_lower_easiur_acs: Masked 205158 values
+    preIRA_mp10_cooking_adoption_central_easiur_acs: Masked 205158 values
+    preIRA_mp10_cooking_impact_central_easiur_acs: Masked 205158 values
+    preIRA_mp10_cooking_adoption_upper_easiur_acs: Masked 205158 values
+    preIRA_mp10_cooking_impact_upper_easiur_acs: Masked 205158 values
+  Total: Masked 1436106 values across 60 columns
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+
+Calculating Adoption Potential for heating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+Found 260211 valid homes out of 331531 for heating adoption potential
+
+Processing SCC assumption: lower for heating/lower/easiur/h6c
+
+Processing SCC assumption: central for heating/central/easiur/h6c
+
+Processing SCC assumption: upper for heating/upper/easiur/h6c
+
+Calculating Adoption Potential for waterHeating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+Found 322799 valid homes out of 331531 for waterHeating adoption potential
+
+Processing SCC assumption: lower for waterHeating/lower/easiur/h6c
+
+Processing SCC assumption: central for waterHeating/central/easiur/h6c
+
+Processing SCC assumption: upper for waterHeating/upper/easiur/h6c
+
+Calculating Adoption Potential for clothesDrying under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+Found 316573 valid homes out of 331531 for clothesDrying adoption potential
+
+Processing SCC assumption: lower for clothesDrying/lower/easiur/h6c
+
+Processing SCC assumption: central for clothesDrying/central/easiur/h6c
+
+Processing SCC assumption: upper for clothesDrying/upper/easiur/h6c
+
+Calculating Adoption Potential for cooking under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+Found 126373 valid homes out of 331531 for cooking adoption potential
+
+Processing SCC assumption: lower for cooking/lower/easiur/h6c
+
+Processing SCC assumption: central for cooking/central/easiur/h6c
+
+Processing SCC assumption: upper for cooking/upper/easiur/h6c
+
+Verifying masking for all calculated columns:
+Masking 60 columns for category 'cooking'
+    preIRA_mp10_cooking_health_sensitivity: Masked 205158 values
+    preIRA_mp10_cooking_adoption_lower_easiur_h6c: Masked 205158 values
+    preIRA_mp10_cooking_impact_lower_easiur_h6c: Masked 205158 values
+    preIRA_mp10_cooking_adoption_central_easiur_h6c: Masked 205158 values
+    preIRA_mp10_cooking_impact_central_easiur_h6c: Masked 205158 values
+    preIRA_mp10_cooking_adoption_upper_easiur_h6c: Masked 205158 values
+    preIRA_mp10_cooking_impact_upper_easiur_h6c: Masked 205158 values
+  Total: Masked 1436106 values across 60 columns
+
+=== FIXING DUPLICATE COLUMNS ===
+✅ No duplicate columns found
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+Starting climate-only adoption analysis for No Inflation Reduction Act
 
 Processing climate-only analysis for heating...
 Measure package calculation for heating:
-  - 12266 homes have valid data
-  - 15649 homes will receive retrofits
-  - 12266 homes have both valid data AND will receive retrofits
-  - 3385 homes excluded (values will be NaN)
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
   Processing SCC assumption: lower
-    Checking required columns for heating/lower...
-    ✅ Found column: iraRef_mp8_heating_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_heating_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_heating_climate_npv_lower
-    Converting columns to numeric for heating/lower...
-    ✅ Successfully converted all columns for heating/lower
     ✅ Completed climate-only analysis for heating/lower
   Processing SCC assumption: central
-    Checking required columns for heating/central...
-    ✅ Found column: iraRef_mp8_heating_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_heating_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_heating_climate_npv_central
-    Converting columns to numeric for heating/central...
-    ✅ Successfully converted all columns for heating/central
     ✅ Completed climate-only analysis for heating/central
   Processing SCC assumption: upper
-    Checking required columns for heating/upper...
-    ✅ Found column: iraRef_mp8_heating_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_heating_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_heating_climate_npv_upper
-    Converting columns to numeric for heating/upper...
-    ✅ Successfully converted all columns for heating/upper
     ✅ Completed climate-only analysis for heating/upper
 
 Processing climate-only analysis for waterHeating...
 Measure package calculation for waterHeating:
-  - 14999 homes have valid data
-  - 15551 homes will receive retrofits
-  - 14999 homes have both valid data AND will receive retrofits
-  - 652 homes excluded (values will be NaN)
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
   Processing SCC assumption: lower
-    Checking required columns for waterHeating/lower...
-    ✅ Found column: iraRef_mp8_waterHeating_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_waterHeating_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_waterHeating_climate_npv_lower
-    Converting columns to numeric for waterHeating/lower...
-    ✅ Successfully converted all columns for waterHeating/lower
     ✅ Completed climate-only analysis for waterHeating/lower
   Processing SCC assumption: central
-    Checking required columns for waterHeating/central...
-    ✅ Found column: iraRef_mp8_waterHeating_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_waterHeating_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_waterHeating_climate_npv_central
-    Converting columns to numeric for waterHeating/central...
-    ✅ Successfully converted all columns for waterHeating/central
     ✅ Completed climate-only analysis for waterHeating/central
   Processing SCC assumption: upper
-    Checking required columns for waterHeating/upper...
-    ✅ Found column: iraRef_mp8_waterHeating_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_waterHeating_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_waterHeating_climate_npv_upper
-    Converting columns to numeric for waterHeating/upper...
-    ✅ Successfully converted all columns for waterHeating/upper
     ✅ Completed climate-only analysis for waterHeating/upper
 
 Processing climate-only analysis for clothesDrying...
 Measure package calculation for clothesDrying:
-  - 14743 homes have valid data
-  - 14743 homes will receive retrofits
-  - 14743 homes have both valid data AND will receive retrofits
-  - 908 homes excluded (values will be NaN)
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
   Processing SCC assumption: lower
-    Checking required columns for clothesDrying/lower...
-    ✅ Found column: iraRef_mp8_clothesDrying_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_clothesDrying_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_clothesDrying_climate_npv_lower
-    Converting columns to numeric for clothesDrying/lower...
-    ✅ Successfully converted all columns for clothesDrying/lower
     ✅ Completed climate-only analysis for clothesDrying/lower
   Processing SCC assumption: central
-    Checking required columns for clothesDrying/central...
-    ✅ Found column: iraRef_mp8_clothesDrying_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_clothesDrying_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_clothesDrying_climate_npv_central
-    Converting columns to numeric for clothesDrying/central...
-    ✅ Successfully converted all columns for clothesDrying/central
     ✅ Completed climate-only analysis for clothesDrying/central
   Processing SCC assumption: upper
-    Checking required columns for clothesDrying/upper...
-    ✅ Found column: iraRef_mp8_clothesDrying_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_clothesDrying_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_clothesDrying_climate_npv_upper
-    Converting columns to numeric for clothesDrying/upper...
-    ✅ Successfully converted all columns for clothesDrying/upper
     ✅ Completed climate-only analysis for clothesDrying/upper
 
 Processing climate-only analysis for cooking...
 Measure package calculation for cooking:
-  - 7867 homes have valid data
-  - 7867 homes will receive retrofits
-  - 7867 homes have both valid data AND will receive retrofits
-  - 7784 homes excluded (values will be NaN)
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
   Processing SCC assumption: lower
-    Checking required columns for cooking/lower...
-    ✅ Found column: iraRef_mp8_cooking_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_cooking_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_cooking_climate_npv_lower
-    Converting columns to numeric for cooking/lower...
-    ✅ Successfully converted all columns for cooking/lower
     ✅ Completed climate-only analysis for cooking/lower
   Processing SCC assumption: central
-    Checking required columns for cooking/central...
-    ✅ Found column: iraRef_mp8_cooking_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_cooking_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_cooking_climate_npv_central
-    Converting columns to numeric for cooking/central...
-    ✅ Successfully converted all columns for cooking/central
     ✅ Completed climate-only analysis for cooking/central
   Processing SCC assumption: upper
-    Checking required columns for cooking/upper...
-    ✅ Found column: iraRef_mp8_cooking_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_cooking_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_cooking_climate_npv_upper
-    Converting columns to numeric for cooking/upper...
-    ✅ Successfully converted all columns for cooking/upper
     ✅ Completed climate-only analysis for cooking/upper
 
 Verifying masking for all calculated columns:
-Masking 48 columns for category 'cooking'
-    iraRef_mp8_cooking_adoption_climateOnly_lower: Masked 7784 values
-    iraRef_mp8_cooking_impact_climateOnly_lower: Masked 7784 values
-    iraRef_mp8_cooking_adoption_climateOnly_central: Masked 7784 values
-    iraRef_mp8_cooking_impact_climateOnly_central: Masked 7784 values
-    iraRef_mp8_cooking_adoption_climateOnly_upper: Masked 7784 values
-    iraRef_mp8_cooking_impact_climateOnly_upper: Masked 7784 values
-  Total: Masked 46704 values across 48 columns
+Masking 12 columns for category 'cooking'
 ✅ Climate-only adoption analysis completed successfully
 
-====================================================================================================================================================================
-df_euss_am_mp8_home_inmap:
+=== FIXING DUPLICATE COLUMNS ===
+✅ No duplicate columns found
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+Starting health-only adoption analysis for No Inflation Reduction Act, easiur, acs
 
-         square_footage census_region  census_division census_division_recs  \
-bldg_id                                                                       
-119              2152.0     Northeast  Middle Atlantic      Middle Atlantic   
-122              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
-150              1690.0     Northeast  Middle Atlantic      Middle Atlantic   
-153              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
-162              2663.0     Northeast  Middle Atlantic      Middle Atlantic   
-...                 ...           ...              ...                  ...   
-549882           1202.0     Northeast  Middle Atlantic      Middle Atlantic   
-549915           2176.0     Northeast  Middle Atlantic      Middle Atlantic   
-549937            885.0     Northeast  Middle Atlantic      Middle Atlantic   
-549963           1690.0     Northeast  Middle Atlantic      Middle Atlantic   
-549989           1220.0     Northeast  Middle Atlantic      Middle Atlantic   
+Processing health-only analysis for heating...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+  Processing health model: easiur, acs
+    ✅ Completed health-only analysis for heating/easiur/acs
 
-        building_america_climate_zone  reeds_balancing_area gea_region state  \
-bldg_id                                                                        
-119                       Mixed-Humid                   122      RFCEc    PA   
-122                       Mixed-Humid                   122      RFCEc    PA   
-150                              Cold                   122      RFCEc    PA   
-153                       Mixed-Humid                   122      RFCEc    PA   
-162                       Mixed-Humid                   122      RFCEc    PA   
-...                               ...                   ...        ...   ...   
-549882                           Cold                   122      RFCEc    PA   
-549915                           Cold                   122      RFCEc    PA   
-549937                           Cold                   115      RFCWc    PA   
-549963                           Cold                   115      RFCWc    PA   
-549989                           Cold                   122      RFCEc    PA   
+Processing health-only analysis for waterHeating...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+  Processing health model: easiur, acs
+    ✅ Completed health-only analysis for waterHeating/easiur/acs
 
-                            city    county  ...  \
-bldg_id                                     ...   
-119        Not in a census Place  G4200450  ...   
-122      In another census Place  G4200450  ...   
-150      In another census Place  G4201190  ...   
-153        Not in a census Place  G4200170  ...   
-162        Not in a census Place  G4200450  ...   
-...                          ...       ...  ...   
-549882     Not in a census Place  G4200110  ...   
-549915                 Lancaster  G4200710  ...   
-549937   In another census Place  G4200050  ...   
-549963   In another census Place  G4201290  ...   
-549989     Not in a census Place  G4201110  ...   
+Processing health-only analysis for clothesDrying...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+  Processing health model: easiur, acs
+    ✅ Completed health-only analysis for clothesDrying/easiur/acs
 
-        iraRef_mp8_cooking_adoption_climateOnly_lower  \
-bldg_id                                                 
-119                                    Tier 4: Averse   
-122                                               NaN   
-150                                               NaN   
-153                                               NaN   
-162                                               NaN   
-...                                               ...   
-549882                                            NaN   
-549915                                            NaN   
-549937                                 Tier 4: Averse   
-549963                                            NaN   
-549989                                 Tier 4: Averse   
+Processing health-only analysis for cooking...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+  Processing health model: easiur, acs
+    ✅ Completed health-only analysis for cooking/easiur/acs
 
-        iraRef_mp8_cooking_impact_climateOnly_lower  \
-bldg_id                                               
-119                                  Public Benefit   
-122                                             NaN   
-150                                             NaN   
-153                                             NaN   
-162                                             NaN   
-...                                             ...   
-549882                                          NaN   
-549915                                          NaN   
-549937                               Public Benefit   
-549963                                          NaN   
-549989                               Public Benefit   
-
-        iraRef_mp8_cooking_total_npv_lessWTP_climateOnly_central  \
-bldg_id                                                            
-119                                               -1749.48         
-122                                                    NaN         
-150                                                    NaN         
-153                                                    NaN         
-162                                                    NaN         
-...                                                    ...         
-549882                                                 NaN         
-549915                                                 NaN         
-549937                                            -2388.48         
-549963                                                 NaN         
-549989                                            -1728.15         
-
-        iraRef_mp8_cooking_total_npv_moreWTP_climateOnly_central  \
-bldg_id                                                            
-119                                                -676.94         
-122                                                    NaN         
-150                                                    NaN         
-153                                                    NaN         
-162                                                    NaN         
-...                                                    ...         
-549882                                                 NaN         
-549915                                                 NaN         
-549937                                            -1315.94         
-549963                                                 NaN         
-549989                                             -655.61         
-
-         iraRef_mp8_cooking_adoption_climateOnly_central  \
-bldg_id                                                    
-119                                       Tier 4: Averse   
-122                                                  NaN   
-150                                                  NaN   
-153                                                  NaN   
-162                                                  NaN   
-...                                                  ...   
-549882                                               NaN   
-549915                                               NaN   
-549937                                    Tier 4: Averse   
-549963                                               NaN   
-549989                                    Tier 4: Averse   
-
-         iraRef_mp8_cooking_impact_climateOnly_central  \
-bldg_id                                                  
-119                                     Public Benefit   
-122                                                NaN   
-150                                                NaN   
-153                                                NaN   
-162                                                NaN   
-...                                                ...   
-549882                                             NaN   
-549915                                             NaN   
-549937                                  Public Benefit   
-549963                                             NaN   
-549989                                  Public Benefit   
-
-        iraRef_mp8_cooking_total_npv_lessWTP_climateOnly_upper  \
-bldg_id                                                          
-119                                               -1608.84       
-122                                                    NaN       
-150                                                    NaN       
-153                                                    NaN       
-162                                                    NaN       
-...                                                    ...       
-549882                                                 NaN       
-549915                                                 NaN       
-549937                                            -2268.23       
-549963                                                 NaN       
-549989                                            -1519.78       
-
-         iraRef_mp8_cooking_total_npv_moreWTP_climateOnly_upper  \
-bldg_id                                                           
-119                                                -536.30        
-122                                                    NaN        
-150                                                    NaN        
-153                                                    NaN        
-162                                                    NaN        
-...                                                    ...        
-549882                                                 NaN        
-549915                                                 NaN        
-549937                                            -1195.69        
-549963                                                 NaN        
-549989                                             -447.24        
-
-        iraRef_mp8_cooking_adoption_climateOnly_upper  \
-bldg_id                                                 
-119                                    Tier 4: Averse   
-122                                               NaN   
-150                                               NaN   
-153                                               NaN   
-162                                               NaN   
-...                                               ...   
-549882                                            NaN   
-549915                                            NaN   
-549937                                 Tier 4: Averse   
-549963                                            NaN   
-549989                                 Tier 4: Averse   
-
-        iraRef_mp8_cooking_impact_climateOnly_upper  
-bldg_id                                              
-119                                  Public Benefit  
-122                                             NaN  
-150                                             NaN  
-153                                             NaN  
-162                                             NaN  
-...                                             ...  
-549882                                          NaN  
-549915                                          NaN  
-549937                               Public Benefit  
-549963                                          NaN  
-549989                               Public Benefit  
-
-[15651 rows x 1062 columns]
-
-
-
-# ====================================================================================================================================================================
-# HEALTH ONLY
-# ====================================================================================================================================================================
-
-
-# ============ FUNCTION CALL ============
-
-
-df_euss_am_mp8_home_inmap = calculate_health_only_adoption_robust(
-    df=df_euss_am_mp8_home_inmap,
-    menu_mp=menu_mp,
-    policy_scenario='No Inflation Reduction Act',
-    rcm_model='inmap',
-    cr_function='acs',
-    # scc_assumptions=SCC_ASSUMPTIONS,
-    verbose=True  # Set to True for detailed output
-)
-
-df_euss_am_mp8_home_inmap = calculate_health_only_adoption_robust(
-    df=df_euss_am_mp8_home_inmap,
-    menu_mp=menu_mp,
-    policy_scenario='No Inflation Reduction Act',
-    rcm_model='inmap',
-    cr_function='h6c',
-    # scc_assumptions=SCC_ASSUMPTIONS,
-    verbose=True  # Set to True for detailed output
-)
-
-df_euss_am_mp8_home_inmap = calculate_health_only_adoption_robust(
-    df=df_euss_am_mp8_home_inmap,
-    menu_mp=menu_mp,
-    policy_scenario='AEO2023 Reference Case',
-    rcm_model='inmap',
-    cr_function='acs',
-    # scc_assumptions=SCC_ASSUMPTIONS,
-    verbose=True  # Set to True for detailed output
-)
-
-df_euss_am_mp8_home_inmap = calculate_health_only_adoption_robust(
-    df=df_euss_am_mp8_home_inmap,
-    menu_mp=menu_mp,
-    policy_scenario='AEO2023 Reference Case',
-    rcm_model='inmap',
-    cr_function='h6c',
-    # scc_assumptions=SCC_ASSUMPTIONS,
-    verbose=True  # Set to True for detailed output
-)
-
-print(f"""
-====================================================================================================================================================================
-df_euss_am_mp8_home_inmap:
-
-{df_euss_am_mp8_home_inmap}
-
-""")
-
-
-# ============ OUTPUT ============
-
-Checking for and fixing duplicate columns...
+Verifying masking for all calculated columns:
+Masking 2 columns for category 'cooking'
+✅ Health-only adoption analysis completed successfully
 
 === FIXING DUPLICATE COLUMNS ===
 ✅ No duplicate columns found
 -- Scenario: No Inflation Reduction Act -- 
-              scenario_prefix: f'preIRA_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
               lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
               
-Starting health-only adoption analysis for No Inflation Reduction Act, inmap, acs
+Starting health-only adoption analysis for No Inflation Reduction Act, easiur, h6c
 
 Processing health-only analysis for heating...
 Measure package calculation for heating:
-  - 12266 homes have valid data
-  - 15649 homes will receive retrofits
-  - 12266 homes have both valid data AND will receive retrofits
-  - 3385 homes excluded (values will be NaN)
-  Processing health model: inmap, acs
-    Checking required columns for heating/inmap/acs...
-    ✅ Found column: preIRA_mp8_heating_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_heating_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_heating_health_npv_inmap_acs
-    Converting columns to numeric for heating/inmap/acs...
-    ✅ Successfully converted all columns for heating/inmap/acs
-    ✅ Completed health-only analysis for heating/inmap/acs
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+  Processing health model: easiur, h6c
+    ✅ Completed health-only analysis for heating/easiur/h6c
 
 Processing health-only analysis for waterHeating...
 Measure package calculation for waterHeating:
-  - 14999 homes have valid data
-  - 15551 homes will receive retrofits
-  - 14999 homes have both valid data AND will receive retrofits
-  - 652 homes excluded (values will be NaN)
-  Processing health model: inmap, acs
-    Checking required columns for waterHeating/inmap/acs...
-    ✅ Found column: preIRA_mp8_waterHeating_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_waterHeating_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_waterHeating_health_npv_inmap_acs
-    Converting columns to numeric for waterHeating/inmap/acs...
-    ✅ Successfully converted all columns for waterHeating/inmap/acs
-    ✅ Completed health-only analysis for waterHeating/inmap/acs
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+  Processing health model: easiur, h6c
+    ✅ Completed health-only analysis for waterHeating/easiur/h6c
 
 Processing health-only analysis for clothesDrying...
 Measure package calculation for clothesDrying:
-  - 14743 homes have valid data
-  - 14743 homes will receive retrofits
-  - 14743 homes have both valid data AND will receive retrofits
-  - 908 homes excluded (values will be NaN)
-  Processing health model: inmap, acs
-    Checking required columns for clothesDrying/inmap/acs...
-    ✅ Found column: preIRA_mp8_clothesDrying_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_clothesDrying_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_clothesDrying_health_npv_inmap_acs
-    Converting columns to numeric for clothesDrying/inmap/acs...
-    ✅ Successfully converted all columns for clothesDrying/inmap/acs
-    ✅ Completed health-only analysis for clothesDrying/inmap/acs
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+  Processing health model: easiur, h6c
+    ✅ Completed health-only analysis for clothesDrying/easiur/h6c
 
 Processing health-only analysis for cooking...
 Measure package calculation for cooking:
-  - 7867 homes have valid data
-  - 7867 homes will receive retrofits
-  - 7867 homes have both valid data AND will receive retrofits
-  - 7784 homes excluded (values will be NaN)
-  Processing health model: inmap, acs
-    Checking required columns for cooking/inmap/acs...
-    ✅ Found column: preIRA_mp8_cooking_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_cooking_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_cooking_health_npv_inmap_acs
-    Converting columns to numeric for cooking/inmap/acs...
-    ✅ Successfully converted all columns for cooking/inmap/acs
-    ✅ Completed health-only analysis for cooking/inmap/acs
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+  Processing health model: easiur, h6c
+    ✅ Completed health-only analysis for cooking/easiur/h6c
 
 Verifying masking for all calculated columns:
-Masking 8 columns for category 'cooking'
-    preIRA_mp8_cooking_adoption_healthOnly_inmap_acs: Masked 7784 values
-    preIRA_mp8_cooking_impact_healthOnly_inmap_acs: Masked 7784 values
-  Total: Masked 15568 values across 8 columns
+Masking 2 columns for category 'cooking'
 ✅ Health-only adoption analysis completed successfully
-Checking for and fixing duplicate columns...
-
-=== FIXING DUPLICATE COLUMNS ===
-✅ No duplicate columns found
+Processing InMAP model...
 -- Scenario: No Inflation Reduction Act -- 
-              scenario_prefix: f'preIRA_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
               lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
               
-Starting health-only adoption analysis for No Inflation Reduction Act, inmap, h6c
 
-Processing health-only analysis for heating...
-Measure package calculation for heating:
-  - 12266 homes have valid data
-  - 15649 homes will receive retrofits
-  - 12266 homes have both valid data AND will receive retrofits
-  - 3385 homes excluded (values will be NaN)
-  Processing health model: inmap, h6c
-    Checking required columns for heating/inmap/h6c...
-    ✅ Found column: preIRA_mp8_heating_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_heating_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_heating_health_npv_inmap_h6c
-    Converting columns to numeric for heating/inmap/h6c...
-    ✅ Successfully converted all columns for heating/inmap/h6c
-    ✅ Completed health-only analysis for heating/inmap/h6c
-
-Processing health-only analysis for waterHeating...
-Measure package calculation for waterHeating:
-  - 14999 homes have valid data
-  - 15551 homes will receive retrofits
-  - 14999 homes have both valid data AND will receive retrofits
-  - 652 homes excluded (values will be NaN)
-  Processing health model: inmap, h6c
-    Checking required columns for waterHeating/inmap/h6c...
-    ✅ Found column: preIRA_mp8_waterHeating_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_waterHeating_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_waterHeating_health_npv_inmap_h6c
-    Converting columns to numeric for waterHeating/inmap/h6c...
-    ✅ Successfully converted all columns for waterHeating/inmap/h6c
-    ✅ Completed health-only analysis for waterHeating/inmap/h6c
-
-Processing health-only analysis for clothesDrying...
-Measure package calculation for clothesDrying:
-  - 14743 homes have valid data
-  - 14743 homes will receive retrofits
-  - 14743 homes have both valid data AND will receive retrofits
-  - 908 homes excluded (values will be NaN)
-  Processing health model: inmap, h6c
-    Checking required columns for clothesDrying/inmap/h6c...
-    ✅ Found column: preIRA_mp8_clothesDrying_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_clothesDrying_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_clothesDrying_health_npv_inmap_h6c
-    Converting columns to numeric for clothesDrying/inmap/h6c...
-    ✅ Successfully converted all columns for clothesDrying/inmap/h6c
-    ✅ Completed health-only analysis for clothesDrying/inmap/h6c
-
-Processing health-only analysis for cooking...
-Measure package calculation for cooking:
-  - 7867 homes have valid data
-  - 7867 homes will receive retrofits
-  - 7867 homes have both valid data AND will receive retrofits
-  - 7784 homes excluded (values will be NaN)
-  Processing health model: inmap, h6c
-    Checking required columns for cooking/inmap/h6c...
-    ✅ Found column: preIRA_mp8_cooking_private_npv_lessWTP
-    ✅ Found column: preIRA_mp8_cooking_private_npv_moreWTP
-    ✅ Found column: preIRA_mp8_cooking_health_npv_inmap_h6c
-    Converting columns to numeric for cooking/inmap/h6c...
-    ✅ Successfully converted all columns for cooking/inmap/h6c
-    ✅ Completed health-only analysis for cooking/inmap/h6c
-
-Verifying masking for all calculated columns:
-Masking 8 columns for category 'cooking'
-    preIRA_mp8_cooking_adoption_healthOnly_inmap_h6c: Masked 7784 values
-    preIRA_mp8_cooking_impact_healthOnly_inmap_h6c: Masked 7784 values
-  Total: Masked 15568 values across 8 columns
-✅ Health-only adoption analysis completed successfully
-Checking for and fixing duplicate columns...
-
-=== FIXING DUPLICATE COLUMNS ===
-✅ No duplicate columns found
--- Scenario: Inflation Reduction Act (IRA) Reference -- 
-              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
-              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
-              
-Starting health-only adoption analysis for AEO2023 Reference Case, inmap, acs
-
-Processing health-only analysis for heating...
-Measure package calculation for heating:
-  - 12266 homes have valid data
-  - 15649 homes will receive retrofits
-  - 12266 homes have both valid data AND will receive retrofits
-  - 3385 homes excluded (values will be NaN)
-  Processing health model: inmap, acs
-    Checking required columns for heating/inmap/acs...
-    ✅ Found column: iraRef_mp8_heating_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_heating_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_heating_health_npv_inmap_acs
-    Converting columns to numeric for heating/inmap/acs...
-    ✅ Successfully converted all columns for heating/inmap/acs
-    ✅ Completed health-only analysis for heating/inmap/acs
-
-Processing health-only analysis for waterHeating...
-Measure package calculation for waterHeating:
-  - 14999 homes have valid data
-  - 15551 homes will receive retrofits
-  - 14999 homes have both valid data AND will receive retrofits
-  - 652 homes excluded (values will be NaN)
-  Processing health model: inmap, acs
-    Checking required columns for waterHeating/inmap/acs...
-    ✅ Found column: iraRef_mp8_waterHeating_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_waterHeating_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_waterHeating_health_npv_inmap_acs
-    Converting columns to numeric for waterHeating/inmap/acs...
-    ✅ Successfully converted all columns for waterHeating/inmap/acs
-    ✅ Completed health-only analysis for waterHeating/inmap/acs
-
-Processing health-only analysis for clothesDrying...
-Measure package calculation for clothesDrying:
-  - 14743 homes have valid data
-  - 14743 homes will receive retrofits
-  - 14743 homes have both valid data AND will receive retrofits
-  - 908 homes excluded (values will be NaN)
-  Processing health model: inmap, acs
-    Checking required columns for clothesDrying/inmap/acs...
-    ✅ Found column: iraRef_mp8_clothesDrying_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_clothesDrying_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_clothesDrying_health_npv_inmap_acs
-    Converting columns to numeric for clothesDrying/inmap/acs...
-    ✅ Successfully converted all columns for clothesDrying/inmap/acs
-    ✅ Completed health-only analysis for clothesDrying/inmap/acs
-
-Processing health-only analysis for cooking...
-Measure package calculation for cooking:
-  - 7867 homes have valid data
-  - 7867 homes will receive retrofits
-  - 7867 homes have both valid data AND will receive retrofits
-  - 7784 homes excluded (values will be NaN)
-  Processing health model: inmap, acs
-    Checking required columns for cooking/inmap/acs...
-    ✅ Found column: iraRef_mp8_cooking_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_cooking_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_cooking_health_npv_inmap_acs
-    Converting columns to numeric for cooking/inmap/acs...
-    ✅ Successfully converted all columns for cooking/inmap/acs
-    ✅ Completed health-only analysis for cooking/inmap/acs
-
-Verifying masking for all calculated columns:
-Masking 8 columns for category 'cooking'
-    iraRef_mp8_cooking_adoption_healthOnly_inmap_acs: Masked 7784 values
-    iraRef_mp8_cooking_impact_healthOnly_inmap_acs: Masked 7784 values
-  Total: Masked 15568 values across 8 columns
-✅ Health-only adoption analysis completed successfully
-Checking for and fixing duplicate columns...
-
-=== FIXING DUPLICATE COLUMNS ===
-✅ No duplicate columns found
--- Scenario: Inflation Reduction Act (IRA) Reference -- 
-              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
-              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
-              
-Starting health-only adoption analysis for AEO2023 Reference Case, inmap, h6c
-
-Processing health-only analysis for heating...
-Measure package calculation for heating:
-  - 12266 homes have valid data
-  - 15649 homes will receive retrofits
-  - 12266 homes have both valid data AND will receive retrofits
-  - 3385 homes excluded (values will be NaN)
-  Processing health model: inmap, h6c
-    Checking required columns for heating/inmap/h6c...
-    ✅ Found column: iraRef_mp8_heating_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_heating_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_heating_health_npv_inmap_h6c
-    Converting columns to numeric for heating/inmap/h6c...
-    ✅ Successfully converted all columns for heating/inmap/h6c
-    ✅ Completed health-only analysis for heating/inmap/h6c
-
-Processing health-only analysis for waterHeating...
-Measure package calculation for waterHeating:
-  - 14999 homes have valid data
-  - 15551 homes will receive retrofits
-  - 14999 homes have both valid data AND will receive retrofits
-  - 652 homes excluded (values will be NaN)
-  Processing health model: inmap, h6c
-    Checking required columns for waterHeating/inmap/h6c...
-    ✅ Found column: iraRef_mp8_waterHeating_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_waterHeating_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_waterHeating_health_npv_inmap_h6c
-    Converting columns to numeric for waterHeating/inmap/h6c...
-    ✅ Successfully converted all columns for waterHeating/inmap/h6c
-    ✅ Completed health-only analysis for waterHeating/inmap/h6c
-
-Processing health-only analysis for clothesDrying...
-Measure package calculation for clothesDrying:
-  - 14743 homes have valid data
-  - 14743 homes will receive retrofits
-  - 14743 homes have both valid data AND will receive retrofits
-  - 908 homes excluded (values will be NaN)
-  Processing health model: inmap, h6c
-    Checking required columns for clothesDrying/inmap/h6c...
-    ✅ Found column: iraRef_mp8_clothesDrying_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_clothesDrying_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_clothesDrying_health_npv_inmap_h6c
-    Converting columns to numeric for clothesDrying/inmap/h6c...
-    ✅ Successfully converted all columns for clothesDrying/inmap/h6c
-    ✅ Completed health-only analysis for clothesDrying/inmap/h6c
-
-Processing health-only analysis for cooking...
-Measure package calculation for cooking:
-  - 7867 homes have valid data
-  - 7867 homes will receive retrofits
-  - 7867 homes have both valid data AND will receive retrofits
-  - 7784 homes excluded (values will be NaN)
-  Processing health model: inmap, h6c
-    Checking required columns for cooking/inmap/h6c...
-    ✅ Found column: iraRef_mp8_cooking_private_npv_lessWTP
-    ✅ Found column: iraRef_mp8_cooking_private_npv_moreWTP
-    ✅ Found column: iraRef_mp8_cooking_health_npv_inmap_h6c
-    Converting columns to numeric for cooking/inmap/h6c...
-    ✅ Successfully converted all columns for cooking/inmap/h6c
-    ✅ Completed health-only analysis for cooking/inmap/h6c
-
-Verifying masking for all calculated columns:
-Masking 8 columns for category 'cooking'
-    iraRef_mp8_cooking_adoption_healthOnly_inmap_h6c: Masked 7784 values
-    iraRef_mp8_cooking_impact_healthOnly_inmap_h6c: Masked 7784 values
-  Total: Masked 15568 values across 8 columns
-✅ Health-only adoption analysis completed successfully
-
-====================================================================================================================================================================
-df_euss_am_mp8_home_inmap:
-
-         square_footage census_region  census_division census_division_recs  \
-bldg_id                                                                       
-119              2152.0     Northeast  Middle Atlantic      Middle Atlantic   
-122              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
-150              1690.0     Northeast  Middle Atlantic      Middle Atlantic   
-153              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
-162              2663.0     Northeast  Middle Atlantic      Middle Atlantic   
-...                 ...           ...              ...                  ...   
-549882           1202.0     Northeast  Middle Atlantic      Middle Atlantic   
-549915           2176.0     Northeast  Middle Atlantic      Middle Atlantic   
-549937            885.0     Northeast  Middle Atlantic      Middle Atlantic   
-549963           1690.0     Northeast  Middle Atlantic      Middle Atlantic   
-549989           1220.0     Northeast  Middle Atlantic      Middle Atlantic   
-
-        building_america_climate_zone  reeds_balancing_area gea_region state  \
-bldg_id                                                                        
-119                       Mixed-Humid                   122      RFCEc    PA   
-122                       Mixed-Humid                   122      RFCEc    PA   
-150                              Cold                   122      RFCEc    PA   
-153                       Mixed-Humid                   122      RFCEc    PA   
-162                       Mixed-Humid                   122      RFCEc    PA   
-...                               ...                   ...        ...   ...   
-549882                           Cold                   122      RFCEc    PA   
-549915                           Cold                   122      RFCEc    PA   
-549937                           Cold                   115      RFCWc    PA   
-549963                           Cold                   115      RFCWc    PA   
-549989                           Cold                   122      RFCEc    PA   
-
-                            city    county  ...  \
-bldg_id                                     ...   
-119        Not in a census Place  G4200450  ...   
-122      In another census Place  G4200450  ...   
-150      In another census Place  G4201190  ...   
-153        Not in a census Place  G4200170  ...   
-162        Not in a census Place  G4200450  ...   
-...                          ...       ...  ...   
-549882     Not in a census Place  G4200110  ...   
-549915                 Lancaster  G4200710  ...   
-549937   In another census Place  G4200050  ...   
-549963   In another census Place  G4201290  ...   
-549989     Not in a census Place  G4201110  ...   
-
-        iraRef_mp8_waterHeating_adoption_healthOnly_inmap_h6c  \
-bldg_id                                                         
-119                       Tier 2: Feasible vs. Alternative      
-122                                       Tier 1: Feasible      
-150                       Tier 2: Feasible vs. Alternative      
-153                                       Tier 1: Feasible      
-162                  Tier 3: Subsidy-Dependent Feasibility      
-...                                                    ...      
-549882                    Tier 2: Feasible vs. Alternative      
-549915                                    Tier 1: Feasible      
-549937                    Tier 2: Feasible vs. Alternative      
-549963                    Tier 2: Feasible vs. Alternative      
-549989                    Tier 2: Feasible vs. Alternative      
-
-        iraRef_mp8_waterHeating_impact_healthOnly_inmap_h6c  \
-bldg_id                                                       
-119                                         Public Benefit    
-122                                         Public Benefit    
-150                                         Public Benefit    
-153                                         Public Benefit    
-162                                         Public Benefit    
-...                                                    ...    
-549882                                    Public Detriment    
-549915                                      Public Benefit    
-549937                                    Public Detriment    
-549963                                      Public Benefit    
-549989                                    Public Detriment    
-
-        iraRef_mp8_clothesDrying_total_npv_lessWTP_healthOnly_inmap_h6c  \
-bldg_id                                                                   
-119                                               -2089.75                
-122                                                -781.24                
-150                                                -535.69                
-153                                                    NaN                
-162                                               -1473.75                
-...                                                    ...                
-549882                                             -934.86                
-549915                                             -317.77                
-549937                                            -3122.74                
-549963                                            -1084.63                
-549989                                            -1522.22                
-
-        iraRef_mp8_clothesDrying_total_npv_moreWTP_healthOnly_inmap_h6c  \
-bldg_id                                                                   
-119                                                -781.77                
-122                                                 212.82                
-150                                                 458.37                
-153                                                    NaN                
-162                                                -479.69                
-...                                                    ...                
-549882                                               59.20                
-549915                                              676.29                
-549937                                            -1814.76                
-549963                                              -90.57                
-549989                                             -528.16                
-
-         iraRef_mp8_clothesDrying_adoption_healthOnly_inmap_h6c  \
-bldg_id                                                           
-119                                         Tier 4: Averse        
-122                       Tier 2: Feasible vs. Alternative        
-150                       Tier 2: Feasible vs. Alternative        
-153                        N/A: Invalid Baseline Fuel/Tech        
-162                                         Tier 4: Averse        
-...                                                    ...        
-549882               Tier 3: Subsidy-Dependent Feasibility        
-549915                    Tier 2: Feasible vs. Alternative        
-549937                                      Tier 4: Averse        
-549963                                      Tier 4: Averse        
-549989                                      Tier 4: Averse        
-
-         iraRef_mp8_clothesDrying_impact_healthOnly_inmap_h6c  \
-bldg_id                                                         
-119                                         Public Benefit      
-122                                         Public Benefit      
-150                                         Public Benefit      
-153                        N/A: Invalid Baseline Fuel/Tech      
-162                                         Public Benefit      
-...                                                    ...      
-549882                                      Public Benefit      
-549915                                      Public Benefit      
-549937                                    Public Detriment      
-549963                                      Public Benefit      
-549989                                      Public Benefit      
-
-        iraRef_mp8_cooking_total_npv_lessWTP_healthOnly_inmap_h6c  \
-bldg_id                                                             
-119                                               -1946.02          
-122                                                    NaN          
-150                                                    NaN          
-153                                                    NaN          
-162                                                    NaN          
-...                                                    ...          
-549882                                                 NaN          
-549915                                                 NaN          
-549937                                            -2742.60          
-549963                                                 NaN          
-549989                                            -2295.77          
-
-         iraRef_mp8_cooking_total_npv_moreWTP_healthOnly_inmap_h6c  \
-bldg_id                                                              
-119                                                -873.48           
-122                                                    NaN           
-150                                                    NaN           
-153                                                    NaN           
-162                                                    NaN           
-...                                                    ...           
-549882                                                 NaN           
-549915                                                 NaN           
-549937                                            -1670.06           
-549963                                                 NaN           
-549989                                            -1223.23           
-
-        iraRef_mp8_cooking_adoption_healthOnly_inmap_h6c  \
-bldg_id                                                    
-119                                       Tier 4: Averse   
-122                                                  NaN   
-150                                                  NaN   
-153                                                  NaN   
-162                                                  NaN   
-...                                                  ...   
-549882                                               NaN   
-549915                                               NaN   
-549937                                    Tier 4: Averse   
-549963                                               NaN   
-549989                                    Tier 4: Averse   
-
-        iraRef_mp8_cooking_impact_healthOnly_inmap_h6c  
-bldg_id                                                 
-119                                     Public Benefit  
-122                                                NaN  
-150                                                NaN  
-153                                                NaN  
-162                                                NaN  
-...                                                ...  
-549882                                             NaN  
-549915                                             NaN  
-549937                                Public Detriment  
-549963                                             NaN  
-549989                                Public Detriment  
-
-[15651 rows x 1126 columns]
+Calculating Adoption Potential for heating under 'No Inflation Reduction Act' Scenario...
