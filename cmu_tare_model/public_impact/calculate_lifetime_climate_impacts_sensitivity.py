@@ -4,7 +4,12 @@ from typing import Optional, Tuple
 
 from cmu_tare_model.constants import EQUIPMENT_SPECS, TD_LOSSES_MULTIPLIER, MER_TYPES, SCC_ASSUMPTIONS
 from cmu_tare_model.utils.modeling_params import define_scenario_params
-from cmu_tare_model.utils.precompute_hdd_factors import precompute_hdd_factors
+
+from cmu_tare_model.utils.hdd_consumption_utils import (
+    get_electricity_consumption_for_year,
+    get_hdd_adjusted_consumption,
+    get_total_baseline_consumption
+)
 
 # Add imports for validation utility functions
 from cmu_tare_model.utils.validation_framework import (
@@ -89,9 +94,6 @@ def calculate_lifetime_climate_impacts(
     # Retrieve scenario-specific params for electricity/fossil-fuel emissions
     scenario_prefix, cambium_scenario, lookup_emissions_fossil_fuel, lookup_emissions_electricity_climate, _, _ = define_scenario_params(menu_mp, policy_scenario)
 
-    # Precompute HDD adjustment factors by region and year
-    hdd_factors_per_year = precompute_hdd_factors(df_copy)
-
     # Initialize dictionary to track columns for masking verification by category
     all_columns_to_mask = {category: [] for category in EQUIPMENT_SPECS}
 
@@ -132,20 +134,11 @@ def calculate_lifetime_climate_impacts(
                     # Calculate the calendar year label (e.g., 2024, 2025, etc.)
                     year_label = year + (base_year - 1)
                     
-                    # Retrieve HDD factor for the current year; raise exception if missing
-                    if year_label not in hdd_factors_per_year:
-                        raise KeyError(f"HDD factor for year {year_label} not found.")
-                    hdd_factor = hdd_factors_per_year[year_label]
-
-                    # The adjusted HDD factor only applies to heating/waterHeating categories
-                    # For other categories, use a default value of 1.0
-                    adjusted_hdd_factor = hdd_factor if category in ['heating', 'waterHeating'] else pd.Series(1.0, index=df_copy.index)
-                    
-                    # Calculate fossil fuel emissions for the current category and year
+                    # FIXED: Calculate fossil fuel emissions with year_label parameter
                     total_fossil_fuel_emissions = calculate_fossil_fuel_emissions(
                         df=df_copy,
                         category=category,
-                        adjusted_hdd_factor=adjusted_hdd_factor,
+                        year_label=year_label,  # ADDED: Missing year_label parameter
                         lookup_emissions_fossil_fuel=lookup_emissions_fossil_fuel,
                         menu_mp=menu_mp,
                         retrofit_mask=valid_mask,
@@ -157,7 +150,6 @@ def calculate_lifetime_climate_impacts(
                         df=df_copy,
                         category=category,
                         year_label=year_label,
-                        adjusted_hdd_factor=adjusted_hdd_factor,
                         lookup_emissions_electricity_climate=lookup_emissions_electricity_climate,
                         cambium_scenario=cambium_scenario,
                         total_fossil_fuel_emissions=total_fossil_fuel_emissions,
@@ -166,13 +158,10 @@ def calculate_lifetime_climate_impacts(
                     )
 
                     # ===== STEP 3 & 4: Store annual emissions and damages in lists =====
-                    # REVIEW AND FIX
                     for mer_type in MER_TYPES:
-                        # FIX: Should this be np.nan instead of 0.0?
                         emissions_values = annual_emissions.get(mer_type, 0.0).copy()
                         # Apply validation mask for measure packages
                         if menu_mp != 0:  
-                            # emissions_values.loc[~valid_mask] = 0.0
                             emissions_values.loc[~valid_mask] = np.nan  # Use NaN for consistency
                         yearly_emissions_lists[mer_type].append(emissions_values)
 
@@ -181,7 +170,6 @@ def calculate_lifetime_climate_impacts(
                         damages_values = value.copy()
                         # Apply validation mask for measure packages
                         if menu_mp != 0:
-                            # damages_values.loc[~valid_mask] = 0.0
                             damages_values.loc[~valid_mask] = np.nan  # Use NaN for consistency
                         yearly_damages_lists[key].append(damages_values)
                     
@@ -206,7 +194,6 @@ def calculate_lifetime_climate_impacts(
                 if yearly_emissions_lists[mer_type]:
                     # Convert list of Series to DataFrame and sum
                     emissions_df = pd.concat(yearly_emissions_lists[mer_type], axis=1)
-                    # total_emissions = emissions_df.sum(axis=1)                    
                     total_emissions = emissions_df.sum(axis=1, skipna=False)  # Use skipna=False to propagate NaN values
 
                     # Apply validation mask for measure packages
@@ -225,7 +212,6 @@ def calculate_lifetime_climate_impacts(
                 if yearly_damages_lists[key]:
                     # Convert list of Series to DataFrame and sum
                     damages_df = pd.concat(yearly_damages_lists[key], axis=1)
-                    # total_damages = damages_df.sum(axis=1)
                     total_damages = damages_df.sum(axis=1, skipna=False)  # Use skipna=False to propagate NaN values
 
                     # Apply validation mask for measure packages
@@ -308,7 +294,6 @@ def calculate_climate_emissions_and_damages(
     df: pd.DataFrame,
     category: str,
     year_label: int,
-    adjusted_hdd_factor: pd.Series,
     lookup_emissions_electricity_climate: dict,
     cambium_scenario: str,
     total_fossil_fuel_emissions: dict,
@@ -326,7 +311,6 @@ def calculate_climate_emissions_and_damages(
         df (pd.DataFrame): DataFrame containing consumption data and region info.
         category (str): Equipment category (e.g., 'heating', 'waterHeating').
         year_label (int): The calendar year (e.g., 2024).
-        adjusted_hdd_factor (pd.Series): Heating degree-day factors for the current category/year.
         lookup_emissions_electricity_climate (dict): Nested dict with CO2e factors for electricity usage.
         cambium_scenario (str): Label identifying the emissions scenario.
         total_fossil_fuel_emissions (dict): Fossil fuel CO2e amounts (keyed by pollutant).
@@ -384,10 +368,6 @@ def calculate_climate_emissions_and_damages(
 
         Raises:
             KeyError: If the specified year is not in the lookup for that assumption.
-        
-        Notes: 
-            In the older code, it clamps to the maximum available year if the exact year is not found in the lookup.
-
         """
         # Check if the year exists; if not, raise an exception
         if year_label not in lookup_climate_impact_scc[scc_assumption]:
@@ -402,18 +382,13 @@ def calculate_climate_emissions_and_damages(
         'srmer': df['gea_region'].map(get_emission_factor_srmer)
     }
     
-    # Determine electricity consumption column based on menu_mp and apply the HDD adjustment factor (for relevant categories).
-    if menu_mp == 0:
-        consumption_col = f'base_electricity_{category}_consumption'
-    else:
-        consumption_col = f'mp{menu_mp}_{year_label}_{category}_consumption'
-    
-    # Check if the column exists in the DataFrame. If not, raise an exception.
-    if consumption_col not in df.columns:
-        raise ValueError(f"Required column '{consumption_col}' not found in the input DataFrame.")
-
-    # Adjust electricity consumption by the HDD factor for heating/waterHeating
-    electricity_consumption = df[consumption_col] * adjusted_hdd_factor
+    # Get electricity consumption with HDD adjustment applied automatically
+    electricity_consumption = get_electricity_consumption_for_year(
+        df=df,
+        category=category,
+        year_label=year_label,
+        menu_mp=menu_mp
+    )
 
     # Calculate annual emissions for each mer_type type
     for mer_type in MER_TYPES:

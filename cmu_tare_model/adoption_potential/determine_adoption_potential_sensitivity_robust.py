@@ -156,8 +156,7 @@ def adoption_decision(
                         new_col_names = {
                             'health_sensitivity': f'{scenario_prefix}{category}_health_sensitivity',
                             'benefit': f'{scenario_prefix}{category}_benefit_{scc}_{rcm_model}_{cr_function}',
-                            'lessWTP_total_npv': f'{scenario_prefix}{category}_total_npv_lessWTP_{scc}_{rcm_model}_{cr_function}',
-                            'moreWTP_total_npv': f'{scenario_prefix}{category}_total_npv_moreWTP_{scc}_{rcm_model}_{cr_function}',
+                            'total_npv': f'{scenario_prefix}{category}_total_npv_{scc}_{rcm_model}_{cr_function}',
                             'adoption': f'{scenario_prefix}{category}_adoption_{scc}_{rcm_model}_{cr_function}',
                             'impact': f'{scenario_prefix}{category}_impact_{scc}_{rcm_model}_{cr_function}'
                         }
@@ -201,14 +200,8 @@ def adoption_decision(
                                 ).clip(lower=0)
                         
                         # Calculate total NPV values
-                        valid_npv_rows = valid_mask & df_copy[lessWTP_private_npv_col].notna() & df_copy[public_npv_col].notna()
-                        df_new_columns.loc[valid_npv_rows, new_col_names['lessWTP_total_npv']] = (
-                            df_copy.loc[valid_npv_rows, lessWTP_private_npv_col] + 
-                            df_copy.loc[valid_npv_rows, public_npv_col]
-                        )
-                        
                         valid_npv_rows = valid_mask & df_copy[moreWTP_private_npv_col].notna() & df_copy[public_npv_col].notna()
-                        df_new_columns.loc[valid_npv_rows, new_col_names['moreWTP_total_npv']] = (
+                        df_new_columns.loc[valid_npv_rows, new_col_names['total_npv']] = (
                             df_copy.loc[valid_npv_rows, moreWTP_private_npv_col] + 
                             df_copy.loc[valid_npv_rows, public_npv_col]
                         )
@@ -237,10 +230,10 @@ def adoption_decision(
                         tier3_mask = (valid_mask & 
                                      df_copy[lessWTP_private_npv_col].notna() & 
                                      df_copy[moreWTP_private_npv_col].notna() & 
-                                     df_new_columns[new_col_names['moreWTP_total_npv']].notna() & 
+                                     df_new_columns[new_col_names['total_npv']].notna() & 
                                      (df_copy[lessWTP_private_npv_col] < 0) & 
                                      (df_copy[moreWTP_private_npv_col] < 0) & 
-                                     (df_new_columns[new_col_names['moreWTP_total_npv']] > 0))
+                                     (df_new_columns[new_col_names['total_npv']] > 0))
                         df_new_columns.loc[tier3_mask, new_col_names['adoption']] = 'Tier 3: Subsidy-Dependent Feasibility'
                         
                         # Public impact classification
@@ -362,22 +355,22 @@ def calculate_climate_only_adoption_robust(
                     
                     # Define output column names (simplified - only total NPV for visualization)
                     climate_col_names = {
-                        'total_npv': f'{scenario_prefix}{category}_total_npv_moreWTP_climateOnly_{scc}',
+                        'total_npv_climate': f'{scenario_prefix}{category}_total_npv_climateOnly_{scc}',
                     }
                     
                     # Create new columns DataFrame
                     df_new_columns = pd.DataFrame(index=df_copy.index)
                         
-                    # Since we only have total_npv in climate_col_names
+                    # Since we only have total_npv_climate in climate_col_names
                     # Simplified initialization for climate-only
-                    df_new_columns[climate_col_names['total_npv']] = create_retrofit_only_series(df_copy, valid_mask)
+                    df_new_columns[climate_col_names['total_npv_climate']] = create_retrofit_only_series(df_copy, valid_mask)
 
                     # Calculate total NPV values                   
                     valid_more_rows = (valid_mask & 
                                       df_copy[moreWTP_private_npv_col].notna() & 
                                       df_copy[climate_npv_col].notna())
                     if valid_more_rows.any():
-                        df_new_columns.loc[valid_more_rows, climate_col_names['total_npv']] = (
+                        df_new_columns.loc[valid_more_rows, climate_col_names['total_npv_climate']] = (
                             df_copy.loc[valid_more_rows, moreWTP_private_npv_col] + 
                             df_copy.loc[valid_more_rows, climate_npv_col]
                         )
@@ -474,15 +467,15 @@ def calculate_health_only_adoption_robust(
                 
                 # Define output column names (simplified - only total NPV for visualization)
                 health_col_names = {
-                    'total_npv': f'{scenario_prefix}{category}_total_npv_moreWTP_healthOnly_{rcm_model}_{cr_function}',
+                    'total_npv_health': f'{scenario_prefix}{category}_total_npv_healthOnly_{rcm_model}_{cr_function}',
                 }
                 
                 # Create new columns DataFrame
                 df_new_columns = pd.DataFrame(index=df_copy.index)
 
-                # Since we only have total_npv in health_col_names
+                # Since we only have total_npv_health in health_col_names
                 # Simplified initialization for health-only
-                df_new_columns[health_col_names['total_npv']] = create_retrofit_only_series(df_copy, valid_mask)
+                df_new_columns[health_col_names['total_npv_health']] = create_retrofit_only_series(df_copy, valid_mask)
 
                 # Calculate total NPV values
                 valid_more_rows = (valid_mask & 
@@ -490,7 +483,7 @@ def calculate_health_only_adoption_robust(
                                   df_copy[health_npv_col].notna())
                 
                 if valid_more_rows.any():
-                    df_new_columns.loc[valid_more_rows, health_col_names['total_npv']] = (
+                    df_new_columns.loc[valid_more_rows, health_col_names['total_npv_health']] = (
                         df_copy.loc[valid_more_rows, moreWTP_private_npv_col] + 
                         df_copy.loc[valid_more_rows, health_npv_col]
                     )

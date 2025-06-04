@@ -7,7 +7,13 @@ from cmu_tare_model.constants import EQUIPMENT_SPECS, POLLUTANTS, TD_LOSSES_MULT
 
 # Imports for lookup dictionaries, functions, and calculations
 from cmu_tare_model.utils.modeling_params import define_scenario_params
-from cmu_tare_model.utils.precompute_hdd_factors import precompute_hdd_factors
+
+from cmu_tare_model.utils.hdd_consumption_utils import (
+    get_electricity_consumption_for_year,
+    get_hdd_adjusted_consumption,
+    get_total_baseline_consumption
+)
+
 from cmu_tare_model.utils.validation_framework import (
     apply_final_masking,
     initialize_validation_tracking,
@@ -118,9 +124,6 @@ def calculate_lifetime_health_impacts(
     scenario_prefix, _, lookup_emissions_fossil_fuel, _, lookup_emissions_electricity_health, _ = define_scenario_params(
         menu_mp, policy_scenario)
 
-    # Precompute HDD adjustment factors by region and year
-    hdd_factors_per_year = precompute_hdd_factors(df_copy)
-
     # Loop over each equipment category and its lifetime from EQUIPMENT_SPECS
     for category, lifetime in EQUIPMENT_SPECS.items():
         try:
@@ -151,22 +154,12 @@ def calculate_lifetime_health_impacts(
                 try:
                     # Calculate the calendar year label (e.g., 2024, 2025, etc.)
                     year_label = year + (base_year - 1)
-
-                    # Check that an HDD factor exists for the current year
-                    if year_label not in hdd_factors_per_year:
-                        raise RuntimeError(f"""HDD factor for year {year_label} not found in precomputed HDD factors.
-                                           "Ensure the precompute_hdd_factors function includes all required years.""")
-
-                    # Retrieve HDD factor for the current year
-                    # Apply factor only for heating/waterHeating categories
-                    hdd_factor = hdd_factors_per_year[year_label]
-                    adjusted_hdd_factor = hdd_factor if category in ['heating', 'waterHeating'] else pd.Series(1.0, index=df_copy.index)
                     
-                    # Calculate fossil fuel emissions for the current category and year
+                    # FIXED: Calculate fossil fuel emissions with year_label parameter
                     total_fossil_fuel_emissions = calculate_fossil_fuel_emissions(
                         df=df_copy,
                         category=category,
-                        adjusted_hdd_factor=adjusted_hdd_factor,
+                        year_label=year_label,  # ADDED: Missing year_label parameter
                         lookup_emissions_fossil_fuel=lookup_emissions_fossil_fuel,
                         menu_mp=menu_mp,
                         retrofit_mask=valid_mask,  
@@ -182,7 +175,6 @@ def calculate_lifetime_health_impacts(
                                 df=df_copy,
                                 category=category,
                                 year_label=year_label,
-                                adjusted_hdd_factor=adjusted_hdd_factor,
                                 lookup_emissions_electricity_health=lookup_emissions_electricity_health,
                                 scenario_prefix=scenario_prefix,
                                 total_fossil_fuel_emissions=total_fossil_fuel_emissions,
@@ -199,7 +191,6 @@ def calculate_lifetime_health_impacts(
 
                                 # Apply validation mask for measure packages
                                 if menu_mp != 0:
-                                    # health_values.loc[~valid_mask] = 0.0
                                     health_values.loc[~valid_mask] = np.nan
                                 yearly_health_damages_lists[(rcm, cr)].append(health_values)
 
@@ -237,7 +228,6 @@ def calculate_lifetime_health_impacts(
                 else:
                     lifetime_health_damages[key] = lifetime_health_templates[key]
 
-            # ===== UPDATED TO ADD LIFETIME RESULTS TO df_detailed =====
             # After processing all years, prepare lifetime results for the category
             lifetime_dict = {}
 
@@ -275,7 +265,7 @@ def calculate_lifetime_health_impacts(
                         lifetime_dict[overall_health_col] = lifetime_health_damages[(rcm, cr)]
                         category_columns_to_mask.append(overall_health_col)
 
-            # CRITICAL ADDITION: Add lifetime results to df_detailed
+            # Add lifetime results to df_detailed
             lifetime_df = pd.DataFrame(lifetime_dict, index=df_copy.index)
             df_detailed = pd.concat([df_detailed, lifetime_df], axis=1)
 
@@ -306,7 +296,6 @@ def calculate_health_damages_for_pair(
     df: pd.DataFrame,
     category: str,
     year_label: int,
-    adjusted_hdd_factor: pd.Series,
     lookup_emissions_electricity_health: dict,
     scenario_prefix: str,
     total_fossil_fuel_emissions: dict,
@@ -326,7 +315,6 @@ def calculate_health_damages_for_pair(
         df (pd.DataFrame): Main DataFrame containing region and consumption data.
         category (str): Equipment category (e.g., 'heating' or 'waterHeating').
         year_label (int): Year for which damages are being calculated (e.g., 2024).
-        adjusted_hdd_factor (pd.Series): HDD adjustment factor for heating/waterHeating.
         lookup_emissions_electricity_health (dict): Lookup for electricity-based emissions factors.
         scenario_prefix (str): Prefix for naming output columns (e.g., 'baseline_' or 'preIRA_mp1_').
         total_fossil_fuel_emissions (dict): Mapping of pollutant to Series of fossil fuel emissions.
@@ -381,13 +369,7 @@ def calculate_health_damages_for_pair(
         # Get unique county keys for an efficient vectorized lookup
         unique_counties = df['county_key'].unique()
 
-        # Create a mapping of county keys to their MSC values
-        # msc_lookup_fossil = {
-        #     key: get_health_impact_with_fallback(lookup_msc_fossil_fuel, key, rcm, pollutant.lower())
-        #     for key in unique_counties
-        # }
-
-        # AFTER: Explicit NaN handling ensures consistent behavior across all RCM/CR combinations
+        # Explicit NaN handling ensures consistent behavior across all RCM/CR combinations
         msc_lookup_fossil = {}
         for key in unique_counties:
             value = get_health_impact_with_fallback(lookup_msc_fossil_fuel, key, rcm, pollutant.lower())
@@ -415,39 +397,23 @@ def calculate_health_damages_for_pair(
         # Map the region mapping to the 'gea_region' column to retrieve emissions factors
         electricity_emissions_factor = df['gea_region'].map(region_mapping)
         
-        # Determine electricity consumption column based on menu_mp
-        if menu_mp == 0:
-            col_name = f'base_electricity_{category}_consumption'
-        else:
-            col_name = f'mp{menu_mp}_{year_label}_{category}_consumption'
-            
-        # Validate column exists
-        if col_name not in df.columns:
-            raise KeyError(f"Required column '{col_name}' is missing from the DataFrame.")
-            
-        # Get electricity consumption and apply adjustments
-        electricity_consumption = df[col_name].fillna(0)
-        if menu_mp == 0:
-            # Apply HDD adjustment for baseline calculations in heating/water heating
-            electricity_consumption = electricity_consumption * adjusted_hdd_factor
-            
+        # Get electricity consumption with HDD adjustment applied automatically
+        electricity_consumption = get_electricity_consumption_for_year(
+            df=df,
+            category=category,
+            year_label=year_label,
+            menu_mp=menu_mp
+        ).fillna(0)
+
         # Calculate electricity emissions accounting for transmission/distribution losses
         electricity_emissions = electricity_consumption * TD_LOSSES_MULTIPLIER * electricity_emissions_factor
-        
-        # --- ELECTRICITY MSC Lookup (Vectorized) ---
-        # Build a lookup dictionary for electricity MSC values
-        # msc_lookup_electricity = {
-        #     key: get_health_impact_with_fallback(lookup_msc_electricity, key, rcm, pollutant.lower())
-        #     for key in unique_counties
-        # }
 
-        # AFTER: Explicit NaN handling ensures consistent behavior across all RCM/CR combinations
+        # Explicit NaN handling ensures consistent behavior across all RCM/CR combinations
         msc_lookup_electricity = {}
         for key in unique_counties:
             value = get_health_impact_with_fallback(lookup_msc_electricity, key, rcm, pollutant.lower())
             # Convert None to NaN for consistent handling
             msc_lookup_electricity[key] = value if value is not None else np.nan
-
 
         # Map the lookup dictionary to retrieve electricity MSC values
         electricity_msc = df['county_key'].map(msc_lookup_electricity)

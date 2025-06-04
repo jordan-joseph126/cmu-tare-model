@@ -15,6 +15,10 @@ from cmu_tare_model.utils.calculation_utils import (
     apply_temporary_validation_and_mask
 )
 
+from cmu_tare_model.utils.hdd_consumption_utils import (
+    get_hdd_adjusted_consumption
+)
+
 def calculate_lifetime_fuel_costs(
     df: pd.DataFrame,
     menu_mp: int,
@@ -389,10 +393,9 @@ def calculate_annual_fuel_costs(
                     is_elec_or_gas
                 )
             ]
-            
-            # Determine the consumption column name
-            consumption_col = f'baseline_{year_label}_{category}_consumption'
-            
+
+            # Consumption now comes from the get_hdd_adjusted_consumption function
+
         else:
             # For measure packages, everything is mapped to electricity (via 'state')
             if 'state' not in df.columns:
@@ -406,21 +409,17 @@ def calculate_annual_fuel_costs(
                     .get(year_label, 0)
                 for state_name in df['state']
             ]
-            
-            # Determine the consumption column name
-            consumption_col = f'mp{menu_mp}_{year_label}_{category}_consumption'
-        
-        # Check if the column exists in the DataFrame
-        if consumption_col not in df.columns:
-            if verbose:
-                print(f"Warning: Consumption column '{consumption_col}' not found for year {year_label}. Skipping this year.")
-            
-            # Return empty results to skip this year gracefully
-            return {}, pd.Series(0, index=df.index)
-        
+
+            # Consumption now comes from the get_hdd_adjusted_consumption function
+                            
         # Get consumption data from the appropriate column (with null safety)
-        consumption = df[consumption_col].fillna(0)
-        
+        consumption = get_hdd_adjusted_consumption(
+            df=df,
+            category=category,
+            year_label=year_label,
+            menu_mp=menu_mp
+        ).fillna(0)
+
         # ===== STEP 3: Valid-Only Calculation =====
         # Apply valid mask if provided
         if valid_mask is not None and not valid_mask.all():
