@@ -1,0 +1,149 @@
+# ======================================================================================================================================================
+# PYTEST TESTING: CALCULATE LIFETIME FUEL COST 
+# ======================================================================================================================================================
+
+
+# =============== FAILING TEST MESSAGE: ===============
+
+===================================================================== test session starts ======================================================================
+platform win32 -- Python 3.11.7, pytest-7.4.0, pluggy-1.0.0
+rootdir: C:\Users\14128\Research\cmu-tare-model
+plugins: anyio-4.2.0
+collected 22 items                                                                                                                                              
+
+test_calculate_lifetime_fuel_costs_simplified.py ..................F...                                                                                   [100%]
+
+=========================================================================== FAILURES =========================================================================== 
+_________________________________________________________________ test_invalid_policy_scenario _________________________________________________________________ 
+
+sample_data =     home_id state     census_division  ...  mp10_waterHeating_consumption mp10_clothesDrying_consumption  mp10_cooking...al  ...                   
+   69.965691                     125.741649                119.310067
+
+[20 rows x 47 columns]
+
+    def test_invalid_policy_scenario(sample_data):
+        """Test handling of invalid policy scenario."""
+        df = sample_data
+
+        with pytest.raises(ValueError, match="Invalid policy scenario"):
+>           calculate_lifetime_fuel_costs(
+                df=df,
+                menu_mp=0,
+                policy_scenario='Invalid Scenario',
+                verbose=False
+            )
+
+test_calculate_lifetime_fuel_costs_simplified.py:406:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _  
+..\private_impact\calculate_lifetime_fuel_costs.py:70: in calculate_lifetime_fuel_costs
+    menu_mp, policy_scenario, _ = validate_common_parameters(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _  
+
+menu_mp = 0, policy_scenario = 'Invalid Scenario', discounting_method = None
+
+    def validate_common_parameters(
+        menu_mp: Union[int, str],
+        policy_scenario: str,
+        discounting_method: Optional[str] = None
+    ) -> Tuple[int, str, Optional[str]]:
+        """
+        Validates common input parameters used across calculation functions.
+
+        Args:
+            menu_mp: Measure package identifier (int or str).
+            policy_scenario: Policy scenario name.
+            discounting_method: Optional discounting method name.
+
+        Returns:
+            Tuple containing:
+            - menu_mp_int: Validated menu_mp as integer
+            - policy_scenario: Validated policy scenario string
+            - discounting_method: Validated discounting method or None
+
+        Raises:
+            ValueError: If any parameter is invalid.
+        """
+        # Validate menu_mp
+        try:
+            menu_mp_int = int(menu_mp)
+        except (ValueError, TypeError):
+            raise ValueError(f"Invalid menu_mp: {menu_mp}. Must be convertible to an integer.")
+
+        # Validate policy_scenario
+        valid_scenarios = ['No Inflation Reduction Act', 'AEO2023 Reference Case']
+        if policy_scenario not in valid_scenarios:
+>           raise ValueError(f"Invalid policy_scenario: {policy_scenario}. Must be one of {valid_scenarios}")
+E           ValueError: Invalid policy_scenario: Invalid Scenario. Must be one of ['No Inflation Reduction Act', 'AEO2023 Reference Case']
+
+..\utils\calculation_utils.py:359: ValueError
+
+During handling of the above exception, another exception occurred:
+
+sample_data =     home_id state     census_division  ...  mp10_waterHeating_consumption mp10_clothesDrying_consumption  mp10_cooking...al  ...                   
+   69.965691                     125.741649                119.310067
+
+[20 rows x 47 columns]
+
+    def test_invalid_policy_scenario(sample_data):
+        """Test handling of invalid policy scenario."""
+        df = sample_data
+
+>       with pytest.raises(ValueError, match="Invalid policy scenario"):
+E       AssertionError: Regex pattern did not match.
+E        Regex: 'Invalid policy scenario'
+E        Input: "Invalid policy_scenario: Invalid Scenario. Must be one of ['No Inflation Reduction Act', 'AEO2023 Reference Case']"
+
+test_calculate_lifetime_fuel_costs_simplified.py:405: AssertionError
+======================================================================= warnings summary ======================================================================= 
+..\..\..\..\anaconda3\Lib\site-packages\jupyter_client\connect.py:22
+  C:\Users\14128\anaconda3\Lib\site-packages\jupyter_client\connect.py:22: DeprecationWarning: Jupyter is migrating its paths to use standard platformdirs       
+  given by the platformdirs library.  To remove this warning and
+  see the appropriate new directories, set the environment variable
+  `JUPYTER_PLATFORM_DIRS=1` and then run `jupyter --paths`.
+  The use of platformdirs will be the default in `jupyter_core` v6
+    from jupyter_core.paths import jupyter_data_dir, jupyter_runtime_dir, secure_write
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=================================================================== short test summary info ==================================================================== 
+FAILED test_calculate_lifetime_fuel_costs_simplified.py::test_invalid_policy_scenario - AssertionError: Regex pattern did not match.
+=========================================================== 1 failed, 21 passed, 1 warning in 4.09s ============================================================ 
+
+# =============== FIX: ===============
+
+def test_invalid_policy_scenario(sample_data):
+    """Test handling of invalid policy scenario."""
+    df = sample_data
+    
+    with pytest.raises(ValueError, match="Invalid policy_scenario"):
+        calculate_lifetime_fuel_costs(
+            df=df,
+            menu_mp=0,
+            policy_scenario='Invalid Scenario',
+            verbose=False
+        )
+
+
+# =============== ALL TESTS PASSING: ===============
+
+PS C:\Users\14128\Research\cmu-tare-model\cmu_tare_model\tests> pytest .\test_calculate_lifetime_fuel_costs_simplified.py
+===================================================================== test session starts ======================================================================
+platform win32 -- Python 3.11.7, pytest-7.4.0, pluggy-1.0.0
+rootdir: C:\Users\14128\Research\cmu-tare-model
+plugins: anyio-4.2.0
+collected 22 items                                                                                                                                              
+
+test_calculate_lifetime_fuel_costs_simplified.py ......................                                                                                   [100%]
+
+======================================================================= warnings summary ======================================================================= 
+..\..\..\..\anaconda3\Lib\site-packages\jupyter_client\connect.py:22
+  C:\Users\14128\anaconda3\Lib\site-packages\jupyter_client\connect.py:22: DeprecationWarning: Jupyter is migrating its paths to use standard platformdirs       
+  given by the platformdirs library.  To remove this warning and
+  see the appropriate new directories, set the environment variable
+  `JUPYTER_PLATFORM_DIRS=1` and then run `jupyter --paths`.
+  The use of platformdirs will be the default in `jupyter_core` v6
+    from jupyter_core.paths import jupyter_data_dir, jupyter_runtime_dir, secure_write
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================================================ 22 passed, 1 warning in 5.37s ================================================================= 
+
+

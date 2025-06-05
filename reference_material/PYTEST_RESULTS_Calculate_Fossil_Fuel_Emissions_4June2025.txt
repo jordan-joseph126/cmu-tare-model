@@ -1,0 +1,163 @@
+# ======================================================================================================================================================
+# PYTEST TESTING: CALCULATE FOSSIL FUEL EMISSIONS 
+# ======================================================================================================================================================
+
+
+# =============== FAILING TEST MESSAGE: ===============
+
+===================================================================== test session starts ======================================================================
+platform win32 -- Python 3.11.7, pytest-7.4.0, pluggy-1.0.0
+rootdir: C:\Users\14128\Research\cmu-tare-model
+plugins: anyio-4.2.0
+collected 22 items                                                                                                                                              
+
+test_calculate_fossil_fuel_emissions_4June2025.py .....................F                                                                                  [100%]
+
+=========================================================================== FAILURES ===========================================================================
+________________________________________________________________ test_empty_dataframe_handling _________________________________________________________________ 
+
+mock_emissions_factors = {'fuelOil': {'co2e': 0.304, 'nox': 0.13, 'pm25': 0.0027, 'so2': 0.0015}, 'naturalGas': {'co2e': 0.228, 'nox': 0.0922, 'pm25': 0.0076, 'so2': 0.0006}, 'propane': {'co2e': 0.276, 'nox': 0.1421, 'pm25': 0.0055, 'so2': 0.0002}}
+mock_hdd_functions = (<MagicMock name='get_hdd_factor_for_year' id='3211373528720'>, <MagicMock name='apply_hdd_adjustment' id='3211373475792'>)
+
+    def test_empty_dataframe_handling(mock_emissions_factors, mock_hdd_functions):
+        """Test handling of empty DataFrame."""
+        empty_df = pd.DataFrame(columns=['census_division'])
+
+        # Mock HDD functions to return empty Series
+        mock_hdd_factor, mock_hdd_adjust = mock_hdd_functions
+        mock_hdd_factor.return_value = pd.Series([], dtype=float)
+        mock_hdd_adjust.side_effect = lambda consumption, category, hdd_factor: consumption
+
+>       result = calculate_fossil_fuel_emissions(
+            df=empty_df,
+            category='heating',
+            year_label=2024,
+            lookup_emissions_fossil_fuel=mock_emissions_factors,
+            menu_mp=0,
+            retrofit_mask=pd.Series([], dtype=bool)
+        )
+
+test_calculate_fossil_fuel_emissions_4June2025.py:426:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _  
+
+df = Empty DataFrame
+Columns: [census_division]
+Index: [], category = 'heating', year_label = 2024
+lookup_emissions_fossil_fuel = {'fuelOil': {'co2e': 0.304, 'nox': 0.13, 'pm25': 0.0027, 'so2': 0.0015}, 'naturalGas': {'co2e': 0.228, 'nox': 0.0922, 'pm25': 0.0076, 'so2': 0.0006}, 'propane': {'co2e': 0.276, 'nox': 0.1421, 'pm25': 0.0055, 'so2': 0.0002}}
+menu_mp = 0, retrofit_mask = Series([], dtype: bool), verbose = False
+
+    def calculate_fossil_fuel_emissions(
+        df: pd.DataFrame,
+        category: str,
+        year_label: int,
+        lookup_emissions_fossil_fuel: Dict[str, Dict[str, float]],
+        menu_mp: int,
+        retrofit_mask: Optional[pd.Series] = None,
+        verbose: bool = False
+    ) -> Dict[str, pd.Series]:
+        """
+        Calculate fossil fuel emissions (SO2, NOx, PM2.5, and CO2e) for a given category and scenario.
+
+        Args:
+            df (pd.DataFrame): DataFrame containing region- and fuel-specific consumption data.
+            category (str): Category of energy use (e.g., 'heating', 'cooking').
+            year_label (int): The year for calculation (e.g., 2024).
+            lookup_emissions_fossil_fuel (Dict[str, Dict[str, float]]):
+                Dictionary mapping fuel → (pollutant → emission factor).
+            menu_mp (int): Measure package identifier (0 indicates baseline).
+            retrofit_mask (Optional[pd.Series]): Pre-computed retrofit mask. If None, it will be calculated.
+            verbose (bool): Whether to print detailed information.
+
+        Returns:
+            dict: A dictionary where each key is a pollutant (str) and each value is a pd.Series
+                  representing emissions for that pollutant.
+
+        Raises:
+            ValueError: If category is invalid or menu_mp is negative.
+            KeyError: If required consumption columns are missing.
+        """
+        # Validate inputs
+        if category not in EQUIPMENT_SPECS:
+            raise ValueError(f"Invalid category: {category}. Must be one of {list(EQUIPMENT_SPECS.keys())}")
+        if not isinstance(menu_mp, int) or menu_mp < 0:
+            raise ValueError(f"Invalid menu_mp: {menu_mp}. Must be a non-negative integer.")
+
+        # Determine retrofit mask
+        if retrofit_mask is None:
+            retrofit_mask = get_retrofit_homes_mask(df, category, menu_mp, verbose=verbose)
+
+        # Initialize emissions series: zeros for retrofit homes, NaN elsewhere
+        total_fossil_emissions = {
+            pollutant: create_retrofit_only_series(df, retrofit_mask, verbose=False)
+            for pollutant in POLLUTANTS
+        }
+
+        # Only calculate baseline fossil fuel emissions (menu_mp=0)
+        if menu_mp == 0:
+            # Prepare HDD factor for the year
+            hdd_factor = get_hdd_factor_for_year(df, year_label)
+
+            # Determine applicable fuels for this category
+            fuels = ['naturalGas', 'propane']
+            if category not in ['cooking', 'clothesDrying']:
+                fuels.append('fuelOil')
+
+            for fuel in fuels:
+                consumption_col = f'base_{fuel}_{category}_consumption'
+                if consumption_col not in df.columns:
+>                   raise KeyError(f"Required column '{consumption_col}' not found in DataFrame")
+E                   KeyError: "Required column 'base_naturalGas_heating_consumption' not found in DataFrame"
+
+..\public_impact\calculations\calculate_fossil_fuel_emissions.py:74: KeyError
+=================================================================== short test summary info ==================================================================== 
+FAILED test_calculate_fossil_fuel_emissions_4June2025.py::test_empty_dataframe_handling - KeyError: "Required column 'base_naturalGas_heating_consumption' not found in DataFrame"
+================================================================= 1 failed, 21 passed in 0.92s ================================================================= 
+
+
+# =============== FIX: ===============
+
+def test_empty_dataframe_handling(mock_emissions_factors, mock_hdd_functions):
+    """Test handling of empty DataFrame."""
+    # Create empty DataFrame with all required columns
+    required_columns = ['home_id', 'census_division']
+    
+    # Add consumption columns for all categories and fuels
+    for category in EQUIPMENT_SPECS:
+        for fuel in ['naturalGas', 'propane', 'fuelOil']:
+            required_columns.append(f'base_{fuel}_{category}_consumption')
+    
+    empty_df = pd.DataFrame(columns=required_columns)
+    
+    # Mock HDD functions to return empty Series
+    mock_hdd_factor, mock_hdd_adjust = mock_hdd_functions
+    mock_hdd_factor.return_value = pd.Series([], dtype=float)
+    mock_hdd_adjust.side_effect = lambda consumption, category, hdd_factor: consumption
+    
+    result = calculate_fossil_fuel_emissions(
+        df=empty_df,
+        category='heating',
+        year_label=2024,
+        lookup_emissions_fossil_fuel=mock_emissions_factors,
+        menu_mp=0,
+        retrofit_mask=pd.Series([], dtype=bool)
+    )
+    
+    # Should return empty Series for each pollutant
+    for pollutant in POLLUTANTS:
+        assert isinstance(result[pollutant], pd.Series), f"Should return Series for {pollutant}"
+        assert result[pollutant].empty, f"{pollutant} should be empty Series"
+
+
+# =============== ALL TESTS PASSING: ===============
+
+
+PS C:\Users\14128\Research\cmu-tare-model\cmu_tare_model\tests> pytest .\test_calculate_fossil_fuel_emissions_4June2025.py
+===================================================================== test session starts ======================================================================
+platform win32 -- Python 3.11.7, pytest-7.4.0, pluggy-1.0.0
+rootdir: C:\Users\14128\Research\cmu-tare-model
+plugins: anyio-4.2.0
+collected 22 items                                                                                                                                              
+
+test_calculate_fossil_fuel_emissions_4June2025.py ......................                                                                                  [100%]
+
+====================================================================== 22 passed in 0.79s ====================================================================== 
