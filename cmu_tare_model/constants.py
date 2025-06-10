@@ -22,7 +22,7 @@ ALLOWED_TECHNOLOGIES = {
     ]
 } 
 
-TD_LOSSES = 0.06
+TD_LOSSES = 0.05 # Updated to 5% based on the latest estimates from EIA
 TD_LOSSES_MULTIPLIER = 1 / (1 - TD_LOSSES)
 EQUIPMENT_SPECS = {'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15}
 FUEL_MAPPING = {'Electricity': 'electricity', 'Natural Gas': 'naturalGas', 'Fuel Oil': 'fuelOil', 'Propane': 'propane'}
@@ -51,4 +51,13 @@ REBATE_MAPPING = {
     'waterHeating': ('upgrade_water_heater_efficiency', ['Electric Heat Pump'], 1750.00),
     'clothesDrying': ('upgrade_clothes_dryer', ['Electric, Premium, Heat Pump, Ventless'], 840.00),
     'cooking': ('upgrade_cooking_range', ['Electric, '], 840.00)
+}
+
+
+# Color mapping (keeping original style)
+COLOR_MAP_FUEL = {
+    'Electricity': 'seagreen',
+    'Natural Gas': 'steelblue',
+    'Propane': 'orange',
+    'Fuel Oil': 'gray',  # Changed to gray for accessibility
 }

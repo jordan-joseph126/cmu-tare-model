@@ -5,14 +5,7 @@ import seaborn as sns
 from typing import List, Optional, Tuple, Dict, Union
 from matplotlib.ticker import FuncFormatter
 
-# Color mapping (keeping original style)
-color_map_fuel = {
-    'Electricity': 'seagreen',
-    'Natural Gas': 'steelblue',
-    'Propane': 'orange',
-    'Fuel Oil': 'gray',  # Changed to gray for accessibility
-}
-
+from cmu_tare_model.constants import COLOR_MAP_FUEL
 
 def thousands_formatter(x: float, pos: int) -> str:
     """Format numbers to use K for thousands automatically.
@@ -27,132 +20,43 @@ def thousands_formatter(x: float, pos: int) -> str:
         
     Returns:
         Formatted string representation of the number
+        
+    Raises:
+        TypeError: If x cannot be converted to a numeric value
     """
     # Validate input
     try:
         x_float = float(x)
     except (TypeError, ValueError):
-        return str(x)
+        raise TypeError(f"Invalid input for formatting: {x}. Must be a numeric value.")
     
+    # Format with 'K' for thousands
     if abs(x_float) >= 1000:
         return f'{x_float/1000:g}K'
     else:
         return f'{x_float:g}'
 
 
-def create_subplot_boxplot(
-    ax: plt.Axes, 
-    df: pd.DataFrame, 
-    y_col: str, 
-    category_col: str, 
-    hue_col: str,
-    x_label: Optional[str] = None, 
-    y_label: Optional[str] = None, 
-    lower_percentile: float = 1, 
-    upper_percentile: float = 99, 
-    show_outliers: bool = False, 
-    include_zero: bool = True,
-    palette: Optional[Dict[str, str]] = None
-) -> None:
-    """Creates a boxplot on the provided axes using the specified DataFrame.
-    
-    This function creates vertical boxplots grouped by a category with colors based on a hue variable.
-    It is designed for comparing distributions across different groups and categories.
-    
-    Args:
-        ax: Matplotlib Axes object where the boxplot will be plotted
-        df: DataFrame containing the data to plot
-        y_col: Column name for y-axis (numeric data for vertical boxplots)
-        category_col: Column name for categories (e.g., income level)
-        hue_col: Column name for color grouping (e.g., fuel type)
-        x_label: Optional label for x-axis
-        y_label: Optional label for y-axis
-        lower_percentile: Lower percentile for data range filtering (0-100)
-        upper_percentile: Upper percentile for data range filtering (0-100)
-        show_outliers: Whether to show outliers in the boxplot
-        include_zero: Whether to include zero values in the visualization
-        palette: Optional color mapping dictionary
-        
-    Raises:
-        KeyError: If required columns don't exist in the DataFrame
-    """
-    # Minimal validation - check for column existence
-    if y_col not in df.columns:
-        raise KeyError(f"Column '{y_col}' not found in DataFrame. Available columns: {list(df.columns)}")
-    if category_col not in df.columns:
-        raise KeyError(f"Column '{category_col}' not found in DataFrame. Available columns: {list(df.columns)}")
-    if hue_col not in df.columns:
-        raise KeyError(f"Column '{hue_col}' not found in DataFrame. Available columns: {list(df.columns)}")
-    
-    # Create a copy to avoid modifying the original DataFrame
-    df_copy = df.copy()
-    
-    # Remove zero values if specified
-    if not include_zero:
-        df_copy = df_copy[df_copy[y_col] != 0]
-    
-    # Apply percentile filtering for numeric values
-    lower_limit = df_copy[y_col].quantile(lower_percentile / 100)
-    upper_limit = df_copy[y_col].quantile(upper_percentile / 100)
-    df_copy = df_copy[(df_copy[y_col] >= lower_limit) & (df_copy[y_col] <= upper_limit)]
-    
-    # Use default palette if none provided
-    if palette is None:
-        palette = color_map_fuel
-    
-    # Get valid hue values that exist in both the data and palette
-    hue_order = [val for val in df_copy[hue_col].unique() if val in palette]
-    
-    # Create the boxplot
-    sns.boxplot(
-        data=df_copy, 
-        x=category_col, 
-        y=y_col, 
-        hue=hue_col,
-        hue_order=hue_order,
-        palette=palette,
-        showfliers=show_outliers, 
-        ax=ax
-    )
-    
-    # Set labels if provided
-    if x_label is not None:
-        ax.set_xlabel(x_label, fontsize=22)
-    
-    if y_label is not None:
-        ax.set_ylabel(y_label, fontsize=22)
-    
-    # Set font size for tick labels
-    ax.tick_params(axis='both', labelsize=22)
-    
-    # Format y-axis labels to use K for thousands
-    ax.yaxis.set_major_formatter(FuncFormatter(thousands_formatter))
-    
-    # Remove top and right spines for cleaner appearance
-    sns.despine()
-
-
 def create_subplot_grid_boxplot(
-    df: Optional[pd.DataFrame] = None,                    # Single DataFrame (backward compatible)
-    dataframes: Optional[List[pd.DataFrame]] = None,      # Multiple DataFrames
-    dataframe_indices: Optional[List[int]] = None,        # DataFrame mapping
-    subplot_positions: List[Tuple[int, int]] = None, 
-    y_cols: List[str] = None,                             # Numeric variables for y-axis
-    category_col: str = 'income_level',                   # Default column for categories (x-axis)
-    hue_col: str = 'base_fuel',                           # Default column for color coding
-    x_labels: Optional[List[str]] = None, 
-    y_labels: Optional[List[str]] = None, 
-    lower_percentile: float = 1, 
-    upper_percentile: float = 99, 
-    show_outliers: bool = False, 
-    include_zero: bool = True, 
-    suptitle: Optional[str] = None, 
-    sharex: bool = False, 
-    sharey: bool = False, 
-    subplot_titles: Optional[List[str]] = None, 
-    show_legend: bool = True,                            
+    df: Optional[pd.DataFrame] = None,
+    dataframes: Optional[List[pd.DataFrame]] = None,
+    dataframe_indices: Optional[List[int]] = None,
+    subplot_positions: List[Tuple[int, int]] = None,
+    y_cols: List[str] = None,
+    category_col: str = 'income_level',
+    hue_col: str = 'base_fuel',
+    x_labels: Optional[List[str]] = None,
+    y_labels: Optional[List[str]] = None,
+    lower_percentile: float = 1,
+    upper_percentile: float = 99,
+    show_outliers: bool = False,
+    include_zero: bool = True,
+    subplot_titles: Optional[List[str]] = None,
+    suptitle: Optional[str] = None,
     figure_size: Tuple[int, int] = (12, 10),
-    palette: Optional[Dict[str, str]] = None
+    sharex: bool = False,
+    sharey: bool = False,
+    show_legend: bool = True,
 ) -> plt.Figure:
     """Creates a grid of boxplots with multiple fuel types grouped by category.
     
@@ -173,13 +77,12 @@ def create_subplot_grid_boxplot(
         upper_percentile: Upper percentile for data range filtering (0-100)
         show_outliers: Whether to show outliers in the boxplots
         include_zero: Whether to include zero values in the visualization
+        subplot_titles: Optional list of titles for each subplot
         suptitle: Super title for the entire figure
+        figure_size: Size of the figure as (width, height) in inches
         sharex: Whether to share x-axes across subplots
         sharey: Whether to share y-axes across subplots
-        subplot_titles: Optional list of titles for each column
         show_legend: Whether to show the fuel type legend
-        figure_size: Size of the figure as (width, height) in inches
-        palette: Optional color mapping dictionary (defaults to color_map_fuel)
         
     Returns:
         Matplotlib Figure object containing the grid of boxplots
@@ -188,9 +91,8 @@ def create_subplot_grid_boxplot(
         ValueError: If input parameters are invalid or inconsistent
         KeyError: If specified columns don't exist in the DataFrame(s)
     """
-    # Use default palette if none provided
-    if palette is None:
-        palette = color_map_fuel
+    # Use default palette
+    palette = COLOR_MAP_FUEL
         
     # Simple input validation
     if df is not None and dataframes is not None:
@@ -239,6 +141,8 @@ def create_subplot_grid_boxplot(
 
     # Create boxplots for each subplot position
     for i, (pos, y_col) in enumerate(zip(subplot_positions, y_cols)):
+        ax = subplot_axes[pos]
+        
         # Get the appropriate DataFrame for this subplot
         current_df = df_list[df_indices[i]]
         
@@ -250,30 +154,56 @@ def create_subplot_grid_boxplot(
         if hue_col not in current_df.columns:
             raise KeyError(f"Column '{hue_col}' not found in DataFrame at index {df_indices[i]}. Available columns: {list(current_df.columns)}")
         
+        # MEMORY FIX: Extract only needed columns, then apply filters
+        required_cols = [y_col, category_col, hue_col]
+        df_plot = current_df[required_cols].copy()
+        
+        # Remove zero values if specified
+        if not include_zero:
+            df_plot = df_plot[df_plot[y_col] != 0]
+        
+        # Apply percentile filtering for numeric values
+        lower_limit = df_plot[y_col].quantile(lower_percentile / 100)
+        upper_limit = df_plot[y_col].quantile(upper_percentile / 100)
+        df_plot = df_plot[(df_plot[y_col] >= lower_limit) & (df_plot[y_col] <= upper_limit)]
+        
+        # Get valid hue values that exist in both the data and palette
+        hue_order = [val for val in df_plot[hue_col].unique() if val in palette]
+        
+        # Create the boxplot
+        sns.boxplot(
+            data=df_plot,
+            x=category_col,
+            y=y_col,
+            hue=hue_col,
+            hue_order=hue_order,
+            palette=palette,
+            showfliers=show_outliers,
+            ax=ax
+        )
+        
         # Get labels
         x_label = x_labels[i] if x_labels and i < len(x_labels) else None
         y_label = y_labels[i] if y_labels and i < len(y_labels) else None
         
-        # Create boxplot
-        create_subplot_boxplot(
-            ax=subplot_axes[pos],
-            df=current_df,
-            y_col=y_col,
-            category_col=category_col,
-            hue_col=hue_col,
-            x_label=x_label,
-            y_label=y_label if pos[1] == 0 or not sharey else None,  # Only show y-label on leftmost plots if sharey
-            lower_percentile=lower_percentile,
-            upper_percentile=upper_percentile,
-            show_outliers=show_outliers,
-            include_zero=include_zero,
-            palette=palette
-        )
+        # Set labels if provided
+        if x_label is not None:
+            ax.set_xlabel(x_label, fontsize=22)
         
-        # If this is the last subplot and show_legend is False, remove the legend
-        if not show_legend:
-            if subplot_axes[pos].get_legend() is not None:
-                subplot_axes[pos].get_legend().remove()
+        if y_label is not None:
+            ax.set_ylabel(y_label, fontsize=22)
+        
+        # Set font size for tick labels
+        ax.tick_params(axis='both', labelsize=22)
+        
+        # Rotate x-tick labels
+        ax.tick_params(axis='x', rotation=45)
+
+        # Format y-axis labels to use K for thousands
+        ax.yaxis.set_major_formatter(FuncFormatter(thousands_formatter))
+        
+        # Remove top and right spines for cleaner appearance
+        sns.despine()
 
     # Add column titles if provided
     if subplot_titles:
@@ -311,27 +241,3 @@ def create_subplot_grid_boxplot(
         plt.tight_layout(rect=[0, 0, 1, 0.95] if suptitle else [0, 0, 1, 1])
     
     return fig
-
-
-# Example usage of the create_subplot_grid_boxplot function
-'''
-fig_climate_damages = create_subplot_grid_boxplot(
-    df=df_outputs_basic_home_easiur,  # Single DataFrame with all data
-    subplot_positions=[(0, 0), (0, 1), (0, 2)],
-    y_cols=[
-        f'{scenario_prefix}{category}_avoided_damages_climate_lrmer_lower',
-        f'{scenario_prefix}{category}_avoided_damages_climate_lrmer_central',
-        f'{scenario_prefix}{category}_avoided_damages_climate_lrmer_upper'
-    ],
-    category_col='lmi_or_mui',
-    hue_col=f'base_{category}_fuel',
-    sharex=True,
-    sharey=True,
-    subplot_titles=['Lower Bound', 'Central Estimate', 'Upper Bound'],
-    x_labels=['', '', ''],
-    y_labels=['Avoided Lifetime Climate Damages [$USD-2023]', '', ''],
-    figure_size=(18, 12),
-    show_outliers=False,
-    palette=color_map_fuel
-)
-'''

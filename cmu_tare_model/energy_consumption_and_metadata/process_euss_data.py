@@ -39,6 +39,28 @@ def extract_city_name(row: str) -> str:
     return match.group(1) if match else row
  
 
+def map_metro_status(metro_status: Optional[str]) -> Optional[str]:
+    """
+    Maps raw metro status values to Urbanicity labels.
+
+    Args:
+        metro_status: String from 'in.puma_metro_status' column.
+
+    Returns:
+        'Urban', 'Suburban', or 'Rural' if recognized; otherwise the original input.
+    """
+    if not isinstance(metro_status, str):
+        return metro_status
+        
+    mapping = {
+        'In metro area, principal city': 'Urban',
+        'In metro area, not/partially in principal city': 'Suburban',
+        'Not/partially in metro area': 'Rural'
+    }
+
+    return mapping.get(metro_status.strip(), metro_status)
+
+
 def standardize_fuel_name(fuel_desc: Any) -> Optional[str]:
     """Standardizes a fuel description into a recognized category or None.
 
@@ -150,6 +172,7 @@ def df_enduse_refactored(df_baseline: pd.DataFrame) -> pd.DataFrame:
         'gea_region': df_baseline['in.generation_and_emissions_assessment_region'],
         'state': df_baseline['in.state'],
         'city': df_baseline['in.city'].apply(extract_city_name),
+        'urbanicity': df_baseline['in.puma_metro_status'].apply(map_metro_status),
         'county': df_baseline['in.county'],
         'county_fips': df_baseline['in.county'].apply(lambda x: x[1:3] + x[4:7]),
         'puma': df_baseline['in.puma'],
