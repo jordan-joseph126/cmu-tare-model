@@ -1,4 +1,5 @@
 import os
+import sys
 from importnb import Notebook
 from utils import building_unit_types
 
@@ -18,13 +19,14 @@ with Notebook():
     preIRA_fuel_price_lookup, iraRef_fuel_price_lookup = TARE_IO.load_fuel_price_lookups(project_root, cpi_ratio_2023_2018, cpi_ratio_2023_2019, cpi_ratio_2023_2020, cpi_ratio_2023_2021, cpi_ratio_2023_2022)
     rsMeans_national_avg = TARE_IO.load_rsMeans_national_avg(cpi_ratio_2023_2019)
     dict_heating_equipment_cost = TARE_IO.load_dict_heating_equipment_cost(project_root)
+    dict_cooling_equipment_cost = TARE_IO.load_dict_cooling_equipment_cost(project_root)
     df_puma_medianIncome = TARE_IO.load_df_puma_medianIncome(project_root, cpi_ratio_2023_2022)
     df_county_medianIncome = TARE_IO.load_df_county_medianIncome(project_root, cpi_ratio_2023_2022)
     df_state_medianIncome = TARE_IO.load_df_state_medianIncome(project_root, cpi_ratio_2023_2022)
 
     import tare_model_functions_v1_4_1 as base_TARE
 
-NUM_RESIDENCES = 8
+NUM_RESIDENCES = 8000
 PUBLIC_INTEREST_RATE = 0.02
 
 
@@ -37,13 +39,25 @@ MMPV_filename = 'MMPV_ALPHA0pt2_BETA0pt3_DISCOUNT0pt07'
 unit_num = "all"
 # region = "urban_ohio"
 
-for region in ["7B_urban", "7AK_suburban"]:
-    output_filepath = os.path.join("output_results",f"{region}_{NUM_RESIDENCES}_all_unit_residence", f"alpha_beta_{MMPV_filename if USING_MMPV else 'NPV'}_tare_output.csv")
+for region in ["national_ASHP"]:
+    output_filepath = os.path.join("output_results",f"{region}_{NUM_RESIDENCES}_all_unit_residence_DEBUG", f"alpha_beta_{MMPV_filename if USING_MMPV else 'NPV'}_tare_output.csv")
+
+    high_level_logfile_path =  os.path.join("output_results",f"{region}_{NUM_RESIDENCES}_all_unit_residence_DEBUG", "LOGS.log")
+
+    real_original_stdout = sys.stdout
+
+    os.makedirs(os.path.dirname(high_level_logfile_path), exist_ok=True)
+
+    log_file = open(high_level_logfile_path, 'w')
+
+    # print(f"switching logging to {high_level_logfile_path}")
+    sys.stdout = log_file
+
 
     menu_mp = 0
     input_mp = "baseline"
-    data_folder_file_path = os.path.join("/ocean","projects", "eng220005p", "agautam3","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence")
-    # data_folder_file_path = os.path.join("/home","arnavgautam","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence")
+    # data_folder_file_path = os.path.join("/ocean","projects", "eng220005p", "agautam3","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence")
+    data_folder_file_path = os.path.join("/home","arnavgautam","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence")
     print(data_folder_file_path)
 
     # Load the annual metadata associated with this case. This will be loading my custom data format from my own ResStock runs
@@ -60,7 +74,8 @@ for region in ["7B_urban", "7AK_suburban"]:
     # Upgrade scenario
     menu_mp = 8
     input_mp = "default_option_closest_to_sales_volume_weighted_heat_pump_device"
-    data_folder_file_path = os.path.join("/ocean","projects", "eng220005p", "agautam3","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence_ASHP")
+    # data_folder_file_path = os.path.join("/ocean","projects", "eng220005p", "agautam3","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence_ASHP")
+    data_folder_file_path = os.path.join("/home", "arnavgautam","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence_ASHP")
     print(data_folder_file_path)
 
     # Load the annual metadata associated with this case. This will be loading my custom data format from my own ResStock runs
@@ -90,6 +105,7 @@ for region in ["7B_urban", "7AK_suburban"]:
     # calculate_replacement_cost(df, cost_dict, rsMeans_national_avg, menu_mp, end_use)
     print("Calculating Cost of Replacing Existing Equipment with Similar Model/Efficiency ...")
     df_resstock_run_am_mp8 = base_TARE.calculate_replacement_cost(df_resstock_run_am_mp8, dict_heating_equipment_cost, rsMeans_national_avg, menu_mp, 'heating')
+    df_resstock_run_am_mp8 = base_TARE.calculate_replacement_cost(df_resstock_run_am_mp8, dict_cooling_equipment_cost, rsMeans_national_avg, menu_mp, 'cooling')
 
     # Call the function and calculate installation premium based on existing housing characteristics
     # calculate_heating_installation_premium(df, rsMeans_national_avg, cpi_ratio_2023_2013)
@@ -112,3 +128,6 @@ for region in ["7B_urban", "7AK_suburban"]:
 
     print(f"Writing output to {output_filepath}")
     TARE_IO.write_TARE_results(df_resstock_run_am_mp8, output_filepath)
+
+    sys.stdout = real_original_stdout
+    log_file.close()
