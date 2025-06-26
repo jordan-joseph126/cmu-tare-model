@@ -39,12 +39,10 @@ MMPV_filename = 'MMPV_ALPHA0pt2_BETA0pt3_DISCOUNT0pt07'
 unit_num = "all"
 # region = "urban_ohio"
 
-sensitivity_case_name = None
+sensitivity_case_name = "LOW_ALTERNATIVE_REPLACEMENT_COST"
 
 root_dir = os.path.join("/ocean","projects","eng220005p","agautam3","cmu-tare-model","output_results")
-if sensitivity_case_name is not None:
-#     root_dir = os.path.join(root_dir, sensitivity_case_name)
-# else:
+if sensitivity_case_name is None:
     raise Exception("Must provide a sensitivity_case_name")
 
 for region in ["national_ASHP"]:
@@ -64,8 +62,8 @@ for region in ["national_ASHP"]:
 
     menu_mp = 0
     input_mp = "baseline"
-    # data_folder_file_path = os.path.join("/ocean","projects", "eng220005p", "agautam3","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence")
-    data_folder_file_path = os.path.join("/home","arnavgautam","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence")
+    data_folder_file_path = os.path.join("/ocean","projects", "eng220005p", "agautam3","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence")
+    # data_folder_file_path = os.path.join("/home","arnavgautam","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence")
     print(data_folder_file_path)
 
     # Load the annual metadata associated with this case. This will be loading my custom data format from my own ResStock runs
@@ -82,8 +80,8 @@ for region in ["national_ASHP"]:
     # Upgrade scenario
     menu_mp = 8
     input_mp = "default_option_closest_to_sales_volume_weighted_heat_pump_device"
-    # data_folder_file_path = os.path.join("/ocean","projects", "eng220005p", "agautam3","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence_ASHP")
-    data_folder_file_path = os.path.join("/home", "arnavgautam","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence_ASHP")
+    data_folder_file_path = os.path.join("/ocean","projects", "eng220005p", "agautam3","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence_ASHP")
+    # data_folder_file_path = os.path.join("/home", "arnavgautam","resstock-3.4.0",f"{region}_{NUM_RESIDENCES}_{unit_num}_unit_residence_ASHP")
     print(data_folder_file_path)
 
     # Load the annual metadata associated with this case. This will be loading my custom data format from my own ResStock runs
