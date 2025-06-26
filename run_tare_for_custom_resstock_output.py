@@ -39,7 +39,7 @@ MMPV_filename = 'MMPV_ALPHA0pt2_BETA0pt3_DISCOUNT0pt07'
 unit_num = "all"
 # region = "urban_ohio"
 
-sensitivity_case_name = "LOW_ALTERNATIVE_REPLACEMENT_COST"
+sensitivity_case_name = "HIGH_ALTERNATIVE_REPLACEMENT_COST"
 
 root_dir = os.path.join("/ocean","projects","eng220005p","agautam3","cmu-tare-model","output_results")
 if sensitivity_case_name is None:
