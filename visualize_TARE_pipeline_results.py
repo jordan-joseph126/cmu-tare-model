@@ -181,7 +181,7 @@ for penetration_level_label in ["COST_BASED"]:
             upgrade_power_timeseries_df = upgrade_power_timeseries_df[[str(int(idx))]]
             power_timeseries_df = upgrade_power_timeseries_df - baseline_power_timeseries_df
         
-        print(power_timeseries_df)
+        # print(power_timeseries_df)
         
         # if csv_format_phased_power is None:
         #     csv_format_phased_power = power_timeseries_df
@@ -191,7 +191,7 @@ for penetration_level_label in ["COST_BASED"]:
         climate_zone = buildstock_df[buildstock_df['Building'] == bldg_id]['ASHRAE IECC Climate Zone 2004'].iloc[0]
         level_of_urbanization = buildstock_df[buildstock_df['Building'] == bldg_id]['PUMA Metro Status'].apply(lambda x: level_of_urbanization_dict[x]).iloc[0]
 
-        print(f"{climate_zone}_{level_of_urbanization}")
+        # print(f"{climate_zone}_{level_of_urbanization}")
 
         if per_climate_zone_and_urbanization_dfs[climate_zone][level_of_urbanization] is None:
             per_climate_zone_and_urbanization_dfs[climate_zone][level_of_urbanization] = power_timeseries_df
@@ -244,16 +244,16 @@ for penetration_level_label in ["COST_BASED"]:
     combined_df = pd.DataFrame(combined_box_data)
 
     # Plot
-    fig, ax = plt.subplots(figsize=(16, 6))
-    combined_df.boxplot(ax=ax, rot=90)  # rot rotates x-axis labels to avoid overlap
-    ax.set_title("Change in Total Hourly Usage Over the Year, Normalized per Residence")
-    ax.set_ylabel("kWh")
-    plt.tight_layout()
+    # fig, ax = plt.subplots(figsize=(16, 6))
+    # combined_df.boxplot(ax=ax, rot=90)  # rot rotates x-axis labels to avoid overlap
+    # ax.set_title("Change in Total Hourly Usage Over the Year, Normalized per Residence")
+    # ax.set_ylabel("kWh")
+    # plt.tight_layout()
 
-    combined_box_plot_path = os.path.join(visuals_dir, "combined_box_plot", "box_plot_per_climate_zone_and_urbanization_normalized_per_residence.svg")
-    os.makedirs(os.path.dirname(combined_box_plot_path), exist_ok=True)
-    fig.savefig(combined_box_plot_path)
-    plt.close()
+    # combined_box_plot_path = os.path.join(visuals_dir, "combined_box_plot", "box_plot_per_climate_zone_and_urbanization_normalized_per_residence.svg")
+    # os.makedirs(os.path.dirname(combined_box_plot_path), exist_ok=True)
+    # fig.savefig(combined_box_plot_path)
+    # plt.close()
 
     # fig, ax = plt.subplots(figsize=(12,4))
     # for climate_zone, level_of_urbanization in combinations_array:
@@ -264,6 +264,24 @@ for penetration_level_label in ["COST_BASED"]:
     # os.makedirs(os.path.dirname(combined_box_plot_path), exist_ok=True)
     # fig.savefig(combined_box_plot_path)
     # plt.close()
+
+    fig, ax = plt.subplots(figsize=(8,6))
+    ax.set_title("Change in hourly electricity usage over the year per residence")
+    ax.set_ylabel("kWh")
+
+    fully_combined_df = None
+    for climate_zone, level_of_urbanization in combinations_array:
+        if per_climate_zone_and_urbanization_dfs[climate_zone][level_of_urbanization] is not None:
+            # print(per_climate_zone_and_urbanization_dfs[climate_zone][level_of_urbanization].sum(axis=1))
+            if fully_combined_df is None:
+                fully_combined_df = per_climate_zone_and_urbanization_dfs[climate_zone][level_of_urbanization].sum(axis=1)
+            else:
+                fully_combined_df = pd.concat([fully_combined_df, per_climate_zone_and_urbanization_dfs[climate_zone][level_of_urbanization].sum(axis=1)])
+    fully_combined_df.plot(kind="box", ax=ax)
+    combined_box_plot_path = os.path.join(visuals_dir, "combined_box_plot", "box_plot_combining_all_climate_zone_and_urbanization.svg")
+    os.makedirs(os.path.dirname(combined_box_plot_path), exist_ok=True)
+    fig.savefig(combined_box_plot_path)
+    plt.close()
 
 
 

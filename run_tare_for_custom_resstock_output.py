@@ -39,10 +39,18 @@ MMPV_filename = 'MMPV_ALPHA0pt2_BETA0pt3_DISCOUNT0pt07'
 unit_num = "all"
 # region = "urban_ohio"
 
-for region in ["national_ASHP"]:
-    output_filepath = os.path.join("output_results",f"{region}_{NUM_RESIDENCES}_all_unit_residence_DEBUG", f"alpha_beta_{MMPV_filename if USING_MMPV else 'NPV'}_tare_output.csv")
+sensitivity_case_name = None
 
-    high_level_logfile_path =  os.path.join("output_results",f"{region}_{NUM_RESIDENCES}_all_unit_residence_DEBUG", "LOGS.log")
+root_dir = os.path.join("/ocean","projects","eng220005p","agautam3","cmu-tare-model","output_results")
+if sensitivity_case_name is not None:
+#     root_dir = os.path.join(root_dir, sensitivity_case_name)
+# else:
+    raise Exception("Must provide a sensitivity_case_name")
+
+for region in ["national_ASHP"]:
+    output_filepath = os.path.join(root_dir, f"{region}_{NUM_RESIDENCES}_all_unit_residence_{sensitivity_case_name}", f"alpha_beta_{MMPV_filename if USING_MMPV else 'NPV'}_tare_output.csv")
+
+    high_level_logfile_path =  os.path.join(root_dir, f"{region}_{NUM_RESIDENCES}_all_unit_residence_{sensitivity_case_name}", "LOGS.log")
 
     real_original_stdout = sys.stdout
 
