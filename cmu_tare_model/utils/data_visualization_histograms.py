@@ -129,8 +129,17 @@ def create_subplot_grid_histogram(
     # Prepare figure and axes
     nrows = max(r for r, c in subplot_positions) + 1
     ncols = max(c for r, c in subplot_positions) + 1
-    fig, axes = plt.subplots(nrows, ncols, figsize=figure_size, sharex=sharex, sharey=sharey)
     
+    # fig, axes = plt.subplots(nrows, ncols, figsize=figure_size, sharex=sharex, sharey=sharey)
+    fig, axes = plt.subplots(
+        nrows=nrows,
+        ncols=ncols,
+        figsize=figure_size,
+        sharex=sharex,
+        sharey=sharey,
+        dpi=600  # High resolution for better quality!
+    )
+
     # Ensure axes is always 2D array for consistent indexing
     if nrows == 1 and ncols == 1:
         axes = np.array([[axes]])
@@ -164,9 +173,13 @@ def create_subplot_grid_histogram(
             if color_code in df_current.columns:
                 all_fuel_values.update(df_current[color_code].dropna().unique())
         
-        hue_order = [fuel for fuel in all_fuel_values if fuel in COLOR_MAP_FUEL]
+        # Desired stacking order (bottom to top): Fuel Oil, Propane, Natural Gas, Electricity
+        # But seaborn stacks in REVERSE of hue_order, so we need to reverse it
+        preferred_order = ['Electricity', 'Natural Gas', 'Propane', 'Fuel Oil']
+        hue_order = [fuel for fuel in preferred_order if fuel in all_fuel_values and fuel in COLOR_MAP_FUEL]
         colors = [COLOR_MAP_FUEL[fuel] for fuel in hue_order]
         palette = dict(zip(hue_order, colors))
+
     else:
         hue_order = None
         palette = None
@@ -191,7 +204,7 @@ def create_subplot_grid_histogram(
             if x_col in df_plot.columns:
                 df_plot[x_col] = df_plot[x_col].replace(0, np.nan)
         
-        # SOLUTION 2: Calculate bins based on display range when percentiles are specified
+        # Calculate bins based on display range when percentiles are specified
         # This ensures the specified number of bins appears within the visible range
         if lower_percentile is not None and upper_percentile is not None:
             # Calculate the actual display limits
@@ -224,12 +237,12 @@ def create_subplot_grid_histogram(
         )
         
         # Set labels
-        ax.set_xlabel(x_labels[idx] if x_labels and idx < len(x_labels) else x_col, fontsize=22)
-        ax.set_ylabel(y_labels[idx] if y_labels and idx < len(y_labels) else 'Count', fontsize=22)
+        ax.set_xlabel(x_labels[idx] if x_labels and idx < len(x_labels) else x_col, fontsize=24, fontweight='bold')
+        ax.set_ylabel(y_labels[idx] if y_labels and idx < len(y_labels) else 'Count', fontsize=24, fontweight='bold')
         
         # Set title
         if subplot_titles and idx < len(subplot_titles):
-            ax.set_title(subplot_titles[idx], fontsize=22, fontweight='bold')
+            ax.set_title(subplot_titles[idx], fontsize=24, fontweight='bold')
         
         # Set display limits based on percentiles (now matches bin calculation)
         if lower_percentile is not None and upper_percentile is not None:
@@ -241,7 +254,7 @@ def create_subplot_grid_histogram(
         # Format axis labels
         ax.xaxis.set_major_formatter(FuncFormatter(thousands_formatter))
         ax.yaxis.set_major_formatter(FuncFormatter(thousands_formatter))
-        ax.tick_params(axis='both', labelsize=22)
+        ax.tick_params(axis='both', labelsize=24)
         
         # Remove legend from individual subplots (we'll add a global legend)
         if ax.get_legend() is not None:
@@ -258,7 +271,7 @@ def create_subplot_grid_histogram(
 
     # Add super title
     if suptitle:
-        fig.suptitle(suptitle, fontweight='bold', fontsize=22)
+        fig.suptitle(suptitle, fontweight='bold', fontsize=24)
 
     # Add global legend
     if color_code and palette:
@@ -269,7 +282,7 @@ def create_subplot_grid_histogram(
             loc='lower center', 
             ncol=len(hue_order), 
             prop={'size': 22}, 
-            bbox_to_anchor=(0.5, -0.05)
+            bbox_to_anchor=(0.5, -0.02)
         )
         plt.tight_layout(rect=[0, 0.05, 1, 0.95 if suptitle else 1])
     else:

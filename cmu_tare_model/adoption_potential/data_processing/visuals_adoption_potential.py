@@ -255,9 +255,9 @@ def plot_adoption_rate_bar(
             print(f"Error plotting scenario {scenario}: {str(e)}")
     
     # Set axis labels and title
-    ax.set_xlabel(x_label, fontweight='bold', fontsize=20)
-    ax.set_ylabel(y_label, fontweight='bold', fontsize=20)
-    ax.set_title(title, fontweight='bold', fontsize=20)
+    ax.set_xlabel(x_label, fontweight='bold', fontsize=24)
+    ax.set_ylabel(y_label, fontweight='bold', fontsize=24)
+    ax.set_title(title, fontweight='bold', fontsize=24)
 
     # Set x-ticks and labels
     if n > 0:
@@ -299,8 +299,8 @@ def plot_adoption_rate_bar(
             ax.set_xticklabels(adoption_data.index.tolist(), rotation=90, ha='right')
     
     # Set font size for tick labels
-    ax.tick_params(axis='x', labelsize=20)
-    ax.tick_params(axis='y', labelsize=20)
+    ax.tick_params(axis='x', labelsize=24)
+    ax.tick_params(axis='y', labelsize=24)
     
     # Set y-ticks from 0 to 100 in steps of 10%
     ax.set_yticks(np.arange(0, 101, 10))
@@ -361,8 +361,16 @@ def subplot_grid_adoption_vBar(
     num_rows = max(pos[0] for pos in subplot_positions) + 1
 
     # Create figure and axes
-    fig, axes = plt.subplots(nrows=num_rows, ncols=num_cols, figsize=figure_size, sharex=sharex, sharey=sharey)
-    
+    # fig, axes = plt.subplots(nrows=num_rows, ncols=num_cols, figsize=figure_size, sharex=sharex, sharey=sharey)    
+    fig, axes = plt.subplots(
+        nrows=num_rows,
+        ncols=num_cols,
+        figsize=figure_size,
+        sharex=sharex,
+        sharey=sharey,
+        dpi=600  # High resolution for better quality!
+    )
+
     # Ensure axes is always 2D for consistent indexing
     if num_rows == 1 and num_cols == 1:
         axes = np.array([[axes]])
@@ -406,7 +414,7 @@ def subplot_grid_adoption_vBar(
 
     # Add a title to the entire figure if provided
     if suptitle:
-        fig.suptitle(suptitle, fontweight='bold', fontsize=22)
+        fig.suptitle(suptitle, fontweight='bold', fontsize=26)
 
     # Add a legend for the color mapping at the bottom of the entire figure
     legend_labels = list(color_mapping.keys())
@@ -417,13 +425,13 @@ def subplot_grid_adoption_vBar(
         legend_labels, 
         loc='lower center', 
         ncol=len(legend_labels), 
-        prop={'size': 20}, 
+        prop={'size': 22}, 
         labelspacing=0.5, 
-        bbox_to_anchor=(0.5, -0.05)
+        bbox_to_anchor=(0.5, -0.10)
     )
 
     # First apply tight_layout with reasonable rect parameters
-    plt.tight_layout(rect=[0, 0.12, 1, 0.98])
+    plt.tight_layout(rect=[0, 0.02, 1, 0.98])
     
     # Add appropriate bottom padding for x-tick labels
     fig.subplots_adjust(bottom=0.25)
@@ -434,3 +442,157 @@ def subplot_grid_adoption_vBar(
             axes[i,j].xaxis.labelpad = 20  # Increase space between ticks and label
 
     return fig
+
+
+def print_adoption_decision_percentages(
+    dataframes: List[pd.DataFrame],
+    scenario_names: List[str],
+    title: str = None,
+    subtitle: Optional[str] = None,
+    print_header_key: bool = True,
+    filter_fuel: Optional[List[str]] = None,
+) -> None:
+    """
+    Print adoption decision percentages using the same logic as create_multiIndex_adoption_df.
+    
+    Args:
+        dataframes: List of DataFrames with multi-index structure from create_multiIndex_adoption_df
+        scenario_names: List of scenario names (e.g., ['Pre-IRA', 'IRA-Reference'])
+        title: Section title
+        subtitle: Optional subtitle for the section
+        print_header_key: Whether to print the header key for the output
+        filter_fuel: Optional list of fuels to include (uses same filtering as existing module)
+    """
+    
+    # Define the mapping based on the existing module's tier structure
+    tier_mapping = {
+        'Tier 1: Feasible': 'AD',
+        'Total Adoption Potential': 'TAD', 
+        'Total Adoption Potential (Additional Subsidy)': 'TADS',
+    }
+    
+    header_key = """(Base Fuel, Income Level): 
+    AD (%):   --> Tier 1 (%): Adopters that recover the total capital cost of retrofit
+    TAD (%):  --> Tier 1+2 (%): Adopters that recover either the total or net capital cost of retrofit
+    TADS (%): --> Tier 1+2+3 (%): Both less and more WTP Adopters plus those that require subsidies to adopt (positive total NPV)
+    """
+
+    # Print header (matching user's desired format)
+    if title is not None:
+        print("-" * 80)
+        print(f"{title.upper()}")
+        print("-" * 80)
+
+    if print_header_key:
+        print(header_key)
+
+    if subtitle is not None:
+        print(f"\n{subtitle.upper()}\n")
+
+    print(f"Scenarios: {' | '.join(scenario_names)}")
+    print("-" * 80)
+    
+    # Process each dataframe and collect results
+    all_results = {}
+    
+    for df, scenario_name in zip(dataframes, scenario_names):
+        # Apply fuel filtering using the same logic as the existing module
+        if filter_fuel is not None:
+            # Use the same fuel filtering logic as subplot_grid_adoption_vBar
+            fuel_level_names = [name for name in df.index.names if 'fuel' in name.lower()]
+            if fuel_level_names:
+                fuel_level = fuel_level_names[0]
+                df = df[df.index.get_level_values(fuel_level).isin(filter_fuel)]
+        
+        # Find the scenario columns in the MultiIndex columns
+        scenario_columns = [col for col in df.columns.get_level_values(0).unique() 
+                          if scenario_name.lower().replace('-', '').replace('_', '') in 
+                             col.lower().replace('-', '').replace('_', '')]
+        
+        if not scenario_columns:
+            print(f"Warning: No columns found for scenario '{scenario_name}' in DataFrame")
+            continue
+            
+        scenario_col = scenario_columns[0]  # Take the first matching column
+        
+        # Calculate overall percentages using the same approach as the module
+        overall_percentages = []
+        for tier, abbr in tier_mapping.items():
+            if (scenario_col, tier) in df.columns:
+                # Calculate mean across all groups (same as overall calculation)
+                overall_pct = df[(scenario_col, tier)].mean()
+                overall_percentages.append(f"{abbr} {overall_pct:.0f}%")
+        
+        overall_key = "('Overall')"
+        if overall_key not in all_results:
+            all_results[overall_key] = []
+        all_results[overall_key].append(", ".join(overall_percentages))
+        
+        # Calculate percentages for each group using the existing index structure
+        for group_idx in df.index:
+            # Handle both single-level and multi-level indices
+            if isinstance(group_idx, tuple):
+                fuel, income = group_idx
+                group_key = f"('{fuel}', '{income}')"
+            else:
+                group_key = f"('{group_idx}')"
+            
+            group_percentages = []
+            for tier, abbr in tier_mapping.items():
+                if (scenario_col, tier) in df.columns:
+                    value = df.loc[group_idx, (scenario_col, tier)]
+                    group_percentages.append(f"{abbr} {value:.0f}%")
+            
+            if group_key not in all_results:
+                all_results[group_key] = []
+            all_results[group_key].append(", ".join(group_percentages))
+    
+    # Print results in the same order as the existing module (Overall first, then sorted groups)
+    for group_key, scenario_results in all_results.items():
+        combined_results = " | ".join(scenario_results)
+        print(f"{group_key}: {combined_results}")
+    
+    print()  # Add blank line after section
+
+# scc = 'central'
+# rcm_model = 'inmap'
+# cr_function = 'acs'
+
+# print_adoption_decision_percentages(
+#         dataframes=[
+#             df_mi_basic_heating_adoption_inmap_acs, df_mi_basic_heating_adoption_inmap_acs,
+#             ],
+#         scenario_names=[
+#             f'preIRA_mp8_heating_adoption_{scc}_{rcm_model}_{cr_function}',
+#             f'iraRef_mp8_heating_adoption_{scc}_{rcm_model}_{cr_function}',
+#             ],
+#         title="Space Heating Air-Source Heat Pump (ASHP) Retrofit Scenario Comparison",
+#         subtitle="Basic Retrofit (MP8): Central SCC|InMAP|ACS",
+#         print_header_key=True,
+#     )
+
+# print_adoption_decision_percentages(
+#         dataframes=[
+#             df_mi_moderate_heating_adoption_inmap_acs, df_mi_moderate_heating_adoption_inmap_acs,
+#             ],
+#         scenario_names=[
+#             f'preIRA_mp9_heating_adoption_{scc}_{rcm_model}_{cr_function}',
+#             f'iraRef_mp9_heating_adoption_{scc}_{rcm_model}_{cr_function}',
+#             ],
+#         title=None,
+#         subtitle="Moderate Retrofit (MP9): Central SCC|InMAP|ACS",
+#         print_header_key=False,
+#     )
+
+# print_adoption_decision_percentages(
+#         dataframes=[
+#             df_mi_advanced_heating_adoption_inmap_acs, df_mi_advanced_heating_adoption_inmap_acs
+#             ],
+#         scenario_names=[
+#             f'preIRA_mp10_heating_adoption_{scc}_{rcm_model}_{cr_function}',
+#             f'iraRef_mp10_heating_adoption_{scc}_{rcm_model}_{cr_function}'
+#             ],
+#         title=None,
+#         subtitle="Advanced Retrofit (MP10): Central SCC|InMAP|ACS",
+#         print_header_key=False,
+#     )

@@ -22,7 +22,7 @@ ALLOWED_TECHNOLOGIES = {
     ]
 } 
 
-TD_LOSSES = 0.05 # Updated to 5% based on the latest estimates from EIA
+TD_LOSSES = 0.05 # Updated to 5% based on the latest estimates from EIA, formerly 6%
 TD_LOSSES_MULTIPLIER = 1 / (1 - TD_LOSSES)
 EQUIPMENT_SPECS = {'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15}
 FUEL_MAPPING = {'Electricity': 'electricity', 'Natural Gas': 'naturalGas', 'Fuel Oil': 'fuelOil', 'Propane': 'propane'}

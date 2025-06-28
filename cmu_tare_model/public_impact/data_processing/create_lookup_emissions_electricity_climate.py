@@ -196,6 +196,9 @@ if print_verbose:
     Located at filepath: {file_path}
 
     Loading dataframe ...
+
+    {df_cambium21_margEmis_electricity}
+
     Creating lookup dictionary for LRMER and SRMER ...
     -------------------------------------------------------------------------------------------------------
     """)
@@ -225,6 +228,9 @@ if print_verbose:
     Located at filepath: {file_path}
 
     Loading dataframe ...
+
+    {df_cambium22_margEmis_electricity}
+
     Creating lookup dictionary for 2024 LRMER and SRMER ...
     -------------------------------------------------------------------------------------------------------
     """)
