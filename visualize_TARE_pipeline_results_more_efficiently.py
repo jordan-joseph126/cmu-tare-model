@@ -38,114 +38,114 @@ level_of_urbanization_dict = {
 ADOPTION_TIERS = ['Tier 1: Feasible', 'Tier 2: Feasible vs. Alternative', 'Tier 3: Subsidy-Dependent Feasibility', 'Feasible per MMPV']
 
 # --- Main Execution Logic ---
-if __name__ == "__main__":
-    penetration_level_label = "COST_BASED" # Only one value used in the original snippet
+# if __name__ == "__main__":
+penetration_level_label = "COST_BASED" # Only one value used in the original snippet
 
-    region = "national_ASHP"
-    NUM_RESIDENCES = 8000
-    unit_type = "all"
-    prefix="alpha_beta"
-    POWER_FACTOR = 0.9
-    electricity_cols = ["Fuel Use: Electricity: Total"] # Columns to read from timeseries files
+region = "national_ASHP"
+NUM_RESIDENCES = 8000
+unit_type = "all"
+prefix="alpha_beta"
+POWER_FACTOR = 0.9
+electricity_cols = ["Fuel Use: Electricity: Total"] # Columns to read from timeseries files
 
-    # 1. Load DataFrames once
-    tare_results_filepath = os.path.join(TARE_dir, "output_results",f"{region}_{NUM_RESIDENCES}_{unit_type}_unit_residence", f"{prefix}_NPV_tare_output.csv")
-    tare_results_df = pd.read_csv(tare_results_filepath)
+# 1. Load DataFrames once
+tare_results_filepath = os.path.join(TARE_dir, "output_results",f"{region}_{NUM_RESIDENCES}_{unit_type}_unit_residence", f"{prefix}_NPV_tare_output.csv")
+tare_results_df = pd.read_csv(tare_results_filepath)
 
-    buildstock_filepath = os.path.join(resstock_dir, "resources", "national", f"{'all_national' if region == 'national_ASHP' else region}_{NUM_RESIDENCES}_all_unit_buildstock.csv")
-    buildstock_df = pd.read_csv(buildstock_filepath, low_memory=True) # Use low_memory for potentially large files
+buildstock_filepath = os.path.join(resstock_dir, "resources", "national", f"{'all_national' if region == 'national_ASHP' else region}_{NUM_RESIDENCES}_all_unit_buildstock.csv")
+buildstock_df = pd.read_csv(buildstock_filepath, low_memory=True) # Use low_memory for potentially large files
 
-    # 2. Merge tare_results_df with buildstock_df for direct access to climate zone and urbanization
-    # Rename 'Building' in buildstock_df to match 'bldg_id' in tare_results_df for merge
-    # Or simply merge on 'bldg_id' and 'Building' if pandas can infer
-    merged_df = tare_results_df.merge(buildstock_df[['Building', 'ASHRAE IECC Climate Zone 2004', 'PUMA Metro Status']],
-                                      left_on='bldg_id',
-                                      right_on='Building',
-                                      how='inner') # Use inner to only keep buildings present in both
+# 2. Merge tare_results_df with buildstock_df for direct access to climate zone and urbanization
+# Rename 'Building' in buildstock_df to match 'bldg_id' in tare_results_df for merge
+# Or simply merge on 'bldg_id' and 'Building' if pandas can infer
+merged_df = tare_results_df.merge(buildstock_df[['Building', 'ASHRAE IECC Climate Zone 2004', 'PUMA Metro Status']],
+                                    left_on='bldg_id',
+                                    right_on='Building',
+                                    how='inner') # Use inner to only keep buildings present in both
 
-    # Add urbanization_level (urban, suburban, rural) as a new column
-    merged_df['urbanization_level'] = merged_df['PUMA Metro Status'].map(level_of_urbanization_dict)
+# Add urbanization_level (urban, suburban, rural) as a new column
+merged_df['urbanization_level'] = merged_df['PUMA Metro Status'].map(level_of_urbanization_dict)
 
-    # 3. Vectorize 'is_adopting' calculation
-    if penetration_level_label == "1pt0":
-        merged_df["is_adopting"] = True
-    else: # For "COST_BASED"
-        merged_df["is_adopting"] = merged_df["iraRef_mp8_heating_adoption"].isin(ADOPTION_TIERS)
+# 3. Vectorize 'is_adopting' calculation
+if penetration_level_label == "1pt0":
+    merged_df["is_adopting"] = True
+else: # For "COST_BASED"
+    merged_df["is_adopting"] = merged_df["iraRef_mp8_heating_adoption"].isin(ADOPTION_TIERS)
 
-    # Sort by NPV if still needed for other purposes, though not directly used in the final plot
-    merged_df.sort_values(by="iraRef_mp8_heating_total_npv_moreWTP", axis=0, ascending=False, inplace=True)
+# Sort by NPV if still needed for other purposes, though not directly used in the final plot
+merged_df.sort_values(by="iraRef_mp8_heating_total_npv_moreWTP", axis=0, ascending=False, inplace=True)
 
-    # Filter to only include adopting buildings for timeseries processing
-    adopting_buildings_df = merged_df[merged_df['is_adopting']].copy()
+# Filter to only include adopting buildings for timeseries processing
+adopting_buildings_df = merged_df[merged_df['is_adopting']].copy()
 
 
-    # 4. Process Timeseries Data More Efficiently
-    # Prepare to store lists of DataFrames for concatenation later
-    per_climate_zone_and_urbanization_dfs_lists = defaultdict(lambda: defaultdict(list))
+# 4. Process Timeseries Data More Efficiently
+# Prepare to store lists of DataFrames for concatenation later
+per_climate_zone_and_urbanization_dfs_lists = defaultdict(lambda: defaultdict(list))
 
-    # Pre-compute the common part of the resstock path
-    base_resstock_path_segment = os.path.join(resstock_dir, f"{region}{'' if '_' in region else '_upgrades'}_{NUM_RESIDENCES}_{unit_type}_unit_residence")
-    upgrade_resstock_path_segment = os.path.join(resstock_dir, f"{region}{'' if '_' in region else '_upgrades'}_{NUM_RESIDENCES}_{unit_type}_unit_residence_ASHP")
+# Pre-compute the common part of the resstock path
+base_resstock_path_segment = os.path.join(resstock_dir, f"{region}{'' if '_' in region else '_upgrades'}_{NUM_RESIDENCES}_{unit_type}_unit_residence")
+upgrade_resstock_path_segment = os.path.join(resstock_dir, f"{region}{'' if '_' in region else '_upgrades'}_{NUM_RESIDENCES}_{unit_type}_unit_residence_ASHP")
 
-    # # Iterate only through the adopting buildings
-    # for idx, row in adopting_buildings_df.iterrows():
+# # Iterate only through the adopting buildings
+# for idx, row in adopting_buildings_df.iterrows():
 
-    baseline_peak_value_list = None
-    upgrade_peak_value_list = None
-    
-    # Iterate only through all buildings
-    for idx, row in merged_df.iterrows():
-        bldg_id = int(row["bldg_id"]) # Use bldg_id directly from the merged_df
+baseline_peak_value_list = None
+upgrade_peak_value_list = None
 
-        baseline_load_file_path = os.path.join(base_resstock_path_segment, f"run{bldg_id}", "run", "results_timeseries.csv")
-        upgrade_load_file_path = os.path.join(upgrade_resstock_path_segment, f"run{bldg_id}", "run", "results_timeseries.csv")
+# Iterate only through all buildings
+for idx, row in merged_df.iterrows():
+    bldg_id = int(row["bldg_id"]) # Use bldg_id directly from the merged_df
 
-        if not os.path.exists(baseline_load_file_path):
-            # print(f"Couldn't find baseline data for building {bldg_id}, not adding it")
-            continue
+    baseline_load_file_path = os.path.join(base_resstock_path_segment, f"run{bldg_id}", "run", "results_timeseries.csv")
+    upgrade_load_file_path = os.path.join(upgrade_resstock_path_segment, f"run{bldg_id}", "run", "results_timeseries.csv")
 
-        baseline_power_timeseries_df = pd.read_csv(baseline_load_file_path, low_memory=True, usecols=electricity_cols)
-        # Ensure it's numeric and handle potential issues with header row/data types
-        baseline_power_timeseries_df = baseline_power_timeseries_df.iloc[1:].astype(float) # Remove first row if it's string header, convert to float
+    if not os.path.exists(baseline_load_file_path):
+        # print(f"Couldn't find baseline data for building {bldg_id}, not adding it")
+        continue
 
-        # Calculate baseline power in VA (if power factor is applied to kWh)
-        baseline_power_timeseries_df.iloc[:, 0] = baseline_power_timeseries_df.iloc[:, 0] / POWER_FACTOR
+    baseline_power_timeseries_df = pd.read_csv(baseline_load_file_path, low_memory=True, usecols=electricity_cols)
+    # Ensure it's numeric and handle potential issues with header row/data types
+    baseline_power_timeseries_df = baseline_power_timeseries_df.iloc[1:].astype(float) # Remove first row if it's string header, convert to float
 
-        if baseline_peak_value_list is None:
-            baseline_peak_value_list = baseline_power_timeseries_df
+    # Calculate baseline power in VA (if power factor is applied to kWh)
+    baseline_power_timeseries_df.iloc[:, 0] = baseline_power_timeseries_df.iloc[:, 0] / POWER_FACTOR
+
+    if baseline_peak_value_list is None:
+        baseline_peak_value_list = baseline_power_timeseries_df
+    else:
+        baseline_peak_value_list += baseline_power_timeseries_df
+
+    if not os.path.exists(upgrade_load_file_path):
+        # print(f"Couldn't find upgrade data for building {bldg_id}, so adding a zero sequence for it")
+        # Create a zero DataFrame matching baseline's shape and index
+        power_timeseries_diff_df = pd.DataFrame(0.0, index=baseline_power_timeseries_df.index, columns=[str(bldg_id)])
+
+        if upgrade_peak_value_list is None:
+            upgrade_peak_value_list = baseline_power_timeseries_df
         else:
-            baseline_peak_value_list += baseline_power_timeseries_df
+            upgrade_peak_value_list += baseline_power_timeseries_df
 
-        if not os.path.exists(upgrade_load_file_path):
-            # print(f"Couldn't find upgrade data for building {bldg_id}, so adding a zero sequence for it")
-            # Create a zero DataFrame matching baseline's shape and index
-            power_timeseries_diff_df = pd.DataFrame(0.0, index=baseline_power_timeseries_df.index, columns=[str(bldg_id)])
+    else:
+        upgrade_power_timeseries_df = pd.read_csv(upgrade_load_file_path, low_memory=True, usecols=electricity_cols)
+        upgrade_power_timeseries_df = upgrade_power_timeseries_df.iloc[1:].astype(float) # Remove first row, convert to float
+        upgrade_power_timeseries_df.iloc[:, 0] = upgrade_power_timeseries_df.iloc[:, 0] / POWER_FACTOR
 
-            if upgrade_peak_value_list is None:
-                upgrade_peak_value_list = baseline_power_timeseries_df
-            else:
-                upgrade_peak_value_list += baseline_power_timeseries_df
-
+        if upgrade_peak_value_list is None:
+            upgrade_peak_value_list = upgrade_power_timeseries_df
         else:
-            upgrade_power_timeseries_df = pd.read_csv(upgrade_load_file_path, low_memory=True, usecols=electricity_cols)
-            upgrade_power_timeseries_df = upgrade_power_timeseries_df.iloc[1:].astype(float) # Remove first row, convert to float
-            upgrade_power_timeseries_df.iloc[:, 0] = upgrade_power_timeseries_df.iloc[:, 0] / POWER_FACTOR
-
-            if upgrade_peak_value_list is None:
-                upgrade_peak_value_list = upgrade_power_timeseries_df
-            else:
-                upgrade_peak_value_list += upgrade_power_timeseries_df
-            # upgrade_peak_value_list.append(upgrade_power_timeseries_df.max())
+            upgrade_peak_value_list += upgrade_power_timeseries_df
+        # upgrade_peak_value_list.append(upgrade_power_timeseries_df.max())
 
             
-            # Ensure indices are aligned for subtraction
-            power_timeseries_diff_df = upgrade_power_timeseries_df - baseline_power_timeseries_df
-            power_timeseries_diff_df.columns = [str(bldg_id)] # Rename column to bldg_id for later concat/sum
+            # # Ensure indices are aligned for subtraction
+            # power_timeseries_diff_df = upgrade_power_timeseries_df - baseline_power_timeseries_df
+            # power_timeseries_diff_df.columns = [str(bldg_id)] # Rename column to bldg_id for later concat/sum
 
-        # Store the individual timeseries diff DFs in lists
-        climate_zone = row['ASHRAE IECC Climate Zone 2004']
-        level_of_urbanization = row['urbanization_level']
-        per_climate_zone_and_urbanization_dfs_lists[climate_zone][level_of_urbanization].append(power_timeseries_diff_df)
+    # Store the individual timeseries diff DFs in lists
+    climate_zone = row['ASHRAE IECC Climate Zone 2004']
+    level_of_urbanization = row['urbanization_level']
+    per_climate_zone_and_urbanization_dfs_lists[climate_zone][level_of_urbanization].append(power_timeseries_diff_df)
 
     fig, ax = plt.subplots(figsize=(8,6))
     ax.set_title("Peak electricity usage over the year per residence")
