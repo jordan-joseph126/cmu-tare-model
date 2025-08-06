@@ -176,6 +176,22 @@ def plot_adoption_rate_bar(
     if not isinstance(df.columns, pd.MultiIndex):
         raise ValueError("DataFrame must have a MultiIndex for columns")
     
+    # ========== ADD THIS BLOCK FOR DESTENIE'S SORTING SUGGESTION ==========
+    # Sort by IRA-Reference Total Adoption Potential
+    try:
+        ira_scenarios = [col for col in df.columns.get_level_values(0).unique() 
+                        if 'iraref' in col.lower() or 'ira_ref' in col.lower() or 'ira-ref' in col.lower()]
+        
+        if ira_scenarios:
+            ira_scenario = ira_scenarios[0]
+            sort_column = (ira_scenario, 'Total Adoption Potential')
+            
+            if sort_column in df.columns:
+                df = df.sort_values(sort_column, ascending=False)
+    except Exception:
+        pass
+    # ========== END OF ADDITION ==========
+
     # Filter the DataFrame to only include the tier columns
     tier_columns = ['Tier 1: Feasible', 'Tier 2: Feasible vs. Alternative', 'Tier 3: Subsidy-Dependent Feasibility']
     available_columns = df.columns.get_level_values(1).unique()
