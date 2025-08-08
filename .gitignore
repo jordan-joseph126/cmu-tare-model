@@ -12,3 +12,23 @@ euss_data/
 study_validation/
 archived_data/
 reference_material/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Python virtual environments
+venv/
+env/
+ENV/
+
+# Python distribution / packaging
+build/
+dist/
+*.egg-info/
