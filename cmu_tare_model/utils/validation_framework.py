@@ -455,6 +455,41 @@ def replace_small_values_with_nan(
 # =====================================================================================================
 # UPDATED: NOW HANDLES NONE VALUES FOR RETROFIT_MASK
 # ====================================================================================================
+# def calculate_avoided_values(
+#     baseline_values: pd.Series,
+#     measure_values: pd.Series,
+#     retrofit_mask: Optional[pd.Series] = None
+# ) -> pd.Series:
+#     """
+#     Calculate avoided values (baseline - measure) only for retrofitted homes.
+
+#     Args:
+#         baseline_values: Series of baseline values.
+#         measure_values: Series of measure package values.
+#         retrofit_mask: Boolean Series indicating which homes get retrofits.
+#                       If None, calculates for all homes.
+
+#     Returns:
+#         Series with avoided values for retrofitted homes and NaN for others.
+#     """
+#     # Initialize with NaN
+#     avoided_values = pd.Series(np.nan, index=baseline_values.index)
+
+#     # For baseline scenarios (when retrofit_mask is None), calculate for all homes
+#     if retrofit_mask is None:
+#         return baseline_values - measure_values
+        
+#     # For measure package scenarios, calculate only for homes with retrofits
+#     if retrofit_mask.any():
+#         avoided_values.loc[retrofit_mask] = (
+#             baseline_values.loc[retrofit_mask] - measure_values.loc[retrofit_mask]
+#         )
+    
+#     return avoided_values
+
+# =====================================================================================================
+# UPDATED: NOW HANDLES NONE VALUES FOR RETROFIT_MASK
+# ====================================================================================================
 def calculate_avoided_values(
     baseline_values: pd.Series,
     measure_values: pd.Series,
@@ -472,17 +507,28 @@ def calculate_avoided_values(
     Returns:
         Series with avoided values for retrofitted homes and NaN for others.
     """
-    # Initialize with NaN
-    avoided_values = pd.Series(np.nan, index=baseline_values.index)
+    # Ensure all series have the same index by aligning to measure_values index
+    # This handles cases where baseline data and current data have different indices
+    if not baseline_values.index.equals(measure_values.index):
+        baseline_values = baseline_values.reindex(measure_values.index)
+    
+    # Initialize with NaN using measure_values index
+    avoided_values = pd.Series(np.nan, index=measure_values.index)
 
     # For baseline scenarios (when retrofit_mask is None), calculate for all homes
     if retrofit_mask is None:
         return baseline_values - measure_values
         
+    # Align retrofit_mask to measure_values index if needed
+    if retrofit_mask is not None and not retrofit_mask.index.equals(measure_values.index):
+        retrofit_mask = retrofit_mask.reindex(measure_values.index, fill_value=False)
+        
     # For measure package scenarios, calculate only for homes with retrofits
-    if retrofit_mask.any():
-        avoided_values.loc[retrofit_mask] = (
-            baseline_values.loc[retrofit_mask] - measure_values.loc[retrofit_mask]
+    if retrofit_mask is not None and retrofit_mask.any():
+        # Use boolean indexing with aligned indices
+        mask_aligned = retrofit_mask & baseline_values.notna() & measure_values.notna()
+        avoided_values.loc[mask_aligned] = (
+            baseline_values.loc[mask_aligned] - measure_values.loc[mask_aligned]
         )
     
     return avoided_values

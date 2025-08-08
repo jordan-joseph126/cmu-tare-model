@@ -13,7 +13,7 @@ def thousands_formatter(
     """Format numbers to use K for thousands automatically.
     
     Formats numeric values for axis labels, converting values >= 1000 to 
-    use 'K' suffix (e.g., 2500 becomes '2.5K'). Used as a matplotlib 
+    use 'K' suffix (e.g., 2500 becomes '2.5K'). Used as a matplotlib
     FuncFormatter for cleaner axis labels.
     
     Args:

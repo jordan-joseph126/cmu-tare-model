@@ -38,7 +38,7 @@ def create_multiIndex_adoption_df(
     
     # Validate that the required column exists
     if 'lmi_or_mui' not in df.columns:
-        raise ValueError("Required column 'lmi_or_mui' not found in DataFrame. "
+        raise ValueError("Required column 'lmi_or_mui' not found in DataFrame."
                         "Please ensure the DataFrame has been processed with the updated calculate_percent_AMI function.")
     
     # Convert to categorical for proper sorting
