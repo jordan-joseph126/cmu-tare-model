@@ -1,0 +1,622 @@
+SCENARIO ANALYSIS (NO INFLATION REDUCTION ACT): ADOPTION POTENTIAL
+====================================================================================================================================================================
+determine_adoption_potential_sensitivity_robust.py file contains the definitions for:
+- adoption_decision function (combined climate + health analysis)
+- calculate_climate_only_adoption_robust function (climate-only analysis)
+- calculate_health_only_adoption_robust function (health-only analysis)
+      
+RESULTS OUTPUT (NO INFLATION REDUCTION ACT):
+
+Processing AP2 model...
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+
+Calculating Adoption Potential for heating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+Found 260211 valid homes out of 331531 for heating adoption potential
+
+Processing SCC assumption: lower for heating/lower/ap2/acs
+
+Processing SCC assumption: central for heating/central/ap2/acs
+
+Processing SCC assumption: upper for heating/upper/ap2/acs
+
+Calculating Adoption Potential for waterHeating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+Found 322799 valid homes out of 331531 for waterHeating adoption potential
+
+Processing SCC assumption: lower for waterHeating/lower/ap2/acs
+
+Processing SCC assumption: central for waterHeating/central/ap2/acs
+
+Processing SCC assumption: upper for waterHeating/upper/ap2/acs
+
+Calculating Adoption Potential for clothesDrying under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+Found 316573 valid homes out of 331531 for clothesDrying adoption potential
+
+Processing SCC assumption: lower for clothesDrying/lower/ap2/acs
+
+Processing SCC assumption: central for clothesDrying/central/ap2/acs
+
+Processing SCC assumption: upper for clothesDrying/upper/ap2/acs
+
+Calculating Adoption Potential for cooking under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+Found 126373 valid homes out of 331531 for cooking adoption potential
+
+Processing SCC assumption: lower for cooking/lower/ap2/acs
+
+Processing SCC assumption: central for cooking/central/ap2/acs
+
+Processing SCC assumption: upper for cooking/upper/ap2/acs
+
+Verifying masking for all calculated columns:
+Masking 60 columns for category 'cooking'
+    preIRA_mp10_cooking_health_sensitivity: Masked 205158 values
+    preIRA_mp10_cooking_adoption_lower_ap2_acs: Masked 205158 values
+    preIRA_mp10_cooking_impact_lower_ap2_acs: Masked 205158 values
+    preIRA_mp10_cooking_adoption_central_ap2_acs: Masked 205158 values
+    preIRA_mp10_cooking_impact_central_ap2_acs: Masked 205158 values
+    preIRA_mp10_cooking_adoption_upper_ap2_acs: Masked 205158 values
+    preIRA_mp10_cooking_impact_upper_ap2_acs: Masked 205158 values
+  Total: Masked 1436106 values across 60 columns
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+
+Calculating Adoption Potential for heating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+Found 260211 valid homes out of 331531 for heating adoption potential
+
+Processing SCC assumption: lower for heating/lower/ap2/h6c
+
+Processing SCC assumption: central for heating/central/ap2/h6c
+
+Processing SCC assumption: upper for heating/upper/ap2/h6c
+
+Calculating Adoption Potential for waterHeating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+Found 322799 valid homes out of 331531 for waterHeating adoption potential
+
+Processing SCC assumption: lower for waterHeating/lower/ap2/h6c
+
+Processing SCC assumption: central for waterHeating/central/ap2/h6c
+
+Processing SCC assumption: upper for waterHeating/upper/ap2/h6c
+
+Calculating Adoption Potential for clothesDrying under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+Found 316573 valid homes out of 331531 for clothesDrying adoption potential
+
+Processing SCC assumption: lower for clothesDrying/lower/ap2/h6c
+
+Processing SCC assumption: central for clothesDrying/central/ap2/h6c
+
+Processing SCC assumption: upper for clothesDrying/upper/ap2/h6c
+
+Calculating Adoption Potential for cooking under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+Found 126373 valid homes out of 331531 for cooking adoption potential
+
+Processing SCC assumption: lower for cooking/lower/ap2/h6c
+
+Processing SCC assumption: central for cooking/central/ap2/h6c
+
+Processing SCC assumption: upper for cooking/upper/ap2/h6c
+
+Verifying masking for all calculated columns:
+Masking 60 columns for category 'cooking'
+    preIRA_mp10_cooking_health_sensitivity: Masked 205158 values
+    preIRA_mp10_cooking_adoption_lower_ap2_h6c: Masked 205158 values
+    preIRA_mp10_cooking_impact_lower_ap2_h6c: Masked 205158 values
+    preIRA_mp10_cooking_adoption_central_ap2_h6c: Masked 205158 values
+    preIRA_mp10_cooking_impact_central_ap2_h6c: Masked 205158 values
+    preIRA_mp10_cooking_adoption_upper_ap2_h6c: Masked 205158 values
+    preIRA_mp10_cooking_impact_upper_ap2_h6c: Masked 205158 values
+  Total: Masked 1436106 values across 60 columns
+
+=== FIXING DUPLICATE COLUMNS ===
+✅ No duplicate columns found
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+Starting climate-only adoption analysis for No Inflation Reduction Act
+
+Processing climate-only analysis for heating...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+  Processing SCC assumption: lower
+    ✅ Completed climate-only analysis for heating/lower
+  Processing SCC assumption: central
+    ✅ Completed climate-only analysis for heating/central
+  Processing SCC assumption: upper
+    ✅ Completed climate-only analysis for heating/upper
+
+Processing climate-only analysis for waterHeating...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+  Processing SCC assumption: lower
+    ✅ Completed climate-only analysis for waterHeating/lower
+  Processing SCC assumption: central
+    ✅ Completed climate-only analysis for waterHeating/central
+  Processing SCC assumption: upper
+    ✅ Completed climate-only analysis for waterHeating/upper
+
+Processing climate-only analysis for clothesDrying...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+  Processing SCC assumption: lower
+    ✅ Completed climate-only analysis for clothesDrying/lower
+  Processing SCC assumption: central
+    ✅ Completed climate-only analysis for clothesDrying/central
+  Processing SCC assumption: upper
+    ✅ Completed climate-only analysis for clothesDrying/upper
+
+Processing climate-only analysis for cooking...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+  Processing SCC assumption: lower
+    ✅ Completed climate-only analysis for cooking/lower
+  Processing SCC assumption: central
+    ✅ Completed climate-only analysis for cooking/central
+  Processing SCC assumption: upper
+    ✅ Completed climate-only analysis for cooking/upper
+
+Verifying masking for all calculated columns:
+Masking 12 columns for category 'cooking'
+✅ Climate-only adoption analysis completed successfully
+
+=== FIXING DUPLICATE COLUMNS ===
+✅ No duplicate columns found
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+Starting health-only adoption analysis for No Inflation Reduction Act, ap2, acs
+
+Processing health-only analysis for heating...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+  Processing health model: ap2, acs
+    ✅ Completed health-only analysis for heating/ap2/acs
+
+Processing health-only analysis for waterHeating...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+  Processing health model: ap2, acs
+    ✅ Completed health-only analysis for waterHeating/ap2/acs
+
+Processing health-only analysis for clothesDrying...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+  Processing health model: ap2, acs
+    ✅ Completed health-only analysis for clothesDrying/ap2/acs
+
+Processing health-only analysis for cooking...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+  Processing health model: ap2, acs
+    ✅ Completed health-only analysis for cooking/ap2/acs
+
+Verifying masking for all calculated columns:
+Masking 2 columns for category 'cooking'
+✅ Health-only adoption analysis completed successfully
+
+=== FIXING DUPLICATE COLUMNS ===
+✅ No duplicate columns found
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+Starting health-only adoption analysis for No Inflation Reduction Act, ap2, h6c
+
+Processing health-only analysis for heating...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+  Processing health model: ap2, h6c
+    ✅ Completed health-only analysis for heating/ap2/h6c
+
+Processing health-only analysis for waterHeating...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+  Processing health model: ap2, h6c
+    ✅ Completed health-only analysis for waterHeating/ap2/h6c
+
+Processing health-only analysis for clothesDrying...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+  Processing health model: ap2, h6c
+    ✅ Completed health-only analysis for clothesDrying/ap2/h6c
+
+Processing health-only analysis for cooking...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+  Processing health model: ap2, h6c
+    ✅ Completed health-only analysis for cooking/ap2/h6c
+
+Verifying masking for all calculated columns:
+Masking 2 columns for category 'cooking'
+✅ Health-only adoption analysis completed successfully
+Processing EASIUR model...
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+
+Calculating Adoption Potential for heating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+Found 260211 valid homes out of 331531 for heating adoption potential
+
+Processing SCC assumption: lower for heating/lower/easiur/acs
+
+Processing SCC assumption: central for heating/central/easiur/acs
+
+Processing SCC assumption: upper for heating/upper/easiur/acs
+
+Calculating Adoption Potential for waterHeating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+Found 322799 valid homes out of 331531 for waterHeating adoption potential
+
+Processing SCC assumption: lower for waterHeating/lower/easiur/acs
+
+Processing SCC assumption: central for waterHeating/central/easiur/acs
+
+Processing SCC assumption: upper for waterHeating/upper/easiur/acs
+
+Calculating Adoption Potential for clothesDrying under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+Found 316573 valid homes out of 331531 for clothesDrying adoption potential
+
+Processing SCC assumption: lower for clothesDrying/lower/easiur/acs
+
+Processing SCC assumption: central for clothesDrying/central/easiur/acs
+
+Processing SCC assumption: upper for clothesDrying/upper/easiur/acs
+
+Calculating Adoption Potential for cooking under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+Found 126373 valid homes out of 331531 for cooking adoption potential
+
+Processing SCC assumption: lower for cooking/lower/easiur/acs
+
+Processing SCC assumption: central for cooking/central/easiur/acs
+
+Processing SCC assumption: upper for cooking/upper/easiur/acs
+
+Verifying masking for all calculated columns:
+Masking 60 columns for category 'cooking'
+    preIRA_mp10_cooking_health_sensitivity: Masked 205158 values
+    preIRA_mp10_cooking_adoption_lower_easiur_acs: Masked 205158 values
+    preIRA_mp10_cooking_impact_lower_easiur_acs: Masked 205158 values
+    preIRA_mp10_cooking_adoption_central_easiur_acs: Masked 205158 values
+    preIRA_mp10_cooking_impact_central_easiur_acs: Masked 205158 values
+    preIRA_mp10_cooking_adoption_upper_easiur_acs: Masked 205158 values
+    preIRA_mp10_cooking_impact_upper_easiur_acs: Masked 205158 values
+  Total: Masked 1436106 values across 60 columns
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+
+Calculating Adoption Potential for heating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+Found 260211 valid homes out of 331531 for heating adoption potential
+
+Processing SCC assumption: lower for heating/lower/easiur/h6c
+
+Processing SCC assumption: central for heating/central/easiur/h6c
+
+Processing SCC assumption: upper for heating/upper/easiur/h6c
+
+Calculating Adoption Potential for waterHeating under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+Found 322799 valid homes out of 331531 for waterHeating adoption potential
+
+Processing SCC assumption: lower for waterHeating/lower/easiur/h6c
+
+Processing SCC assumption: central for waterHeating/central/easiur/h6c
+
+Processing SCC assumption: upper for waterHeating/upper/easiur/h6c
+
+Calculating Adoption Potential for clothesDrying under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+Found 316573 valid homes out of 331531 for clothesDrying adoption potential
+
+Processing SCC assumption: lower for clothesDrying/lower/easiur/h6c
+
+Processing SCC assumption: central for clothesDrying/central/easiur/h6c
+
+Processing SCC assumption: upper for clothesDrying/upper/easiur/h6c
+
+Calculating Adoption Potential for cooking under 'No Inflation Reduction Act' Scenario...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+Found 126373 valid homes out of 331531 for cooking adoption potential
+
+Processing SCC assumption: lower for cooking/lower/easiur/h6c
+
+Processing SCC assumption: central for cooking/central/easiur/h6c
+
+Processing SCC assumption: upper for cooking/upper/easiur/h6c
+
+Verifying masking for all calculated columns:
+Masking 60 columns for category 'cooking'
+    preIRA_mp10_cooking_health_sensitivity: Masked 205158 values
+    preIRA_mp10_cooking_adoption_lower_easiur_h6c: Masked 205158 values
+    preIRA_mp10_cooking_impact_lower_easiur_h6c: Masked 205158 values
+    preIRA_mp10_cooking_adoption_central_easiur_h6c: Masked 205158 values
+    preIRA_mp10_cooking_impact_central_easiur_h6c: Masked 205158 values
+    preIRA_mp10_cooking_adoption_upper_easiur_h6c: Masked 205158 values
+    preIRA_mp10_cooking_impact_upper_easiur_h6c: Masked 205158 values
+  Total: Masked 1436106 values across 60 columns
+
+=== FIXING DUPLICATE COLUMNS ===
+✅ No duplicate columns found
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+Starting climate-only adoption analysis for No Inflation Reduction Act
+
+Processing climate-only analysis for heating...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+  Processing SCC assumption: lower
+    ✅ Completed climate-only analysis for heating/lower
+  Processing SCC assumption: central
+    ✅ Completed climate-only analysis for heating/central
+  Processing SCC assumption: upper
+    ✅ Completed climate-only analysis for heating/upper
+
+Processing climate-only analysis for waterHeating...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+  Processing SCC assumption: lower
+    ✅ Completed climate-only analysis for waterHeating/lower
+  Processing SCC assumption: central
+    ✅ Completed climate-only analysis for waterHeating/central
+  Processing SCC assumption: upper
+    ✅ Completed climate-only analysis for waterHeating/upper
+
+Processing climate-only analysis for clothesDrying...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+  Processing SCC assumption: lower
+    ✅ Completed climate-only analysis for clothesDrying/lower
+  Processing SCC assumption: central
+    ✅ Completed climate-only analysis for clothesDrying/central
+  Processing SCC assumption: upper
+    ✅ Completed climate-only analysis for clothesDrying/upper
+
+Processing climate-only analysis for cooking...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+  Processing SCC assumption: lower
+    ✅ Completed climate-only analysis for cooking/lower
+  Processing SCC assumption: central
+    ✅ Completed climate-only analysis for cooking/central
+  Processing SCC assumption: upper
+    ✅ Completed climate-only analysis for cooking/upper
+
+Verifying masking for all calculated columns:
+Masking 12 columns for category 'cooking'
+✅ Climate-only adoption analysis completed successfully
+
+=== FIXING DUPLICATE COLUMNS ===
+✅ No duplicate columns found
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+Starting health-only adoption analysis for No Inflation Reduction Act, easiur, acs
+
+Processing health-only analysis for heating...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+  Processing health model: easiur, acs
+    ✅ Completed health-only analysis for heating/easiur/acs
+
+Processing health-only analysis for waterHeating...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+  Processing health model: easiur, acs
+    ✅ Completed health-only analysis for waterHeating/easiur/acs
+
+Processing health-only analysis for clothesDrying...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+  Processing health model: easiur, acs
+    ✅ Completed health-only analysis for clothesDrying/easiur/acs
+
+Processing health-only analysis for cooking...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+  Processing health model: easiur, acs
+    ✅ Completed health-only analysis for cooking/easiur/acs
+
+Verifying masking for all calculated columns:
+Masking 2 columns for category 'cooking'
+✅ Health-only adoption analysis completed successfully
+
+=== FIXING DUPLICATE COLUMNS ===
+✅ No duplicate columns found
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+Starting health-only adoption analysis for No Inflation Reduction Act, easiur, h6c
+
+Processing health-only analysis for heating...
+Measure package calculation for heating:
+  - 260211 homes have valid data
+  - 331526 homes will receive retrofits
+  - 260211 homes have both valid data AND will receive retrofits
+  - 71320 homes excluded (values will be NaN)
+  Processing health model: easiur, h6c
+    ✅ Completed health-only analysis for heating/easiur/h6c
+
+Processing health-only analysis for waterHeating...
+Measure package calculation for waterHeating:
+  - 322799 homes have valid data
+  - 329631 homes will receive retrofits
+  - 322799 homes have both valid data AND will receive retrofits
+  - 8732 homes excluded (values will be NaN)
+  Processing health model: easiur, h6c
+    ✅ Completed health-only analysis for waterHeating/easiur/h6c
+
+Processing health-only analysis for clothesDrying...
+Measure package calculation for clothesDrying:
+  - 316573 homes have valid data
+  - 316573 homes will receive retrofits
+  - 316573 homes have both valid data AND will receive retrofits
+  - 14958 homes excluded (values will be NaN)
+  Processing health model: easiur, h6c
+    ✅ Completed health-only analysis for clothesDrying/easiur/h6c
+
+Processing health-only analysis for cooking...
+Measure package calculation for cooking:
+  - 126373 homes have valid data
+  - 126373 homes will receive retrofits
+  - 126373 homes have both valid data AND will receive retrofits
+  - 205158 homes excluded (values will be NaN)
+  Processing health model: easiur, h6c
+    ✅ Completed health-only analysis for cooking/easiur/h6c
+
+Verifying masking for all calculated columns:
+Masking 2 columns for category 'cooking'
+✅ Health-only adoption analysis completed successfully
+Processing InMAP model...
+-- Scenario: No Inflation Reduction Act -- 
+              scenario_prefix: f'preIRA_mp10_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
+              
+
+Calculating Adoption Potential for heating under 'No Inflation Reduction Act' Scenario...

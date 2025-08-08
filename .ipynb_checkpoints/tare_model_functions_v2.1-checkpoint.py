@@ -1801,7 +1801,7 @@ def calculate_cooking_installationCost(df, cost_dict, rsMeans_national_avg, menu
 
 import pandas as pd
 
-def calculate_private_NPV(df, interest_rate, ira_rebates=False):
+def calculate_private_npv(df, interest_rate, ira_rebates=False):
     """
     Calculate the private net present value (NPV) for various equipment categories,
     considering different cost assumptions and potential IRA rebates. The function adjusts

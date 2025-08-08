@@ -1,0 +1,1593 @@
+# =========================================================================================
+# PUBLIC IMPACT
+# =========================================================================================
+
+===== PUBLIC IMPACT FUNCTION CALL =====
+
+print(f"""  
+====================================================================================================================================================================
+SCENARIO ANALYSIS (AEO2023 REFERENCE CASE): PUBLIC IMPACT 
+====================================================================================================================================================================
+Completed Steps:
+1. Calculate the baseline marginal damages for climate and health-related emissions
+2. Calculate the post-retrofit marginal damages for climate and health-related emissions
+
+---------------------------------------------------------------------------------------------
+Step 3: Discount climate and health impacts and calculate lifetime public impacts (public NPV)
+---------------------------------------------------------------------------------------------
+
+RESULTS OUTPUT (AEO2023 REFERENCE CASE):
+""")
+
+# ========================== AP2  ========================== 
+df_euss_am_mp8_home_ap2 = calculate_public_npv(
+    df=df_euss_am_mp8_home_ap2,
+    df_baseline_climate=df_baseline_damages_climate,
+    df_baseline_health=df_baseline_damages_health,
+    df_mp_climate=df_mp8_IRA_damages_climate,
+    df_mp_health=df_mp8_IRA_damages_health,
+    menu_mp="8",
+    policy_scenario='AEO2023 Reference Case',
+    rcm_model='ap2',
+    base_year=2024,
+    discounting_method='public'
+)
+
+# ====================== EASIUR ========================== 
+df_euss_am_mp8_home_easiur = calculate_public_npv(
+    df=df_euss_am_mp8_home_easiur,
+    df_baseline_climate=df_baseline_damages_climate,
+    df_baseline_health=df_baseline_damages_health,
+    df_mp_climate=df_mp8_IRA_damages_climate,
+    df_mp_health=df_mp8_IRA_damages_health,
+    menu_mp="8",
+    policy_scenario='AEO2023 Reference Case',
+    rcm_model='easiur',
+    base_year=2024,
+    discounting_method='public'
+)
+
+# ========================== InMAP ========================== 
+df_euss_am_mp8_home_inmap = calculate_public_npv(
+    df=df_euss_am_mp8_home_inmap,
+    df_baseline_climate=df_baseline_damages_climate,
+    df_baseline_health=df_baseline_damages_health,
+    df_mp_climate=df_mp8_IRA_damages_climate,
+    df_mp_health=df_mp8_IRA_damages_health,
+    menu_mp="8",
+    policy_scenario='AEO2023 Reference Case',
+    rcm_model='inmap',
+    base_year=2024,
+    discounting_method='public'
+)
+
+print(f"""  
+=====================================================================================================================================================================
+DATAFRAME FOR MP8 AFTER CALCULATING PUBLIC NPV (AEO2023 REFERENCE CASE): df_euss_am_mp8_home
+
+-----------------------------------------------
+AP2: 
+-----------------------------------------------
+      
+{df_euss_am_mp8_home_ap2}
+
+-----------------------------------------------
+EASIUR:
+-----------------------------------------------
+
+{df_euss_am_mp8_home_easiur}
+
+-----------------------------------------------
+InMAP:
+-----------------------------------------------
+
+{df_euss_am_mp8_home_inmap}
+      
+""")
+
+
+
+===== PUBLIC IMPACT OUTPUT =====
+
+====================================================================================================================================================================
+SCENARIO ANALYSIS (AEO2023 REFERENCE CASE): PUBLIC IMPACT 
+====================================================================================================================================================================
+Completed Steps:
+1. Calculate the baseline marginal damages for climate and health-related emissions
+2. Calculate the post-retrofit marginal damages for climate and health-related emissions
+
+---------------------------------------------------------------------------------------------
+Step 3: Discount climate and health impacts and calculate lifetime public impacts (public NPV)
+---------------------------------------------------------------------------------------------
+
+RESULTS OUTPUT (AEO2023 REFERENCE CASE):
+
+-- Scenario: Inflation Reduction Act (IRA) Reference -- 
+              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+              
+Baseline Climate DataFrame: ✓ Valid
+Baseline Health DataFrame: ✓ Valid
+Retrofit Climate DataFrame: ✓ Valid
+Retrofit Health DataFrame: ✓ Valid
+-- Scenario: Inflation Reduction Act (IRA) Reference -- 
+              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+              
+-- Scenario: Inflation Reduction Act (IRA) Reference -- 
+              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+              
+
+Verifying masking for all calculated columns:
+-- Scenario: Inflation Reduction Act (IRA) Reference -- 
+              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+              
+Baseline Climate DataFrame: ✓ Valid
+Baseline Health DataFrame: ✓ Valid
+Retrofit Climate DataFrame: ✓ Valid
+Retrofit Health DataFrame: ✓ Valid
+-- Scenario: Inflation Reduction Act (IRA) Reference -- 
+              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+              
+-- Scenario: Inflation Reduction Act (IRA) Reference -- 
+              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+              
+
+Verifying masking for all calculated columns:
+-- Scenario: Inflation Reduction Act (IRA) Reference -- 
+              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+              
+Baseline Climate DataFrame: ✓ Valid
+Baseline Health DataFrame: ✓ Valid
+Retrofit Climate DataFrame: ✓ Valid
+Retrofit Health DataFrame: ✓ Valid
+-- Scenario: Inflation Reduction Act (IRA) Reference -- 
+              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+              
+-- Scenario: Inflation Reduction Act (IRA) Reference -- 
+              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+              
+
+Verifying masking for all calculated columns:
+  
+=====================================================================================================================================================================
+DATAFRAME FOR MP8 AFTER CALCULATING PUBLIC NPV (AEO2023 REFERENCE CASE): df_euss_am_mp8_home
+
+-----------------------------------------------
+AP2: 
+-----------------------------------------------
+      
+         square_footage census_region  census_division census_division_recs  \
+bldg_id                                                                       
+119              2152.0     Northeast  Middle Atlantic      Middle Atlantic   
+122              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+150              1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+153              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+162              2663.0     Northeast  Middle Atlantic      Middle Atlantic   
+...                 ...           ...              ...                  ...   
+549882           1202.0     Northeast  Middle Atlantic      Middle Atlantic   
+549915           2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+549937            885.0     Northeast  Middle Atlantic      Middle Atlantic   
+549963           1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+549989           1220.0     Northeast  Middle Atlantic      Middle Atlantic   
+
+        building_america_climate_zone  reeds_balancing_area gea_region state  \
+bldg_id                                                                        
+119                       Mixed-Humid                   122      RFCEc    PA   
+122                       Mixed-Humid                   122      RFCEc    PA   
+150                              Cold                   122      RFCEc    PA   
+153                       Mixed-Humid                   122      RFCEc    PA   
+162                       Mixed-Humid                   122      RFCEc    PA   
+...                               ...                   ...        ...   ...   
+549882                           Cold                   122      RFCEc    PA   
+549915                           Cold                   122      RFCEc    PA   
+549937                           Cold                   115      RFCWc    PA   
+549963                           Cold                   115      RFCWc    PA   
+549989                           Cold                   122      RFCEc    PA   
+
+                            city    county  ...  \
+bldg_id                                     ...   
+119        Not in a census Place  G4200450  ...   
+122      In another census Place  G4200450  ...   
+150      In another census Place  G4201190  ...   
+153        Not in a census Place  G4200170  ...   
+162        Not in a census Place  G4200450  ...   
+...                          ...       ...  ...   
+549882     Not in a census Place  G4200110  ...   
+549915                 Lancaster  G4200710  ...   
+549937   In another census Place  G4200050  ...   
+549963   In another census Place  G4201290  ...   
+549989     Not in a census Place  G4201110  ...   
+
+        iraRef_mp8_clothesDrying_public_npv_central_ap2_h6c  \
+bldg_id                                                       
+119                                                  70.14    
+122                                                 351.35    
+150                                                 354.60    
+153                                                    NaN    
+162                                                1261.92    
+...                                                    ...    
+549882                                              555.96    
+549915                                              952.25    
+549937                                              349.71    
+549963                                              455.25    
+549989                                              477.71    
+
+        iraRef_mp8_clothesDrying_climate_npv_upper  \
+bldg_id                                              
+119                                         353.35   
+122                                         384.98   
+150                                         447.04   
+153                                            NaN   
+162                                        1382.77   
+...                                            ...   
+549882                                      619.99   
+549915                                     1079.80   
+549937                                      785.49   
+549963                                      541.78   
+549989                                      558.68   
+
+        iraRef_mp8_clothesDrying_public_npv_upper_ap2_h6c  \
+bldg_id                                                     
+119                                                201.35   
+122                                                494.85   
+150                                                521.24   
+153                                                   NaN   
+162                                               1777.45   
+...                                                   ...   
+549882                                             787.09   
+549915                                            1354.82   
+549937                                             641.14   
+549963                                             656.79   
+549989                                             686.01   
+
+        iraRef_mp8_cooking_climate_npv_lower  \
+bldg_id                                        
+119                                    67.66   
+122                                      NaN   
+150                                      NaN   
+153                                      NaN   
+162                                      NaN   
+...                                      ...   
+549882                                   NaN   
+549915                                   NaN   
+549937                                 58.19   
+549963                                   NaN   
+549989                                100.13   
+
+         iraRef_mp8_cooking_health_npv_ap2_h6c  \
+bldg_id                                          
+119                                    -336.58   
+122                                        NaN   
+150                                        NaN   
+153                                        NaN   
+162                                        NaN   
+...                                        ...   
+549882                                     NaN   
+549915                                     NaN   
+549937                                 -152.22   
+549963                                     NaN   
+549989                                 -234.03   
+
+         iraRef_mp8_cooking_public_npv_lower_ap2_h6c  \
+bldg_id                                                
+119                                          -268.92   
+122                                              NaN   
+150                                              NaN   
+153                                              NaN   
+162                                              NaN   
+...                                              ...   
+549882                                           NaN   
+549915                                           NaN   
+549937                                        -94.03   
+549963                                           NaN   
+549989                                       -133.90   
+
+        iraRef_mp8_cooking_climate_npv_central  \
+bldg_id                                          
+119                                     239.83   
+122                                        NaN   
+150                                        NaN   
+153                                        NaN   
+162                                        NaN   
+...                                        ...   
+549882                                     NaN   
+549915                                     NaN   
+549937                                  205.80   
+549963                                     NaN   
+549989                                  355.14   
+
+         iraRef_mp8_cooking_public_npv_central_ap2_h6c  \
+bldg_id                                                  
+119                                             -96.75   
+122                                                NaN   
+150                                                NaN   
+153                                                NaN   
+162                                                NaN   
+...                                                ...   
+549882                                             NaN   
+549915                                             NaN   
+549937                                           53.58   
+549963                                             NaN   
+549989                                          121.11   
+
+        iraRef_mp8_cooking_climate_npv_upper  \
+bldg_id                                        
+119                                   380.47   
+122                                      NaN   
+150                                      NaN   
+153                                      NaN   
+162                                      NaN   
+...                                      ...   
+549882                                   NaN   
+549915                                   NaN   
+549937                                326.05   
+549963                                   NaN   
+549989                                563.51   
+
+        iraRef_mp8_cooking_public_npv_upper_ap2_h6c  
+bldg_id                                              
+119                                           43.89  
+122                                             NaN  
+150                                             NaN  
+153                                             NaN  
+162                                             NaN  
+...                                             ...  
+549882                                          NaN  
+549915                                          NaN  
+549937                                       173.83  
+549963                                          NaN  
+549989                                       329.48  
+
+[15651 rows x 702 columns]
+
+-----------------------------------------------
+EASIUR:
+-----------------------------------------------
+
+         square_footage census_region  census_division census_division_recs  \
+bldg_id                                                                       
+119              2152.0     Northeast  Middle Atlantic      Middle Atlantic   
+122              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+150              1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+153              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+162              2663.0     Northeast  Middle Atlantic      Middle Atlantic   
+...                 ...           ...              ...                  ...   
+549882           1202.0     Northeast  Middle Atlantic      Middle Atlantic   
+549915           2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+549937            885.0     Northeast  Middle Atlantic      Middle Atlantic   
+549963           1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+549989           1220.0     Northeast  Middle Atlantic      Middle Atlantic   
+
+        building_america_climate_zone  reeds_balancing_area gea_region state  \
+bldg_id                                                                        
+119                       Mixed-Humid                   122      RFCEc    PA   
+122                       Mixed-Humid                   122      RFCEc    PA   
+150                              Cold                   122      RFCEc    PA   
+153                       Mixed-Humid                   122      RFCEc    PA   
+162                       Mixed-Humid                   122      RFCEc    PA   
+...                               ...                   ...        ...   ...   
+549882                           Cold                   122      RFCEc    PA   
+549915                           Cold                   122      RFCEc    PA   
+549937                           Cold                   115      RFCWc    PA   
+549963                           Cold                   115      RFCWc    PA   
+549989                           Cold                   122      RFCEc    PA   
+
+                            city    county  ...  \
+bldg_id                                     ...   
+119        Not in a census Place  G4200450  ...   
+122      In another census Place  G4200450  ...   
+150      In another census Place  G4201190  ...   
+153        Not in a census Place  G4200170  ...   
+162        Not in a census Place  G4200450  ...   
+...                          ...       ...  ...   
+549882     Not in a census Place  G4200110  ...   
+549915                 Lancaster  G4200710  ...   
+549937   In another census Place  G4200050  ...   
+549963   In another census Place  G4201290  ...   
+549989     Not in a census Place  G4201110  ...   
+
+        iraRef_mp8_clothesDrying_public_npv_central_easiur_h6c  \
+bldg_id                                                          
+119                                                 172.35       
+122                                                 367.87       
+150                                                 395.30       
+153                                                    NaN       
+162                                                1321.35       
+...                                                    ...       
+549882                                              582.01       
+549915                                             1003.99       
+549937                                              437.68       
+549963                                              416.12       
+549989                                              469.24       
+
+        iraRef_mp8_clothesDrying_climate_npv_upper  \
+bldg_id                                              
+119                                         353.35   
+122                                         384.98   
+150                                         447.04   
+153                                            NaN   
+162                                        1382.77   
+...                                            ...   
+549882                                      619.99   
+549915                                     1079.80   
+549937                                      785.49   
+549963                                      541.78   
+549989                                      558.68   
+
+        iraRef_mp8_clothesDrying_public_npv_upper_easiur_h6c  \
+bldg_id                                                        
+119                                                 303.56     
+122                                                 511.37     
+150                                                 561.94     
+153                                                    NaN     
+162                                                1836.88     
+...                                                    ...     
+549882                                              813.14     
+549915                                             1406.56     
+549937                                              729.11     
+549963                                              617.66     
+549989                                              677.54     
+
+        iraRef_mp8_cooking_climate_npv_lower  \
+bldg_id                                        
+119                                    67.66   
+122                                      NaN   
+150                                      NaN   
+153                                      NaN   
+162                                      NaN   
+...                                      ...   
+549882                                   NaN   
+549915                                   NaN   
+549937                                 58.19   
+549963                                   NaN   
+549989                                100.13   
+
+         iraRef_mp8_cooking_health_npv_easiur_h6c  \
+bldg_id                                             
+119                                       -174.24   
+122                                           NaN   
+150                                           NaN   
+153                                           NaN   
+162                                           NaN   
+...                                           ...   
+549882                                        NaN   
+549915                                        NaN   
+549937                                     -89.25   
+549963                                        NaN   
+549989                                    -127.55   
+
+         iraRef_mp8_cooking_public_npv_lower_easiur_h6c  \
+bldg_id                                                   
+119                                             -106.58   
+122                                                 NaN   
+150                                                 NaN   
+153                                                 NaN   
+162                                                 NaN   
+...                                                 ...   
+549882                                              NaN   
+549915                                              NaN   
+549937                                           -31.06   
+549963                                              NaN   
+549989                                           -27.42   
+
+        iraRef_mp8_cooking_climate_npv_central  \
+bldg_id                                          
+119                                     239.83   
+122                                        NaN   
+150                                        NaN   
+153                                        NaN   
+162                                        NaN   
+...                                        ...   
+549882                                     NaN   
+549915                                     NaN   
+549937                                  205.80   
+549963                                     NaN   
+549989                                  355.14   
+
+         iraRef_mp8_cooking_public_npv_central_easiur_h6c  \
+bldg_id                                                     
+119                                                 65.59   
+122                                                   NaN   
+150                                                   NaN   
+153                                                   NaN   
+162                                                   NaN   
+...                                                   ...   
+549882                                                NaN   
+549915                                                NaN   
+549937                                             116.55   
+549963                                                NaN   
+549989                                             227.59   
+
+        iraRef_mp8_cooking_climate_npv_upper  \
+bldg_id                                        
+119                                   380.47   
+122                                      NaN   
+150                                      NaN   
+153                                      NaN   
+162                                      NaN   
+...                                      ...   
+549882                                   NaN   
+549915                                   NaN   
+549937                                326.05   
+549963                                   NaN   
+549989                                563.51   
+
+        iraRef_mp8_cooking_public_npv_upper_easiur_h6c  
+bldg_id                                                 
+119                                             206.23  
+122                                                NaN  
+150                                                NaN  
+153                                                NaN  
+162                                                NaN  
+...                                                ...  
+549882                                             NaN  
+549915                                             NaN  
+549937                                          236.80  
+549963                                             NaN  
+549989                                          435.96  
+
+[15651 rows x 702 columns]
+
+-----------------------------------------------
+InMAP:
+-----------------------------------------------
+
+         square_footage census_region  census_division census_division_recs  \
+bldg_id                                                                       
+119              2152.0     Northeast  Middle Atlantic      Middle Atlantic   
+122              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+150              1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+153              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+162              2663.0     Northeast  Middle Atlantic      Middle Atlantic   
+...                 ...           ...              ...                  ...   
+549882           1202.0     Northeast  Middle Atlantic      Middle Atlantic   
+549915           2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+549937            885.0     Northeast  Middle Atlantic      Middle Atlantic   
+549963           1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+549989           1220.0     Northeast  Middle Atlantic      Middle Atlantic   
+
+        building_america_climate_zone  reeds_balancing_area gea_region state  \
+bldg_id                                                                        
+119                       Mixed-Humid                   122      RFCEc    PA   
+122                       Mixed-Humid                   122      RFCEc    PA   
+150                              Cold                   122      RFCEc    PA   
+153                       Mixed-Humid                   122      RFCEc    PA   
+162                       Mixed-Humid                   122      RFCEc    PA   
+...                               ...                   ...        ...   ...   
+549882                           Cold                   122      RFCEc    PA   
+549915                           Cold                   122      RFCEc    PA   
+549937                           Cold                   115      RFCWc    PA   
+549963                           Cold                   115      RFCWc    PA   
+549989                           Cold                   122      RFCEc    PA   
+
+                            city    county  ...  \
+bldg_id                                     ...   
+119        Not in a census Place  G4200450  ...   
+122      In another census Place  G4200450  ...   
+150      In another census Place  G4201190  ...   
+153        Not in a census Place  G4200170  ...   
+162        Not in a census Place  G4200450  ...   
+...                          ...       ...  ...   
+549882     Not in a census Place  G4200110  ...   
+549915                 Lancaster  G4200710  ...   
+549937   In another census Place  G4200050  ...   
+549963   In another census Place  G4201290  ...   
+549989     Not in a census Place  G4201110  ...   
+
+        iraRef_mp8_clothesDrying_public_npv_central_inmap_h6c  \
+bldg_id                                                         
+119                                                 278.96      
+122                                                 324.57      
+150                                                 461.48      
+153                                                    NaN      
+162                                                1165.79      
+...                                                    ...      
+549882                                              673.14      
+549915                                             1043.93      
+549937                                              367.32      
+549963                                              425.60      
+549989                                              504.56      
+
+        iraRef_mp8_clothesDrying_climate_npv_upper  \
+bldg_id                                              
+119                                         353.35   
+122                                         384.98   
+150                                         447.04   
+153                                            NaN   
+162                                        1382.77   
+...                                            ...   
+549882                                      619.99   
+549915                                     1079.80   
+549937                                      785.49   
+549963                                      541.78   
+549989                                      558.68   
+
+        iraRef_mp8_clothesDrying_public_npv_upper_inmap_h6c  \
+bldg_id                                                       
+119                                                 410.17    
+122                                                 468.07    
+150                                                 628.12    
+153                                                    NaN    
+162                                                1681.32    
+...                                                    ...    
+549882                                              904.27    
+549915                                             1446.50    
+549937                                              658.75    
+549963                                              627.14    
+549989                                              712.86    
+
+        iraRef_mp8_cooking_climate_npv_lower  \
+bldg_id                                        
+119                                    67.66   
+122                                      NaN   
+150                                      NaN   
+153                                      NaN   
+162                                      NaN   
+...                                      ...   
+549882                                   NaN   
+549915                                   NaN   
+549937                                 58.19   
+549963                                   NaN   
+549989                                100.13   
+
+         iraRef_mp8_cooking_health_npv_inmap_h6c  \
+bldg_id                                            
+119                                        43.29   
+122                                          NaN   
+150                                          NaN   
+153                                          NaN   
+162                                          NaN   
+...                                          ...   
+549882                                       NaN   
+549915                                       NaN   
+549937                                   -148.32   
+549963                                       NaN   
+549989                                   -212.48   
+
+         iraRef_mp8_cooking_public_npv_lower_inmap_h6c  \
+bldg_id                                                  
+119                                             110.95   
+122                                                NaN   
+150                                                NaN   
+153                                                NaN   
+162                                                NaN   
+...                                                ...   
+549882                                             NaN   
+549915                                             NaN   
+549937                                          -90.13   
+549963                                             NaN   
+549989                                         -112.35   
+
+        iraRef_mp8_cooking_climate_npv_central  \
+bldg_id                                          
+119                                     239.83   
+122                                        NaN   
+150                                        NaN   
+153                                        NaN   
+162                                        NaN   
+...                                        ...   
+549882                                     NaN   
+549915                                     NaN   
+549937                                  205.80   
+549963                                     NaN   
+549989                                  355.14   
+
+         iraRef_mp8_cooking_public_npv_central_inmap_h6c  \
+bldg_id                                                    
+119                                               283.12   
+122                                                  NaN   
+150                                                  NaN   
+153                                                  NaN   
+162                                                  NaN   
+...                                                  ...   
+549882                                               NaN   
+549915                                               NaN   
+549937                                             57.48   
+549963                                               NaN   
+549989                                            142.66   
+
+        iraRef_mp8_cooking_climate_npv_upper  \
+bldg_id                                        
+119                                   380.47   
+122                                      NaN   
+150                                      NaN   
+153                                      NaN   
+162                                      NaN   
+...                                      ...   
+549882                                   NaN   
+549915                                   NaN   
+549937                                326.05   
+549963                                   NaN   
+549989                                563.51   
+
+        iraRef_mp8_cooking_public_npv_upper_inmap_h6c  
+bldg_id                                                
+119                                            423.76  
+122                                               NaN  
+150                                               NaN  
+153                                               NaN  
+162                                               NaN  
+...                                               ...  
+549882                                            NaN  
+549915                                            NaN  
+549937                                         177.73  
+549963                                            NaN  
+549989                                         351.03  
+
+[15651 rows x 702 columns]
+
+
+
+# =========================================================================================
+# PRIVATE IMPACT
+# =========================================================================================
+
+===== PRIVATE IMPACT FUNCTION CALL =====
+
+
+print(f"""
+====================================================================================================================================================================
+SCENARIO ANALYSIS (AEO2023 REFERENCE CASE): PRIVATE IMPACT
+====================================================================================================================================================================
+Completed Steps:
+1. Calculate annual operating (fuel) costs
+2. Calculate equipment capital costs (For space heating, include ductwork and weatherization (MP9 and MP10))
+3. Calculate replacement cost (replacing existing piece of eqipment with similar technology)
+
+----------------------------------------------------------------------------------------------------------------------
+Step 4: Calculate net equipment capital costs and private NPV (less WTP and more WTP)
+----------------------------------------------------------------------------------------------------------------------
+
+RESULTS OUTPUT (AEO2023 REFERENCE CASE):
+""")
+
+
+# ========================== AP2  ========================== 
+df_euss_am_mp8_home_ap2 = calculate_private_npv(
+    df=df_euss_am_mp8_home_ap2,
+    df_fuel_costs=df_mp8_IRA_fuel_costs,
+    df_baseline_costs=df_baseline_fuel_costs,
+    menu_mp=menu_mp,
+    input_mp=input_mp,
+    policy_scenario='AEO2023 Reference Case',
+    discounting_method='private_fixed',
+    base_year=2024,
+    verbose=True  # Add this parameter
+    )
+
+# ====================== EASIUR ========================== 
+df_euss_am_mp8_home_easiur = calculate_private_npv(
+    df=df_euss_am_mp8_home_easiur,
+    df_fuel_costs=df_mp8_IRA_fuel_costs,
+    df_baseline_costs=df_baseline_fuel_costs,
+    menu_mp=menu_mp,
+    input_mp=input_mp,
+    policy_scenario='AEO2023 Reference Case',
+    discounting_method='private_fixed',
+    base_year=2024,
+    verbose=True  # Add this parameter
+    )
+
+# ====================== InMAP ========================== 
+df_euss_am_mp8_home_inmap = calculate_private_npv(
+    df=df_euss_am_mp8_home_inmap,
+    df_fuel_costs=df_mp8_IRA_fuel_costs,
+    df_baseline_costs=df_baseline_fuel_costs,
+    menu_mp=menu_mp,
+    input_mp=input_mp,
+    policy_scenario='AEO2023 Reference Case',
+    discounting_method='private_fixed',
+    base_year=2024,
+    verbose=True  # Add this parameter
+    )
+
+
+
+print(f"""  
+=====================================================================================================================================================================
+DATAFRAME FOR MP8 AFTER CALCULATING PRIVATE NPV (AEO2023 REFERENCE CASE): df_euss_am_mp8_home
+
+-----------------------------------------------
+AP2: 
+-----------------------------------------------
+      
+{df_euss_am_mp8_home_ap2}
+
+-----------------------------------------------
+EASIUR:
+-----------------------------------------------
+
+{df_euss_am_mp8_home_easiur}
+
+-----------------------------------------------
+InMAP:
+-----------------------------------------------
+
+{df_euss_am_mp8_home_inmap}
+      
+""")
+
+
+===== PRIVATE IMPACT OUTPUT =====
+
+
+
+====================================================================================================================================================================
+SCENARIO ANALYSIS (AEO2023 REFERENCE CASE): PRIVATE IMPACT
+====================================================================================================================================================================
+Completed Steps:
+1. Calculate annual operating (fuel) costs
+2. Calculate equipment capital costs (For space heating, include ductwork and weatherization (MP9 and MP10))
+3. Calculate replacement cost (replacing existing piece of eqipment with similar technology)
+
+----------------------------------------------------------------------------------------------------------------------
+Step 4: Calculate net equipment capital costs and private NPV (less WTP and more WTP)
+----------------------------------------------------------------------------------------------------------------------
+
+RESULTS OUTPUT (AEO2023 REFERENCE CASE):
+
+-- Scenario: Inflation Reduction Act (IRA) Reference -- 
+              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+              
+
+Determining lifetime private impacts for category: heating with lifetime: 15
+Measure package calculation for heating:
+  - 12266 homes have valid data
+  - 15649 homes will receive retrofits
+  - 12266 homes have both valid data AND will receive retrofits
+  - 3385 homes excluded (values will be NaN)
+
+Calculating costs for heating...
+          input_mp: upgrade08, menu_mp: 8, policy_scenario: AEO2023 Reference Case
+Calculating Private NPV for heating with lifetime: 15 years
+          policy_scenario: AEO2023 Reference Case --> scenario_prefix: iraRef_mp8_
+          
+
+Determining lifetime private impacts for category: waterHeating with lifetime: 12
+Measure package calculation for waterHeating:
+  - 14999 homes have valid data
+  - 15551 homes will receive retrofits
+  - 14999 homes have both valid data AND will receive retrofits
+  - 652 homes excluded (values will be NaN)
+
+Calculating costs for waterHeating...
+          input_mp: upgrade08, menu_mp: 8, policy_scenario: AEO2023 Reference Case
+Calculating Private NPV for waterHeating with lifetime: 12 years
+          policy_scenario: AEO2023 Reference Case --> scenario_prefix: iraRef_mp8_
+          
+
+Determining lifetime private impacts for category: clothesDrying with lifetime: 13
+Measure package calculation for clothesDrying:
+  - 14743 homes have valid data
+  - 14743 homes will receive retrofits
+  - 14743 homes have both valid data AND will receive retrofits
+  - 908 homes excluded (values will be NaN)
+
+Calculating costs for clothesDrying...
+          input_mp: upgrade08, menu_mp: 8, policy_scenario: AEO2023 Reference Case
+Calculating Private NPV for clothesDrying with lifetime: 13 years
+          policy_scenario: AEO2023 Reference Case --> scenario_prefix: iraRef_mp8_
+          
+
+Determining lifetime private impacts for category: cooking with lifetime: 15
+Measure package calculation for cooking:
+  - 7867 homes have valid data
+  - 7867 homes will receive retrofits
+  - 7867 homes have both valid data AND will receive retrofits
+  - 7784 homes excluded (values will be NaN)
+
+Calculating costs for cooking...
+          input_mp: upgrade08, menu_mp: 8, policy_scenario: AEO2023 Reference Case
+Calculating Private NPV for cooking with lifetime: 15 years
+          policy_scenario: AEO2023 Reference Case --> scenario_prefix: iraRef_mp8_
+          
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+Masking 4 columns for category 'cooking'
+
+Private NPV calculation completed. Added 27 new columns.
+-- Scenario: Inflation Reduction Act (IRA) Reference -- 
+              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+              
+
+Determining lifetime private impacts for category: heating with lifetime: 15
+Measure package calculation for heating:
+  - 12266 homes have valid data
+  - 15649 homes will receive retrofits
+  - 12266 homes have both valid data AND will receive retrofits
+  - 3385 homes excluded (values will be NaN)
+
+Calculating costs for heating...
+          input_mp: upgrade08, menu_mp: 8, policy_scenario: AEO2023 Reference Case
+Calculating Private NPV for heating with lifetime: 15 years
+          policy_scenario: AEO2023 Reference Case --> scenario_prefix: iraRef_mp8_
+          
+
+Determining lifetime private impacts for category: waterHeating with lifetime: 12
+Measure package calculation for waterHeating:
+  - 14999 homes have valid data
+  - 15551 homes will receive retrofits
+  - 14999 homes have both valid data AND will receive retrofits
+  - 652 homes excluded (values will be NaN)
+
+Calculating costs for waterHeating...
+          input_mp: upgrade08, menu_mp: 8, policy_scenario: AEO2023 Reference Case
+Calculating Private NPV for waterHeating with lifetime: 12 years
+          policy_scenario: AEO2023 Reference Case --> scenario_prefix: iraRef_mp8_
+          
+
+Determining lifetime private impacts for category: clothesDrying with lifetime: 13
+Measure package calculation for clothesDrying:
+  - 14743 homes have valid data
+  - 14743 homes will receive retrofits
+  - 14743 homes have both valid data AND will receive retrofits
+  - 908 homes excluded (values will be NaN)
+
+Calculating costs for clothesDrying...
+          input_mp: upgrade08, menu_mp: 8, policy_scenario: AEO2023 Reference Case
+Calculating Private NPV for clothesDrying with lifetime: 13 years
+          policy_scenario: AEO2023 Reference Case --> scenario_prefix: iraRef_mp8_
+          
+
+Determining lifetime private impacts for category: cooking with lifetime: 15
+Measure package calculation for cooking:
+  - 7867 homes have valid data
+  - 7867 homes will receive retrofits
+  - 7867 homes have both valid data AND will receive retrofits
+  - 7784 homes excluded (values will be NaN)
+
+Calculating costs for cooking...
+          input_mp: upgrade08, menu_mp: 8, policy_scenario: AEO2023 Reference Case
+Calculating Private NPV for cooking with lifetime: 15 years
+          policy_scenario: AEO2023 Reference Case --> scenario_prefix: iraRef_mp8_
+          
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+Masking 4 columns for category 'cooking'
+
+Private NPV calculation completed. Added 27 new columns.
+-- Scenario: Inflation Reduction Act (IRA) Reference -- 
+              scenario_prefix: 'iraRef_mp8_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
+              lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
+              
+
+Determining lifetime private impacts for category: heating with lifetime: 15
+Measure package calculation for heating:
+  - 12266 homes have valid data
+  - 15649 homes will receive retrofits
+  - 12266 homes have both valid data AND will receive retrofits
+  - 3385 homes excluded (values will be NaN)
+
+Calculating costs for heating...
+          input_mp: upgrade08, menu_mp: 8, policy_scenario: AEO2023 Reference Case
+Calculating Private NPV for heating with lifetime: 15 years
+          policy_scenario: AEO2023 Reference Case --> scenario_prefix: iraRef_mp8_
+          
+
+Determining lifetime private impacts for category: waterHeating with lifetime: 12
+Measure package calculation for waterHeating:
+  - 14999 homes have valid data
+  - 15551 homes will receive retrofits
+  - 14999 homes have both valid data AND will receive retrofits
+  - 652 homes excluded (values will be NaN)
+
+Calculating costs for waterHeating...
+          input_mp: upgrade08, menu_mp: 8, policy_scenario: AEO2023 Reference Case
+Calculating Private NPV for waterHeating with lifetime: 12 years
+          policy_scenario: AEO2023 Reference Case --> scenario_prefix: iraRef_mp8_
+          
+
+Determining lifetime private impacts for category: clothesDrying with lifetime: 13
+Measure package calculation for clothesDrying:
+  - 14743 homes have valid data
+  - 14743 homes will receive retrofits
+  - 14743 homes have both valid data AND will receive retrofits
+  - 908 homes excluded (values will be NaN)
+
+Calculating costs for clothesDrying...
+          input_mp: upgrade08, menu_mp: 8, policy_scenario: AEO2023 Reference Case
+Calculating Private NPV for clothesDrying with lifetime: 13 years
+          policy_scenario: AEO2023 Reference Case --> scenario_prefix: iraRef_mp8_
+          
+
+Determining lifetime private impacts for category: cooking with lifetime: 15
+Measure package calculation for cooking:
+  - 7867 homes have valid data
+  - 7867 homes will receive retrofits
+  - 7867 homes have both valid data AND will receive retrofits
+  - 7784 homes excluded (values will be NaN)
+
+Calculating costs for cooking...
+          input_mp: upgrade08, menu_mp: 8, policy_scenario: AEO2023 Reference Case
+Calculating Private NPV for cooking with lifetime: 15 years
+          policy_scenario: AEO2023 Reference Case --> scenario_prefix: iraRef_mp8_
+          
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+Masking 4 columns for category 'cooking'
+
+Private NPV calculation completed. Added 27 new columns.
+  
+=====================================================================================================================================================================
+DATAFRAME FOR MP8 AFTER CALCULATING PRIVATE NPV (AEO2023 REFERENCE CASE): df_euss_am_mp8_home
+
+-----------------------------------------------
+AP2: 
+-----------------------------------------------
+      
+         square_footage census_region  census_division census_division_recs  \
+bldg_id                                                                       
+119              2152.0     Northeast  Middle Atlantic      Middle Atlantic   
+122              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+150              1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+153              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+162              2663.0     Northeast  Middle Atlantic      Middle Atlantic   
+...                 ...           ...              ...                  ...   
+549882           1202.0     Northeast  Middle Atlantic      Middle Atlantic   
+549915           2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+549937            885.0     Northeast  Middle Atlantic      Middle Atlantic   
+549963           1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+549989           1220.0     Northeast  Middle Atlantic      Middle Atlantic   
+
+        building_america_climate_zone  reeds_balancing_area gea_region state  \
+bldg_id                                                                        
+119                       Mixed-Humid                   122      RFCEc    PA   
+122                       Mixed-Humid                   122      RFCEc    PA   
+150                              Cold                   122      RFCEc    PA   
+153                       Mixed-Humid                   122      RFCEc    PA   
+162                       Mixed-Humid                   122      RFCEc    PA   
+...                               ...                   ...        ...   ...   
+549882                           Cold                   122      RFCEc    PA   
+549915                           Cold                   122      RFCEc    PA   
+549937                           Cold                   115      RFCWc    PA   
+549963                           Cold                   115      RFCWc    PA   
+549989                           Cold                   122      RFCEc    PA   
+
+                            city    county  ...  \
+bldg_id                                     ...   
+119        Not in a census Place  G4200450  ...   
+122      In another census Place  G4200450  ...   
+150      In another census Place  G4201190  ...   
+153        Not in a census Place  G4200170  ...   
+162        Not in a census Place  G4200450  ...   
+...                          ...       ...  ...   
+549882     Not in a census Place  G4200110  ...   
+549915                 Lancaster  G4200710  ...   
+549937   In another census Place  G4200050  ...   
+549963   In another census Place  G4201290  ...   
+549989     Not in a census Place  G4201110  ...   
+
+        iraRef_mp8_waterHeating_private_npv_lessWTP  \
+bldg_id                                               
+119                                         -828.39   
+122                                          -15.36   
+150                                          136.84   
+153                                         3962.73   
+162                                        -2427.97   
+...                                             ...   
+549882                                      -831.79   
+549915                                      3312.49   
+549937                                     -1165.74   
+549963                                      -812.14   
+549989                                       129.25   
+
+        iraRef_mp8_waterHeating_private_npv_moreWTP  \
+bldg_id                                               
+119                                         1063.09   
+122                                         2847.08   
+150                                         1210.83   
+153                                         6670.29   
+162                                         -335.03   
+...                                             ...   
+549882                                       829.45   
+549915                                      4450.60   
+549937                                       725.74   
+549963                                       849.10   
+549989                                      2836.81   
+
+        iraRef_mp8_clothesDrying_total_capitalCost  \
+bldg_id                                              
+119                                         947.58   
+122                                        1449.28   
+150                                        1195.81   
+153                                            NaN   
+162                                        1552.00   
+...                                            ...   
+549882                                     1743.97   
+549915                                     1696.70   
+549937                                     1774.35   
+549963                                     1443.51   
+549989                                     2385.19   
+
+        iraRef_mp8_clothesDrying_net_capitalCost  \
+bldg_id                                            
+119                                      -360.40   
+122                                       455.22   
+150                                       201.75   
+153                                          NaN   
+162                                       557.94   
+...                                          ...   
+549882                                    749.91   
+549915                                    702.64   
+549937                                    466.37   
+549963                                    449.45   
+549989                                   1391.13   
+
+         iraRef_mp8_clothesDrying_private_npv_lessWTP  \
+bldg_id                                                 
+119                                          -1119.64   
+122                                          -1242.56   
+150                                           -955.72   
+153                                               NaN   
+162                                           -809.31   
+...                                               ...   
+549882                                       -1411.06   
+549915                                       -1116.81   
+549937                                       -2255.65   
+549963                                       -1143.50   
+549989                                       -2085.18   
+
+         iraRef_mp8_clothesDrying_private_npv_moreWTP  \
+bldg_id                                                 
+119                                            188.34   
+122                                           -248.50   
+150                                             38.34   
+153                                               NaN   
+162                                            184.75   
+...                                               ...   
+549882                                        -417.00   
+549915                                        -122.75   
+549937                                        -947.67   
+549963                                        -149.44   
+549989                                       -1091.12   
+
+        iraRef_mp8_cooking_total_capitalCost  \
+bldg_id                                        
+119                                   795.17   
+122                                      NaN   
+150                                      NaN   
+153                                      NaN   
+162                                      NaN   
+...                                      ...   
+549882                                   NaN   
+549915                                   NaN   
+549937                               1718.23   
+549963                                   NaN   
+549989                               1560.53   
+
+         iraRef_mp8_cooking_net_capitalCost  \
+bldg_id                                       
+119                                 -277.37   
+122                                     NaN   
+150                                     NaN   
+153                                     NaN   
+162                                     NaN   
+...                                     ...   
+549882                                  NaN   
+549915                                  NaN   
+549937                               645.69   
+549963                                  NaN   
+549989                               487.99   
+
+        iraRef_mp8_cooking_private_npv_lessWTP  \
+bldg_id                                          
+119                                   -1192.71   
+122                                        NaN   
+150                                        NaN   
+153                                        NaN   
+162                                        NaN   
+...                                        ...   
+549882                                     NaN   
+549915                                     NaN   
+549937                                -2257.94   
+549963                                     NaN   
+549989                                -1134.93   
+
+        iraRef_mp8_cooking_private_npv_moreWTP  
+bldg_id                                         
+119                                    -120.17  
+122                                        NaN  
+150                                        NaN  
+153                                        NaN  
+162                                        NaN  
+...                                        ...  
+549882                                     NaN  
+549915                                     NaN  
+549937                                -1185.40  
+549963                                     NaN  
+549989                                  -62.39  
+
+[15651 rows x 718 columns]
+
+-----------------------------------------------
+EASIUR:
+-----------------------------------------------
+
+         square_footage census_region  census_division census_division_recs  \
+bldg_id                                                                       
+119              2152.0     Northeast  Middle Atlantic      Middle Atlantic   
+122              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+150              1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+153              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+162              2663.0     Northeast  Middle Atlantic      Middle Atlantic   
+...                 ...           ...              ...                  ...   
+549882           1202.0     Northeast  Middle Atlantic      Middle Atlantic   
+549915           2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+549937            885.0     Northeast  Middle Atlantic      Middle Atlantic   
+549963           1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+549989           1220.0     Northeast  Middle Atlantic      Middle Atlantic   
+
+        building_america_climate_zone  reeds_balancing_area gea_region state  \
+bldg_id                                                                        
+119                       Mixed-Humid                   122      RFCEc    PA   
+122                       Mixed-Humid                   122      RFCEc    PA   
+150                              Cold                   122      RFCEc    PA   
+153                       Mixed-Humid                   122      RFCEc    PA   
+162                       Mixed-Humid                   122      RFCEc    PA   
+...                               ...                   ...        ...   ...   
+549882                           Cold                   122      RFCEc    PA   
+549915                           Cold                   122      RFCEc    PA   
+549937                           Cold                   115      RFCWc    PA   
+549963                           Cold                   115      RFCWc    PA   
+549989                           Cold                   122      RFCEc    PA   
+
+                            city    county  ...  \
+bldg_id                                     ...   
+119        Not in a census Place  G4200450  ...   
+122      In another census Place  G4200450  ...   
+150      In another census Place  G4201190  ...   
+153        Not in a census Place  G4200170  ...   
+162        Not in a census Place  G4200450  ...   
+...                          ...       ...  ...   
+549882     Not in a census Place  G4200110  ...   
+549915                 Lancaster  G4200710  ...   
+549937   In another census Place  G4200050  ...   
+549963   In another census Place  G4201290  ...   
+549989     Not in a census Place  G4201110  ...   
+
+        iraRef_mp8_waterHeating_private_npv_lessWTP  \
+bldg_id                                               
+119                                         -828.39   
+122                                          -15.36   
+150                                          136.84   
+153                                         3962.73   
+162                                        -2427.97   
+...                                             ...   
+549882                                      -831.79   
+549915                                      3312.49   
+549937                                     -1165.74   
+549963                                      -812.14   
+549989                                       129.25   
+
+        iraRef_mp8_waterHeating_private_npv_moreWTP  \
+bldg_id                                               
+119                                         1063.09   
+122                                         2847.08   
+150                                         1210.83   
+153                                         6670.29   
+162                                         -335.03   
+...                                             ...   
+549882                                       829.45   
+549915                                      4450.60   
+549937                                       725.74   
+549963                                       849.10   
+549989                                      2836.81   
+
+        iraRef_mp8_clothesDrying_total_capitalCost  \
+bldg_id                                              
+119                                         947.58   
+122                                        1449.28   
+150                                        1195.81   
+153                                            NaN   
+162                                        1552.00   
+...                                            ...   
+549882                                     1743.97   
+549915                                     1696.70   
+549937                                     1774.35   
+549963                                     1443.51   
+549989                                     2385.19   
+
+        iraRef_mp8_clothesDrying_net_capitalCost  \
+bldg_id                                            
+119                                      -360.40   
+122                                       455.22   
+150                                       201.75   
+153                                          NaN   
+162                                       557.94   
+...                                          ...   
+549882                                    749.91   
+549915                                    702.64   
+549937                                    466.37   
+549963                                    449.45   
+549989                                   1391.13   
+
+         iraRef_mp8_clothesDrying_private_npv_lessWTP  \
+bldg_id                                                 
+119                                          -1119.64   
+122                                          -1242.56   
+150                                           -955.72   
+153                                               NaN   
+162                                           -809.31   
+...                                               ...   
+549882                                       -1411.06   
+549915                                       -1116.81   
+549937                                       -2255.65   
+549963                                       -1143.50   
+549989                                       -2085.18   
+
+         iraRef_mp8_clothesDrying_private_npv_moreWTP  \
+bldg_id                                                 
+119                                            188.34   
+122                                           -248.50   
+150                                             38.34   
+153                                               NaN   
+162                                            184.75   
+...                                               ...   
+549882                                        -417.00   
+549915                                        -122.75   
+549937                                        -947.67   
+549963                                        -149.44   
+549989                                       -1091.12   
+
+        iraRef_mp8_cooking_total_capitalCost  \
+bldg_id                                        
+119                                   795.17   
+122                                      NaN   
+150                                      NaN   
+153                                      NaN   
+162                                      NaN   
+...                                      ...   
+549882                                   NaN   
+549915                                   NaN   
+549937                               1718.23   
+549963                                   NaN   
+549989                               1560.53   
+
+         iraRef_mp8_cooking_net_capitalCost  \
+bldg_id                                       
+119                                 -277.37   
+122                                     NaN   
+150                                     NaN   
+153                                     NaN   
+162                                     NaN   
+...                                     ...   
+549882                                  NaN   
+549915                                  NaN   
+549937                               645.69   
+549963                                  NaN   
+549989                               487.99   
+
+        iraRef_mp8_cooking_private_npv_lessWTP  \
+bldg_id                                          
+119                                   -1192.71   
+122                                        NaN   
+150                                        NaN   
+153                                        NaN   
+162                                        NaN   
+...                                        ...   
+549882                                     NaN   
+549915                                     NaN   
+549937                                -2257.94   
+549963                                     NaN   
+549989                                -1134.93   
+
+        iraRef_mp8_cooking_private_npv_moreWTP  
+bldg_id                                         
+119                                    -120.17  
+122                                        NaN  
+150                                        NaN  
+153                                        NaN  
+162                                        NaN  
+...                                        ...  
+549882                                     NaN  
+549915                                     NaN  
+549937                                -1185.40  
+549963                                     NaN  
+549989                                  -62.39  
+
+[15651 rows x 718 columns]
+
+-----------------------------------------------
+InMAP:
+-----------------------------------------------
+
+         square_footage census_region  census_division census_division_recs  \
+bldg_id                                                                       
+119              2152.0     Northeast  Middle Atlantic      Middle Atlantic   
+122              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+150              1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+153              2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+162              2663.0     Northeast  Middle Atlantic      Middle Atlantic   
+...                 ...           ...              ...                  ...   
+549882           1202.0     Northeast  Middle Atlantic      Middle Atlantic   
+549915           2176.0     Northeast  Middle Atlantic      Middle Atlantic   
+549937            885.0     Northeast  Middle Atlantic      Middle Atlantic   
+549963           1690.0     Northeast  Middle Atlantic      Middle Atlantic   
+549989           1220.0     Northeast  Middle Atlantic      Middle Atlantic   
+
+        building_america_climate_zone  reeds_balancing_area gea_region state  \
+bldg_id                                                                        
+119                       Mixed-Humid                   122      RFCEc    PA   
+122                       Mixed-Humid                   122      RFCEc    PA   
+150                              Cold                   122      RFCEc    PA   
+153                       Mixed-Humid                   122      RFCEc    PA   
+162                       Mixed-Humid                   122      RFCEc    PA   
+...                               ...                   ...        ...   ...   
+549882                           Cold                   122      RFCEc    PA   
+549915                           Cold                   122      RFCEc    PA   
+549937                           Cold                   115      RFCWc    PA   
+549963                           Cold                   115      RFCWc    PA   
+549989                           Cold                   122      RFCEc    PA   
+
+                            city    county  ...  \
+bldg_id                                     ...   
+119        Not in a census Place  G4200450  ...   
+122      In another census Place  G4200450  ...   
+150      In another census Place  G4201190  ...   
+153        Not in a census Place  G4200170  ...   
+162        Not in a census Place  G4200450  ...   
+...                          ...       ...  ...   
+549882     Not in a census Place  G4200110  ...   
+549915                 Lancaster  G4200710  ...   
+549937   In another census Place  G4200050  ...   
+549963   In another census Place  G4201290  ...   
+549989     Not in a census Place  G4201110  ...   
+
+        iraRef_mp8_waterHeating_private_npv_lessWTP  \
+bldg_id                                               
+119                                         -828.39   
+122                                          -15.36   
+150                                          136.84   
+153                                         3962.73   
+162                                        -2427.97   
+...                                             ...   
+549882                                      -831.79   
+549915                                      3312.49   
+549937                                     -1165.74   
+549963                                      -812.14   
+549989                                       129.25   
+
+        iraRef_mp8_waterHeating_private_npv_moreWTP  \
+bldg_id                                               
+119                                         1063.09   
+122                                         2847.08   
+150                                         1210.83   
+153                                         6670.29   
+162                                         -335.03   
+...                                             ...   
+549882                                       829.45   
+549915                                      4450.60   
+549937                                       725.74   
+549963                                       849.10   
+549989                                      2836.81   
+
+        iraRef_mp8_clothesDrying_total_capitalCost  \
+bldg_id                                              
+119                                         947.58   
+122                                        1449.28   
+150                                        1195.81   
+153                                            NaN   
+162                                        1552.00   
+...                                            ...   
+549882                                     1743.97   
+549915                                     1696.70   
+549937                                     1774.35   
+549963                                     1443.51   
+549989                                     2385.19   
+
+        iraRef_mp8_clothesDrying_net_capitalCost  \
+bldg_id                                            
+119                                      -360.40   
+122                                       455.22   
+150                                       201.75   
+153                                          NaN   
+162                                       557.94   
+...                                          ...   
+549882                                    749.91   
+549915                                    702.64   
+549937                                    466.37   
+549963                                    449.45   
+549989                                   1391.13   
+
+         iraRef_mp8_clothesDrying_private_npv_lessWTP  \
+bldg_id                                                 
+119                                          -1119.64   
+122                                          -1242.56   
+150                                           -955.72   
+153                                               NaN   
+162                                           -809.31   
+...                                               ...   
+549882                                       -1411.06   
+549915                                       -1116.81   
+549937                                       -2255.65   
+549963                                       -1143.50   
+549989                                       -2085.18   
+
+         iraRef_mp8_clothesDrying_private_npv_moreWTP  \
+bldg_id                                                 
+119                                            188.34   
+122                                           -248.50   
+150                                             38.34   
+153                                               NaN   
+162                                            184.75   
+...                                               ...   
+549882                                        -417.00   
+549915                                        -122.75   
+549937                                        -947.67   
+549963                                        -149.44   
+549989                                       -1091.12   
+
+        iraRef_mp8_cooking_total_capitalCost  \
+bldg_id                                        
+119                                   795.17   
+122                                      NaN   
+150                                      NaN   
+153                                      NaN   
+162                                      NaN   
+...                                      ...   
+549882                                   NaN   
+549915                                   NaN   
+549937                               1718.23   
+549963                                   NaN   
+549989                               1560.53   
+
+         iraRef_mp8_cooking_net_capitalCost  \
+bldg_id                                       
+119                                 -277.37   
+122                                     NaN   
+150                                     NaN   
+153                                     NaN   
+162                                     NaN   
+...                                     ...   
+549882                                  NaN   
+549915                                  NaN   
+549937                               645.69   
+549963                                  NaN   
+549989                               487.99   
+
+        iraRef_mp8_cooking_private_npv_lessWTP  \
+bldg_id                                          
+119                                   -1192.71   
+122                                        NaN   
+150                                        NaN   
+153                                        NaN   
+162                                        NaN   
+...                                        ...   
+549882                                     NaN   
+549915                                     NaN   
+549937                                -2257.94   
+549963                                     NaN   
+549989                                -1134.93   
+
+        iraRef_mp8_cooking_private_npv_moreWTP  
+bldg_id                                         
+119                                    -120.17  
+122                                        NaN  
+150                                        NaN  
+153                                        NaN  
+162                                        NaN  
+...                                        ...  
+549882                                     NaN  
+549915                                     NaN  
+549937                                -1185.40  
+549963                                     NaN  
+549989                                  -62.39  
+
+[15651 rows x 718 columns]
+
