@@ -46,7 +46,7 @@ if __name__ == "__main__":
         '--sensitivity_case_name',               # Name of the argument (can be --name or -n for short)
         '-n',                   # Short version of the argument
         type=str,               # Expected data type (string)
-        default=None,        # Default value if argument is not provided
+        default="NEW_IRA_0pt5",        # Default value if argument is not provided
         help='The sensitivity_case_name level.' # Help message displayed when --help is used
     )
 
@@ -61,6 +61,13 @@ if __name__ == "__main__":
     # root_dir = os.path.join("/mnt","c","Users","Arnav", "Documents", "Research", "Trane_Technologies","cmu-tare-model","output_results")
     if sensitivity_case_name is None:
         raise Exception("Must provide a sensitivity_case_name")
+    
+    if sensitivity_case_name.startswith("NEW_IRA_"):
+        rebate_adjustment = float(sensitivity_case_name[8:].replace("pt", "."))
+        print(f"Adjusting all rebates to be at most {rebate_adjustment} of the maximum rebate")
+    else:
+        rebate_adjustment = None
+    
 
     for region in ["national_ASHP"]:
         output_filepath = os.path.join(root_dir, f"{region}_{NUM_RESIDENCES}_all_unit_residence_{sensitivity_case_name}", f"alpha_beta_{MMPV_filename if USING_MMPV else 'NPV'}_tare_output.csv")
@@ -137,7 +144,7 @@ if __name__ == "__main__":
 
         df_resstock_run_am_mp8 = base_TARE.calculate_percent_AMI(df_resstock_run_am_mp8)
 
-        df_resstock_run_am_mp8 = base_TARE.calculate_rebateIRA(df_resstock_run_am_mp8, "heating", menu_mp)
+        df_resstock_run_am_mp8 = base_TARE.calculate_rebateIRA(df_resstock_run_am_mp8, "heating", menu_mp, rebate_adjustment)
 
         for policy_scenario in policy_scenarios:
             df_resstock_run_am_mp8 = base_TARE.calculate_public_npv(df_resstock_run_am_mp8, df_resstock_run_am_mp8, menu_mp, policy_scenario, interest_rate=PUBLIC_INTEREST_RATE)
@@ -146,7 +153,7 @@ if __name__ == "__main__":
             df_resstock_run_am_mp8 = base_TARE.calculate_MMPV(df_resstock_run_am_mp8, df_resstock_run_am_mp8, MMPV_DISCOUNT_RATE, ALPHA, BETA, input_mp, menu_mp, policy_scenario)    
 
         for policy_scenario in policy_scenarios:
-            df_resstock_run_am_mp8 = base_TARE.adoption_decision(df_resstock_run_am_mp8, policy_scenario, menu_mp, using_MMPV=USING_MMPV)
+            df_resstock_run_am_mp8 = base_TARE.adoption_decision(df_resstock_run_am_mp8, policy_scenario, menu_mp, using_MMPV=USING_MMPV, rebate_adjustment=rebate_adjustment)
 
 
         print(f"Writing output to {output_filepath}")
