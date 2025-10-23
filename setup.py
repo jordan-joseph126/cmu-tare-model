@@ -19,7 +19,7 @@ setup(
         'seaborn',
     ],
     description="Tradeoff Analysis of Residential retrofits for Energy equity (TARE) Model",
-    long_description=open("README.md").read(),
+    long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     author="Jordan Joseph",
     author_email="jordanjo@andrew.cmu.edu",
