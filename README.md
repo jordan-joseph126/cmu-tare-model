@@ -101,10 +101,10 @@ Carnegie Mellon University. https://github.com/jordan-joseph126/cmu-tare-model
 ```
 
 **Usage Permissions (Under Development):**
-- ✅ Research and academic use
-- ✅ Modification and extension for research purposes  
-- ✅ Integration into other research projects
-- ⚠️ Commercial use permissions to be specified in final license
+- Research and academic use
+- Modification and extension for research purposes  
+- Integration into other research projects
+- Commercial use permissions to be specified in final license
 
 **Attribution Requirements:**
 - Cite the TARE model in publications using the tool
