@@ -15,10 +15,17 @@
 # Open Anaconda Prompt
 conda activate cmu-tare-model
 cd C:\Users\14128\Research\cmu-tare-model
+
+# Install project package in editable mode (do this once after environment creation)
+pip install -e .
+
+# Launch VSCode
 code .
 ```
 
 This ensures VSCode inherits the correct conda environment variables.
+
+**Note**: The `pip install -e .` command only needs to be run once after creating the environment, or after pulling code changes that modify the package structure.
 
 ### Method 2: Direct VSCode Launch (Requires Configuration)
 
@@ -57,11 +64,37 @@ conda activate cmu-tare-model
 python --version  # Should show Python 3.11.13
 python -c "import pandas; import numpy; import matplotlib; print('Packages OK')"
 
+# Install the project package in editable mode (IMPORTANT!)
+pip install -e .
+
+# Verify project imports work
+python -c "from config import PROJECT_ROOT; print(f'PROJECT_ROOT: {PROJECT_ROOT}')"
+python -c "import cmu_tare_model; print('Package imported successfully!')"
+
 # Register Jupyter kernel
 python -m ipykernel install --user --name=cmu-tare-model --display-name "Python 3.11.13 (cmu-tare-model)"
 ```
 
 ## Troubleshooting
+
+### Issue: ModuleNotFoundError for 'config' or Project Modules
+
+**Symptoms**:
+- `ModuleNotFoundError: No module named 'config'`
+- `ModuleNotFoundError: No module named 'cmu_tare_model'`
+- Imports fail in notebooks even though environment is activated
+
+**Solution**: Install the project package in editable mode
+```bash
+conda activate cmu-tare-model
+cd C:\Users\14128\Research\cmu-tare-model
+pip install -e .
+
+# Verify it works
+python -c "from config import PROJECT_ROOT; print('Success!')"
+```
+
+Then **restart your Jupyter kernel** in VSCode before running notebook cells again.
 
 ### Issue: Wrong Python Version or Missing Packages
 
