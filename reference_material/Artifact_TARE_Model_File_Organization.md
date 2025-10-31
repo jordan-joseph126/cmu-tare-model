@@ -27,7 +27,7 @@ cmu-tare-model/
 │   │   ├── tare_moderate_v2.py      # Moderate retrofit scenario
 │   │   └── tare_run_simulation_v2.py # Main script to run all scenarios
 │   ├── data/                        # **Input data files**
-│   │   └── equity_data/
+│   │   └── ami_calculations_data/
 │   │   ├── euss_data/               # Energy usage shapes data
 │   │   │   └── resstock_amy2018_release_1.1/
 │   │   │       └── state/

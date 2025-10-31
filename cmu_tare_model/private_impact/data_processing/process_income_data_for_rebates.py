@@ -21,7 +21,7 @@ INCOME GROUPS, PERCENT AMI, AND REBATE ELIGIBILITY
 ### PUMA Median Income
 # Collect Area Median Income Data at PUMA-resolution
 filename = "nhgis0003_ds261_2022_puma.csv"
-relative_path = os.path.join("cmu_tare_model", "data", "equity_data", filename)
+relative_path = os.path.join("cmu_tare_model", "data", "ami_calculations_data", filename)
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 
 if print_verbose:
@@ -41,7 +41,7 @@ df_puma_medianIncome['median_income_USD2023'] = round((df_puma_medianIncome['med
 ### County Median Income
 # Collect Area Median Income Data at PUMA-resolution
 filename = "nhgis0005_ds261_2022_county.csv"
-relative_path = os.path.join("cmu_tare_model", "data", "equity_data", filename)
+relative_path = os.path.join("cmu_tare_model", "data", "ami_calculations_data", filename)
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 
 if print_verbose:
@@ -61,7 +61,7 @@ df_county_medianIncome['median_income_USD2023'] = round((df_county_medianIncome[
 ### State Median Income
 # Collect Area Median Income Data at PUMA-resolution
 filename = "nhgis0004_ds261_2022_state.csv"
-relative_path = os.path.join("cmu_tare_model", "data", "equity_data", filename)
+relative_path = os.path.join("cmu_tare_model", "data", "ami_calculations_data", filename)
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 
 if print_verbose:
