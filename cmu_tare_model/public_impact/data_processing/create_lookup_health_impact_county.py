@@ -25,7 +25,7 @@ def process_rcm_data(filename: str, PROJECT_ROOT: str) -> pd.DataFrame:
     
     Args:
         filename (str): 
-            Name of the CSV file (e.g. "rcm_msc_county_vsl1271_usd2023_ground_acs.csv").
+            Name of the CSV file (e.g. "rcm_msc_county_vsl1145_usd2023_ground_acs.csv").
         PROJECT_ROOT (str): 
             Path to the root directory of the project.
 
@@ -415,8 +415,8 @@ def analyze_health_impact_coverage(
 # Load data for Fossil Fuel MSC (Ground-level stack)
 # ===================================================================================================================================================================================
 
-df_health_rcm_ground_acs = process_rcm_data("rcm_msc_county_vsl1271_usd2023_ground_acs.csv", PROJECT_ROOT)
-df_health_rcm_ground_h6c = process_rcm_data("rcm_msc_county_vsl1271_usd2023_ground_h6c.csv", PROJECT_ROOT)
+df_health_rcm_ground_acs = process_rcm_data("rcm_msc_county_vsl1145_usd2023_ground_acs.csv", PROJECT_ROOT)
+df_health_rcm_ground_h6c = process_rcm_data("rcm_msc_county_vsl1145_usd2023_ground_h6c.csv", PROJECT_ROOT)
 
 # Create lookup dictionaries for fossil fuel (ground-level stack)
 lookup_health_fossil_fuel_acs = create_lookup_nested(df_health_rcm_ground_acs)
@@ -431,9 +431,15 @@ if print_verbose:
     Output Area: county_fips
     Geography: Counties
     Pollutant: NOX,SO2,PM25
-    VSL: 12.71M (Inflated from 11.3M USD2021 to 12.71M USD2023)
-        CPI Ratio for 2021 to 2023: 1.1244861054729305
-        VSL2023 = VSL2021 * 1.1244861054729305 = 11.3M * 1.1244861054729305 = 12.71 M
+    VSL: 11.45M (Inflated from 11.0M USD2022 to 11.45M USD2023)
+        CPI Ratio for 2022 to 2023: 1.04116
+        VSL2023 = VSL2022 * 1.04116 = 11.0M * 1.04116 = 11.45 M
+
+    Previously used VSL values (from formerly proposed VSL Guidance):
+        VSL: 12.71M (Inflated from 11.3M USD2021 to 12.71M USD2023)
+            CPI Ratio for 2021 to 2023: 1.1244861054729305
+            VSL2023 = VSL2021 * 1.1244861054729305 = 11.3M * 1.1244861054729305 = 12.71 M
+
     Stack Height: ground level
 
     C-R Function: ACS or H6C
@@ -461,8 +467,8 @@ if print_verbose:
 # Load data for Electricity MSC (Elevated/High-stack)
 # =================================================================================================================================================================================
 
-df_health_rcm_elevated_acs = process_rcm_data("rcm_msc_county_vsl1271_usd2023_elevated_acs.csv", PROJECT_ROOT)
-df_health_rcm_elevated_h6c = process_rcm_data("rcm_msc_county_vsl1271_usd2023_elevated_h6c.csv", PROJECT_ROOT)
+df_health_rcm_elevated_acs = process_rcm_data("rcm_msc_county_vsl1145_usd2023_elevated_acs.csv", PROJECT_ROOT)
+df_health_rcm_elevated_h6c = process_rcm_data("rcm_msc_county_vsl1145_usd2023_elevated_h6c.csv", PROJECT_ROOT)
 
 # Create lookup dictionaries for electricity generation (elevated/high-stack)
 lookup_health_electricity_acs = create_lookup_nested(df_health_rcm_elevated_acs)
@@ -477,9 +483,15 @@ if print_verbose:
     Output Area: county_fips
     Geography: Counties
     Pollutant: NOX,SO2,PM25
-    VSL: 12.71M (Inflated from 11.3M USD2021 to 12.71M USD2023)
-        CPI Ratio for 2021 to 2023: 1.1244861054729305
-        VSL2023 = VSL2021 * 1.1244861054729305 = 11.3M * 1.1244861054729305 = 12.71 M
+    VSL: 11.45M (Inflated from 11.0M USD2022 to 11.45M USD2023)
+        CPI Ratio for 2022 to 2023: 1.04116
+        VSL2023 = VSL2022 * 1.04116 = 11.0M * 1.04116 = 11.45 M
+
+    Previously used VSL values (from formerly proposed VSL Guidance):
+        VSL: 12.71M (Inflated from 11.3M USD2021 to 12.71M USD2023)
+            CPI Ratio for 2021 to 2023: 1.1244861054729305
+            VSL2023 = VSL2021 * 1.1244861054729305 = 11.3M * 1.1244861054729305 = 12.71 M
+    
     Stack Height: high stack
 
     C-R Function: ACS or H6C
