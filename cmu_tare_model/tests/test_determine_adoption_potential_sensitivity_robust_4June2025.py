@@ -12,7 +12,7 @@ from unittest.mock import patch, MagicMock
 
 from cmu_tare_model.constants import SCC_ASSUMPTIONS, RCM_MODELS, CR_FUNCTIONS, UPGRADE_COLUMNS
 
-from cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust import (
+from cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity import (
     adoption_decision,
     calculate_climate_only_adoption_robust,
     calculate_health_only_adoption_robust,
@@ -137,10 +137,10 @@ def mock_validation_framework():
                         result_df.loc[invalid_mask, col] = np.nan
         return result_df
     
-    with patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.initialize_validation_tracking', mock_initialize_validation_tracking), \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.create_retrofit_only_series', mock_create_retrofit_only_series), \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.apply_new_columns_to_dataframe', mock_apply_new_columns_to_dataframe), \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.apply_final_masking', mock_apply_final_masking):
+    with patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.initialize_validation_tracking', mock_initialize_validation_tracking), \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.create_retrofit_only_series', mock_create_retrofit_only_series), \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.apply_new_columns_to_dataframe', mock_apply_new_columns_to_dataframe), \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.apply_final_masking', mock_apply_final_masking):
         yield
 
 
@@ -151,7 +151,7 @@ def mock_scenario_params():
         scenario_prefix = f'iraRef_mp{menu_mp}_'
         return (scenario_prefix, '', {}, {}, {}, {})
     
-    with patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.define_scenario_params') as mock:
+    with patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.define_scenario_params') as mock:
         mock.side_effect = mock_define_scenario_params
         yield mock
 
@@ -216,11 +216,11 @@ def test_adoption_tier_classification_comprehensive():
         test_data[f'iraRef_mp8_{category}_public_npv_central_ap2_acs'] = [800] * 8
         test_data[f'mp8_{category}_rebate_amount'] = [1000] * 8
     
-    with patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.define_scenario_params') as mock_scenario, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.initialize_validation_tracking') as mock_init, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.create_retrofit_only_series') as mock_create, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.apply_new_columns_to_dataframe') as mock_apply, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.apply_final_masking') as mock_final:
+    with patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.define_scenario_params') as mock_scenario, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.initialize_validation_tracking') as mock_init, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.create_retrofit_only_series') as mock_create, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.apply_new_columns_to_dataframe') as mock_apply, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.apply_final_masking') as mock_final:
         
         # Configure mocks
         mock_scenario.return_value = ('iraRef_mp8_', '', {}, {}, {}, {})
@@ -271,11 +271,11 @@ def test_public_impact_classification_logic():
         test_data[f'iraRef_mp8_{category}_public_npv_central_ap2_acs'] = [800] * 5
         test_data[f'mp8_{category}_rebate_amount'] = [1000] * 5
     
-    with patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.define_scenario_params') as mock_scenario, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.initialize_validation_tracking') as mock_init, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.create_retrofit_only_series') as mock_create, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.apply_new_columns_to_dataframe') as mock_apply, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.apply_final_masking') as mock_final:
+    with patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.define_scenario_params') as mock_scenario, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.initialize_validation_tracking') as mock_init, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.create_retrofit_only_series') as mock_create, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.apply_new_columns_to_dataframe') as mock_apply, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.apply_final_masking') as mock_final:
         
         # Configure mocks
         mock_scenario.return_value = ('iraRef_mp8_', '', {}, {}, {}, {})
@@ -383,11 +383,11 @@ def test_different_rcm_cr_combinations():
                 health_col = f'iraRef_mp8_{category}_health_npv_{rcm}_{cr}'
                 df[f'iraRef_mp8_{category}_public_npv_{scc}_{rcm}_{cr}'] = df[climate_col] + df[health_col]
         
-        with patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.define_scenario_params') as mock_scenario, \
-             patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.initialize_validation_tracking') as mock_init, \
-             patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.create_retrofit_only_series') as mock_create, \
-             patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.apply_new_columns_to_dataframe') as mock_apply, \
-             patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.apply_final_masking') as mock_final:
+        with patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.define_scenario_params') as mock_scenario, \
+             patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.initialize_validation_tracking') as mock_init, \
+             patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.create_retrofit_only_series') as mock_create, \
+             patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.apply_new_columns_to_dataframe') as mock_apply, \
+             patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.apply_final_masking') as mock_final:
             
             # Configure mocks
             mock_scenario.return_value = ('iraRef_mp8_', '', {}, {}, {}, {})
@@ -465,11 +465,11 @@ def test_numeric_conversion_robustness():
         df[f'iraRef_mp8_{category}_public_npv_central_ap2_acs'] = [800] * 4
         df[f'mp8_{category}_rebate_amount'] = [1000] * 4
     
-    with patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.define_scenario_params') as mock_scenario, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.initialize_validation_tracking') as mock_init, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.create_retrofit_only_series') as mock_create, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.apply_new_columns_to_dataframe') as mock_apply, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.apply_final_masking') as mock_final:
+    with patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.define_scenario_params') as mock_scenario, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.initialize_validation_tracking') as mock_init, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.create_retrofit_only_series') as mock_create, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.apply_new_columns_to_dataframe') as mock_apply, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.apply_final_masking') as mock_final:
         
         # Configure mocks
         mock_scenario.return_value = ('iraRef_mp8_', '', {}, {}, {}, {})
@@ -492,10 +492,10 @@ def test_all_invalid_homes_handling(complete_npv_data, mock_scenario_params):
     # Make all homes invalid for heating
     df['include_heating'] = False
     
-    with patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.initialize_validation_tracking') as mock_init, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.create_retrofit_only_series') as mock_create, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.apply_new_columns_to_dataframe') as mock_apply, \
-         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity_robust.apply_final_masking') as mock_final:
+    with patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.initialize_validation_tracking') as mock_init, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.create_retrofit_only_series') as mock_create, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.apply_new_columns_to_dataframe') as mock_apply, \
+         patch('cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity.apply_final_masking') as mock_final:
         
         # Configure mocks for all invalid homes
         mock_init.return_value = (df.copy(), pd.Series(False, index=df.index), {cat: [] for cat in UPGRADE_COLUMNS}, [])
