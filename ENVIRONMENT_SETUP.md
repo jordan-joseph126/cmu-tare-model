@@ -252,6 +252,38 @@ conda env export > environment-exact.yml
 - After pulling code changes that modify package structure
 - If you get `ModuleNotFoundError` for project modules
 
+```
+cmu-tare-model/
+├── cmu_tare_model/                          # Main model package
+│   ├── adoption_potential/                  # Adoption decision calculations
+│   ├── data/                                # Input data (download separately)
+│   │   ├── ami_calculations_data/           # Used for rebate eligibility
+│   │   ├── euss_data/                       # Household annual energy consumption and metadata
+│   │   ├── inflation_data/                  # Adjusting for inflation using BLS CPI-U
+│   │   ├── fuel_prices/                     # Energy price projections
+│   │   ├── marginal_social_costs/           # SCC and health damage values
+│   │   ├── projections/                     # Projecting future fuel prices and grid emissions intensity, Approximating LRMER for CAPs
+│   │   └── retrofit_costs/                  # Equipment and installation costs (mostly REMDB pre-2024 update)
+│   ├── energy_consumption_and_metadata/     # EUSS data processing
+│   ├── model_scenarios/                     # Scenario notebooks
+│   │   ├── tare_baseline_v2_1.ipynb
+│   │   ├── tare_basic_v2_1.ipynb
+│   │   ├── tare_moderate_v2_1.ipynb
+│   │   ├── tare_advanced_v2_1.ipynb
+│   │   └── tare_run_simulation_v2_1.ipynb
+│   ├── output_results/                      # Model outputs (created on run)
+│   ├── private_impact/                      # Private cost/benefit calculations
+│   ├── public_impact/                       # Climate and health impact calculations
+│   ├── utils/                               # Utility and visualization functions
+│   ├── tare_model_main_v2_1.ipynb           # **MAIN NOTEBOOK - START HERE**
+│   └── constants.py                         # Constants used throughout the codebase
+├── environment-cmu-tare-model.yml           # Conda environment (see ENVIRONMENT_SETUP.md)
+├── setup.py                                 # Package installation script
+├── config.py                                # Project configuration
+├── ENVIRONMENT_SETUP.md                     # Detailed environment setup reference
+└── TARE_MODEL_USER_GUIDE.md                 # User guide and technical documentation
+```
+
 ---
 
 **Last Updated**: 2025-10-23  
