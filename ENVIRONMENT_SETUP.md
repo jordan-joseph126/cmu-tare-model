@@ -1,206 +1,258 @@
 # Environment Setup Guide
 
-## Environment Information
+## Overview
 
-- **Environment Name**: `cmu-tare-model`
+This guide walks you through setting up the `cmu-tare-model` Python environment for the TARE model codebase. The environment uses **Python 3.11.13** and includes all required packages for data analysis, visualization, and modeling.
+
+**Environment Configuration**:
+- **Name**: `cmu-tare-model` (defined in the .yml file)
 - **Python Version**: 3.11.13
-- **Location**: `C:\Users\14128\anaconda3\envs\cmu-tare-model`
-- **Environment Files**: `environment.yml` and `environment-clean.yml`
+- **Configuration File**: `environment-cmu-tare-model.yml`
+- **Project Location**: `C:\Users\14128\Research\cmu-tare-model`
 
-## Quick Start
+---
 
-### Method 1: Launch VSCode from Anaconda Prompt (Recommended)
+## Prerequisites
+
+Before starting, ensure you have:
+- Anaconda or Miniconda installed
+- The project repository cloned to your local machine
+- Access to Anaconda Prompt (Windows) or Terminal (Mac/Linux)
+
+---
+
+## First-Time Setup
+
+Follow these steps in order when setting up the environment for the first time:
+
+### Step 1: Create the Conda Environment
 
 ```bash
-# Open Anaconda Prompt
-conda activate cmu-tare-model
+# Navigate to project directory
 cd C:\Users\14128\Research\cmu-tare-model
 
-# Install project package in editable mode (do this once after environment creation)
-pip install -e .
+# Create environment from .yml file
+# Note: The environment name 'cmu-tare-model' is specified inside the .yml file
+conda env create -f environment-cmu-tare-model.yml
+```
 
-# Launch VSCode
+**What this does**: Creates a new isolated Python environment with all dependencies specified in the configuration file. The environment name is defined in the first line of the .yml file.
+
+**Expected output**: Conda will download and install all packages. This may take 5-10 minutes.
+
+### Step 2: Activate the Environment
+
+```bash
+conda activate cmu-tare-model
+```
+
+**What this does**: Switches your terminal session to use this environment's Python interpreter and packages.
+
+**Success indicator**: Your command prompt should now show `(cmu-tare-model)` at the beginning of the line.
+
+### Step 3: Install Project Package in Editable Mode
+
+```bash
+pip install -e .
+```
+
+**What this does**: Installs your project as a package so Python can find your custom modules (like `config` and `cmu_tare_model`). The `-e` flag means "editable" - changes to your code are immediately available without reinstalling.
+
+**Why this matters**: Without this step, Python won't be able to import your project modules, causing `ModuleNotFoundError` even though the environment is activated.
+
+### Step 4: Register Jupyter Kernel
+
+```bash
+python -m ipykernel install --user --name=cmu-tare-model --display-name "Python 3.11.13 (cmu-tare-model)"
+```
+
+**What this does**: Makes this environment available as a kernel option in Jupyter notebooks and VSCode.
+
+**Why this matters**: VSCode needs to know this kernel exists to use it when running notebooks.
+
+### Step 5: Verify Installation
+
+```bash
+# Check Python version
+python --version
+# Should output: Python 3.11.13
+
+# Test core packages
+python -c "import pandas; import numpy; import matplotlib; print('Core packages OK!')"
+
+# Test project imports
+python -c "from config import PROJECT_ROOT; print(f'PROJECT_ROOT: {PROJECT_ROOT}')"
+python -c "import cmu_tare_model; print('Project package OK!')"
+```
+
+**Success indicators**: All commands should complete without errors and display the expected output.
+
+---
+
+## Daily Usage
+
+### Opening the Project
+
+**Recommended Method** (ensures proper environment detection):
+
+```bash
+# 1. Open Anaconda Prompt
+# 2. Activate environment
+conda activate cmu-tare-model
+
+# 3. Navigate to project
+cd C:\Users\14128\Research\cmu-tare-model
+
+# 4. Launch VSCode
 code .
 ```
 
-This ensures VSCode inherits the correct conda environment variables.
+**Why launch from Anaconda Prompt?** VSCode inherits the conda environment variables, ensuring it correctly detects and uses your environment.
 
-**Note**: The `pip install -e .` command only needs to be run once after creating the environment, or after pulling code changes that modify the package structure.
+### Selecting Kernel in VSCode
 
-### Method 2: Direct VSCode Launch (Requires Configuration)
+When opening a notebook:
+1. Click the kernel selector in the top-right corner
+2. Select **"Python 3.11.13 (cmu-tare-model)"**
+3. Verify `(cmu-tare-model)` appears in the kernel indicator
 
-If you want to launch VSCode directly without Anaconda Prompt, configure VSCode settings:
-
-1. Open VSCode Settings (`Ctrl+,`)
-2. Search for `python.condaPath`
-3. Set to: `C:\Users\14128\anaconda3\Scripts\conda.exe`
-
-Or add to your `settings.json`:
-
-```json
-{
-    "python.condaPath": "C:\\Users\\14128\\anaconda3\\Scripts\\conda.exe",
-    "python.terminal.activateEnvironment": true,
-    "python.defaultInterpreterPath": "C:\\Users\\14128\\anaconda3\\envs\\cmu-tare-model\\python.exe"
-}
-```
-
-## Environment Creation/Recreation
-
-### If You Need to Recreate the Environment
-
-```bash
-# Remove existing environment
-conda deactivate
-conda env remove -n cmu-tare-model
-
-# Recreate from environment file
-conda env create -f environment-clean.yml
-
-# Activate the environment
-conda activate cmu-tare-model
-
-# Verify installation
-python --version  # Should show Python 3.11.13
-python -c "import pandas; import numpy; import matplotlib; print('Packages OK')"
-
-# Install the project package in editable mode (IMPORTANT!)
-pip install -e .
-
-# Verify project imports work
-python -c "from config import PROJECT_ROOT; print(f'PROJECT_ROOT: {PROJECT_ROOT}')"
-python -c "import cmu_tare_model; print('Package imported successfully!')"
-
-# Register Jupyter kernel
-python -m ipykernel install --user --name=cmu-tare-model --display-name "Python 3.11.13 (cmu-tare-model)"
-```
+---
 
 ## Troubleshooting
 
-### Issue: ModuleNotFoundError for 'config' or Project Modules
+### Issue: `ModuleNotFoundError: No module named 'config'` or `'cmu_tare_model'`
 
-**Symptoms**:
-- `ModuleNotFoundError: No module named 'config'`
-- `ModuleNotFoundError: No module named 'cmu_tare_model'`
-- Imports fail in notebooks even though environment is activated
+**Cause**: Project package not installed in editable mode.
 
-**Solution**: Install the project package in editable mode
+**Solution**:
 ```bash
 conda activate cmu-tare-model
 cd C:\Users\14128\Research\cmu-tare-model
 pip install -e .
-
-# Verify it works
-python -c "from config import PROJECT_ROOT; print('Success!')"
 ```
 
-Then **restart your Jupyter kernel** in VSCode before running notebook cells again.
+**Then restart your Jupyter kernel** in VSCode:
+- Click kernel indicator → Restart Kernel
 
-### Issue: Wrong Python Version or Missing Packages
+### Issue: Wrong Python Version (e.g., 3.12.x instead of 3.11.13)
 
-**Symptoms**:
-- `python --version` shows wrong version (e.g., 3.12.x instead of 3.11.13)
-- `ModuleNotFoundError` when importing pandas, numpy, etc.
+**Cause**: Environment wasn't created correctly or wrong environment is active.
 
-**Solution**: Recreate the environment (see above)
+**Solution**: Recreate the environment
+```bash
+# Deactivate current environment
+conda deactivate
 
-### Issue: Jupyter Kernel Not Found in VSCode
+# Remove problematic environment
+conda env remove -n cmu-tare-model
 
-**Solution**:
+# Recreate from .yml file (start from Step 1 above)
+conda env create -f environment-cmu-tare-model.yml
+```
+
+### Issue: Jupyter Kernel Not Available in VSCode
+
+**Solution**: Re-register the kernel
 ```bash
 conda activate cmu-tare-model
 python -m ipykernel install --user --name=cmu-tare-model --display-name "Python 3.11.13 (cmu-tare-model)"
 ```
 
-Then in VSCode:
-1. Open a notebook
-2. Click kernel selector (top right)
-3. Select "Python 3.11.13 (cmu-tare-model)"
+Then refresh VSCode's kernel list:
+- Press `Ctrl+Shift+P`
+- Run: **"Jupyter: Select Interpreter to Start Jupyter Server"**
+- Choose the cmu-tare-model environment
 
-### Issue: Kernel Keeps Restarting
-
-**Solution**:
-1. Close all notebooks in VSCode
-2. Press `Ctrl+Shift+P`
-3. Run: `Jupyter: Clear All Kernels`
-4. Reopen notebook and select kernel again
-
-### Issue: Environment Not Visible in VSCode
+### Issue: Kernel Crashes or Keeps Restarting
 
 **Solutions**:
-1. Launch VSCode from Anaconda Prompt (Method 1 above)
-2. Configure `python.condaPath` in VSCode settings
-3. Restart VSCode after activating environment
-4. Use "Python: Select Interpreter" command (`Ctrl+Shift+P`) and manually enter the path
+1. Clear all kernels:
+   - Press `Ctrl+Shift+P`
+   - Run: **"Jupyter: Clear All Kernels"**
+2. Close all notebooks in VSCode
+3. Restart VSCode
+4. Reopen notebook and select kernel
 
-## Verification Steps
+### Issue: VSCode Doesn't Detect Conda Environment
 
-After setting up the environment, verify it works:
+**Solution**: Launch VSCode from Anaconda Prompt (see Daily Usage above)
 
-```bash
-# In Anaconda Prompt with environment activated
-python --version
-python -c "import pandas; import numpy; import matplotlib; import scipy; import seaborn; import plotly; import statsmodels; print('All key packages OK!')"
-```
+**Alternative** (if needed):
+1. Press `Ctrl+Shift+P`
+2. Run: **"Python: Select Interpreter"**
+3. Manually select the environment path:
+   ```
+   C:\Users\14128\anaconda3\envs\cmu-tare-model\python.exe
+   ```
+
+---
 
 ## Key Packages Included
 
-- Data Processing: pandas, numpy, openpyxl
-- Visualization: matplotlib, seaborn, plotly
-- Scientific Computing: scipy, statsmodels, scikit-learn
-- Jupyter: jupyterlab, notebook, ipykernel, ipywidgets
-- Web: requests, httpx
-- And many more (see environment.yml for full list)
+Your environment includes:
+- **Data Processing**: pandas, numpy, openpyxl
+- **Visualization**: matplotlib, seaborn, plotly
+- **Scientific Computing**: scipy, statsmodels, scikit-learn
+- **Jupyter**: jupyterlab, notebook, ipykernel, ipywidgets
+- **Web**: requests, httpx
 
-## Main Model Notebooks
+See `environment-cmu-tare-model.yml` for the complete package list.
 
-- `tare_model_main_v2_1.ipynb` - Latest version (v2.1)
-- `tare_model_main_v2.ipynb` - Version 2
-- `tare_model_main_v1.2.0_downSelect.ipynb` - Version 1.2.0
-- Scenario notebooks in `cmu_tare_model/model_scenarios/`
+---
 
-## Best Practices
+## Maintenance Tasks
 
-1. Always activate the environment before working: `conda activate cmu-tare-model`
-2. Launch VSCode from Anaconda Prompt to ensure proper environment detection
-3. Use `environment-clean.yml` for recreating the environment (more portable)
-4. Keep environment files updated when adding new packages
-5. Test package imports after recreating the environment
-
-## Updating the Environment
-
-### Add New Package
+### Adding New Packages
 
 ```bash
+# Activate environment
 conda activate cmu-tare-model
-conda install package-name
 
-# Update environment file
-conda env export --no-builds > environment-clean.yml
+# Install package
+conda install package-name
+# Or: pip install package-name
+
+# Update environment file to reflect changes
+conda env export --no-builds > environment-cmu-tare-model-updated.yml
 ```
 
-### Update Existing Packages
+### Updating All Packages
 
 ```bash
 conda activate cmu-tare-model
 conda update --all
 ```
 
-## Export Current Environment
+⚠️ **Warning**: This may cause version conflicts. Test thoroughly after updating.
 
-To create a new environment file snapshot:
+### Exporting Current Environment
+
+To create a snapshot of your current environment:
 
 ```bash
 conda activate cmu-tare-model
 
-# With builds (platform-specific)
-conda env export > environment.yml
-
-# Without builds (more portable)
+# Cross-platform (recommended for sharing)
 conda env export --no-builds > environment-clean.yml
+
+# Platform-specific (exact reproduction on same OS)
+conda env export > environment-exact.yml
 ```
 
 ---
 
-**Last Updated**: 2025-10-23
-**Environment Status**: Working - Python 3.11.13, all packages installed
+## Quick Reference
+
+**Main Model Notebook**: `tare_model_main_v2_1.ipynb`
+
+**Scenario Notebooks**: Located in `cmu_tare_model/model_scenarios/`
+
+**When to Run `pip install -e .`**:
+- After first creating the environment
+- After pulling code changes that modify package structure
+- If you get `ModuleNotFoundError` for project modules
+
+---
+
+**Last Updated**: 2025-10-23  
+**Status**: ✅ Working - Python 3.11.13, all packages verified
