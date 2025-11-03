@@ -252,6 +252,7 @@ conda env export > environment-exact.yml
 - After pulling code changes that modify package structure
 - If you get `ModuleNotFoundError` for project modules
 
+**Project Structure**:
 ```
 cmu-tare-model/
 ├── cmu_tare_model/                          # Main model package
