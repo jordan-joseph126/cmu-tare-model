@@ -19,7 +19,7 @@ from cmu_tare_model.private_impact.calculate_lifetime_private_impact import (
 )
 
 # Import utilities needed for tests
-from cmu_tare_model.utils.validation_framework import (
+from cmu_tare_model.utils.validation_framework_NEEDS_FIXED import (
     initialize_validation_tracking,
     create_retrofit_only_series,
     calculate_avoided_values,

@@ -22,6 +22,8 @@ ALLOWED_TECHNOLOGIES = {
     ]
 } 
 
+ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached', 'Mobile Home', 'Multi-Family with 2 - 4 Units']
+
 TD_LOSSES = 0.05 # Updated to 5% based on the latest estimates from EIA, formerly 6%
 TD_LOSSES_MULTIPLIER = 1 / (1 - TD_LOSSES)
 EQUIPMENT_SPECS = {'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15}

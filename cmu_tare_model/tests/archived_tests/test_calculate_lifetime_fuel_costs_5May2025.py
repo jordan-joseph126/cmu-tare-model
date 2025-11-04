@@ -26,7 +26,7 @@ from cmu_tare_model.tests.test_validation_framework import (
 
 # Import constants
 from cmu_tare_model.constants import EQUIPMENT_SPECS, FUEL_MAPPING, UPGRADE_COLUMNS
-from cmu_tare_model.utils.validation_framework import get_valid_calculation_mask
+from cmu_tare_model.utils.validation_framework_NEEDS_FIXED import get_valid_calculation_mask
 
 # -------------------------------------------------------------------------
 #                           TEST FIXTURES

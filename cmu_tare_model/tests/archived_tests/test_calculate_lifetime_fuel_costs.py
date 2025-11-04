@@ -26,7 +26,7 @@ from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import (
 
 # Import constants and validation framework utilities for validation
 from cmu_tare_model.constants import EQUIPMENT_SPECS, FUEL_MAPPING
-from cmu_tare_model.utils.validation_framework import (
+from cmu_tare_model.utils.validation_framework_NEEDS_FIXED import (
     initialize_validation_tracking,
     create_retrofit_only_series,
     apply_final_masking,
