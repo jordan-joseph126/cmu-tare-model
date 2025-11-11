@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CMU TARE Model: NREL REMDB Migration Guide</title>
+    <style>
+        @page {
+            size: letter;
+            margin: 0.75in;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 100%;
+            margin: 0;
+            padding: 20px 40px;
+            font-size: 11pt;
+        }
+        h1 {
+            color: #1a5490;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            font-size: 24pt;
+            margin-top: 40px;
+        }
+        h1:first-of-type {
+            margin-top: 0;
+            text-align: center;
+            font-size: 28pt;
+        }
+        h2 {
+            color: #2c5282;
+            border-bottom: 2px solid #95a5a6;
+            padding-bottom: 5px;
+            margin-top: 30px;
+            font-size: 18pt;
+        }
+        h3 {
+            color: #4a5568;
+            margin-top: 20px;
+            font-size: 14pt;
+        }
+        h4 {
+            color: #718096;
+            margin-top: 15px;
+            font-size: 12pt;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+            font-size: 10pt;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #2980b9;
+            font-weight: 600;
+        }
+        td {
+            padding: 8px;
+            border: 1px solid #cbd5e0;
+        }
+        tr:nth-child(even) {
+            background-color: #f7fafc;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Courier New', Consolas, monospace;
+            font-size: 10pt;
+            color: #e53e3e;
+        }
+        pre {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', Consolas, monospace;
+            font-size: 9pt;
+            line-height: 1.4;
+        }
+        pre code {
+            background-color: transparent;
+            color: #e2e8f0;
+            padding: 0;
+        }
+        ul, ol {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 6px;
+        }
+        .box {
+            background-color: #ebf8ff;
+            border-left: 4px solid #3182ce;
+            padding: 12px 15px;
+            margin: 15px 0;
+        }
+        .warning {
+            background-color: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 12px 15px;
+            margin: 15px 0;
+        }
+        .success {
+            background-color: #f0fdf4;
+            border-left: 4px solid #10b981;
+            padding: 12px 15px;
+            margin: 15px 0;
+        }
+        .info {
+            background-color: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 12px 15px;
+            margin: 15px 0;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #cbd5e0;
+            margin: 25px 0;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+        .no-break {
+            page-break-inside: avoid;
+        }
+        p {
+            margin-bottom: 12px;
+        }
+        strong {
+            color: #1a202c;
+        }
+        .subtitle {
+            text-align: center;
+            color: #4a5568;
+            font-size: 14pt;
+            margin-top: -20px;
+            margin-bottom: 40px;
+        }
+        .toc {
+            background-color: #f7fafc;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 30px 0;
+        }
+        .toc h2 {
+            margin-top: 0;
+            border-bottom: none;
+        }
+        .toc ul {
+            list-style-type: none;
+        }
+        .toc a {
+            text-decoration: none;
+            color: #3182ce;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        @media print {
+            body {
+                font-size: 10pt;
+            }
+            h1 {
+                page-break-after: avoid;
+            }
+            h2, h3, h4 {
+                page-break-after: avoid;
+            }
+            table, pre, .box, .warning, .success, .info {
+                page-break-inside: avoid;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<h1>CMU TARE Model: Migration Guide to NREL REMDB 2023</h1>
+<p class="subtitle"><strong>Updating Capital Cost Calculations to Use Regression-Based Pricing</strong></p>
+
+<hr>
+
+<div class="toc">
+<h2>Table of Contents</h2>
+<ol>
+    <li><a href="#executive-summary">Executive Summary</a></li>
+    <li><a href="#understanding-changes">Understanding the Changes</a></li>
+    <li><a href="#migration-process">Step-by-Step Migration Process</a></li>
+    <li><a href="#phase1">Phase 1: Update Excel Spreadsheet</a></li>
+    <li><a href="#phase2">Phase 2: Create Data Loading Functions</a></li>
+    <li><a href="#phase3">Phase 3: Update Cost Calculation Logic</a></li>
+    <li><a href="#phase4">Phase 4: Update Workflow Notebooks</a></li>
+    <li><a href="#phase5">Phase 5: Add Validation Checks</a></li>
+    <li><a href="#phase6">Phase 6: Testing and Validation</a></li>
+    <li><a href="#phase7">Phase 7: Migration Timeline</a></li>
+    <li><a href="#troubleshooting">Troubleshooting Guide</a></li>
+</ol>
+</div>
+
+<hr class="page-break">
+
+<h1 id="executive-summary">Executive Summary</h1>
+
+<h2>What is Changing?</h2>
+<p>The CMU TARE Model currently uses <strong>fixed cost estimates</strong> from the 2013 NREL REMDB database. We are updating to the <strong>2023 NREL REMDB</strong>, which uses <strong>regression-based pricing</strong> that calculates costs dynamically based on equipment performance characteristics.</p>
+
+<h2>Why This Matters</h2>
+<p>The new system provides:</p>
+<ul>
+    <li><strong>More accurate costs</strong> based on actual equipment specifications</li>
+    <li><strong>Current 2023 pricing</strong> without needing inflation adjustments</li>
+    <li><strong>Better uncertainty quantification</strong> with probabilistic cost distributions</li>
+    <li><strong>Separation of material and labor costs</strong> for better transparency</li>
+</ul>
+
+<h2>Key Impact</h2>
+<div class="box">
+<p>Instead of looking up a single fixed cost for "Electric Heat Pump", the model will now <strong>calculate</strong> the cost based on:</p>
+<ul>
+    <li>Equipment capacity (e.g., 3 tons)</li>
+    <li>Efficiency rating (e.g., SEER 18)</li>
+    <li>Installation scenario (new construction vs retrofit)</li>
+    <li>Statistical distribution (10th, 50th, 90th percentile)</li>
+</ul>
+</div>
+
+<hr class="page-break">
+
+<h1 id="understanding-changes">Understanding the Changes</h1>
+
+<h2>Old System: Fixed Cost Lookup</h2>
+
+<p><strong>How it worked:</strong></p>
+<ol>
+    <li>Look up equipment type (e.g., "Electric ASHP, SEER 18")</li>
+    <li>Get three fixed costs: Progressive, Reference, Conservative</li>
+    <li>Randomly sample from normal distribution</li>
+    <li>Apply CPI adjustment from 2013 to 2023 dollars</li>
+</ol>
+
+<div class="box">
+<p><strong>Example:</strong></p>
+<pre><code>Electric ASHP, SEER 18, 9.3 HSPF:
+- Base cost: $4,800
+- Cost per kBtuh: $55
+- Other costs: $0
+- Total for 3-ton unit (36 kBtuh): $4,800 + (36 × $55) = $6,780
+- Adjusted to 2023$: $6,780 × 1.308 = $8,868</code></pre>
+</div>
+
+<h2>New System: Regression-Based Calculation</h2>
+
+<p><strong>How it works:</strong></p>
+<ol>
+    <li>Extract equipment performance metrics (capacity, efficiency)</li>
+    <li>Calculate material cost using regression equation</li>
+    <li>Add installation cost (either multiplier or fixed adder)</li>
+    <li>Already in 2023 dollars (no adjustment needed)</li>
+</ol>
+
+<div class="box">
+<p><strong>Example:</strong></p>
+<pre><code>Electric ASHP with 3 tons capacity and SEER 15:
+
+Material Cost = (1,065.28 × 3 tons) + (594.74 × 15 SEER) - 2,291
+              = $9,826
+
+Installation = Material Cost × 1.5 (retrofit multiplier)
+             = $9,826 × 1.5 = $14,739
+
+Labor Cost = $14,739 - $9,826 = $4,913
+
+Total Installed Cost = $14,739</code></pre>
+</div>
+
+<h2>Side-by-Side Comparison</h2>
+
+<table class="no-break">
+<thead>
+<tr>
+    <th>Feature</th>
+    <th>Old System</th>
+    <th>New System</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+    <td><strong>Cost Basis</strong></td>
+    <td>Fixed values</td>
+    <td>Regression equations</td>
+</tr>
+<tr>
+    <td><strong>Inputs Required</strong></td>
+    <td>Technology name only</td>
+    <td>Performance metrics (SEER, capacity, etc.)</td>
+</tr>
+<tr>
+    <td><strong>Cost Components</strong></td>
+    <td>Combined</td>
+    <td>Separated (material + labor)</td>
+</tr>
+<tr>
+    <td><strong>Currency Year</strong></td>
+    <td>2013$ → adjusted</td>
+    <td>2023$ (current)</td>
+</tr>
+<tr>
+    <td><strong>Customization</strong></td>
+    <td>Limited to 3 cost levels</td>
+    <td>Continuous based on actual specs</td>
+</tr>
+<tr>
+    <td><strong>Installation</strong></td>
+    <td>Included in base cost</td>
+    <td>Separate multipliers/adders</td>
+</tr>
+<tr>
+    <td><strong>Uncertainty</strong></td>
+    <td>Normal distribution sampling</td>
+    <td>Quantile regression (10th/50th/90th)</td>
+</tr>
+</tbody>
+</table>
+
+<hr class="page-break">
+
+<h1 id="migration-process">Step-by-Step Migration Process</h1>
+
+<h2>Overview of 7 Phases</h2>
+
+<div class="info">
+<pre><code>Phase 1: Update Spreadsheet Structure (Data Entry)
+    ↓
+Phase 2: Create Data Loading Functions (Code)
+    ↓
+Phase 3: Update Cost Calculation Logic (Code)
+    ↓
+Phase 4: Modify Workflow Notebooks (Code)
+    ↓
+Phase 5: Add Validation Checks (Code)
+    ↓
+Phase 6: Test Everything (Verification)
+    ↓
+Phase 7: Deploy and Document (Implementation)</code></pre>
+</div>
+
+<hr class="page-break">
+
+<h1 id="phase1">Phase 1: Update the Excel Spreadsheet</h1>
+
+<h2>Current vs New Spreadsheet</h2>
+
+<table class="no-break">
+<thead>
+<tr>
+    <th>Current: tare_retrofit_costs_cpi.xlsx</th>
+    <th>New: tare_retrofit_costs_remdb_2023.xlsx</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+    <td>
+        <ol>
+            <li>CPI (inflation adjustments)</li>
+            <li>heating_costs</li>
+            <li>waterHeating_costs</li>
+            <li>clothesDrying_costs</li>
+            <li>cooking_costs</li>
+            <li>enclosure_upgrade_costs</li>
+        </ol>
+    </td>
+    <td>
+        <ol>
+            <li><strike>CPI removed</strike></li>
+            <li>heating_costs (redesigned)</li>
+            <li>waterHeating_costs (redesigned)</li>
+            <li>clothesDrying_costs (redesigned)</li>
+            <li>cooking_costs (redesigned)</li>
+            <li>enclosure_upgrade_costs (redesigned)</li>
+        </ol>
+    </td>
+</tr>
+</tbody>
+</table>
+
+<h2>New Sheet Structure</h2>
+
+<p><strong>Required columns for equipment costs:</strong></p>
+
+<table class="no-break">
+<thead>
+<tr>
+    <th>Column Group</th>
+    <th>Columns</th>
+    <th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+    <td><strong>Identification</strong></td>
+    <td>Component, Class, Scenario, Output_Units</td>
+    <td>Identify what equipment and cost basis</td>
+</tr>
+<tr>
+    <td><strong>Performance Metric 1</strong></td>
+    <td>Metric1_Name, Metric1_Unit, Metric1_LowerBound, Metric1_UpperBound, Coefficient1_Low, Coefficient1_Mid, Coefficient1_High</td>
+    <td>First cost driver (e.g., capacity)</td>
+</tr>
+<tr>
+    <td><strong>Performance Metric 2</strong></td>
+    <td>Metric2_Name, Metric2_Unit, Metric2_LowerBound, Metric2_UpperBound, Coefficient2_Low, Coefficient2_Mid, Coefficient2_High</td>
+    <td>Second cost driver (e.g., efficiency)</td>
+</tr>
+<tr>
+    <td><strong>Regression Constants</strong></td>
+    <td>Intercept_Low, Intercept_Mid, Intercept_High</td>
+    <td>Base costs in regression equation</td>
+</tr>
+<tr>
+    <td><strong>Installation</strong></td>
+    <td>Installation_Type, Installation_NewConstruction, Installation_Retrofit</td>
+    <td>Labor cost calculation method</td>
+</tr>
+<tr>
+    <td><strong>Metadata</strong></td>
+    <td>Lifetime, Cost_Variation, Data_Sources, Qualitative_Rank, Notes</td>
+    <td>Additional information</td>
+</tr>
+</tbody>
+</table>
+
+<div class="warning">
+<p><strong>Important:</strong> The CPI sheet is removed because new data is already in 2023 dollars</p>
+</div>
+
+<hr class="page-break">
+
+<h2>Example: Air Source Heat Pump Entry</h2>
+
+<table class="no-break">
+<thead>
+<tr>
+    <th>Column</th>
+    <th>Value</th>
+    <th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr><td colspan="3" style="background-color: #e3f2fd; font-weight: bold;">Basic Information</td></tr>
+<tr>
+    <td>Component</td>
+    <td>Heat Pump</td>
+    <td>Broad category</td>
+</tr>
+<tr>
+    <td>Class</td>
+    <td>Air Source Heat Pump</td>
+    <td>Specific type</td>
+</tr>
+<tr>
+    <td>Scenario</td>
+    <td>Retrofit</td>
+    <td>New construction or retrofit</td>
+</tr>
+<tr>
+    <td>Output_Units</td>
+    <td>2023$</td>
+    <td>Final cost units</td>
+</tr>
+<tr><td colspan="3" style="background-color: #e3f2fd; font-weight: bold;">Performance Metric 1: Capacity</td></tr>
+<tr>
+    <td>Metric1_Name</td>
+    <td>Capacity</td>
+    <td>What drives cost</td>
+</tr>
+<tr>
+    <td>Metric1_Unit</td>
+    <td>tons</td>
+    <td>Units of measurement</td>
+</tr>
+<tr>
+    <td>Metric1_LowerBound</td>
+    <td>1.5</td>
+    <td>Minimum valid value</td>
+</tr>
+<tr>
+    <td>Metric1_UpperBound</td>
+    <td>5.0</td>
+    <td>Maximum valid value</td>
+</tr>
+<tr>
+    <td>Coefficient1_Low</td>
+    <td>639.17</td>
+    <td>10th percentile coefficient</td>
+</tr>
+<tr>
+    <td>Coefficient1_Mid</td>
+    <td>1065.28</td>
+    <td>50th percentile coefficient</td>
+</tr>
+<tr>
+    <td>Coefficient1_High</td>
+    <td>1491.39</td>
+    <td>90th percentile coefficient</td>
+</tr>
+<tr><td colspan="3" style="background-color: #e3f2fd; font-weight: bold;">Performance Metric 2: Efficiency</td></tr>
+<tr>
+    <td>Metric2_Name</td>
+    <td>SEER1</td>
+    <td>What drives cost</td>
+</tr>
+<tr>
+    <td>Metric2_Unit</td>
+    <td>unitless</td>
+    <td>Units of measurement</td>
+</tr>
+<tr>
+    <td>Metric2_LowerBound</td>
+    <td>13</td>
+    <td>Minimum valid value</td>
+</tr>
+<tr>
+    <td>Metric2_UpperBound</td>
+    <td>21</td>
+    <td>Maximum valid value</td>
+</tr>
+<tr>
+    <td>Coefficient2_Low</td>
+    <td>365.84</td>
+    <td>10th percentile coefficient</td>
+</tr>
+<tr>
+    <td>Coefficient2_Mid</td>
+    <td>594.74</td>
+    <td>50th percentile coefficient</td>
+</tr>
+<tr>
+    <td>Coefficient2_High</td>
+    <td>832.64</td>
+    <td>90th percentile coefficient</td>
+</tr>
+<tr><td colspan="3" style="background-color: #e3f2fd; font-weight: bold;">Regression Constants</td></tr>
+<tr>
+    <td>Intercept_Low</td>
+    <td>-1374.60</td>
+    <td>10th percentile intercept</td>
+</tr>
+<tr>
+    <td>Intercept_Mid</td>
+    <td>-2291.00</td>
+    <td>50th percentile intercept</td>
+</tr>
+<tr>
+    <td>Intercept_High</td>
+    <td>-3207.40</td>
+    <td>90th percentile intercept</td>
+</tr>
+<tr><td colspan="3" style="background-color: #e3f2fd; font-weight: bold;">Installation Costs</td></tr>
+<tr>
+    <td>Installation_Type</td>
+    <td>Multiplier</td>
+    <td>Multiplier or Adder</td>
+</tr>
+<tr>
+    <td>Installation_NewConstruction</td>
+    <td>1.3</td>
+    <td>New construction multiplier</td>
+</tr>
+<tr>
+    <td>Installation_Retrofit</td>
+    <td>1.5</td>
+    <td>Retrofit multiplier</td>
+</tr>
+<tr><td colspan="3" style="background-color: #e3f2fd; font-weight: bold;">Additional Information</td></tr>
+<tr>
+    <td>Lifetime</td>
+    <td>15</td>
+    <td>Expected equipment life (years)</td>
+</tr>
+</tbody>
+</table>
+
+<hr class="page-break">
+
+<h2>Calculation Example: Heat Pump</h2>
+
+<div class="box no-break">
+<p><strong>For a 3-ton, SEER 15 air source heat pump (retrofit, mid percentile):</strong></p>
+
+<p><strong>Step 1: Calculate material cost</strong></p>
+<pre><code>Material = (Coefficient1_Mid × Capacity) + (Coefficient2_Mid × SEER) + Intercept_Mid
+         = (1065.28 × 3) + (594.74 × 15) + (-2291.00)
+         = 3,195.84 + 8,921.10 - 2,291.00
+         = $9,825.94</code></pre>
+
+<p><strong>Step 2: Calculate total installed cost</strong></p>
+<pre><code>Total = Material × Installation_Retrofit
+      = 9,825.94 × 1.5
+      = $14,738.91</code></pre>
+
+<p><strong>Step 3: Calculate labor cost</strong></p>
+<pre><code>Labor = Total - Material
+      = 14,738.91 - 9,825.94
+      = $4,912.97</code></pre>
+</div>
+
+<hr class="page-break">
+
+<h2>Example: Attic Insulation Entry</h2>
+
+<p>For enclosure upgrades, the structure is similar but output units are $/sqft:</p>
+
+<table class="no-break">
+<thead>
+<tr>
+    <th>Column</th>
+    <th>Value</th>
+    <th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+    <td>Component</td>
+    <td>Insulation</td>
+    <td>Broad category</td>
+</tr>
+<tr>
+    <td>Class</td>
+    <td>Unfinished Attic Ceiling Batt</td>
+    <td>Specific type</td>
+</tr>
+<tr>
+    <td>Output_Units</td>
+    <td>2023$/sqft</td>
+    <td>Cost per square foot</td>
+</tr>
+<tr>
+    <td>Metric1_Name</td>
+    <td>R_Value</td>
+    <td>Target insulation value</td>
+</tr>
+<tr>
+    <td>Metric1_LowerBound</td>
+    <td>0</td>
+    <td>Minimum R-value</td>
+</tr>
+<tr>
+    <td>Metric1_UpperBound</td>
+    <td>60</td>
+    <td>Maximum R-value</td>
+</tr>
+<tr>
+    <td>Coefficient1_Mid</td>
+    <td>0.04</td>
+    <td>50th percentile</td>
+</tr>
+<tr>
+    <td>Metric2_Name</td>
+    <td>(leave blank)</td>
+    <td>No second metric</td>
+</tr>
+<tr>
+    <td>Intercept_Mid</td>
+    <td>0.26</td>
+    <td>50th percentile</td>
+</tr>
+<tr>
+    <td>Installation_Type</td>
+    <td>Adder</td>
+    <td>Fixed labor cost added</td>
+</tr>
+<tr>
+    <td>Installation_Retrofit</td>
+    <td>1.00</td>
+    <td>$ per sqft for retrofit</td>
+</tr>
+<tr>
+    <td>Lifetime</td>
+    <td>50</td>
+    <td>Insulation lasts 50 years</td>
+</tr>
+</tbody>
+</table>
+
+<h2>Calculation Example: Attic Insulation</h2>
+
+<div class="box no-break">
+<p><strong>For R-49 insulation retrofit on 1,500 sqft attic (mid percentile):</strong></p>
+
+<p><strong>Step 1: Calculate material cost per sqft</strong></p>
+<pre><code>Material_per_sqft = (Coefficient1_Mid × R_Value) + Intercept_Mid
+                  = (0.04 × 49) + 0.26
+                  = 1.96 + 0.26
+                  = $2.22/sqft</code></pre>
+
+<p><strong>Step 2: Add labor (adder, not multiplier)</strong></p>
+<pre><code>Total_per_sqft = Material_per_sqft + Installation_Retrofit
+               = 2.22 + 1.00
+               = $3.22/sqft</code></pre>
+
+<p><strong>Step 3: Multiply by area</strong></p>
+<pre><code>Total_cost = Total_per_sqft × Area
+           = 3.22 × 1,500
+           = $4,830</code></pre>
+</div>
+
+<hr class="page-break">
+
+<h1 id="phase2">Phase 2: Create Data Loading Functions</h1>
+
+<h2>Overview</h2>
+
+<p>Create a new Python file that handles loading regression data from Excel and calculating costs.</p>
+
+<p><strong>File location:</strong> <code>cmu_tare_model/utils/load_remdb_data.py</code></p>
+
+<h2>Three Main Functions Needed</h2>
+
+<h3>Function 1: load_remdb_regression_data()</h3>
+
+<div class="box no-break">
+<p><strong>Purpose:</strong> Load all regression data from Excel into a Python dictionary</p>
+
+<p><strong>What it does:</strong></p>
+<ul>
+    <li>Reads Excel file</li>
+    <li>Organizes data by (Component, Class)</li>
+    <li>Stores all coefficients, intercepts, bounds, and installation info</li>
+    <li>Returns structured dictionary for easy access</li>
+</ul>
+
+<p><strong>Returns a dictionary like:</strong></p>
+<pre><code>{
+    ('Heat Pump', 'Air Source Heat Pump'): {
+        'metric1': {
+            'name': 'Capacity',
+            'unit': 'tons',
+            'bounds': (1.5, 5.0),
+            'coefficients': {'low': 639.17, 'mid': 1065.28, 'high': 1491.39}
+        },
+        'metric2': {...},
+        'intercepts': {'low': -1374.60, 'mid': -2291.00, 'high': -3207.40},
+        'installation': {'type': 'Multiplier', 'retrofit': 1.5},
+        'lifetime': 15
+    }
+}</code></pre>
+</div>
+
+<h3>Function 2: calculate_cost_from_regression()</h3>
+
+<div class="box no-break">
+<p><strong>Purpose:</strong> Calculate cost for one home using regression equation</p>
+
+<p><strong>Inputs:</strong></p>
+<ul>
+    <li>Cost data (from function 1)</li>
+    <li>Performance metric values (e.g., 3 tons, SEER 15)</li>
+    <li>Scenario (retrofit or new construction)</li>
+    <li>Percentile (low/mid/high estimate)</li>
+</ul>
+
+<p><strong>Outputs:</strong></p>
+<ul>
+    <li>Material cost</li>
+    <li>Installation (labor) cost</li>
+    <li>Total installed cost</li>
+</ul>
+
+<p><strong>Example usage:</strong></p>
+<pre><code>material, installation, total = calculate_cost_from_regression(
+    cost_data=ashp_data,
+    metric1_value=3.0,      # 3 tons
+    metric2_value=15.0,     # SEER 15
+    scenario='retrofit',
+    percentile='mid'
+)
+# Returns: ($9,826, $4,913, $14,739)</code></pre>
+</div>
+
+<h3>Function 3: calculate_cost_probabilistic()</h3>
+
+<div class="box no-break">
+<p><strong>Purpose:</strong> Randomly sample cost using normal distribution for uncertainty analysis</p>
+
+<p><strong>Why this matters:</strong></p>
+<p>Not all 3-ton, SEER 15 heat pumps cost exactly the same. This function creates realistic variation by:</p>
+<ul>
+    <li>Setting mean at 50th percentile cost</li>
+    <li>Setting spread based on 10th-90th percentile range</li>
+    <li>Preventing negative costs</li>
+    <li>Sampling multiple times for Monte Carlo analysis</li>
+</ul>
+
+<p><strong>Example usage:</strong></p>
+<pre><code># Get 1000 cost samples for uncertainty analysis
+costs = calculate_cost_probabilistic(
+    cost_data=ashp_data,
+    metric1_value=3.0,
+    metric2_value=15.0,
+    scenario='retrofit',
+    n_samples=1000
+)
+# Returns array of 1000 values
+# Mean ≈ $14,739, range ≈ $9,000 to $20,000</code></pre>
+</div>
+
+<hr class="page-break">
+
+<h1 id="phase3">Phase 3: Update Cost Calculation Logic</h1>
+
+<h2>Files That Need Updating</h2>
+
+<table class="no-break">
+<thead>
+<tr>
+    <th>File</th>
+    <th>Purpose</th>
+    <th>Key Changes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+    <td><code>calculate_equipment_installation_costs.py</code></td>
+    <td>Calculate retrofit/upgrade equipment costs</td>
+    <td>Use regression instead of lookup; extract metrics from data</td>
+</tr>
+<tr>
+    <td><code>calculate_equipment_replacement_costs.py</code></td>
+    <td>Calculate baseline replacement costs</td>
+    <td>Same as above, but use baseline equipment specs</td>
+</tr>
+<tr>
+    <td><code>calculate_enclosure_upgrade_costs.py</code></td>
+    <td>Calculate insulation and air sealing costs</td>
+    <td>Use regression with area multiplication</td>
+</tr>
+</tbody>
+</table>
+
+<h2>New Helper Functions Required</h2>
+
+<h3>1. extract_performance_metrics()</h3>
+
+<p><strong>Purpose:</strong> Pull performance metric values from the dataframe</p>
+
+<p><strong>Examples by equipment type:</strong></p>
+
+<table class="no-break">
+<thead>
+<tr>
+    <th>Equipment</th>
+    <th>Metric 1</th>
+    <th>Metric 2</th>
+    <th>How to Extract</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+    <td>Heating (ASHP)</td>
+    <td>Capacity (tons)</td>
+    <td>SEER rating</td>
+    <td>
+        capacity = df['total_heating_load_kBtuh'] / 12<br>
+        seer = extract from 'upgrade_hvac_heating_efficiency'
+    </td>
+</tr>
+<tr>
+    <td>Water Heating</td>
+    <td>UEF</td>
+    <td>Tank size (gal)</td>
+    <td>
+        uef = extract from 'upgrade_water_heater_efficiency'<br>
+        gallons = df['size_water_heater_gal']
+    </td>
+</tr>
+<tr>
+    <td>Attic Insulation</td>
+    <td>R-value</td>
+    <td>None</td>
+    <td>
+        r_value = extract from 'upgrade_insulation_atticFloor'
+    </td>
+</tr>
+</tbody>
+</table>
+
+<h3>2. get_component_class_mapping()</h3>
+
+<p><strong>Purpose:</strong> Determine which equipment class each home needs</p>
+
+<div class="box no-break">
+<p><strong>Example logic for heating:</strong></p>
+<pre><code>For each home:
+    If has_ducts and basic_package:
+        → Air Source Heat Pump
+    
+    If no_ducts and basic_package:
+        → Mini-Split Heat Pump
+    
+    If has_ducts and advanced_package:
+        → Mini-Split Heat Pump - Ducted
+    
+    If no_ducts and advanced_package:
+        → Mini-Split Heat Pump</code></pre>
+</div>
+
+<div class="box no-break">
+<p><strong>Example logic for water heating:</strong></p>
+<pre><code>For each home:
+    If tank_size ≤ 55 gallons:
+        → HP Tank 50 gal
+    
+    If 55 < tank_size ≤ 73:
+        → HP Tank 66 gal
+    
+    If tank_size > 73:
+        → HP Tank 80 gal</code></pre>
+</div>
+
+<hr class="page-break">
+
+<h1 id="phase4">Phase 4: Update Workflow Notebooks</h1>
+
+<h2>Files to Modify</h2>
+
+<ul>
+    <li><code>model_scenarios/tare_basic_v2_1.ipynb</code></li>
+    <li><code>model_scenarios/tare_moderate_v2_1.ipynb</code></li>
+    <li><code>model_scenarios/tare_advanced_v2_1.ipynb</code></li>
+</ul>
+
+<h2>Key Changes to Make</h2>
+
+<h3>Change 1: Import New Functions</h3>
+
+<div class="box no-break">
+<p><strong>Add at top of notebook:</strong></p>
+<pre><code>from cmu_tare_model.utils.load_remdb_data import (
+    load_remdb_regression_data,
+    calculate_cost_from_regression,
+    calculate_cost_probabilistic
+)</code></pre>
+</div>
+
+<h3>Change 2: Load Cost Data (No CPI Adjustment)</h3>
+
+<div class="box no-break">
+<p><strong>OLD CODE:</strong></p>
+<pre><code># Load Excel
+filename = "tare_retrofit_costs_cpi.xlsx"
+df_heating = pd.read_excel(file_path, sheet_name='heating_costs')
+
+# Apply CPI adjustments
+for column in cost_columns:
+    df_heating[column] = df_heating[column] * cpi_ratio * multiplier
+
+# Create dictionary
+dict_heating = df_heating.set_index(['technology', 'efficiency']).to_dict()</code></pre>
+
+<p><strong>NEW CODE:</strong></p>
+<pre><code># Load regression data (already in 2023$)
+filename = "tare_retrofit_costs_remdb_2023.xlsx"
+dict_heating = load_remdb_regression_data(file_path, 'heating_costs')
+dict_water = load_remdb_regression_data(file_path, 'waterHeating_costs')
+dict_clothes = load_remdb_regression_data(file_path, 'clothesDrying_costs')
+dict_cooking = load_remdb_regression_data(file_path, 'cooking_costs')
+dict_enclosure = load_remdb_regression_data(file_path, 'enclosure_upgrade_costs')
+
+# NO CPI adjustment needed!</code></pre>
+</div>
+
+<h3>Change 3: Update Function Calls</h3>
+
+<div class="box no-break">
+<p><strong>OLD CODE:</strong></p>
+<pre><code>df = calculate_installation_cost(
+    df=df,
+    cost_dict=dict_heating,
+    menu_mp=8,
+    end_use='heating'
+)</code></pre>
+
+<p><strong>NEW CODE:</strong></p>
+<pre><code>df = calculate_installation_cost_remdb(
+    df=df,
+    cost_dict=dict_heating,
+    menu_mp=8,
+    end_use='heating',
+    scenario='retrofit'  # NEW parameter
+)</code></pre>
+</div>
+
+<h3>Change 4: Remove CPI Code</h3>
+
+<div class="warning no-break">
+<p><strong>Delete these lines:</strong></p>
+<pre><code># NO LONGER NEEDED
+from cmu_tare_model.utils.inflation_adjustment import *
+cpi_ratio_2023_2013 = 1.3079752915774157
+
+# Also remove CPI adjustment loops
+for column in cost_columns:
+    df[column] = df[column] * cpi_ratio  # DELETE THIS</code></pre>
+</div>
+
+<hr class="page-break">
+
+<h1 id="phase5">Phase 5: Add Validation Checks</h1>
+
+<h2>Why Validation is Critical</h2>
+
+<p>Regression equations only work within specific bounds. Homes outside these bounds need special handling.</p>
+
+<div class="info">
+<p><strong>Example bounds:</strong></p>
+<ul>
+    <li>ASHP capacity: 1.5 to 5.0 tons</li>
+    <li>SEER rating: 13 to 21</li>
+    <li>Water heater UEF: 2.0 to 4.0</li>
+</ul>
+
+<p>If a home needs a <strong>6-ton</strong> heat pump, it's outside the regression bounds.</p>
+</div>
+
+<h2>Validation Function</h2>
+
+<p><strong>Create file:</strong> <code>cmu_tare_model/utils/validate_remdb_metrics.py</code></p>
+
+<p><strong>What it does:</strong></p>
+<ol>
+    <li>Extract performance metrics for all homes</li>
+    <li>Check if metrics fall within regression bounds</li>
+    <li>Flag homes that are out of bounds</li>
+    <li>Generate validation report</li>
+</ol>
+
+<h2>How to Use Validation</h2>
+
+<div class="box no-break">
+<p><strong>Add before cost calculations:</strong></p>
+<pre><code># Validate heating equipment metrics
+validation_heating = validate_metric_bounds(
+    df_euss_am_mp8_home,
+    'heating',
+    dict_heating_equipment_cost
+)
+
+if len(validation_heating) > 0:
+    print(f"WARNING: {len(validation_heating)} homes outside bounds:")
+    print(validation_heating)
+    print("These homes will be excluded.")
+else:
+    print("✓ All homes within valid bounds")</code></pre>
+</div>
+
+<h2>Handling Out-of-Bounds Homes</h2>
+
+<table class="no-break">
+<thead>
+<tr>
+    <th>Approach</th>
+    <th>Pros</th>
+    <th>Cons</th>
+    <th>When to Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+    <td><strong>Exclude</strong></td>
+    <td>Conservative, avoids extrapolation errors</td>
+    <td>Reduces sample size</td>
+    <td>Default approach</td>
+</tr>
+<tr>
+    <td><strong>Extrapolate</strong></td>
+    <td>Keeps all homes</td>
+    <td>Less accurate for unusual cases</td>
+    <td>If few homes affected</td>
+</tr>
+<tr>
+    <td><strong>Cap at bounds</strong></td>
+    <td>Conservative estimate</td>
+    <td>Underestimates for large equipment</td>
+    <td>Sensitivity analysis</td>
+</tr>
+<tr>
+    <td><strong>Manual override</strong></td>
+    <td>Most accurate</td>
+    <td>Requires research</td>
+    <td>High-value cases</td>
+</tr>
+</tbody>
+</table>
+
+<div class="warning">
+<p><strong>Recommendation:</strong> Start with exclusion, then review excluded homes to decide if bounds should be expanded.</p>
+</div>
+
+<hr class="page-break">
+
+<h1 id="phase6">Phase 6: Testing and Validation</h1>
+
+<h2>Three-Stage Testing Approach</h2>
+
+<h3>Stage 1: Unit Tests - Verify Calculations</h3>
+
+<p><strong>Create file:</strong> <code>tests/test_remdb_regression.py</code></p>
+
+<div class="box no-break">
+<p><strong>Test 1: NREL Documentation Example (ASHP)</strong></p>
+<pre><code>Given:
+- 3 tons capacity
+- 15 SEER rating
+- Retrofit installation
+- Mid (50th percentile)
+
+Expected results:
+- Material: $9,825.94
+- Total: $14,738.91
+- Labor: $4,912.97
+
+Test passes if calculated values match within $0.10</code></pre>
+</div>
+
+<div class="box no-break">
+<p><strong>Test 2: NREL Documentation Example (Insulation)</strong></p>
+<pre><code>Given:
+- R-15 insulation
+- Retrofit installation
+- Mid (50th percentile)
+
+Expected results:
+- Material: $0.86/sqft
+- Total: $1.86/sqft
+
+Test passes if calculated values match within $0.01</code></pre>
+</div>
+
+<h3>Stage 2: Comparison Testing - Old vs New</h3>
+
+<div class="box no-break">
+<p><strong>Process:</strong></p>
+<ol>
+    <li>Select sample of 1,000 homes</li>
+    <li>Calculate costs using OLD system</li>
+    <li>Calculate costs using NEW system</li>
+    <li>Compare results statistically</li>
+    <li>Investigate large discrepancies (>50%)</li>
+    <li>Document systematic differences</li>
+</ol>
+
+<p><strong>Expected outputs:</strong></p>
+<pre><code>COST COMPARISON SUMMARY
+==========================================
+Sample size: 1,000 homes
+
+Old system (2013$ adjusted):
+  Mean: $12,450
+  Median: $11,800
+
+New system (2023$ regression):
+  Mean: $14,230
+  Median: $13,500
+
+Difference:
+  Mean: +$1,780 (+14.3%)
+  Median: +$1,700 (+14.4%)
+
+Homes with >20% difference: 87 (8.7%)
+Homes with >50% difference: 12 (1.2%)</code></pre>
+</div>
+
+<h3>Stage 3: Real-World Validation</h3>
+
+<p><strong>If actual project cost data is available:</strong></p>
+
+<div class="box no-break">
+<ol>
+    <li>Load real installation costs from completed projects</li>
+    <li>Calculate model estimates for same projects</li>
+    <li>Compare actual vs estimated costs</li>
+    <li>Calculate error metrics (mean absolute error, % error)</li>
+    <li>Identify systematic biases</li>
+</ol>
+
+<p><strong>Good validation results:</strong></p>
+<ul>
+    <li>Mean absolute % error < 25%</li>
+    <li>No systematic bias (not always too high or too low)</li>
+    <li>90% of estimates within ±30% of actual</li>
+</ul>
+</div>
+
+<hr class="page-break">
+
+<h1 id="phase7">Phase 7: Migration Timeline</h1>
+
+<h2>Recommended: Phased Approach (6 Weeks)</h2>
+
+<table class="no-break">
+<thead>
+<tr>
+    <th style="width: 15%;">Week</th>
+    <th style="width: 25%;">Phase</th>
+    <th>Activities</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+    <td rowspan="2"><strong>1-2</strong></td>
+    <td><strong>PILOT TEST</strong></td>
+    <td>
+        ☐ Update heating costs sheet only<br>
+        ☐ Create data loading functions<br>
+        ☐ Implement for heating equipment<br>
+        ☐ Run parallel calculations (old + new)<br>
+        ☐ Compare results on 1,000 sample homes<br>
+        ☐ Investigate discrepancies<br>
+        ☐ Refine and document
+    </td>
+</tr>
+<tr>
+    <td colspan="2"><em>Deliverable: Working heating cost regression with validation report</em></td>
+</tr>
+<tr>
+    <td rowspan="2"><strong>3-4</strong></td>
+    <td><strong>EXPAND TO ALL EQUIPMENT</strong></td>
+    <td>
+        ☐ Update all equipment cost sheets<br>
+        ☐ Implement for water, clothes, cooking<br>
+        ☐ Run parallel calculations on full dataset<br>
+        ☐ Document systematic differences<br>
+        ☐ Stakeholder review<br>
+        ☐ Adjust as needed
+    </td>
+</tr>
+<tr>
+    <td colspan="2"><em>Deliverable: All equipment costs migrated with comparison report</em></td>
+</tr>
+<tr>
+    <td rowspan="2"><strong>5</strong></td>
+    <td><strong>ENCLOSURE COSTS</strong></td>
+    <td>
+        ☐ Update enclosure cost sheet<br>
+        ☐ Implement insulation regression<br>
+        ☐ Test area multiplication logic<br>
+        ☐ Validate on subset of homes<br>
+        ☐ Document approach
+    </td>
+</tr>
+<tr>
+    <td colspan="2"><em>Deliverable: Complete cost system migrated</em></td>
+</tr>
+<tr>
+    <td rowspan="2"><strong>6</strong></td>
+    <td><strong>FULL DEPLOYMENT</strong></td>
+    <td>
+        ☐ Remove old cost functions<br>
+        ☐ Update all scenario notebooks<br>
+        ☐ Archive old spreadsheet<br>
+        ☐ Update documentation<br>
+        ☐ Train users<br>
+        ☐ Release notes
+    </td>
+</tr>
+<tr>
+    <td colspan="2"><em>Deliverable: Production deployment complete</em></td>
+</tr>
+</tbody>
+</table>
+
+<hr class="page-break">
+
+<h1 id="troubleshooting">Troubleshooting Guide</h1>
+
+<h2>Common Issues and Solutions</h2>
+
+<h3>Issue 1: Many Homes Excluded (Out of Bounds)</h3>
+
+<div class="warning no-break">
+<p><strong>Symptoms:</strong></p>
+<ul>
+    <li>Validation shows many homes outside metric bounds</li>
+    <li>Analysis sample size much smaller than expected</li>
+</ul>
+
+<p><strong>Possible causes:</strong></p>
+<ol>
+    <li>Metric extraction error (wrong regex pattern)</li>
+    <li>Regression bounds too narrow</li>
+    <li>Homes genuinely have unusual equipment sizes</li>
+</ol>
+
+<p><strong>Diagnostic steps:</strong></p>
+<pre><code># Check extracted values
+print(df[['metric1_capacity', 'metric2_seer']].describe())
+
+# Compare to bounds
+print(f"Bounds: capacity {cost_data['metric1']['bounds']}")
+print(f"Bounds: SEER {cost_data['metric2']['bounds']}")
+
+# Review out-of-bounds homes
+out_of_bounds = df[~df['metrics_in_bounds']]
+print(out_of_bounds[['bldg_id', 'metric1', 'metric2']].head(20))</code></pre>
+
+<p><strong>Solutions:</strong></p>
+<ul>
+    <li>If extraction error: Fix regex patterns in <code>extract_performance_metrics()</code></li>
+    <li>If bounds too narrow: Consider expanding (with justification)</li>
+    <li>If genuinely unusual: Document and accept exclusion</li>
+</ul>
+</div>
+
+<h3>Issue 2: Negative Costs Calculated</h3>
+
+<div class="warning no-break">
+<p><strong>Symptoms:</strong></p>
+<ul>
+    <li>Some homes show negative installation costs</li>
+    <li>Warnings about invalid cost values</li>
+</ul>
+
+<p><strong>Possible causes:</strong></p>
+<ol>
+    <li>Incorrect intercept values (negative intercepts are valid, but may produce negative costs with low metric values)</li>
+    <li>Metrics outside valid range causing bad extrapolation</li>
+    <li>Missing data (NaN) treated as zero</li>
+</ol>
+
+<p><strong>Diagnostic steps:</strong></p>
+<pre><code># Find negative costs
+negative = df[df['installation_cost'] < 0]
+print(f"Found {len(negative)} homes with negative costs")
+
+# Investigate specific cases
+for idx in negative.index[:5]:
+    print(f"Home {idx}:")
+    print(f"  Capacity: {df.loc[idx, 'metric1']}")
+    print(f"  SEER: {df.loc[idx, 'metric2']}")
+    print(f"  Cost: ${df.loc[idx, 'installation_cost']}")</code></pre>
+
+<p><strong>Solutions:</strong></p>
+<ul>
+    <li>Verify intercept values match REMDB exactly</li>
+    <li>Check for NaN values in metrics</li>
+    <li>Ensure <code>truncnorm</code> is preventing negative samples in probabilistic function</li>
+    <li>Add explicit check: <code>cost = max(0, calculated_cost)</code></li>
+</ul>
+</div>
+
+<h3>Issue 3: Costs Much Different Than Expected</h3>
+
+<div class="warning no-break">
+<p><strong>Symptoms:</strong></p>
+<ul>
+    <li>New costs systematically 50%+ different from old costs</li>
+    <li>Costs seem unreasonably high or low</li>
+</ul>
+
+<p><strong>Possible causes:</strong></p>
+<ol>
+    <li>CPI adjustment still being applied (double-counting)</li>
+    <li>Wrong installation type (multiplier vs adder)</li>
+    <li>Coefficients entered incorrectly in spreadsheet</li>
+    <li>Metrics in wrong units (e.g., kBtuh instead of tons)</li>
+</ol>
+
+<p><strong>Diagnostic steps:</strong></p>
+<pre><code># Manual step-by-step calculation
+home_idx = df.index[0]
+capacity = df.loc[home_idx, 'total_heating_load_kBtuh'] / 12.0
+seer = df.loc[home_idx, 'metric2_seer']
+
+print(f"Manual calculation for home {home_idx}:")
+print(f"Capacity: {capacity} tons")
+print(f"SEER: {seer}")
+
+# Calculate
+coef1 = cost_data['metric1']['coefficients']['mid']
+coef2 = cost_data['metric2']['coefficients']['mid']
+intercept = cost_data['intercepts']['mid']
+
+material = (coef1 * capacity) + (coef2 * seer) + intercept
+multiplier = cost_data['installation']['retrofit']
+total = material * multiplier
+
+print(f"\nMaterial = ({coef1} × {capacity}) + ({coef2} × {seer}) + {intercept}")
+print(f"         = ${material:.2f}")
+print(f"Total = ${material:.2f} × {multiplier} = ${total:.2f}")
+
+# Compare to function
+func_result = calculate_cost_from_regression(...)[2]
+print(f"Function returned: ${func_result:.2f}")
+print(f"Match: {abs(total - func_result) < 0.01}")</code></pre>
+
+<p><strong>Solutions:</strong></p>
+<ul>
+    <li>Remove any lingering CPI adjustment code</li>
+    <li>Verify Installation_Type column (Multiplier vs Adder)</li>
+    <li>Double-check all coefficients against REMDB source</li>
+    <li>Ensure capacity converted from kBtuh to tons</li>
+</ul>
+</div>
+
+<h3>Issue 4: Missing Performance Metrics (Many NaN)</h3>
+
+<div class="warning no-break">
+<p><strong>Symptoms:</strong></p>
+<ul>
+    <li>Many NaN values in extracted metrics</li>
+    <li>Low extraction success rate (&lt;90%)</li>
+</ul>
+
+<p><strong>Possible causes:</strong></p>
+<ol>
+    <li>Regex pattern doesn't match actual string format</li>
+    <li>Data not in expected columns</li>
+    <li>Equipment specs not populated in EUSS data</li>
+</ol>
+
+<p><strong>Diagnostic steps:</strong></p>
+<pre><code># Check raw data format
+print("Sample efficiency strings:")
+print(df['upgrade_hvac_heating_efficiency'].head(20))
+
+# Test regex
+test_string = "SEER 18, 9.3 HSPF"
+result = pd.Series([test_string]).str.extract(r'SEER\s+([\d.]+)')
+print(f"Test: '{test_string}' → SEER {result[0][0]}")
+
+# Check success rate
+df['seer_extracted'] = df['upgrade_hvac_heating_efficiency'].str.extract(r'SEER\s+([\d.]+)')
+success_rate = df['seer_extracted'].notna().sum() / len(df) * 100
+print(f"Extraction success: {success_rate:.1f}%")
+
+if success_rate < 90:
+    print("Sample of failed extractions:")
+    failed = df[df['seer_extracted'].isna()]['upgrade_hvac_heating_efficiency']
+    print(failed.head(10))</code></pre>
+
+<p><strong>Solutions:</strong></p>
+<ul>
+    <li>Adjust regex patterns to match actual data format</li>
+    <li>Add multiple regex patterns to catch variations</li>
+    <li>Check if data is in different column than expected</li>
+    <li>Fill missing values with defaults if appropriate</li>
+</ul>
+</div>
+
+<hr class="page-break">
+
+<h1>Appendices</h1>
+
+<h2>Appendix A: Quick Reference - Regression Formulas</h2>
+
+<h3>Equipment with Installation Multiplier</h3>
+
+<div class="box no-break">
+<pre><code>Material = (Coefficient1 × Metric1) + (Coefficient2 × Metric2) + Intercept
+
+Total = Material × Multiplier
+
+Labor = Total - Material</code></pre>
+
+<p><strong>Example: 3-ton, SEER 15 ASHP (retrofit, mid percentile)</strong></p>
+<pre><code>Material = (1065.28 × 3) + (594.74 × 15) + (-2291) = $9,826
+Total = 9,826 × 1.5 = $14,739
+Labor = 14,739 - 9,826 = $4,913</code></pre>
+</div>
+
+<h3>Insulation with Installation Adder</h3>
+
+<div class="box no-break">
+<pre><code>Material_per_sqft = (Coefficient1 × R_value) + Intercept
+
+Total_per_sqft = Material_per_sqft + Adder
+
+Total_cost = Total_per_sqft × Area</code></pre>
+
+<p><strong>Example: R-49 attic, 1,500 sqft (retrofit, mid percentile)</strong></p>
+<pre><code>Material_per_sqft = (0.04 × 49) + 0.26 = $2.22/sqft
+Total_per_sqft = 2.22 + 1.00 = $3.22/sqft
+Total_cost = 3.22 × 1,500 = $4,830</code></pre>
+</div>
+
+<hr>
+
+<h2>Appendix B: Common Metrics by Equipment Type</h2>
+
+<table class="no-break">
+<thead>
+<tr>
+    <th>Equipment</th>
+    <th>Metric 1</th>
+    <th>Metric 2</th>
+    <th>Output Units</th>
+    <th>Installation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+    <td>Air Source Heat Pump</td>
+    <td>Capacity (tons)</td>
+    <td>SEER</td>
+    <td>2023$</td>
+    <td>Multiplier</td>
+</tr>
+<tr>
+    <td>Mini-Split Heat Pump</td>
+    <td>Capacity (tons)</td>
+    <td>SEER</td>
+    <td>2023$</td>
+    <td>Multiplier</td>
+</tr>
+<tr>
+    <td>Heat Pump Water Heater</td>
+    <td>UEF</td>
+    <td>Tank size (gal)</td>
+    <td>2023$</td>
+    <td>Adder or Multiplier</td>
+</tr>
+<tr>
+    <td>Attic Insulation</td>
+    <td>R-value</td>
+    <td>None</td>
+    <td>2023$/sqft</td>
+    <td>Adder</td>
+</tr>
+<tr>
+    <td>Air Sealing</td>
+    <td>% reduction</td>
+    <td>None</td>
+    <td>2023$</td>
+    <td>Varies</td>
+</tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2>Appendix C: Implementation Checklist</h2>
+
+<h3>Pre-Migration</h3>
+<ul>
+    <li>☐ Downloaded NREL REMDB 2023 machine-readable file</li>
+    <li>☐ Reviewed documentation and examples</li>
+    <li>☐ Identified all equipment types needed</li>
+    <li>☐ Backed up current spreadsheet and code</li>
+    <li>☐ Documented current cost calculation process</li>
+</ul>
+
+<h3>Spreadsheet Updates</h3>
+<ul>
+    <li>☐ Created <code>tare_retrofit_costs_remdb_2023.xlsx</code></li>
+    <li>☐ Updated heating_costs sheet with regression structure</li>
+    <li>☐ Updated waterHeating_costs sheet</li>
+    <li>☐ Updated clothesDrying_costs sheet</li>
+    <li>☐ Updated cooking_costs sheet</li>
+    <li>☐ Updated enclosure_upgrade_costs sheet</li>
+    <li>☐ Verified all coefficients and intercepts from REMDB</li>
+    <li>☐ Checked column headers match code expectations</li>
+</ul>
+
+<h3>Code Updates</h3>
+<ul>
+    <li>☐ Created <code>utils/load_remdb_data.py</code></li>
+    <li>☐ Updated <code>calculate_equipment_installation_costs.py</code></li>
+    <li>☐ Updated <code>calculate_equipment_replacement_costs.py</code></li>
+    <li>☐ Updated <code>calculate_enclosure_upgrade_costs.py</code></li>
+    <li>☐ Created <code>extract_performance_metrics()</code> function</li>
+    <li>☐ Created <code>get_component_class_mapping()</code> function</li>
+    <li>☐ Created <code>validate_remdb_metrics.py</code></li>
+    <li>☐ Updated all scenario notebooks</li>
+    <li>☐ Removed CPI-related code</li>
+</ul>
+
+<h3>Testing</h3>
+<ul>
+    <li>☐ Created unit tests for regression calculations</li>
+    <li>☐ Tested NREL documentation examples</li>
+    <li>☐ Created cost comparison script (old vs new)</li>
+    <li>☐ Ran parallel calculations on sample data</li>
+    <li>☐ Investigated discrepancies >20%</li>
+    <li>☐ Validated metric bounds for all homes</li>
+    <li>☐ Checked for negative costs</li>
+    <li>☐ Verified no unexpected NaN values</li>
+</ul>
+
+<h3>Documentation</h3>
+<ul>
+    <li>☐ Updated CHANGELOG.md with migration notes</li>
+    <li>☐ Documented new spreadsheet structure</li>
+    <li>☐ Created regression calculation examples</li>
+    <li>☐ Noted assumptions and limitations</li>
+    <li>☐ Listed homes excluded (if any)</li>
+    <li>☐ Updated user guide</li>
+    <li>☐ Created release notes</li>
+</ul>
+
+<h3>Deployment</h3>
+<ul>
+    <li>☐ Archived old spreadsheet with date suffix</li>
+    <li>☐ Deployed new code to production</li>
+    <li>☐ Updated all scenario scripts</li>
+    <li>☐ Notified stakeholders</li>
+    <li>☐ Provided training/walkthrough session</li>
+    <li>☐ Published release notes</li>
+</ul>
+
+<hr>
+
+<h2>Appendix D: Glossary of Terms</h2>
+
+<table class="no-break">
+<thead>
+<tr>
+    <th>Term</th>
+    <th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+    <td><strong>AFUE</strong></td>
+    <td>Annual Fuel Utilization Efficiency - efficiency rating for furnaces and boilers (higher is better, max 100%)</td>
+</tr>
+<tr>
+    <td><strong>Adder</strong></td>
+    <td>Fixed amount added to material cost for labor (typically for insulation)</td>
+</tr>
+<tr>
+    <td><strong>Coefficient</strong></td>
+    <td>Multiplier in regression equation showing cost change per unit of performance metric</td>
+</tr>
+<tr>
+    <td><strong>CPI</strong></td>
+    <td>Consumer Price Index - measure of inflation used in old system for cost adjustments</td>
+</tr>
+<tr>
+    <td><strong>HSPF</strong></td>
+    <td>Heating Seasonal Performance Factor - heating efficiency for heat pumps (higher is better)</td>
+</tr>
+<tr>
+    <td><strong>Intercept</strong></td>
+    <td>Constant term in regression equation - base cost when all metrics are zero</td>
+</tr>
+<tr>
+    <td><strong>Multiplier</strong></td>
+    <td>Factor applied to material cost to get total installed cost (accounts for labor)</td>
+</tr>
+<tr>
+    <td><strong>NPV</strong></td>
+    <td>Net Present Value - present value of future savings minus upfront costs</td>
+</tr>
+<tr>
+    <td><strong>Quantile Regression</strong></td>
+    <td>Statistical method estimating different percentiles (10th, 50th, 90th) rather than just mean</td>
+</tr>
+<tr>
+    <td><strong>SEER</strong></td>
+    <td>Seasonal Energy Efficiency Ratio - cooling efficiency for heat pumps and AC (higher is better)</td>
+</tr>
+<tr>
+    <td><strong>UEF</strong></td>
+    <td>Unified Energy Factor - energy efficiency metric for water heaters (higher is better)</td>
+</tr>
+</tbody>
+</table>
+
+<hr>
+
+<div style="text-align: center; margin-top: 50px; padding: 20px; background-color: #f7fafc;">
+<p><strong>Document Version 1.0</strong></p>
+<p>Created for CMU TARE Model Migration Project</p>
+<p><em>For questions or support, contact the model development team</em></p>
+</div>
+
+</body>
+</html>
