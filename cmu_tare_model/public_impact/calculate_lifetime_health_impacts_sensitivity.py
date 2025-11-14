@@ -166,6 +166,9 @@ def calculate_lifetime_health_impacts(
                         verbose=verbose
                     ) 
                     
+                    # NEW LINE 1: Create dictionary BEFORE nested loops
+                    annual_health_columns_all = {}
+
                     # ===== STEP 3: Valid-Only Calculation =====
                     # For each (rcm, cr) combination, compute health damages for this year
                     for rcm in RCM_MODELS:
@@ -194,16 +197,17 @@ def calculate_lifetime_health_impacts(
                                     health_values.loc[~valid_mask] = np.nan
                                 yearly_health_damages_lists[(rcm, cr)].append(health_values)
 
-                            # Store annual health results in a temporary dictionary
-                            annual_health_columns = {}
+                            # CHANGED LINE 2: Collect ALL results in year-level dictionary
                             for col_name, values in health_results_pair.items():
-                                annual_health_columns[col_name] = values
+                                annual_health_columns_all[col_name] = values  # ← Changed variable name
                                 category_columns_to_mask.append(col_name)
 
-                            # Add to df_detailed with a single concat operation
-                            if annual_health_columns:
-                                annual_df = pd.DataFrame(annual_health_columns, index=df_copy.index)
-                                df_detailed = pd.concat([df_detailed, annual_df], axis=1)
+                    # CHANGED LINE 3: Concat ONCE per year (moved outside nested loops)
+                    if annual_health_columns_all:
+                        annual_df = pd.DataFrame(annual_health_columns_all, index=df_copy.index)
+
+                        # Now runs 1x per year!
+                        df_detailed = pd.concat([df_detailed, annual_df], axis=1)
 
                 except Exception as e:
                     # Raise a RuntimeError with context if an error occurs during processing for a year
