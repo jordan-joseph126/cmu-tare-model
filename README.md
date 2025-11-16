@@ -7,50 +7,138 @@ The Tradeoff Analysis of residential Retrofits for energy Equity (TARE) Model v2
 
 # Section 1: Installation and Setup
 
-## 1.1 Prerequisites
+## 1.1 Software Installation
 
-Before starting, ensure you have:
-- **Anaconda Navigator and Anaconda Prompt** - For environment management
-  - Download: https://www.anaconda.com/download
-- **VS Code** - Recommended code editor with Jupyter support
-  - Download: https://code.visualstudio.com/
-- **Git** - For repository access and version control
-- **Python 3.11** - Installed via Anaconda
+Install the following software in order before setting up the project environment:
+
+### Git for Windows
+**Download:** https://git-scm.com/download/win
+
+**Installation settings:**
+- Destination: Keep default (`C:\Program Files\Git`)
+- Components: Enable Git LFS, associate .git* files, associate .sh files
+- Default editor: **Visual Studio Code** (or Nano or another preferred program)
+- Initial branch name: **Override to `main`**
+- PATH environment: **Git from the command line and also from 3rd-party software** (Option 2)
+- SSH executable: Use bundled OpenSSH
+- HTTPS transport: Use OpenSSL library
+- Line endings: **Checkout Windows-style, commit Unix-style** (Option 1)
+- Terminal emulator: Use MinTTY
+- `git pull` behavior: Default (fast-forward or merge)
+- Credential helper: Git Credential Manager
+- Extra options: Enable file system caching only (disable symbolic links)
+- Experimental options: Leave all unchecked
+
+**Configure Git identity: USE THE NAME AND EMAIL ASSOCIATED WITH YOUR GITHUB ACCOUNT**
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+```
+
+**Verify:**
+```bash
+git --version
+git config --global --list
+```
+
+### Anaconda Navigator
+**Download:** https://www.anaconda.com/download
+
+**Installation settings:**
+- Install type: **Just Me (recommended)**
+- Destination: Keep default (`C:\Users\YourName\anaconda3`)
+- Advanced options:
+  - ❌ **DO NOT** check "Add Anaconda3 to my PATH environment variable"
+  - ✅ **CHECK** "Register Anaconda3 as my default Python"
+
+**Why not add to PATH?** Keeps Anaconda isolated, prevents conflicts with other software, and follows Anaconda's recommended best practice.
+
+**Verify:**
+```bash
+# In regular Command Prompt - should fail
+conda --version  # Expected: 'conda' is not recognized
+
+# In Anaconda Prompt - should work
+conda --version  # Expected: conda 25.X.X
+python --version # Expected: Python 3.13.X
+```
+
+### Visual Studio Code
+**Download:** https://code.visualstudio.com/download
+
+**Installation settings:**
+- Install type: User Installer (recommended)
+- Destination: Keep default
+- Additional tasks:
+  - ✅ Add "Open with Code" action to file context menu
+  - ✅ Add "Open with Code" action to directory context menu
+  - ✅ Register Code as an editor for supported file types
+  - ✅ **Add to PATH (requires shell restart)** ← CRITICAL for `code .` command
+
+**Verify:**
+```bash
+# In new Command Prompt
+code --version
+```
+
+### Fix PATH Integration (Critical Step)
+
+After installing VS Code, Anaconda Prompt may not recognize the `code` command. Fix this:
+
+```bash
+# In Anaconda Prompt, run:
+conda init powershell
+```
+
+Close and reopen Anaconda Prompt, then verify:
+```bash
+code --version  # Should now work
+git --version   # Should also work
+```
+
+**Why this fix is needed:** Anaconda Prompt needs proper PowerShell initialization to preserve system PATH entries (including VS Code and Git) while adding conda directories.
+
+### Install VS Code Extensions
+
+Open Anaconda Prompt and run:
+```bash
+code --install-extension ms-python.python
+code --install-extension ms-python.vscode-pylance
+code --install-extension ms-python.debugpy
+code --install-extension ms-toolsai.jupyter
+code --install-extension ms-toolsai.jupyter-renderers
+code --install-extension ms-toolsai.vscode-jupyter-cell-tags
+code --install-extension ms-toolsai.jupyter-keymap
+code --install-extension mechatroner.rainbow-csv
+```
+
+Or install via VS Code GUI: Extensions sidebar (`Ctrl+Shift+X`) → Search for each extension → Install.
 
 ## 1.2 Repository Access
-**Repository Location**: https://github.com/jordan-joseph126/cmu-tare-model
-**Status**: Currently private (public release planned after documentation completion)
+**Repository Location:** https://github.com/jordan-joseph126/cmu-tare-model  
+**Status:** Currently private (public release planned after documentation completion)
+**Getting Access:** Contact jordanjo@andrew.cmu.edu or jordanjoseph53@gmail.com for collaborator access
 
 **Access Options:**
-Option 1 - Download ZIP:
 
-1. Navigate to the repository URL
-2. Click "Code" → "Download ZIP"
-3. Extract to your preferred location
-
-Best for: One-time use or if you don't have git installed
-
-Option 2 - Git Clone (recommended for active users):
+**Option 1 - Git Clone (recommended):**
 ```bash
-# First, navigate to where you want to create the project folder
-# For example: cd C:\Users\YourName\Documents\Research
-# Or: cd ~/Documents/Research
+# Navigate to where you want the project folder
+cd C:\Users\YourName\Documents\Research
 
-# Clone the repository (creates a new 'cmu-tare-model' folder)
+# Clone repository (creates 'cmu-tare-model' folder)
 git clone https://github.com/jordan-joseph126/cmu-tare-model.git
-
-# Navigate into the newly created project folder
 cd cmu-tare-model
 ```
 
-Advantages:
+**Advantages:** Easy updates (`git pull`), track changes, version history, simplified collaboration
 
-1. Easy updates: Run git pull to get latest model improvements without re-downloading
-2. Track your changes: Keep your modifications separate from official updates
-3. Version history: See what changed between versions if issues arise
-4. Future collaboration: Easier to contribute improvements or report issues
+**Option 2 - Download ZIP:**
+1. Navigate to repository URL
+2. Click "Code" → "Download ZIP"
+3. Extract to your preferred location
 
-Getting Access: Contact jordanjo@andrew.cmu.edu or jordanjoseph53@gmail.com for collaborator access
+Best for: One-time use or if you don't have Git installed
 
 ## 1.3 Repository Structure
 
@@ -76,7 +164,7 @@ cmu-tare-model/
 │   │   ├── marginal_social_costs/           # SCC, health damages
 │   │   └── [additional data folders...]
 │   ├── output_results/                      # Model outputs (created on run)
-│   ├── tare_model_main_v2_1.ipynb           #  MAIN ENTRY POINT
+│   ├── tare_model_main_v2_1.ipynb           # MAIN ENTRY POINT
 │   └── constants.py                         # Model constants
 ├── environment-cmu-tare-model.yml           # Conda environment specification
 ├── setup.py                                 # Package installation script
@@ -94,7 +182,8 @@ cmu-tare-model/
 The model requires input data hosted separately on Zenodo:
 
 1. **Download data:** https://zenodo.org/records/17509167
-2. **Extract location:** Place all contents into `cmu-tare-model/cmu_tare_model/data/`
+2. **Extract All Files**
+3. Unzip the data folder and extract all contents into `cmu-tare-model/cmu_tare_model/` to create the path: `cmu-tare-model/cmu_tare_model/data/`
 
 This provides the required EUSS data, fuel prices, retrofit costs, projections, and social cost data.
 
@@ -109,7 +198,6 @@ This provides the required EUSS data, fuel prices, retrofit costs, projections, 
 cd /path/to/cmu-tare-model
 
 # Create environment from .yml file
-# Note: Environment name 'cmu-tare-model' is defined in the .yml file
 conda env create -f environment-cmu-tare-model.yml
 ```
 
@@ -137,7 +225,7 @@ The `-e` flag installs in "editable" mode, allowing Python to import your projec
 python -m ipykernel install --user --name=cmu-tare-model --display-name "Python 3.11.13 (cmu-tare-model)"
 ```
 
-This makes the environment available in VSCode's kernel selector.
+This makes the environment available in VS Code's kernel selector.
 
 **Step 5: Verify Installation**
 
@@ -169,11 +257,11 @@ conda activate cmu-tare-model
 # 3. Navigate to project
 cd /path/to/cmu-tare-model
 
-# 4. Launch VSCode
+# 4. Launch VS Code
 code .
 ```
 
-**Why from Anaconda Prompt?** VSCode inherits conda environment variables, ensuring correct environment detection.
+**Why from Anaconda Prompt?** VS Code inherits conda environment variables, ensuring correct environment detection.
 
 ### Running Notebooks
 
@@ -184,6 +272,20 @@ code .
 5. Run cells sequentially from top to bottom
 
 ## 1.7 Troubleshooting
+
+### `code` Command Not Working in Anaconda Prompt
+
+**Symptoms:** `code --version` works in Command Prompt but fails in Anaconda Prompt with "'code' is not recognized"
+
+**Solution:**
+```bash
+# In Anaconda Prompt:
+conda init powershell
+```
+
+Close and reopen Anaconda Prompt. The `code` command should now work.
+
+**Why this happens:** Anaconda Prompt's initialization may not preserve system PATH entries. Running `conda init powershell` creates a proper PowerShell profile that preserves VS Code's PATH entry while adding conda directories.
 
 ### `ModuleNotFoundError: No module named 'config'` or `'cmu_tare_model'`
 
@@ -196,9 +298,9 @@ cd /path/to/cmu-tare-model
 pip install -e .
 ```
 
-Then **restart the Jupyter kernel** in VSCode: Click kernel indicator → Restart Kernel
+Then **restart the Jupyter kernel** in VS Code: Click kernel indicator → Restart Kernel
 
-### Wrong Python Version (e.g., 3.12.x instead of 3.11.13)
+### Wrong Python Version (e.g., 3.12.x or 3.13.x instead of 3.11.13)
 
 **Cause:** Environment wasn't created correctly or wrong environment is active.
 
@@ -211,7 +313,7 @@ conda env create -f environment-cmu-tare-model.yml
 
 Then repeat Steps 2-4 from Section 1.5.
 
-### Jupyter Kernel Not Available in VSCode
+### Jupyter Kernel Not Available in VS Code
 
 **Solution:** Re-register the kernel
 ```bash
@@ -219,7 +321,7 @@ conda activate cmu-tare-model
 python -m ipykernel install --user --name=cmu-tare-model --display-name "Python 3.11.13 (cmu-tare-model)"
 ```
 
-Then refresh VSCode's kernel list:
+Then refresh VS Code's kernel list:
 - Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac)
 - Run: **"Jupyter: Select Interpreter to Start Jupyter Server"**
 - Choose the cmu-tare-model environment
@@ -228,13 +330,13 @@ Then refresh VSCode's kernel list:
 
 **Solutions:**
 1. Clear all kernels: `Ctrl+Shift+P` → "Jupyter: Clear All Kernels"
-2. Close all notebooks in VSCode
-3. Restart VSCode
+2. Close all notebooks in VS Code
+3. Restart VS Code
 4. Reopen notebook and select kernel
 
-### VSCode Doesn't Detect Conda Environment
+### VS Code Doesn't Detect Conda Environment
 
-**Primary solution:** Launch VSCode from Anaconda Prompt (see Section 1.6)
+**Primary solution:** Launch VS Code from Anaconda Prompt (see Section 1.6)
 
 **Alternative:**
 1. Press `Ctrl+Shift+P`
@@ -319,4 +421,4 @@ Carnegie Mellon University. https://github.com/jordan-joseph126/cmu-tare-model
 
 ---
 
-**Last Updated:** 2025-11-04
+**Last Updated:** 2025-11-12
