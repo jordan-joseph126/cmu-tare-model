@@ -9,7 +9,6 @@ cmu_tare_model.egg-info/requires.txt
 cmu_tare_model.egg-info/top_level.txt
 cmu_tare_model/adoption_potential/__init__.py
 cmu_tare_model/adoption_potential/determine_adoption_potential_sensitivity.py
-cmu_tare_model/data/__init__.py
 cmu_tare_model/energy_consumption_and_metadata/__init__.py
 cmu_tare_model/energy_consumption_and_metadata/mp7_electric_resistance_range.py
 cmu_tare_model/energy_consumption_and_metadata/process_euss_data.py
