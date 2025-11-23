@@ -311,6 +311,7 @@ def sample_costs_from_distributions(
 
         # Calculate mean and standard deviation for normal distribution
         mean_costs = reference_costs  # 50th percentile becomes the mean
+        
         # Calculate standard deviation using the difference between 90th and 10th percentiles
         std_costs = (conservative_costs - progressive_costs) / (norm.ppf(0.90) - norm.ppf(0.10))
 

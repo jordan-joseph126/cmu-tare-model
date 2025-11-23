@@ -5,6 +5,32 @@ The Tradeoff Analysis of residential Retrofits for energy Equity (TARE) Model v2
 
 ---
 
+# Table of Contents
+## Table of Contents
+1. [Section 1: Installation and Setup](#section-1-installation-and-setup)  
+  1. [1.1 Software Installation](#11-software-installation)  
+    - [Git for Windows](#git-for-windows)  
+    - [Anaconda Navigator](#anaconda-navigator)  
+    - [Visual Studio Code](#visual-studio-code)  
+    - [Fix PATH Integration (Critical Step)](#fix-path-integration-critical-step)  
+    - [Install VS Code Extensions](#install-vs-code-extensions)  
+  2. [1.2 Repository Access](#12-repository-access)  
+  3. [1.3 Repository Structure](#13-repository-structure)  
+  4. [1.4 Data Download](#14-data-download)  
+  5. [1.5 Environment Setup](#15-environment-setup)  
+    - [First-Time Setup](#first-time-setup)  
+    - [Register Jupyter Kernel](#register-jupyter-kernel)  
+  6. [1.6 Daily Usage](#16-daily-usage)  
+  7. [1.7 Troubleshooting](#17-troubleshooting)  
+  8. [1.8 Environment Maintenance](#18-environment-maintenance)  
+
+2. [Section 2: Version Information and Attribution](#section-2-version-information-and-attribution)  
+  1. [2.1 Version Information](#21-version-information)  
+  2. [2.2 Licensing and Attribution](#22-licensing-and-attribution)  
+
+3. [Support and Questions](#support-and-questions)  
+4. [Last Updated](#last-updated)
+
 # Section 1: Installation and Setup
 
 ## 1.1 Software Installation
