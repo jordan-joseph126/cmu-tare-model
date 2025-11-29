@@ -11,6 +11,7 @@ output_results/
 cmu_tare_model/data/
 !cmu_tare_model/data/.gitkeep
 data/
+data_backup/
 study_validation/
 reference_material/
 

@@ -1,32 +1,45 @@
 # Example constants (copied from the original code).
 # Adjust or remove them as needed, or move them to a separate config file.
+
 # Excludes HP Tech for Space/Water Heating and Clothes Drying. Also excludes electric resistance cooking and induction cooking.
+# enumeration_dictionary.tsv provides additional details on the allowed technologies for each equipment category.
 ALLOWED_TECHNOLOGIES = {
+    # in.hvac_heating_type_and_fuel exclude existing heat pump options
     'heating': [
         'Electricity Baseboard', 'Electricity Electric Boiler', 
         'Electricity Electric Furnace', 'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace', 
         'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
         'Propane Fuel Boiler', 'Propane Fuel Furnace'
     ],
+    # in.hvac_cooling_type exclude existing heat pump options
+    'cooling': [
+        'Central AC', 'Room AC'
+    ],
+    # in.water_heater_efficiency exclude heat pump options, tankless, other fuel (e.g., solar), and indirect fuel oil
     'waterHeating': [
         'Electric Premium', 'Electric Standard',
         'Fuel Oil Premium', 'Fuel Oil Standard', 
         'Natural Gas Premium', 'Natural Gas Standard',
         'Propane Premium', 'Propane Standard'
     ],
+    # in.clothes_dryer also includes information on usage (%) exclude homes with no dryer or heat pump dryers
     'clothesDrying': [
         'Electric', 'Gas', 'Propane'
     ],
+    # in.cooking_range exclude electric cooking (since resistance ranges are an upgrade option) and homes with no cooking range
     'cooking': [
         'Gas', 'Propane'
     ]
 } 
 
+# POSSIBLY UPDATE THESE VALUES BASED ON NEW DATA FROM REMBD 2024
+EQUIPMENT_SPECS = {'heating': 15, 'cooling': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15}
+
 ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached', 'Mobile Home', 'Multi-Family with 2 - 4 Units']
 
 TD_LOSSES = 0.05 # Updated to 5% based on the latest estimates from EIA, formerly 6%
 TD_LOSSES_MULTIPLIER = 1 / (1 - TD_LOSSES)
-EQUIPMENT_SPECS = {'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15}
+
 FUEL_MAPPING = {'Electricity': 'electricity', 'Natural Gas': 'naturalGas', 'Fuel Oil': 'fuelOil', 'Propane': 'propane'}
 FUEL_PRICE_ASSUMPTIONS = ['lower', 'central', 'upper']
 
