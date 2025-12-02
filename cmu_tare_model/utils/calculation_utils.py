@@ -23,6 +23,14 @@ from cmu_tare_model.utils.validation_framework import (
 def get_all_possible_fuel_columns(category: str) -> List[str]:
     """
     Returns all possible fuel consumption columns for a category.
+
+    This function identifies which consumption columns exist in the dataset for a given
+    equipment category. The logic mirrors get_valid_fuel_types() to ensure consistency
+    between validation rules and data retrieval operations.
+
+    Note:
+        This function determines which columns to RETRIEVE from the dataframe.
+        See get_valid_fuel_types() for validation rules on which fuel types are ACCEPTABLE.
     
     Args:
         category: Equipment category name.
@@ -32,18 +40,35 @@ def get_all_possible_fuel_columns(category: str) -> List[str]:
         
     Raises:
         ValueError: If an invalid category is provided.
-    """
+    """  
     if category not in EQUIPMENT_SPECS:
         raise ValueError(f"Invalid category. Must be one of the following: {EQUIPMENT_SPECS.keys()}")
     
+    # Heating and water heating have all four fuel types available in the dataset.
+    # Tech filters handle excluding heat pump technologies, so electricity remains valid.
     if category in ['heating', 'waterHeating']:
-        # All four fuel types are available for heating and water heating
         return [f'base_{fuel}_{category}_consumption' for fuel in FUEL_MAPPING.values()]
     
-    else:
-        # Fuel oil is not available for clothes drying or cooking
+    # Heat pump clothes dryers are different from existing electric resistance dryers in EUSS.
+    # Dataset contains: electricity, natural gas, and propane (no fuel oil).
+    elif category == 'clothesDrying':
         return [f'base_{fuel}_{category}_consumption' for fuel in FUEL_MAPPING.values() 
                 if fuel != 'fuelOil']
+    
+    # Cooking data excludes electricity because the electric upgrade in MP7 is the same technology.
+    # Dataset contains: natural gas and propane only (no electricity, no fuel oil).
+    elif category == 'cooking':
+        return [f'base_{fuel}_{category}_consumption' for fuel in FUEL_MAPPING.values() 
+                if fuel not in ['electricity', 'fuelOil']]
+    
+    # Cooling equipment is exclusively electric (air conditioners, heat pumps in cooling mode).
+    # Dataset contains: electricity only.
+    elif category == 'cooling':
+        return [f'base_electricity_{category}_consumption']
+    
+    else:
+        raise ValueError(f"Invalid category: {category}. Must be one of {list(EQUIPMENT_SPECS.keys())}")
+
 
 def get_post_retrofit_columns(category: str, menu_mp: int) -> List[str]:
     """

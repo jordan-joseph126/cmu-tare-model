@@ -186,15 +186,18 @@ def df_enduse_refactored(df_baseline: pd.DataFrame) -> pd.DataFrame:
         'occupancy': df_baseline['in.occupants'],
         'tenure': df_baseline['in.tenure'],
         'vacancy_status': df_baseline['in.vacancy_status'],
+        'vintage': df_baseline['in.vintage'],
         'base_heating_fuel': df_baseline['in.heating_fuel'],
         'heating_type': df_baseline['in.hvac_heating_type_and_fuel'],
-        'hvac_cooling_type': df_baseline['in.hvac_cooling_type'],
-        'vintage': df_baseline['in.vintage'],
         'base_heating_efficiency': df_baseline['in.hvac_heating_efficiency'],
         'base_electricity_heating_consumption': df_baseline['out.electricity.heating.energy_consumption.kwh'],
         'base_fuelOil_heating_consumption': df_baseline['out.fuel_oil.heating.energy_consumption.kwh'],
         'base_naturalGas_heating_consumption': df_baseline['out.natural_gas.heating.energy_consumption.kwh'],
         'base_propane_heating_consumption': df_baseline['out.propane.heating.energy_consumption.kwh'],
+        'base_cooling_fuel': 'Electricity',  # Cooling is always electric in EUSS/ResStock
+        'cooling_type': df_baseline['in.hvac_cooling_type'],
+        'base_cooling_efficiency': df_baseline['in.hvac_cooling_efficiency'],
+        'base_electricity_cooling_consumption': df_baseline['out.electricity.cooling.energy_consumption.kwh'],
         'base_waterHeating_fuel': df_baseline['in.water_heater_fuel'],
         'waterHeating_type': df_baseline['in.water_heater_efficiency'],
         'base_electricity_waterHeating_consumption': df_baseline['out.electricity.hot_water.energy_consumption.kwh'],
@@ -286,6 +289,10 @@ def df_enduse_compare(df_mp: pd.DataFrame,
         'size_heating_system_primary_k_btu_h': df_mp['out.params.size_heating_system_primary_k_btu_h'],
         'size_heating_system_secondary_k_btu_h': df_mp['out.params.size_heating_system_secondary_k_btu_h'],
         'upgrade_hvac_heating_efficiency': df_mp['upgrade.hvac_heating_efficiency'],
+        'baseline_cooling_type': df_mp['in.hvac_cooling_type'],
+        'hvac_cooling_efficiency': df_mp['in.hvac_cooling_efficiency'],
+        'size_cooling_system_k_btu_h': df_mp['out.params.size_cooling_system_primary_k_btu_h'],
+        'upgrade_hvac_cooling_efficiency': df_mp['upgrade.hvac_cooling_efficiency'],
         'water_heater_efficiency': df_mp['in.water_heater_efficiency'],
         'water_heater_fuel': df_mp['in.water_heater_fuel'],
         'water_heater_in_unit': df_mp['in.water_heater_in_unit'],
@@ -353,6 +360,9 @@ def df_enduse_compare(df_mp: pd.DataFrame,
 
             else:
                 df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp['out.electricity.heating.energy_consumption.kwh'].round(2)
+
+        elif category == 'cooling':
+            df_compare[f'mp{menu_mp}_cooling_consumption'] = df_mp['out.electricity.cooling.energy_consumption.kwh'].round(2)
 
         elif category == 'waterHeating':
             df_compare[f'mp{menu_mp}_waterHeating_consumption'] = df_mp['out.electricity.hot_water.energy_consumption.kwh'].round(2)

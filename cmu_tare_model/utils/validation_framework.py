@@ -91,6 +91,10 @@ def get_valid_fuel_types(category: str) -> List[str]:
     elif category == 'cooking':
         return ['Natural Gas', 'Propane']
     
+    # UPDATED (Expanded to include cooling): Include electricity for cooling
+    elif category == 'cooling':
+        return ['Electricity']
+
     else:
         raise ValueError(f"Invalid category. Must be one of the following: {EQUIPMENT_SPECS.keys()}")
 

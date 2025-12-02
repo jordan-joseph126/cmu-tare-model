@@ -1,5 +1,5 @@
 """
-test_hdd_consumption_utils_4June2025.py
+test_degree_day_consumption_utils_4June2025.py
 
 Simplified pytest test suite for HDD consumption utilities.
 Focuses on core refactored functionality and integration fixes.
@@ -12,7 +12,7 @@ from typing import Dict, List
 from unittest.mock import patch, MagicMock
 
 # Import the utilities being tested
-from cmu_tare_model.utils.hdd_consumption_utils import (
+from cmu_tare_model.utils.degree_day_consumption_utils import (
     get_hdd_factor_for_year,
     apply_hdd_adjustment,
     get_electricity_consumption_for_year,

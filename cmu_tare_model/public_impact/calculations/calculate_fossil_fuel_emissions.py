@@ -2,9 +2,9 @@ import pandas as pd
 from typing import Dict, Optional
 
 from cmu_tare_model.constants import POLLUTANTS, EQUIPMENT_SPECS
-from cmu_tare_model.utils.hdd_consumption_utils import (
+from cmu_tare_model.utils.degree_day_consumption_utils import (
     get_hdd_factor_for_year,
-    apply_hdd_adjustment
+    apply_degree_day_adjustment
 )
 from cmu_tare_model.utils.validation_framework import (
     get_retrofit_homes_mask,
@@ -61,14 +61,40 @@ def calculate_fossil_fuel_emissions(
     # Only calculate baseline fossil fuel emissions (menu_mp=0)
     if menu_mp == 0:
         # Prepare HDD factor for the year
+        # Don't need to include CDD here since fossil fossil_fuels are not used for cooling
         hdd_factor = get_hdd_factor_for_year(df, year_label)
 
-        # Determine applicable fuels for this category
-        fuels = ['naturalGas', 'propane']
-        if category not in ['cooking', 'clothesDrying']:
-            fuels.append('fuelOil')
+        # # Determine applicable fossil_fuels for this category
+        # fossil_fuels = ['naturalGas', 'propane']
+        # if category not in ['cooking', 'clothesDrying']:
+        #     fossil_fuels.append('fuelOil')
 
-        for fuel in fuels:
+        # for fuel in fossil_fuels:
+        #     consumption_col = f'base_{fuel}_{category}_consumption'
+        #     if consumption_col not in df.columns:
+        #         raise KeyError(f"Required column '{consumption_col}' not found in DataFrame")
+
+        #     # Base consumption, filling missing values with zero
+        #     fuel_consumption = df[consumption_col].fillna(0)
+
+        # Determine applicable fossil_fuels for this category
+        if category == 'cooling':
+            # Cooling is electricity-only and has no fossil fuel emissions
+            fossil_fuels = []
+        elif category in ['cooking', 'clothesDrying']:
+            # These categories don't use fuel oil
+            fossil_fuels = ['naturalGas', 'propane']
+        else:
+            # Heating and water heating can use all fossil fossil_fuels
+            fossil_fuels = ['naturalGas', 'propane', 'fuelOil']
+        
+        # If no fossil fossil_fuels applicable (e.g., cooling), return zero emissions
+        if not fossil_fuels:
+            if verbose:
+                print(f"  No fossil fossil_fuels applicable for {category} - returning zero emissions")
+            return total_fossil_emissions
+
+        for fuel in fossil_fuels:
             consumption_col = f'base_{fuel}_{category}_consumption'
             if consumption_col not in df.columns:
                 raise KeyError(f"Required column '{consumption_col}' not found in DataFrame")
@@ -77,7 +103,7 @@ def calculate_fossil_fuel_emissions(
             fuel_consumption = df[consumption_col].fillna(0)
 
             # Apply HDD adjustment (only affects 'heating' category)
-            fuel_consumption = apply_hdd_adjustment(fuel_consumption, category, hdd_factor)
+            fuel_consumption = apply_degree_day_adjustment(fuel_consumption, category, hdd_factor)
 
             # Compute emissions for each pollutant
             for pollutant in POLLUTANTS:

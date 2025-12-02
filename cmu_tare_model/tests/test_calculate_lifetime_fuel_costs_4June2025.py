@@ -18,7 +18,7 @@ from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import (
 )
 
 # Import HDD utilities for integration testing
-from cmu_tare_model.utils.hdd_consumption_utils import (
+from cmu_tare_model.utils.degree_day_consumption_utils import (
     get_hdd_adjusted_consumption,
     apply_hdd_adjustment,
     get_total_baseline_consumption
