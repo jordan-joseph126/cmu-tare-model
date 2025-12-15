@@ -224,13 +224,13 @@ def calculate_capital_costs(
             else:
                 weatherization_cost = 0.0
             
-            total_capital_cost = (df_copy[f'mp{menu_mp}_{category}_installationCost'].fillna(0) + 
+            total_capital_cost = (df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0) + 
                                   weatherization_cost + 
                                   df_copy[f'mp{menu_mp}_heating_installation_premium'].fillna(0))
             net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacementCost'].fillna(0)
             
         else:
-            total_capital_cost = df_copy[f'mp{menu_mp}_{category}_installationCost'].fillna(0)
+            total_capital_cost = df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0)
             net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacementCost'].fillna(0)
     
     else:
@@ -242,7 +242,7 @@ def calculate_capital_costs(
             else:
                 weatherization_cost = 0.0       
             
-            installation_cost = (df_copy[f'mp{menu_mp}_{category}_installationCost'].fillna(0) + 
+            installation_cost = (df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0) + 
                                  weatherization_cost + 
                                  df_copy[f'mp{menu_mp}_{category}_installation_premium'].fillna(0))
             
@@ -251,7 +251,7 @@ def calculate_capital_costs(
             net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacementCost'].fillna(0)
         
         else:
-            installation_cost = df_copy[f'mp{menu_mp}_{category}_installationCost'].fillna(0)
+            installation_cost = df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0)
             rebate_amount = df_copy[f'mp{menu_mp}_{category}_rebate_amount'].fillna(0)
             total_capital_cost = installation_cost - rebate_amount
             net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacementCost'].fillna(0)

@@ -57,7 +57,7 @@ def create_test_data(menu_mp, policy_scenario):
             capital_cost_data[f'mp{menu_mp}_heating_installation_premium'] = np.random.uniform(100, 500, n)
         
         # Installation costs
-        capital_cost_data[f'mp{menu_mp}_{category}_installationCost'] = np.random.uniform(2000, 8000, n)
+        capital_cost_data[f'mp{menu_mp}_{category}_upgrade_installed_cost'] = np.random.uniform(2000, 8000, n)
         
         # Replacement costs
         capital_cost_data[f'mp{menu_mp}_{category}_replacementCost'] = np.random.uniform(1000, 4000, n)

@@ -52,7 +52,7 @@ def create_test_data(menu_mp, input_mp):
             capital_cost_data[f'mp{menu_mp}_heating_installation_premium'] = np.random.uniform(100, 500, n)
         
         # Installation costs
-        capital_cost_data[f'mp{menu_mp}_{category}_installationCost'] = np.random.uniform(2000, 8000, n)
+        capital_cost_data[f'mp{menu_mp}_{category}_upgrade_installed_cost'] = np.random.uniform(2000, 8000, n)
         
         # Replacement costs
         capital_cost_data[f'mp{menu_mp}_{category}_replacementCost'] = np.random.uniform(1000, 4000, n)
@@ -194,8 +194,8 @@ Scenario Prefix Handling:
 The backup version uses: f"preIRA_mp{menu_mp}_" or f"iraRef_mp{menu_mp}_"
 The current version uses a scenario_prefix returned by define_scenario_params()
 Column Naming in Installation Costs:
-Backup version accesses: f'mp{menu_mp}_{category}_installationCost'
-Current version accesses: f'{scenario_prefix}{category}_installationCost'
+Backup version accesses: f'mp{menu_mp}_{category}_upgrade_installed_cost'
+Current version accesses: f'{scenario_prefix}{category}_upgrade_installed_cost'
 Inconsistent Synthetic Test Data Structure:
 Your test data creation doesn't align with the column naming expected by the current implementation
 Discounting Method Differences:
@@ -233,9 +233,9 @@ Modify your test data creation to match the expected column structure:
 
 python
 # For current implementation
-capital_cost_data[f'{prefix}{category}_installationCost'] = np.random.uniform(2000, 8000, n)
+capital_cost_data[f'{prefix}{category}_upgrade_installed_cost'] = np.random.uniform(2000, 8000, n)
 # Instead of
-capital_cost_data[f'mp{menu_mp}_{category}_installationCost'] = np.random.uniform(2000, 8000, n)
+capital_cost_data[f'mp{menu_mp}_{category}_upgrade_installed_cost'] = np.random.uniform(2000, 8000, n)
 3. Fix Scenario Prefix Handling in Test
 Your test script should account for how define_scenario_params() generates prefixes. Since you don't have direct access to that function in your test, you need to ensure the test data has columns that match both naming schemes or modify the current implementation to use the same naming scheme as the backup.
 
@@ -256,9 +256,9 @@ python
 # In calculate_capital_costs function
 if policy_scenario == 'No Inflation Reduction Act':
     # Use the same column pattern as the backup version
-    total_capital_cost = df_copy[f'mp{menu_mp}_{category}_installationCost'].fillna(0)
+    total_capital_cost = df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0)
     # Instead of 
-    total_capital_cost = df_copy[f'{scenario_prefix}{category}_installationCost'].fillna(0)
+    total_capital_cost = df_copy[f'{scenario_prefix}{category}_upgrade_installed_cost'].fillna(0)
 By implementing these changes, you should be able to achieve much closer alignment between the two implementations and identify any remaining calculation differences.
 
 """

@@ -57,14 +57,11 @@ def add_remdb_upgrade_row_ids(
     
     Args:
         df: DataFrame with equipment specifications
-        end_use: Equipment category ('heating', 'cooling').
+        end_use: Equipment category ('heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking').
         menu_mp: Measure package (7, 8, 9, 10)
         
     Returns:
         DataFrame with row_id_{end_use}_upgrade column
-
-    FUTURE: After successful testing, expand to non-HVAC end-uses (waterHeating, clothesDrying, cooking).
-
     """
     df_copy = df.copy()
 
@@ -113,13 +110,37 @@ def add_remdb_upgrade_row_ids(
                 
         df_copy[f'row_id_{end_use}_{replace_or_upgrade}'] = np.select(conditions, choices, default='unknown')
         
-    # =========================================
-    # DELETE FOR NOW - NON-HVAC END USES
-    # =========================================
-
+    # ========== NON-HVAC SYSTEMS: WATER HEATING, CLOTHES DRYING, COOKING ==========
+    elif end_use == 'waterHeating':
+        # All water heating upgrades use heat pump water heaters
+        df_copy[f'row_id_{end_use}_{replace_or_upgrade}'] = 'water_heater_hp_tank'
+        
+    elif end_use == 'clothesDrying':
+        if 'upgrade_clothes_dryer' not in df_copy.columns:
+            raise ValueError("Missing 'upgrade_clothes_dryer' column")
+        
+        # Heat pump dryers vs standard electric dryers
+        is_heat_pump = df_copy['upgrade_clothes_dryer'].str.contains('Heat Pump', na=False)
+        df_copy[f'row_id_{end_use}_{replace_or_upgrade}'] = np.where(
+            is_heat_pump,
+            'clothes_dryer_heat_pump',
+            'clothes_dryer_electric'
+        )
+        
+    elif end_use == 'cooking':
+        if 'upgrade_cooking_range' not in df_copy.columns:
+            raise ValueError("Missing 'upgrade_cooking_range' column")
+        
+        # Induction ranges vs standard electric ranges
+        is_induction = df_copy['upgrade_cooking_range'].str.contains('Induction', na=False)
+        df_copy[f'row_id_{end_use}_{replace_or_upgrade}'] = np.where(
+            is_induction,
+            'cooking_range_induction',
+            'cooking_range_electric'
+        )
+        
     else:
-        # raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking'")
-        raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling'")
+        raise ValueError(f"Invalid end_use: {end_use}")
     
     return df_copy
 

@@ -43,7 +43,7 @@ def create_sample_data():
     for mp in [7, 8, 9, 10]:
         for category in EQUIPMENT_SPECS:
             # Installation costs
-            df[f'mp{mp}_{category}_installationCost'] = np.random.uniform(5000, 15000, n_homes)
+            df[f'mp{mp}_{category}_upgrade_installed_cost'] = np.random.uniform(5000, 15000, n_homes)
             # Replacement costs
             df[f'mp{mp}_{category}_replacementCost'] = np.random.uniform(2000, 8000, n_homes)
             # Rebate amounts

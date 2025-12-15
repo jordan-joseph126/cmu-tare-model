@@ -1,298 +1,241 @@
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Tuple
+from typing import Literal
 
 from cmu_tare_model.utils.validation_framework import (
-    create_retrofit_only_series,
-    initialize_validation_tracking,
     apply_new_columns_to_dataframe,
-    apply_final_masking
-    )
-
-from cmu_tare_model.utils.calculation_utils import (
-    sample_costs_from_distributions,
-    filter_valid_tech_homes
-    )
-
+    apply_final_masking,
+    initialize_validation_tracking,
+    create_retrofit_only_series
+)
+from cmu_tare_model.utils.remdb_v4_installed_cost_utils import (
+    map_remdb_cost_parameters,
+    calculate_metric_from_remdb_bounds,
+    remdb_cost_regression_formula
+)
 
 """
 ========================================================================================================================================================================
-OVERVIEW: CALCULATE REPLACEMENT COSTS FOR VARIOUS END USES
+OVERVIEW: CALCULATE REPLACEMENT INSTALLED COSTS FOR VARIOUS END USES (REMDB V4 METHODOLOGY)
 ========================================================================================================================================================================
-This module calculates the replacement costs for various end uses such as space heating, water heating,
-clothes drying, and cooking. It uses a probabilistic approach to sample costs from distributions 
-defined by progressive (10th percentile), reference (50th percentile), and conservative (90th percentile)
-cost estimates.
+This module calculates REPLACEMENT installed costs for equipment retrofits using REMDB v4 regression methodology.
+It replaces the probabilistic sampling approach (REMDB v3) with deterministic regression equations.
+
+CRITICAL DISTINCTION: REPLACEMENT vs UPGRADE
+- **Replacement costs**: Cost to replace existing equipment with LIKE-FOR-LIKE technology (counterfactual)
+- **Upgrade costs**: Cost to retrofit to improved technology (e.g., gas furnace → heat pump)
+
+PREREQUISITE: Metrics must be extracted FIRST using add_remdb_replacement_metrics() from remdb_v4_installed_cost_utils.py
+
+Key changes from REMDB v3 to v4:
+- Regression-based calculation: Material_Price = (pm1_coef × Metric1) + (pm2_coef × Metric2) + Intercept
+- Costs already in 2023$ (no CPI adjustment needed)
+- Replacement installed costs via multipliers OR adders (component-specific)
+- Added cooling as new end-use category
+- Dynamic row_id mapping replaces hardcoded technology-efficiency pairs
+
+# UPDATED DECEMBER 11, 2025 - REMDB V4 METHODOLOGY, SIMPLIFIED ARCHITECTURE
 
 # UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
 # UPDATED APRIL 9, 2025 @ 7:30 PM - IMPROVED DOCUMENTATION
+# UPDATED APRIL 21, 2025 @ 11:45 PM - COST UTILITY FUNCTION REPLACED REDUNDANT CODE (SEE UTILS FOLDER)
+# UPDATED DECEMBER 2, 2025 @ 5:00 PM - UPDATED TO REMDB V4 METHODOLOGY
+# UPDATED DECEMBER 10, 2025 @ 2:00 PM - INTEGRATED VALIDATION FRAMEWORK AND UPDATED COLUMN NAMING
 """
 
-# ========================================================================================================================================================================
-# FUNCTIONS: CALCULATE COST OF REPLACING EXISTING EQUIPMENT
-# ========================================================================================================================================================================
+# ========== Extract performance metrics for REMDB v4 cost estimation. Then add cols to main df ==========
+# add_remdb_replacement_metrics was moved to calulation_utils.py for modularity
 
-# Replacement Cost Function and Helper Functions (Parametes, Formula)
-def get_end_use_replacement_parameters(
-        df: pd.DataFrame,
-        end_use: str) -> dict:
-    """
-    Retrieve parameters for equipment replacement cost calculations based on end use type.
+# ========== Assign REMDB row_id based on technology ==========
+def add_remdb_replacement_row_ids(
+    df: pd.DataFrame,
+    end_use: str
+) -> pd.DataFrame:
+    """Assign REMDB v4 row_id for baseline equipment cost lookups.
+    
+    Maps baseline equipment technologies to REMDB v4 row identifiers.
     
     Args:
-        df (pd.DataFrame): DataFrame containing equipment data.
-        end_use (str): Type of equipment ('heating', 'waterHeating', 'clothesDrying', 'cooking').
+        df: DataFrame with baseline fuel type columns.
+        end_use: Equipment category ('heating', 'cooling').
         
     Returns:
-        dict: Dictionary containing conditions, technology-efficiency pairs, and cost components for the specified end use.
+        DataFrame with row_id_{end_use}_replace column added.
+
+    FUTURE: After successful testing, expand to non-HVAC end-uses (waterHeating, clothesDrying, cooking).
         
-    Raises:
-        ValueError: If an invalid end_use is specified.
     """
-    parameters = {
-        'heating': {
-            'conditions': [
-                (df['base_heating_fuel'] == 'Propane'),
-                (df['base_heating_fuel'] == 'Fuel Oil'),
-                (df['base_heating_fuel'] == 'Natural Gas'),
-                (df['base_heating_fuel'] == 'Electricity') & (df['heating_type'] == 'Electricity ASHP'),
-                (df['base_heating_fuel'] == 'Electricity')
-            ],
-            'tech_eff_pairs': [
-                ('Propane Furnace', '94 AFUE'),
-                ('Fuel Oil Furnace', '95 AFUE'),
-                ('Natural Gas Furnace', '95 AFUE'),
-                ('Electric ASHP', 'SEER 18, 9.3 HSPF'),
-                ('Electric Furnace', '100 AFUE')
-            ],
-            'cost_components': ['unitCost', 'otherCost', 'cost_per_kBtuh']
-        },
-        'waterHeating': {
-            'conditions': [
-                (df['base_waterHeating_fuel'] == 'Fuel Oil'),
-                (df['base_waterHeating_fuel'] == 'Natural Gas'),
-                (df['base_waterHeating_fuel'] == 'Propane'),
-                (df['water_heater_efficiency'].isin(['Electric Standard', 'Electric Premium'])),
-                (df['water_heater_efficiency'] == 'Electric Heat Pump, 80 gal')
-            ],
-            'tech_eff_pairs': [
-                ('Fuel Oil Water Heater', 0.68),
-                ('Natural Gas Water Heater', 0.67),
-                ('Propane Water Heater', 0.67),
-                ('Electric Water Heater', 0.95),
-                ('Electric Heat Pump Water Heater, 80 gal', 2.35)
-            ],
-            'cost_components': ['unitCost', 'cost_per_gallon']
-        },
-        'clothesDrying': {
-            'conditions': [
-                (df['base_clothesDrying_fuel'] == 'Electricity'),
-                (df['base_clothesDrying_fuel'] == 'Natural Gas'),
-                (df['base_clothesDrying_fuel'] == 'Propane')
-            ],
-            'tech_eff_pairs': [
-                ('Electric Clothes Dryer', 3.1),
-                ('Natural Gas Clothes Dryer', 2.75),
-                ('Propane Clothes Dryer', 2.75)
-            ],
-            'cost_components': ['unitCost']
-        },
-        'cooking': {
-            'conditions': [
-                (df['base_cooking_fuel'] == 'Electricity'),
-                (df['base_cooking_fuel'] == 'Natural Gas'),
-                (df['base_cooking_fuel'] == 'Propane')
-            ],
-            'tech_eff_pairs': [
-                ('Electric Range', 0.74),
-                ('Natural Gas Range', 0.4),
-                ('Propane Range', 0.4)
-            ],
-            'cost_components': ['unitCost']
-        }
-    }
-    if end_use not in parameters:
-        raise ValueError(f"Invalid end_use specified: {end_use}")
-    return parameters[end_use]
+    df_copy = df.copy()
 
+    replace_or_upgrade = 'replace'
+    
+    # The validation/include flags resolve options where there is None
 
-def calculate_replacement_cost_per_row(
-        df_valid: pd.DataFrame, 
-        sampled_costs_dict: dict, 
-        menu_mp: int,
-        end_use: str) -> tuple:
-    """
-    Calculate replacement cost for each row based on the end use and associated costs.
-    
-    Args:
-        df_valid (pd.DataFrame): Filtered DataFrame containing valid rows.
-        sampled_costs_dict (dict): Dictionary with sampled costs for each component.
-        menu_mp (int): Menu option identifier for column naming.
-        end_use (str): Type of end-use ('heating', 'waterHeating', 'clothesDrying', 'cooking').
-    
-    Returns:
-        tuple: (replacement_cost, cost_column_name) where:
-            - replacement_cost: Array of calculated costs for each row
-            - cost_column_name: String name for the cost column in the output DataFrame
-            
-    Raises:
-        ValueError: If required columns are missing from the DataFrame
-        KeyError: If required cost components are missing from sampled_costs_dict
-    """
-    try:
-        if end_use == 'heating':
-            # Validate required columns and cost components
-            if 'total_heating_load_kBtuh' not in df_valid.columns:
-                raise ValueError("Required column 'total_heating_load_kBtuh' not found in DataFrame")
-            
-            required_components = ['unitCost', 'otherCost', 'cost_per_kBtuh']
-            for comp in required_components:
-                if comp not in sampled_costs_dict:
-                    raise KeyError(f"Required cost component '{comp}' not found for heating calculation")
-                
-            # For heating, cost includes base unit cost, other costs, and capacity-based costs
-            replacement_cost = (
-                sampled_costs_dict['unitCost'] +
-                sampled_costs_dict['otherCost'] +
-                (df_valid['total_heating_load_kBtuh'] * sampled_costs_dict['cost_per_kBtuh']))
-            
-            cost_column_name = f'mp{menu_mp}_heating_replacementCost'
-
-        elif end_use == 'waterHeating':
-            # Validate required columns and cost components
-            if 'size_water_heater_gal' not in df_valid.columns:
-                raise ValueError("Required column 'size_water_heater_gal' not found in DataFrame")
-                
-            required_components = ['unitCost', 'cost_per_gallon']
-            for comp in required_components:
-                if comp not in sampled_costs_dict:
-                    raise KeyError(f"Required cost component '{comp}' not found for water heating calculation")
-                
-            # For water heating, cost includes base unit cost and gallon-based costs
-            replacement_cost = (
-                sampled_costs_dict['unitCost'] +
-                (sampled_costs_dict['cost_per_gallon'] * df_valid['size_water_heater_gal']))
-            
-            cost_column_name = f'mp{menu_mp}_waterHeating_replacementCost'
-
-        else:
-            # Validate cost components for clothes drying and cooking
-            if 'unitCost' not in sampled_costs_dict:
-                raise KeyError(f"Required cost component 'unitCost' not found for {end_use} calculation")
-                
-            # For other end uses (cooking, clothes drying), only unit cost applies
-            replacement_cost = sampled_costs_dict['unitCost'] 
-            cost_column_name = f'mp{menu_mp}_{end_use}_replacementCost'
-        
-        return replacement_cost, cost_column_name
-        
-    except Exception as e:
-        raise RuntimeError(f"Error calculating {end_use} replacement cost: {str(e)}")
-    
-
-def calculate_replacement_cost(
-        df: pd.DataFrame, 
-        cost_dict: dict, 
-        menu_mp: int, 
-        end_use: str) -> pd.DataFrame:
-    """
-    Calculate replacement costs for various end-uses based on fuel types, costs, and efficiency.
-    
-    This function applies probabilistic cost calculation using normal distribution sampling
-    from progressive, reference, and conservative cost estimates. It also applies data validation
-    to ensure only valid homes are included in calculations.
-    
-    Args:
-        df: DataFrame containing data for different scenarios.
-        cost_dict: Dictionary with cost information for different technology and efficiency combinations.
-            Expected format: {(tech, efficiency): {'unitCost_progressive': float, 'unitCost_reference': float, ...}}
-        menu_mp: Menu option identifier (valid values: 7, 8, 9, 10).
-        end_use: Type of end-use ('heating', 'waterHeating', 'clothesDrying', 'cooking').
-    
-    Returns:
-        pd.DataFrame: Updated DataFrame with calculated replacement costs added as new columns.
-        
-    Raises:
-        ValueError: If menu_mp is invalid or if cost data is missing for technology/efficiency combinations.
-        RuntimeError: If an unexpected error occurs during calculation.
-        
-    Notes:
-        This function implements the validation framework:
-        1. Uses initialize_validation_tracking() to determine valid homes
-        2. Creates retrofit-only series with NaN for invalid homes
-        3. Calculates values only for valid homes with identifiable technology
-        4. Applies final verification masking
-    """
-    # Add logging for calculation start
-    print(f"Starting {end_use} replacement cost calculation with validation framework")
-
-    # Initialize validation tracking
-    df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-        df, end_use, menu_mp, verbose=True)
-    
-    print(f"Found {valid_mask.sum()} valid homes out of {len(df_copy)} for {end_use} replacement")
-
-    # Validate menu_mp
-    valid_menu_mps = [7, 8, 9, 10]
-    if menu_mp not in valid_menu_mps:
-        raise ValueError("Please enter a valid measure package number for menu_mp. Should be 7, 8, 9, or 10.")
-    
-    # Get conditions, technology-efficiency pairs, and cost components for the specified end_use
-    params = get_end_use_replacement_parameters(df_copy, end_use)
-    conditions = params['conditions']
-    tech_eff_pairs = params['tech_eff_pairs']
-    cost_components = params['cost_components']
-   
-    # Map each condition to its tech and efficiency using numpy.select
-    tech = np.select(conditions, [pair[0] for pair in tech_eff_pairs], default='unknown')
-    eff = np.select(conditions, [pair[1] for pair in tech_eff_pairs], default=np.nan)
-
-    # Convert efficiency values to appropriate types based on end use
+    # ========== HVAC OPTIONS: HEATING & COOLING ==========
+    # The efficiency level does not impact row_id mapping in REMDB v4 but instead pm1/pm2 in the regression formula
+    # Generally we use multi-zone non-ducted for homes without ducts, but may update to single-zone in the future for smaller homes 
+    # New circuit will be addressed in future versions, but excluded here for simplicity.
     if end_use == 'heating':
-        eff = np.array([str(e) if e != 'unknown' else np.nan for e in eff])
+        if 'base_heating_fuel' not in df_copy.columns:
+            raise ValueError("Missing 'base_heating_fuel' column")
+        
+        conditions = [
+            (df_copy['base_heating_fuel'] == 'Propane'),
+            (df_copy['base_heating_fuel'] == 'Fuel Oil'),
+            (df_copy['base_heating_fuel'] == 'Natural Gas'),
+            (df_copy['base_heating_fuel'] == 'Electricity') & (df_copy['heating_type'] != 'Electricity ASHP'),
+            (df_copy['heating_type'] == 'Electricity ASHP') & (df_copy['hvac_has_ducts'] == 'Yes'),
+            (df_copy['heating_type'] == 'Electricity ASHP') & (df_copy['hvac_has_ducts'] == 'No')
+            ]
+
+        choices = [
+            'furnaces_gas_furnace',  # Proxy for propane
+            'furnaces_gas_furnace',  # Proxy for fuel oil
+            'furnaces_gas_furnace',
+            'electric_baseboard_default',
+            'air_source_heat_pump_centrally_ducted',
+            'air_source_heat_pump_non_ducted_multi_zone'
+            ]
+        
+        df_copy[f'row_id_{end_use}_{replace_or_upgrade}'] = np.select(conditions, choices, default='unknown')
+    
+    elif end_use == 'cooling':
+        if 'hvac_has_ducts' not in df_copy.columns:
+            raise ValueError("Missing 'hvac_has_ducts' column")
+        
+        conditions = [
+            (df_copy['hvac_cooling_type'] == 'Room AC'),
+            (df_copy['hvac_cooling_type'] == 'Central AC'),
+            (df_copy['hvac_cooling_type'] == 'Heat Pump') & (df_copy['hvac_has_ducts'] == 'Yes'),
+            (df_copy['hvac_cooling_type'] == 'Heat Pump') & (df_copy['hvac_has_ducts'] == 'No')
+        ]
+
+        choices = [
+            'air_conditioner_room_ac_window_or_through_wall',
+            'air_conditioner_centrally_ducted',
+            'air_source_heat_pump_centrally_ducted',
+            'air_source_heat_pump_non_ducted_multi_zone'
+        ]
+
+        df_copy[f'row_id_{end_use}_{replace_or_upgrade}'] = np.select(conditions, choices, default='unknown')
+        
+    # =========================================
+    # DELETE FOR NOW - NON-HVAC END USES
+    # =========================================
+
     else:
-        eff = np.array([float(e) if e != 'unknown' else np.nan for e in eff])
+        # raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking'")
+        raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling'")
 
-    try:
-        # Use the standard filtering function to get only homes with both valid data and identifiable tech
-        df_valid, valid_calculation_indices, tech_filtered, eff_filtered = filter_valid_tech_homes(
-            df_copy, valid_mask, tech, eff)
+    return df_copy
+
+# ========== Map cost parameters from REMDB v4 database using unique row_id ==========
+# map_remdb_cost_parameters was moved to calulation_utils.py for modularity
+
+# ========== Calculate installed cost of replacing existing equipment using regression formula ==========
+def calculate_replacement_installed_cost(
+    df: pd.DataFrame,
+    remdb_v4_costs: pd.DataFrame,
+    end_use: str,
+    percentile: str = 'mid'
+) -> pd.DataFrame:
+    """Calculate REPLACEMENT installed costs using REMDB v4 methodology.
+    
+    PREREQUISITE: Metrics must be extracted FIRST using add_remdb_replacement_metrics().
+    
+    Args:
+        df: DataFrame with baseline metrics already extracted.
+        remdb_v4_costs: REMDB v4 cost database (indexed by row_id).
+        end_use: Equipment category.
+        percentile: Cost percentile ('low', 'mid', 'high'). Default 'mid'.
         
-        print(f"After tech filtering: {len(valid_calculation_indices)} homes remain valid for {end_use} replacement")
+    Returns:
+        DataFrame with baseline_{end_use}_replacement_installed_cost column added.
+    """
+    replace_or_upgrade = 'replace'
+    
+    if percentile not in ['low', 'mid', 'high']:
+        raise ValueError(f"Invalid percentile: '{percentile}'. Must be 'low', 'mid', or 'high'")
+    
+    print(f"\nStarting {end_use} replacement cost calculation (REMDB v4)")
+    
+    # ===== STEP 1: Initialize validation tracking =====
+    df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
+        df, end_use, menu_mp=0, verbose=True)
+    
+    # ===== Assign row_ids =====
+    df_copy = add_remdb_replacement_row_ids(df_copy, end_use)
+    
+    # ===== Map REMDB parameters =====
+    df_copy = map_remdb_cost_parameters(df_copy, remdb_v4_costs, end_use, replace_or_upgrade, percentile)
+    
+    # ===== Missing Performance Metrics Handling =====
+    # Calculate missing metrics from REMDB bounds
+    # This handles any end-use where physical dimensions aren't in home metadata
+    # Currently used for: clothes drying (drum volume), cooking (oven volume)
+    metric1_col = f'{end_use}_{replace_or_upgrade}_metric1'
+    metric2_col = f'{end_use}_{replace_or_upgrade}_metric2'
 
-        if df_valid.empty:
-            print(f"Warning: No valid homes found for {end_use} replacement cost calculation.")
-            
-        # Sample costs from distributions only if we have valid homes
-        if not df_valid.empty:
-            sampled_costs_dict = sample_costs_from_distributions(tech_filtered, eff_filtered, cost_dict, cost_components)
-            
-            # Calculate the replacement cost for each row
-            replacement_cost, cost_column_name = calculate_replacement_cost_per_row(df_valid, sampled_costs_dict, menu_mp, end_use)
-        else:
-            cost_column_name = f'mp{menu_mp}_{end_use}_replacementCost'
-        
-        # Initialize the result series properly
-        result_series = create_retrofit_only_series(df_copy, valid_mask)
-        
-        # Update only for homes that have valid data AND match our tech criteria
-        if not df_valid.empty:
-            result_series.loc[valid_calculation_indices] = np.round(replacement_cost, 2)
-    except Exception as e:
-        raise RuntimeError(f"Error in {end_use} replacement cost calculation: {str(e)}")
+    # Identify rows with missing metrics
+    metric1_missing_mask = df_copy[metric1_col].isna()
+    metric2_missing_mask = df_copy[metric2_col].isna()
 
-    # Then create the DataFrame column
-    df_new_columns = pd.DataFrame({cost_column_name: result_series})    
+    # Calculate metric1 from bounds where missing
+    if metric1_missing_mask.any():
+        # Check if bounds exist in REMDB (not all end-uses may have bounds)
+        if 'pm1_lower_bound' in remdb_v4_costs.columns and 'pm1_upper_bound' in remdb_v4_costs.columns:
+            df_copy.loc[metric1_missing_mask, metric1_col] = calculate_metric_from_remdb_bounds(
+                df=df_copy[metric1_missing_mask],  # Pass only rows needing calculation
+                remdb_v4_costs=remdb_v4_costs,
+                end_use=end_use,
+                replace_or_upgrade=replace_or_upgrade,
+                lower_bound_col='pm1_lower_bound',
+                upper_bound_col='pm1_upper_bound'
+            )
+            print(f"  Calculated {metric1_missing_mask.sum():,} missing {metric1_col} values from REMDB bounds")
 
-    # Track the column for masking
-    category_columns_to_mask.append(cost_column_name)
+    # Calculate metric2 from bounds where missing
+    if metric2_missing_mask.any():
+        # Check if bounds exist in REMDB (metric2 bounds may not exist for all end-uses)
+        if 'pm2_lower_bound' in remdb_v4_costs.columns and 'pm2_upper_bound' in remdb_v4_costs.columns:
+            df_copy.loc[metric2_missing_mask, metric2_col] = calculate_metric_from_remdb_bounds(
+                df=df_copy[metric2_missing_mask],  # Pass only rows needing calculation
+                remdb_v4_costs=remdb_v4_costs,
+                end_use=end_use,
+                replace_or_upgrade=replace_or_upgrade,
+                lower_bound_col='pm2_lower_bound',
+                upper_bound_col='pm2_upper_bound'
+            )
+            print(f"  Calculated {metric2_missing_mask.sum():,} missing {metric2_col} values from REMDB bounds")
+    
+    # ===== STEP 2: Initialize result series with template =====
+    # Use create_retrofit_only_series to properly initialize with zeros for valid homes, NaN for others
+    result_series = create_retrofit_only_series(df_copy, valid_mask)
+    
+    # ===== STEP 3 & 4: Valid-Only Calculation =====
+    
+    # UPDATED: Column name changed from 'replacementCost' to 'replacement_installed_cost'
+    cost_col = f'baseline_{end_use}_replacement_installed_cost_{percentile}'
+
+    # Calculate costs - the regression formula applies validation mask internally
+    calculated_costs = remdb_cost_regression_formula(df_copy, replace_or_upgrade, end_use, percentile)
+
+    # Update result series with calculated values (only for valid homes due to internal masking)
+    result_series.loc[valid_mask] = calculated_costs.loc[valid_mask]
+    
+    # Create DataFrame with new column
+    df_new_columns = pd.DataFrame({cost_col: result_series})
     
     # Apply new columns to DataFrame with proper tracking
     df_copy, all_columns_to_mask = apply_new_columns_to_dataframe(
         df_copy, df_new_columns, end_use, category_columns_to_mask, all_columns_to_mask)
     
-    # Apply final verification masking for consistency
+    # ===== STEP 5: Apply final verification masking for consistency =====
     df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=True)
-
+    
+    # Report summary
+    valid_count = df_copy[cost_col].notna().sum()
+    mean_cost = df_copy[cost_col].mean()
+    print(f"  Calculated costs for {valid_count:,} homes (mean: ${mean_cost:,.2f})\n")
+    
     return df_copy
-

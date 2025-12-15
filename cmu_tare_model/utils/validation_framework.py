@@ -459,41 +459,6 @@ def replace_small_values_with_nan(
 # =====================================================================================================
 # UPDATED: NOW HANDLES NONE VALUES FOR RETROFIT_MASK
 # ====================================================================================================
-# def calculate_avoided_values(
-#     baseline_values: pd.Series,
-#     measure_values: pd.Series,
-#     retrofit_mask: Optional[pd.Series] = None
-# ) -> pd.Series:
-#     """
-#     Calculate avoided values (baseline - measure) only for retrofitted homes.
-
-#     Args:
-#         baseline_values: Series of baseline values.
-#         measure_values: Series of measure package values.
-#         retrofit_mask: Boolean Series indicating which homes get retrofits.
-#                       If None, calculates for all homes.
-
-#     Returns:
-#         Series with avoided values for retrofitted homes and NaN for others.
-#     """
-#     # Initialize with NaN
-#     avoided_values = pd.Series(np.nan, index=baseline_values.index)
-
-#     # For baseline scenarios (when retrofit_mask is None), calculate for all homes
-#     if retrofit_mask is None:
-#         return baseline_values - measure_values
-        
-#     # For measure package scenarios, calculate only for homes with retrofits
-#     if retrofit_mask.any():
-#         avoided_values.loc[retrofit_mask] = (
-#             baseline_values.loc[retrofit_mask] - measure_values.loc[retrofit_mask]
-#         )
-    
-#     return avoided_values
-
-# =====================================================================================================
-# UPDATED: NOW HANDLES NONE VALUES FOR RETROFIT_MASK
-# ====================================================================================================
 def calculate_avoided_values(
     baseline_values: pd.Series,
     measure_values: pd.Series,
@@ -536,31 +501,3 @@ def calculate_avoided_values(
         )
     
     return avoided_values
-
-
-# def calculate_avoided_values(
-#     baseline_values: pd.Series,
-#     measure_values: pd.Series,
-#     retrofit_mask: pd.Series
-# ) -> pd.Series:
-#     """
-#     Calculate avoided values (baseline - measure) only for retrofitted homes.
-    
-#     Args:
-#         baseline_values: Series of baseline values.
-#         measure_values: Series of measure package values.
-#         retrofit_mask: Boolean Series indicating which homes get retrofits.
-        
-#     Returns:
-#         Series with avoided values for retrofitted homes and NaN for others.
-#     """
-#     # Initialize with NaN
-#     avoided_values = pd.Series(np.nan, index=baseline_values.index)
-    
-#     # Calculate only for homes with retrofits
-#     if retrofit_mask.any():
-#         avoided_values.loc[retrofit_mask] = (
-#             baseline_values.loc[retrofit_mask] - measure_values.loc[retrofit_mask]
-#         )
-        
-#     return avoided_values

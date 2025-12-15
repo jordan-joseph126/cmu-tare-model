@@ -208,20 +208,20 @@ def df_capital_costs(sample_homes_df: pd.DataFrame) -> pd.DataFrame:
         )
         
         # Installation costs
-        data[f'mp8_{category}_installationCost'] = [
+        data[f'mp8_{category}_upgrade_installed_cost'] = [
             base_cost + (home_idx * base_cost * 0.1)  # 10% increase per home
             for home_idx in range(5)
         ]
         
         # Replacement costs (50% of installation)
         data[f'mp8_{category}_replacementCost'] = [
-            data[f'mp8_{category}_installationCost'][home_idx] * 0.5
+            data[f'mp8_{category}_upgrade_installed_cost'][home_idx] * 0.5
             for home_idx in range(5)
         ]
         
         # Rebate amounts (30% of installation)
         data[f'mp8_{category}_rebate_amount'] = [
-            data[f'mp8_{category}_installationCost'][home_idx] * 0.3
+            data[f'mp8_{category}_upgrade_installed_cost'][home_idx] * 0.3
             for home_idx in range(5)
         ]
     
@@ -1077,7 +1077,7 @@ def test_calculate_capital_costs_basic(
     # For No IRA: total = installation + premium
     idx = 0
     expected_total = (
-        df.loc[idx, f'mp{menu_mp}_{category}_installationCost'] +
+        df.loc[idx, f'mp{menu_mp}_{category}_upgrade_installed_cost'] +
         df.loc[idx, f'mp{menu_mp}_heating_installation_premium']
     )
     
@@ -1105,7 +1105,7 @@ def test_calculate_capital_costs_basic(
     # For IRA: total = installation + premium - rebate
     idx = 0
     expected_total = (
-        df.loc[idx, f'mp{menu_mp}_{category}_installationCost'] +
+        df.loc[idx, f'mp{menu_mp}_{category}_upgrade_installed_cost'] +
         df.loc[idx, f'mp{menu_mp}_heating_installation_premium'] -
         df.loc[idx, f'mp{menu_mp}_{category}_rebate_amount']
     )
@@ -2132,7 +2132,7 @@ def test_negative_cost_scenarios(
     
     # Set negative installation costs for one category
     category = 'heating'
-    df[f'mp8_{category}_installationCost'] = -df[f'mp8_{category}_installationCost']
+    df[f'mp8_{category}_upgrade_installed_cost'] = -df[f'mp8_{category}_upgrade_installed_cost']
     
     # Mock calculate_discount_factor to use our pre-calculated values
     def mock_discount_factor(base_year, target_year, discounting_method):

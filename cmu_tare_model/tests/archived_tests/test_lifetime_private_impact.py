@@ -448,7 +448,7 @@ def test_calculate_capital_costs_basic(sample_homes_df):
     
     # Verify calculations for the first home
     expected_total = (
-        sample_homes_df.loc[0, f'mp{menu_mp}_{category}_installationCost'] +
+        sample_homes_df.loc[0, f'mp{menu_mp}_{category}_upgrade_installed_cost'] +
         sample_homes_df.loc[0, f'mp{menu_mp}_heating_installation_premium']
     )
     
@@ -474,7 +474,7 @@ def test_calculate_capital_costs_basic(sample_homes_df):
     
     # Verify calculations for the first home
     expected_total = (
-        sample_homes_df.loc[0, f'mp{menu_mp}_{category}_installationCost'] +
+        sample_homes_df.loc[0, f'mp{menu_mp}_{category}_upgrade_installed_cost'] +
         sample_homes_df.loc[0, f'mp{menu_mp}_heating_installation_premium'] -
         sample_homes_df.loc[0, f'mp{menu_mp}_{category}_rebate_amount']
     )
@@ -1326,7 +1326,7 @@ def test_negative_cost_scenarios(sample_homes_df, df_fuel_costs, df_baseline_cos
     menu_mp = 8
     
     # Set negative installation costs
-    df_mod[f'mp{menu_mp}_{category}_installationCost'] = -df_mod[f'mp{menu_mp}_{category}_installationCost']
+    df_mod[f'mp{menu_mp}_{category}_upgrade_installed_cost'] = -df_mod[f'mp{menu_mp}_{category}_upgrade_installed_cost']
     
     # Test parameters
     input_mp = 'upgrade08'

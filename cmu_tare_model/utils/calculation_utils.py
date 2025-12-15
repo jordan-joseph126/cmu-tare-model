@@ -7,7 +7,7 @@ consumption, and operational savings.
 This module contains utilities that support specific calculation operations
 but aren't part of the core validation framework.
 """
-
+import os
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Union, Callable
@@ -89,6 +89,7 @@ def get_post_retrofit_columns(category: str, menu_mp: int) -> List[str]:
     
     # Just return the basic consumption column for this measure package and category
     return [f'mp{menu_mp}_{category}_consumption']
+
 
 def identify_valid_homes(df: pd.DataFrame) -> pd.DataFrame:
     """Creates comprehensive data quality flags for all categories.
@@ -282,69 +283,7 @@ def filter_valid_tech_homes(
     
     return df_valid, valid_calculation_indices, tech_filtered, eff_filtered
 
-def sample_costs_from_distributions(
-    tech: np.ndarray,
-    eff: np.ndarray,
-    cost_dict: Dict,
-    cost_components: List[str]
-) -> Dict[str, np.ndarray]:
-    """
-    Sample costs from distributions defined by progressive, reference, and conservative estimates.
-    
-    This utility function samples from normal distributions derived from 
-    percentile-based cost estimates (10th, 50th, and 90th percentiles).
-    
-    Args:
-        tech: Array of technology types
-        eff: Array of efficiency values
-        cost_dict: Dictionary mapping (tech, eff) pairs to cost components
-        cost_components: List of cost component names to sample
-        
-    Returns:
-        Dictionary mapping cost component names to sampled cost arrays
-        
-    Raises:
-        ValueError: If cost data is missing for any technology/efficiency combination
-    """
-    # Initialize dictionary to store sampled costs
-    sampled_costs_dict = {}
-    
-    # Calculate costs for each component
-    for cost_component in cost_components:
-        # Extract the progressive (10th), reference (50th), and conservative (90th) costs
-        progressive_costs = np.array([
-            cost_dict.get((t, e), {}).get(f'{cost_component}_progressive', np.nan) 
-            for t, e in zip(tech, eff)
-        ])
-        reference_costs = np.array([
-            cost_dict.get((t, e), {}).get(f'{cost_component}_reference', np.nan) 
-            for t, e in zip(tech, eff)
-        ])
-        conservative_costs = np.array([
-            cost_dict.get((t, e), {}).get(f'{cost_component}_conservative', np.nan) 
-            for t, e in zip(tech, eff)
-        ])
-
-        # Handle missing cost data
-        if np.isnan(progressive_costs).any() or np.isnan(reference_costs).any() or np.isnan(conservative_costs).any():
-            missing_indices = np.where(np.isnan(progressive_costs) | np.isnan(reference_costs) | np.isnan(conservative_costs))
-            print(f"Missing data at indices: {missing_indices}")
-            print(f"Tech with missing data: {tech[missing_indices]}")
-            print(f"Efficiencies with missing data: {eff[missing_indices]}")
-            
-            raise ValueError(f"Missing cost data for some technology and efficiency combinations in cost_component {cost_component}")
-
-        # Calculate mean and standard deviation for normal distribution
-        mean_costs = reference_costs  # 50th percentile becomes the mean
-        
-        # Calculate standard deviation using the difference between 90th and 10th percentiles
-        std_costs = (conservative_costs - progressive_costs) / (norm.ppf(0.90) - norm.ppf(0.10))
-
-        # Sample from the normal distribution for each row
-        sampled_costs = np.random.normal(loc=mean_costs, scale=std_costs)
-        sampled_costs_dict[cost_component] = sampled_costs
-    
-    return sampled_costs_dict
+# Deleted sample_costs_from_distributions as it is no longer used in REMDB v4 cost calculations
 
 # ========================================================================
 # FUNCTIONS FOR PRIVATE AND PUBLIC IMPACT CALCULATIONS
