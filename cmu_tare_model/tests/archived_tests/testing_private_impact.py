@@ -33,10 +33,10 @@ def create_test_data(menu_mp, policy_scenario):
     })
     
     if menu_mp == 8:
-        df['mp8_enclosure_upgradeCost'] = 0
+        df['mp8_enclosure_upgrade_installed_cost'] = 0
         df['weatherization_rebate_amount'] = 0
     else:
-        df[f'mp{menu_mp}_enclosure_upgradeCost'] = np.random.uniform(1000, 5000, n)
+        df[f'mp{menu_mp}_enclosure_upgrade_installed_cost'] = np.random.uniform(1000, 5000, n)
         df['weatherization_rebate_amount'] = np.random.uniform(100, 1000, n)
     
     scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp=menu_mp,policy_scenario=policy_scenario)
@@ -60,7 +60,7 @@ def create_test_data(menu_mp, policy_scenario):
         capital_cost_data[f'mp{menu_mp}_{category}_upgrade_installed_cost'] = np.random.uniform(2000, 8000, n)
         
         # Replacement costs
-        capital_cost_data[f'mp{menu_mp}_{category}_replacementCost'] = np.random.uniform(1000, 4000, n)
+        capital_cost_data[f'mp{menu_mp}_{category}_replacement_installed_cost'] = np.random.uniform(1000, 4000, n)
                 
         # Rebate amounts
         capital_cost_data[f'mp{menu_mp}_{category}_rebate_amount'] = np.random.uniform(500, 2000, n)

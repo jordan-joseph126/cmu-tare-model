@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 from typing import Literal, Optional
 
+from cmu_tare_model.constants import EQUIPMENT_SPECS
+
+# START WITH HEATING AND COOLING FIRST
 
 """
 ========================================================================================================================================================================
@@ -62,7 +65,12 @@ def load_remdb_v4_data(
         'row_id',
         'tare_category',
         'multiplier_retrofit',
-        'adder_retrofit'
+        'adder_retrofit',
+        'output_units',
+        'pm1_metric',
+        'pm1_unit',
+        'pm2_metric',
+        'pm2_unit'
     ]
   
     for percentile in ['low', 'mid', 'high']:
@@ -89,7 +97,7 @@ def load_remdb_v4_data(
 # IMPORT UTILITY FUNCTION FROM utils/remdb_v4_installed_cost_utils.py
 def add_remdb_replacement_metrics(
     df: pd.DataFrame,
-    end_use: Literal['heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking']
+    end_use: str
 ) -> pd.DataFrame:
     """Extract performance metrics from BASELINE equipment for REMDB v4 cost calculations.
     
@@ -104,6 +112,9 @@ def add_remdb_replacement_metrics(
         
     Note:
         Values are documented with sources from EUSS enumeration dictionary.
+
+    FUTURE: After successful testing, expand to non-HVAC end-uses (waterHeating, clothesDrying, cooking).
+
     """
     df_copy = df.copy()
 
@@ -112,13 +123,14 @@ def add_remdb_replacement_metrics(
     if not isinstance(df_copy, pd.DataFrame):
         raise TypeError(f"Expected DataFrame, got {type(df_copy).__name__}")
     
-    valid_categories = ['heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking']
+    valid_categories = list(EQUIPMENT_SPECS.keys())
+
     if end_use not in valid_categories:
         raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of {valid_categories}")
         
     # ===== HEATING =====
     if end_use == 'heating':
-        # Metric1: Capacity in tons     
+        # ===== Metric1: Capacity in tons =====
         # =============================================================================================================
         # No longer using summing the loads for system size and cost estimation
         # The supplemental heating (electric strip heat) is implicitly included in the REMDB v4 costs
@@ -129,12 +141,18 @@ def add_remdb_replacement_metrics(
 
         df_copy[f'{end_use}_{replacement_or_upgrade}_metric1'] = df_copy['size_heating_system_primary_k_btu_h'] / 12.0
         
-        # Metric2: Efficiency (SEER for heat pumps, AFUE for furnaces)
+        # ===== Metric2: Efficiency (SEER for heat pumps, AFUE for furnaces) =====
+        # EUSS enumeration formats:
+        # - Heat pumps: "ASHP, SEER 10, 6.2 HSPF", "ASHP, SEER 13, 7.7 HSPF", etc.
+        # - Furnaces: "Fuel Furnace, 80% AFUE", "Electric Furnace, 100% AFUE", etc.
         if 'hvac_heating_efficiency' not in df_copy.columns:
             raise KeyError("Missing 'hvac_heating_efficiency' column")
         
+        # Extract SEER for heat pumps (matches "SEER 10", "SEER 13", etc.)
         seer_extract = df_copy['hvac_heating_efficiency'].str.extract(
             r'SEER\s*(\d+\.?\d*)', expand=False, flags=0)
+        
+        # Extract AFUE for furnaces/boilers (matches "80% AFUE", "100% AFUE", etc.)
         afue_extract = df_copy['hvac_heating_efficiency'].str.extract(
             r'(\d+\.?\d*)%?\s*AFUE', expand=False, flags=0)
         
@@ -143,14 +161,14 @@ def add_remdb_replacement_metrics(
     
     # ===== COOLING =====
     elif end_use == 'cooling':
-        # Metric1: Capacity in tons
+        # ===== Metric1: Capacity in tons =====
         # The primary system size is the same for both heating and cooling
         if 'size_cooling_system_primary_k_btu_h' not in df_copy.columns:
             raise KeyError("Missing cooling load columns")
 
         df_copy[f'{end_use}_{replacement_or_upgrade}_metric1'] = df_copy['size_cooling_system_primary_k_btu_h'] / 12.0
         
-        # Metric2: SEER
+        # ===== Metric2: SEER =====
         if 'hvac_cooling_efficiency' in df_copy.columns:
             df_copy[f'{end_use}_{replacement_or_upgrade}_metric2'] = df_copy['hvac_cooling_efficiency'].str.extract(
                 r'SEER\s*(\d+\.?\d*)', expand=False).astype(float)
@@ -158,74 +176,22 @@ def add_remdb_replacement_metrics(
             df_copy[f'{end_use}_{replacement_or_upgrade}_metric2'] = df_copy[f'heating_{replacement_or_upgrade}_metric2']
         else:
             raise KeyError("Missing 'hvac_cooling_efficiency' column")
-    
-    # ===== WATER HEATING =====
-    elif end_use == 'waterHeating':
-        # Metric1: UEF
-        if 'water_heater_efficiency' not in df_copy.columns:
-            raise KeyError("Missing 'water_heater_efficiency' column")
-        
-        # Try to extract UEF from string
-        uef_extract = df_copy['water_heater_efficiency'].str.extract(r'(\d+\.?\d*)\s*UEF', expand=False)
-        
-        # Assign defaults by fuel type
-        # Source: EUSS enumeration dictionary
-        # - Natural Gas Standard: EF = 0.59
-        # - Electric Standard: EF = 0.92
-        # - Electric Heat Pump, 80 gal: UEF = 3.45
-        if 'base_waterHeating_fuel' in df_copy.columns:
-            uef_defaults = pd.Series(np.nan, index=df_copy.index)
-            
-            fossil_mask = df_copy['base_waterHeating_fuel'].isin(['Natural Gas', 'Fuel Oil', 'Propane'])
-            uef_defaults.loc[fossil_mask] = 0.59  # Standard efficiency
-            
-            electric_mask = (df_copy['base_waterHeating_fuel'] == 'Electricity') & \
-                           ~df_copy['water_heater_efficiency'].str.contains('Heat Pump', case=False, na=False)
-            uef_defaults.loc[electric_mask] = 0.92  # Standard efficiency
-            
-            hp_mask = df_copy['water_heater_efficiency'].str.contains('Heat Pump', case=False, na=False)
-            uef_defaults.loc[hp_mask] = 3.45  # Heat pump
-            
-            df_copy[f'{end_use}_{replacement_or_upgrade}_metric1'] = pd.to_numeric(
-                uef_extract.fillna(uef_defaults), errors='coerce')
-        else:
-            df_copy[f'{end_use}_{replacement_or_upgrade}_metric1'] = pd.to_numeric(uef_extract, errors='coerce')
-        
-        # Metric2: Tank capacity
-        if 'size_water_heater_gal' not in df_copy.columns:
-            raise KeyError("Missing 'size_water_heater_gal' column")
-        df_copy[f'{end_use}_{replacement_or_upgrade}_metric2'] = df_copy['size_water_heater_gal'].astype(float)
-    
-    # ===== CLOTHES DRYING =====
-    elif end_use == 'clothesDrying':
-        # Metric1: Drum volume - will be calculated from REMDB bounds in cost function
-        df_copy[f'{end_use}_{replacement_or_upgrade}_metric1'] = np.nan
-        
-        # Metric2: CEF by fuel type
-        # Source: EUSS enumeration dictionary
-        # - Electric: CEF = 2.7
-        # - Gas/Propane: CEF = 2.39
-        df_copy[f'{end_use}_{replacement_or_upgrade}_metric2'] = 2.7  # Electric default
-        
-        if 'base_clothesDrying_fuel' in df_copy.columns:
-            gas_mask = df_copy['base_clothesDrying_fuel'].isin(['Natural Gas', 'Propane'])
-            df_copy.loc[gas_mask, f'{end_use}_{replacement_or_upgrade}_metric2'] = 2.39
-    
-    # ===== COOKING =====
-    elif end_use == 'cooking':
-        # Metric1: Oven volume - will be calculated from REMDB bounds in cost function
-        df_copy[f'{end_use}_{replacement_or_upgrade}_metric1'] = np.nan
-        
-        # Metric2: Not used for cooking
-        df_copy[f'{end_use}_{replacement_or_upgrade}_metric2'] = np.nan
-    
+
+    # =========================================
+    # DELETE FOR NOW - NON-HVAC END USES
+    # =========================================
+
+    else:
+        # raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking'")
+        raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling'")
+
     return df_copy
 
 
 # ========== Extract performance metrics from equipment specifications (REPLACEMENT) ==========
 def add_remdb_upgrade_metrics(
     df: pd.DataFrame,
-    end_use: Literal['heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking']
+    end_use: str
 ) -> pd.DataFrame:
     """Extract performance metrics from UPGRADE equipment for REMDB v4 cost calculations.
     
@@ -237,6 +203,9 @@ def add_remdb_upgrade_metrics(
         
     Returns:
         DataFrame with {end_use}_upgrade_metric1 and {end_use}_upgrade_metric2 columns.
+
+    FUTURE: After successful testing, expand to non-HVAC end-uses (waterHeating, clothesDrying, cooking).
+        
     """
     df_copy = df.copy()
 
@@ -245,13 +214,14 @@ def add_remdb_upgrade_metrics(
     if not isinstance(df_copy, pd.DataFrame):
         raise TypeError(f"Expected DataFrame, got {type(df_copy).__name__}")
     
-    valid_categories = ['heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking']
+    valid_categories = list(EQUIPMENT_SPECS.keys())
+
     if end_use not in valid_categories:
         raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of {valid_categories}")
         
     # ===== HEATING =====
     if end_use == 'heating':
-        # Metric1: Capacity in tons     
+        # ===== Metric1: Capacity in tons =====     
         # =============================================================================================================
         # No longer using summing the loads for system size and cost estimation
         # The supplemental heating (electric strip heat) is implicitly included in the REMDB v4 costs
@@ -262,7 +232,7 @@ def add_remdb_upgrade_metrics(
 
         df_copy[f'{end_use}_{replacement_or_upgrade}_metric1'] = df_copy['size_heating_system_primary_k_btu_h'] / 12.0
         
-        # Metric2: SEER from upgrade spec
+        # ===== Metric2: SEER from upgrade spec =====
         if 'upgrade_hvac_heating_efficiency' not in df_copy.columns:
             raise KeyError("Missing 'upgrade_hvac_heating_efficiency'")
         df_copy[f'{end_use}_{replacement_or_upgrade}_metric2'] = df_copy['upgrade_hvac_heating_efficiency'].str.extract(
@@ -270,54 +240,32 @@ def add_remdb_upgrade_metrics(
     
     # ===== COOLING =====
     elif end_use == 'cooling':
-        # Metric1: Capacity in tons
+        # ===== Metric1: Capacity in tons =====
         # The primary system size is the same for both heating and cooling
         if 'size_cooling_system_primary_k_btu_h' not in df_copy.columns:
             raise KeyError("Missing cooling load columns")
 
         df_copy[f'{end_use}_{replacement_or_upgrade}_metric1'] = df_copy['size_cooling_system_primary_k_btu_h'] / 12.0
         
-        # Metric2: SEER
+        # ===== Metric2: SEER =====
         if 'upgrade_hvac_cooling_efficiency' in df_copy.columns:
             df_copy[f'{end_use}_{replacement_or_upgrade}_metric2'] = df_copy['upgrade_hvac_cooling_efficiency'].str.extract(
                 r'SEER (\d+\.?\d*)', expand=False).astype(float)
+            
         elif 'upgrade_SEER' in df_copy.columns:
             df_copy[f'{end_use}_{replacement_or_upgrade}_metric2'] = df_copy['upgrade_SEER'].astype(float)
+
         else:
             raise KeyError("Missing upgrade_hvac_cooling_efficiency or upgrade_SEER")
     
-    # ===== WATER HEATING =====
-    elif end_use == 'waterHeating':
-        # Metric1: UEF
-        if 'upgrade_water_heater_efficiency' not in df_copy.columns:
-            raise KeyError("Missing 'upgrade_water_heater_efficiency'")
-        df_copy[f'{end_use}_{replacement_or_upgrade}_metric1'] = df_copy['upgrade_water_heater_efficiency'].str.extract(
-            r'(\d+\.?\d*)\s*UEF', expand=False).astype(float)
-        
-        # Metric2: Tank capacity
-        if 'size_water_heater_gal' not in df_copy.columns:
-            raise KeyError("Missing 'size_water_heater_gal'")
-        df_copy[f'{end_use}_{replacement_or_upgrade}_metric2'] = df_copy['size_water_heater_gal'].astype(float)
-    
-    # ===== CLOTHES DRYING =====
-    elif end_use == 'clothesDrying':
-        # Metric1: Drum volume - will be calculated from REMDB bounds
-        df_copy[f'{end_use}_{replacement_or_upgrade}_metric1'] = np.nan
-        
-        # Metric2: CEF
-        if 'upgrade_clothes_dryer' not in df_copy.columns:
-            raise KeyError("Missing 'upgrade_clothes_dryer'")
-        is_hp = df_copy['upgrade_clothes_dryer'].str.contains('Heat Pump|HP', case=False, na=False)
-        df_copy[f'{end_use}_{replacement_or_upgrade}_metric2'] = is_hp.map({True: 5.2, False: 2.7})
-    
-    # ===== COOKING =====
-    elif end_use == 'cooking':
-        # Metric1: Oven volume - will be calculated from REMDB bounds
-        df_copy[f'{end_use}_{replacement_or_upgrade}_metric1'] = np.nan
-        
-        # Metric2: Not used for cooking
-        df_copy[f'{end_use}_{replacement_or_upgrade}_metric2'] = np.nan
-    
+    # =========================================
+    # DELETE FOR NOW - NON-HVAC END USES
+    # =========================================
+
+    else:
+        # raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking'")
+        raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling'")
+
     return df_copy
 
 # ========== Mapping cost parameters from REMDB v4 database using unique row_id ==========
@@ -352,7 +300,11 @@ def map_remdb_cost_parameters(
     # REMDB v4 parameters needed for cost calculation
     # Data cols in the REMDB v4 cost dataframe
     param_cols = [
+        'pm1_metric',
+        'pm1_unit',
         f'pm1_coef_{percentile}',
+        'pm2_metric',
+        'pm2_unit',
         f'pm2_coef_{percentile}',
         f'intercept_{percentile}',
         'multiplier_retrofit',
@@ -396,7 +348,7 @@ def calculate_metric_from_remdb_bounds(
         df: DataFrame with row_id_{end_use}_{replacement_or_upgrade} column.
            Can be the full dataframe or a filtered subset (e.g., only rows with missing metrics).
         remdb_v4_costs: REMDB v4 cost database (indexed by row_id).
-        end_use: Equipment category (e.g., 'clothesDrying', 'cooking').
+        end_use: Equipment category (e.g., 'heating', 'cooling').
         replacement_or_upgrade: 'replacement' or 'upgrade'.
         lower_bound_col: Column name in REMDB for lower bound (default: 'pm1_lower_bound').
         upper_bound_col: Column name in REMDB for upper bound (default: 'pm1_upper_bound').

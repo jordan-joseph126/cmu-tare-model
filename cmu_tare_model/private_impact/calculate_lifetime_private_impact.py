@@ -52,7 +52,8 @@ def calculate_private_npv(
         policy_scenario: str,
         discounting_method: str = 'private_fixed',
         base_year: int = 2024,
-        verbose: bool = True
+        verbose: bool = True,
+        percentile: str = 'mid'
 ) -> pd.DataFrame:
     """
     Calculate the private net present value (NPV) for various equipment categories,
@@ -78,6 +79,7 @@ def calculate_private_npv(
         discounting_method (str): The method used for discounting. Default is 'private_fixed'.
         base_year (int): The base year for discounting calculations. Default is 2024.
         verbose (bool): Whether to print detailed processing information. Default is True.
+        percentile (str): The percentile to use for cost calculations. Default is 'mid'.
 
     Returns:
         DataFrame: The input DataFrame updated with calculated private NPV and adjusted equipment costs.
@@ -139,7 +141,8 @@ def calculate_private_npv(
             input_mp=input_mp,
             menu_mp=menu_mp,
             policy_scenario=policy_scenario,
-            valid_mask=valid_mask
+            valid_mask=valid_mask,
+            percentile=percentile
         )
         
         # Calculate and get NPV values
@@ -156,7 +159,8 @@ def calculate_private_npv(
             valid_mask=valid_mask,
             menu_mp=menu_mp,
             base_year=base_year,
-            verbose=verbose
+            verbose=verbose,
+            percentile=percentile
         )
         
         # Add new columns to df_new_columns
@@ -182,7 +186,8 @@ def calculate_capital_costs(
     input_mp: str, 
     menu_mp: int, 
     policy_scenario: str,
-    valid_mask: pd.Series
+    valid_mask: pd.Series,
+    percentile: str = 'mid'
 ) -> Tuple[pd.Series, pd.Series]:    
     """
     Calculate total and net capital costs for an equipment category.
@@ -200,6 +205,7 @@ def calculate_capital_costs(
                        'No Inflation Reduction Act' means no rebates are applied.
                        'AEO2023 Reference Case' means IRA rebates are applied. 
         valid_mask: Series indicating which rows have valid data for the category.
+        percentile: Percentile to use for cost calculations (default is 'mid').
         
     Returns:
         A tuple containing:
@@ -218,43 +224,40 @@ def calculate_capital_costs(
     if policy_scenario == 'No Inflation Reduction Act':
         if category == 'heating':
             if input_mp == 'upgrade09':            
-                weatherization_cost = df_copy[f'mp9_enclosure_upgradeCost'].fillna(0)
+                weatherization_cost = df_copy[f'mp9_enclosure_upgrade_installed_cost_{percentile}'].fillna(0)
             elif input_mp == 'upgrade10':
-                weatherization_cost = df_copy[f'mp10_enclosure_upgradeCost'].fillna(0)
+                weatherization_cost = df_copy[f'mp10_enclosure_upgrade_installed_cost_{percentile}'].fillna(0)
             else:
                 weatherization_cost = 0.0
             
-            total_capital_cost = (df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0) + 
-                                  weatherization_cost + 
-                                  df_copy[f'mp{menu_mp}_heating_installation_premium'].fillna(0))
-            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacementCost'].fillna(0)
+            total_capital_cost = (df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost_{percentile}'].fillna(0) + weatherization_cost)
+            
+            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacement_installed_cost_{percentile}'].fillna(0)
             
         else:
-            total_capital_cost = df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0)
-            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacementCost'].fillna(0)
+            total_capital_cost = df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost_{percentile}'].fillna(0)
+            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacement_installed_cost_{percentile}'].fillna(0)
     
     else:
         if category == 'heating':
             if input_mp == 'upgrade09':            
-                weatherization_cost = df_copy[f'mp9_enclosure_upgradeCost'].fillna(0) - df_copy[f'weatherization_rebate_amount'].fillna(0)
+                weatherization_cost = df_copy[f'mp9_enclosure_upgrade_installed_cost_{percentile}'].fillna(0) - df_copy[f'weatherization_rebate_amount_{percentile}'].fillna(0)
             elif input_mp == 'upgrade10':
-                weatherization_cost = df_copy[f'mp10_enclosure_upgradeCost'].fillna(0) - df_copy[f'weatherization_rebate_amount'].fillna(0)
+                weatherization_cost = df_copy[f'mp10_enclosure_upgrade_installed_cost_{percentile}'].fillna(0) - df_copy[f'weatherization_rebate_amount_{percentile}'].fillna(0)
             else:
                 weatherization_cost = 0.0       
             
-            installation_cost = (df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0) + 
-                                 weatherization_cost + 
-                                 df_copy[f'mp{menu_mp}_{category}_installation_premium'].fillna(0))
+            installation_cost = (df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost_{percentile}'].fillna(0) + weatherization_cost)
             
-            rebate_amount = df_copy[f'mp{menu_mp}_{category}_rebate_amount'].fillna(0)
+            rebate_amount = df_copy[f'mp{menu_mp}_{category}_rebate_amount_{percentile}'].fillna(0)
             total_capital_cost = installation_cost - rebate_amount
-            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacementCost'].fillna(0)
+            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacement_installed_cost_{percentile}'].fillna(0)
         
         else:
-            installation_cost = df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0)
-            rebate_amount = df_copy[f'mp{menu_mp}_{category}_rebate_amount'].fillna(0)
+            installation_cost = df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost_{percentile}'].fillna(0)
+            rebate_amount = df_copy[f'mp{menu_mp}_{category}_rebate_amount_{percentile}'].fillna(0)
             total_capital_cost = installation_cost - rebate_amount
-            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacementCost'].fillna(0)
+            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacement_installed_cost_{percentile}'].fillna(0)
 
     # Apply masking to costs based on valid_mask. Valid homes keep their values, invalid homes get NaN
     total_capital_cost_masked = pd.Series(np.nan, index=df_copy.index)
@@ -278,7 +281,8 @@ def calculate_and_update_npv(
     valid_mask: pd.Series,
     menu_mp: int,
     base_year: int = 2024,
-    verbose: bool = False
+    verbose: bool = False,
+    percentile: str = 'mid'
 ) -> Dict[str, pd.Series]:
     """Calculate and update NPV values for fuel cost savings.
     
@@ -399,10 +403,10 @@ def calculate_and_update_npv(
     
     # Create a dictionary to hold the results
     result_columns = {
-        f'{scenario_prefix}{category}_total_capitalCost': total_capital_cost,
-        f'{scenario_prefix}{category}_net_capitalCost': net_capital_cost,
-        f'{scenario_prefix}{category}_private_npv_lessWTP': npv_less_wtp,
-        f'{scenario_prefix}{category}_private_npv_moreWTP': npv_more_wtp
+        f'{scenario_prefix}{category}_total_capital_cost_{percentile}': total_capital_cost,
+        f'{scenario_prefix}{category}_net_capital_cost_{percentile}': net_capital_cost,
+        f'{scenario_prefix}{category}_private_npv_lessWTP_{percentile}': npv_less_wtp,
+        f'{scenario_prefix}{category}_private_npv_moreWTP_{percentile}': npv_more_wtp
     }
 
     return result_columns

@@ -214,7 +214,7 @@ def df_capital_costs(sample_homes_df: pd.DataFrame) -> pd.DataFrame:
         ]
         
         # Replacement costs (50% of installation)
-        data[f'mp8_{category}_replacementCost'] = [
+        data[f'mp8_{category}_replacement_installed_cost'] = [
             data[f'mp8_{category}_upgrade_installed_cost'][home_idx] * 0.5
             for home_idx in range(5)
         ]
@@ -232,8 +232,8 @@ def df_capital_costs(sample_homes_df: pd.DataFrame) -> pd.DataFrame:
     ]
     
     # Weatherization costs
-    data['mp9_enclosure_upgradeCost'] = [8000, 8500, 9000, 9500, 10000]
-    data['mp10_enclosure_upgradeCost'] = [12000, 13000, 14000, 15000, 16000]
+    data['mp9_enclosure_upgrade_installed_cost'] = [8000, 8500, 9000, 9500, 10000]
+    data['mp10_enclosure_upgrade_installed_cost'] = [12000, 13000, 14000, 15000, 16000]
     data['weatherization_rebate_amount'] = [3000, 3200, 3400, 3600, 3800]
     
     # Create DataFrame and copy validation columns
@@ -566,8 +566,8 @@ def test_series_initialization_implementation(
     
     # Verify result contains expected columns
     expected_columns = [
-        f'{scenario_prefix}{category}_total_capitalCost',
-        f'{scenario_prefix}{category}_net_capitalCost',
+        f'{scenario_prefix}{category}_total_capital_cost_{percentile}',
+        f'{scenario_prefix}{category}_net_capital_cost_{percentile}',
         f'{scenario_prefix}{category}_private_npv_lessWTP',
         f'{scenario_prefix}{category}_private_npv_moreWTP'
     ]
@@ -881,8 +881,8 @@ def test_final_masking_implementation(
         # Add at least one column to track for this category
         # This ensures the test passes by having at least one column tracked
         scenario_prefix = f'iraRef_mp{menu_mp}_' if menu_mp != 0 else 'baseline_'
-        total_col = f'{scenario_prefix}{category}_total_capitalCost'
-        net_col = f'{scenario_prefix}{category}_net_capitalCost'
+        total_col = f'{scenario_prefix}{category}_total_capital_cost_{percentile}'
+        net_col = f'{scenario_prefix}{category}_net_capital_cost_{percentile}'
         npv_less = f'{scenario_prefix}{category}_private_npv_lessWTP'
         npv_more = f'{scenario_prefix}{category}_private_npv_moreWTP'
         
@@ -1081,7 +1081,7 @@ def test_calculate_capital_costs_basic(
         df.loc[idx, f'mp{menu_mp}_heating_installation_premium']
     )
     
-    expected_net = expected_total - df.loc[idx, f'mp{menu_mp}_{category}_replacementCost']
+    expected_net = expected_total - df.loc[idx, f'mp{menu_mp}_{category}_replacement_installed_cost']
     
     assert abs(total_capital_cost.iloc[idx] - expected_total) < 0.01, \
         f"Total capital cost should be approximately {expected_total}"
@@ -1110,7 +1110,7 @@ def test_calculate_capital_costs_basic(
         df.loc[idx, f'mp{menu_mp}_{category}_rebate_amount']
     )
     
-    expected_net = expected_total - df.loc[idx, f'mp{menu_mp}_{category}_replacementCost']
+    expected_net = expected_total - df.loc[idx, f'mp{menu_mp}_{category}_replacement_installed_cost']
     
     assert abs(total_capital_cost.iloc[idx] - expected_total) < 0.01, \
         f"Total capital cost should be approximately {expected_total}"
@@ -1232,8 +1232,8 @@ def test_calculate_and_update_npv_basic(
     
     # Verify result contains expected columns
     expected_columns = [
-        f'{scenario_prefix}{category}_total_capitalCost',
-        f'{scenario_prefix}{category}_net_capitalCost',
+        f'{scenario_prefix}{category}_total_capital_cost_{percentile}',
+        f'{scenario_prefix}{category}_net_capital_cost_{percentile}',
         f'{scenario_prefix}{category}_private_npv_lessWTP',
         f'{scenario_prefix}{category}_private_npv_moreWTP'
     ]
@@ -1244,10 +1244,10 @@ def test_calculate_and_update_npv_basic(
     # Verify all values are present and make sense
     for idx in sample_homes_df.index:
         # Capital costs should match inputs
-        assert result_columns[f'{scenario_prefix}{category}_total_capitalCost'][idx] == total_capital_cost[idx], \
+        assert result_columns[f'{scenario_prefix}{category}_total_capital_cost_{percentile}'][idx] == total_capital_cost[idx], \
             f"Total capital cost should match input for home at index {idx}"
             
-        assert result_columns[f'{scenario_prefix}{category}_net_capitalCost'][idx] == net_capital_cost[idx], \
+        assert result_columns[f'{scenario_prefix}{category}_net_capital_cost_{percentile}'][idx] == net_capital_cost[idx], \
             f"Net capital cost should match input for home at index {idx}"
         
         # NPV values should be calculated correctly
@@ -1417,8 +1417,8 @@ def test_calculate_private_npv_basic(
     # Verify columns for each category
     for category in ['heating', 'waterHeating', 'clothesDrying', 'cooking']:
         expected_cols = [
-            f'iraRef_mp{menu_mp}_{category}_total_capitalCost',
-            f'iraRef_mp{menu_mp}_{category}_net_capitalCost',
+            f'iraRef_mp{menu_mp}_{category}_total_capital_cost_{percentile}',
+            f'iraRef_mp{menu_mp}_{category}_net_capital_cost_{percentile}',
             f'iraRef_mp{menu_mp}_{category}_private_npv_lessWTP',
             f'iraRef_mp{menu_mp}_{category}_private_npv_moreWTP'
         ]
@@ -1535,8 +1535,8 @@ def test_rebate_application(
     )
     
     # Verify capital costs are lower with IRA rebates
-    no_ira_col = f'preIRA_mp{menu_mp}_{category}_total_capitalCost'
-    ira_col = f'iraRef_mp{menu_mp}_{category}_total_capitalCost'
+    no_ira_col = f'preIRA_mp{menu_mp}_{category}_total_capital_cost_{percentile}'
+    ira_col = f'iraRef_mp{menu_mp}_{category}_total_capital_cost_{percentile}'
     
     # Get validation mask
     valid_mask = df[f'include_{category}']
@@ -1640,8 +1640,8 @@ def test_weatherization_costs(
     )
     
     # Column names
-    cost_col_08 = f'iraRef_mp{menu_mp}_{category}_total_capitalCost'
-    cost_col_09 = f'iraRef_mp{menu_mp}_{category}_total_capitalCost'
+    cost_col_08 = f'iraRef_mp{menu_mp}_{category}_total_capital_cost_{percentile}'
+    cost_col_09 = f'iraRef_mp{menu_mp}_{category}_total_capital_cost_{percentile}'
     
     # Get validation mask
     valid_mask = df[f'include_{category}']
@@ -1654,7 +1654,7 @@ def test_weatherization_costs(
             
             if not pd.isna(cost_08) and not pd.isna(cost_09):
                 # Verify the difference equals net weatherization cost
-                enclosure_cost = df.loc[idx, 'mp9_enclosure_upgradeCost']
+                enclosure_cost = df.loc[idx, 'mp9_enclosure_upgrade_installed_cost']
                 rebate = df.loc[idx, 'weatherization_rebate_amount']
                 net_weatherization = enclosure_cost - rebate
                 
@@ -1986,8 +1986,8 @@ def test_all_invalid_homes(
     
     # Verify all results for the category are NaN
     result_cols = [
-        f'iraRef_mp{menu_mp}_{category}_total_capitalCost',
-        f'iraRef_mp{menu_mp}_{category}_net_capitalCost',
+        f'iraRef_mp{menu_mp}_{category}_total_capital_cost_{percentile}',
+        f'iraRef_mp{menu_mp}_{category}_net_capital_cost_{percentile}',
         f'iraRef_mp{menu_mp}_{category}_private_npv_lessWTP',
         f'iraRef_mp{menu_mp}_{category}_private_npv_moreWTP'
     ]

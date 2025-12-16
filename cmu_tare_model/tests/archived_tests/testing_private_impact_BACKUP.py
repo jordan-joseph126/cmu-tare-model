@@ -19,8 +19,8 @@ def create_test_data(menu_mp, input_mp):
 
     # Create base DataFrame
     df = pd.DataFrame({
-        'mp9_enclosure_upgradeCost': np.random.uniform(1000, 5000, n),
-        'mp10_enclosure_upgradeCost': np.random.uniform(1000, 5000, n),
+        'mp9_enclosure_upgrade_installed_cost': np.random.uniform(1000, 5000, n),
+        'mp10_enclosure_upgrade_installed_cost': np.random.uniform(1000, 5000, n),
         'weatherization_rebate_amount': np.random.uniform(100, 1000, n),
     })
     
@@ -55,7 +55,7 @@ def create_test_data(menu_mp, input_mp):
         capital_cost_data[f'mp{menu_mp}_{category}_upgrade_installed_cost'] = np.random.uniform(2000, 8000, n)
         
         # Replacement costs
-        capital_cost_data[f'mp{menu_mp}_{category}_replacementCost'] = np.random.uniform(1000, 4000, n)
+        capital_cost_data[f'mp{menu_mp}_{category}_replacement_installed_cost'] = np.random.uniform(1000, 4000, n)
                 
         # Rebate amounts
         capital_cost_data[f'mp{menu_mp}_{category}_rebate_amount'] = np.random.uniform(500, 2000, n)
@@ -174,7 +174,7 @@ For example, some of the output for the "No Inflation Reduction Act" scenario is
 
 sql
 Copy
-... Comparing results for policy scenario: No Inflation Reduction Act ===== COMPARISON RESULTS ===== ✓ Column 'iraRef_mp5_heating_installationCost' matches between implementations ... ✓ Column 'preIRA_mp5_clothesDrying_installationCost' matches between implementations ✗ Column 'preIRA_mp5_clothesDrying_net_capitalCost' differs between implementations Sample values from current implementation: 2561.243443, 2901.940341, -168.663047, ... Sample values from backup implementation: 1623.277919, 3370.237490, 4621.642348, ... Difference: 937.965525, 468.297149, 4790.305395, ... ... ✗ Column 'preIRA_mp5_heating_total_capitalCost' differs between implementations Sample values from current implementation: 7160.861408, 10831.890272, 9979.387213, ... Sample values from backup implementation: 8606.735941, 8021.826724, 6476.243274, ... Difference: 1445.874533, 2810.063548, 3503.143939, ... ... Summary: 42/58 columns match exactly (equivalence rate: 72.41%) ✗✗✗ IMPLEMENTATIONS HAVE DIFFERENCES ✗✗✗ Test failed! There are differences between the implementations.
+... Comparing results for policy scenario: No Inflation Reduction Act ===== COMPARISON RESULTS ===== ✓ Column 'iraRef_mp5_heating_installationCost' matches between implementations ... ✓ Column 'preIRA_mp5_clothesDrying_installationCost' matches between implementations ✗ Column 'preIRA_mp5_clothesDrying_net_capital_cost_{percentile}' differs between implementations Sample values from current implementation: 2561.243443, 2901.940341, -168.663047, ... Sample values from backup implementation: 1623.277919, 3370.237490, 4621.642348, ... Difference: 937.965525, 468.297149, 4790.305395, ... ... ✗ Column 'preIRA_mp5_heating_total_capital_cost_{percentile}' differs between implementations Sample values from current implementation: 7160.861408, 10831.890272, 9979.387213, ... Sample values from backup implementation: 8606.735941, 8021.826724, 6476.243274, ... Difference: 1445.874533, 2810.063548, 3503.143939, ... ... Summary: 42/58 columns match exactly (equivalence rate: 72.41%) ✗✗✗ IMPLEMENTATIONS HAVE DIFFERENCES ✗✗✗ Test failed! There are differences between the implementations.
 Below is the snippet from the updated test script that calls the current version of calculate_private_NPV:
 
 python
@@ -245,7 +245,7 @@ When comparing outputs, make sure to account for potentially different column na
 python
 # Map between current and backup column names
 column_mapping = {
-    f'preIRA_{category}_total_capitalCost': f'preIRA_mp{menu_mp}_{category}_total_capitalCost',
+    f'preIRA_{category}_total_capital_cost_{percentile}': f'preIRA_mp{menu_mp}_{category}_total_capital_cost_{percentile}',
     # Add more mappings as needed
 }
 Recommended Solution

@@ -1,13 +1,38 @@
+"""
+========================================================================================================
+CALCULATE REBATE ELIGIBILITY AND AMOUNTS (REMDB V4 METHODOLOGY)
+========================================================================================================
+This module calculates IRA rebate eligibility and amounts for residential equipment upgrades.
+
+Key rebate structure:
+- Low-Income (≤80% AMI): 100% coverage up to maximum rebate per equipment
+- Moderate-Income (>80% to ≤150% AMI): 50% coverage up to maximum rebate
+- Middle-to-Upper Income (>150% AMI): No rebate eligibility
+
+Rebate amounts defined in REBATE_MAPPING (constants.py):
+- Space conditioning (heating/cooling): $8,000 max (applies once for both)
+- Water heating: $1,750 max
+- Clothes dryer: $840 max
+- Cooking range: $840 max
+- Weatherization: $1,600 max (MPs 9-10 only)
+
+PREREQUISITE: Call calculate_upgrade_installed_cost() first to create cost columns.
+
+# UPDATED DECEMBER 16, 2025 - REMDB V4 METHODOLOGY COMPATIBILITY
+# UPDATED APRIL 22, 2025 - IMPROVED DOCUMENTATION, MODULARITY, ERROR HANDLING
+"""
+
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
 from typing import Dict, List, Optional, Tuple, Union, Callable
 
-from cmu_tare_model.constants import REBATE_MAPPING
+from cmu_tare_model.constants import REBATE_MAPPING, VALID_MENU_MPS, EQUIPMENT_SPECS
 from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2023_2022
 from cmu_tare_model.utils.validation_framework import (
     create_retrofit_only_series,
     initialize_validation_tracking,
+    apply_new_columns_to_dataframe,
     apply_final_masking,
 )
 
@@ -18,13 +43,10 @@ from cmu_tare_model.private_impact.data_processing.process_income_data_for_rebat
     cpi_ratio_2023_2022
 )
 
-"""
-================================================================================================================================================================================
-FUNCTIONS: AMI AND INCOME GROUP DESIGNATION FOR REBATE ELIGIBILITY
-================================================================================================================================================================================
-- UPDATED APRIL 22, 2025 WITH IMPROVED DOCUMENTATION, MODULARITY, ERROR HANDLING
-"""
 
+# ================================================================================================================
+# FUNCTIONS: AMI AND INCOME GROUP DESIGNATION FOR REBATE ELIGIBILITY
+# ================================================================================================================
 
 def generate_household_medianIncome_2023(row: pd.Series) -> float:
     """
@@ -179,13 +201,14 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame) -> pd.DataFrame:
     # Calculate percent_AMI
     df_results_IRA['percent_AMI'] = ((df_results_IRA['household_income'] / df_results_IRA['census_area_medianIncome']) * 100).round(2)
 
-    # Create detailed income level categories
+    # Assign income level designation based on percent_AMI thresholds
     income_conditions = [
         df_results_IRA['percent_AMI'] <= 80.0,
         (df_results_IRA['percent_AMI'] > 80.0) & (df_results_IRA['percent_AMI'] <= 150.0)
     ]
     income_choices = ['Low-Income', 'Moderate-Income']
 
+    # Default to 'Middle-to-Upper-Income' for values above 150% AMI (ineligible for rebates)
     df_results_IRA['income_level'] = np.select(
         income_conditions, 
         income_choices, 
@@ -193,24 +216,16 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame) -> pd.DataFrame:
     )
 
     # Create binary LMI/MUI classification
-    # Method 1: Using the income_level column we just created
     df_results_IRA['lmi_or_mui'] = df_results_IRA['income_level'].apply(
         lambda x: 'LMI' if x in ['Low-Income', 'Moderate-Income'] else 'MUI'
     )
-    
-    # Alternative Method 2: Direct threshold-based approach (more efficient for large datasets)
-    # df_results_IRA['lmi_or_mui'] = np.where(
-    #     df_results_IRA['percent_AMI'] <= 150.0, 'LMI', 'MUI'
-    # )
 
     return df_results_IRA
 
 
-"""
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-FUNCTIONS: CALCULATE REBATE AMOUNTS
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-"""
+# ================================================================================================================
+# FUNCTIONS: CALCULATE REBATE AMOUNTS
+# ================================================================================================================
 
 def get_max_rebate_amount(
         row: pd.Series,
@@ -239,128 +254,167 @@ def get_max_rebate_amount(
     return max_rebate_amount, max_weatherization_rebate_amount
 
 
-def calculate_rebate(
-        df_results_IRA: pd.DataFrame, 
-        row: pd.Series,
-        category: str, 
-        menu_mp: int, 
-        coverage_rate: float) -> None:
-    """
-    Calculate and assign the rebate amounts for a specific row.
-    
-    Args:
-        df_results_IRA: DataFrame to update with rebate amounts
-        row: Row containing installation cost data
-        category: Equipment category
-        menu_mp: Measure package identifier
-        coverage_rate: Rebate coverage rate (1.0 for low-income, 0.5 for moderate-income)
-        
-    Raises:
-        ValueError: If an invalid category is provided
-        KeyError: If required columns are missing
-    """
-    try:
-        max_rebate_amount, max_weatherization_rebate_amount = get_max_rebate_amount(row, category)
-        
-        # Calculate equipment rebate
-        install_cost_col = f'mp{menu_mp}_{category}_upgrade_installed_cost'
-        rebate_col = f'mp{menu_mp}_{category}_rebate_amount'
-        
-        if install_cost_col in row and not pd.isna(row[install_cost_col]):
-            project_coverage = round(row[install_cost_col] * coverage_rate, 2)
-            df_results_IRA.at[row.name, rebate_col] = min(project_coverage, max_rebate_amount)
-        else:
-            df_results_IRA.at[row.name, rebate_col] = 0.00
-            if coverage_rate > 0 and max_rebate_amount > 0:
-                print(f"Warning: Installation cost data missing for row {row.name}, category {category}. Setting rebate to 0.")
-        
-        # Calculate weatherization rebate if applicable
-        if f'mp{menu_mp}_enclosure_upgradeCost' in df_results_IRA.columns and menu_mp in [9, 10]:
-            if f'mp{menu_mp}_enclosure_upgradeCost' in row and not pd.isna(row[f'mp{menu_mp}_enclosure_upgradeCost']):
-                weatherization_project_coverage = round(row[f'mp{menu_mp}_enclosure_upgradeCost'] * coverage_rate, 2)
-                df_results_IRA.at[row.name, 'weatherization_rebate_amount'] = min(weatherization_project_coverage, max_weatherization_rebate_amount)
-            else:
-                df_results_IRA.at[row.name, 'weatherization_rebate_amount'] = 0.00
-                if coverage_rate > 0 and menu_mp in [9, 10]:
-                    print(f"Warning: Enclosure cost data missing for row {row.name}. Setting weatherization rebate to 0.")
-    
-    except Exception as e:
-        print(f"Error calculating rebate for row {row.name}, category {category}: {str(e)}")
-        # Set default values to prevent calculations from breaking
-        df_results_IRA.at[row.name, rebate_col] = 0.00
-        if menu_mp in [9, 10] and 'weatherization_rebate_amount' in df_results_IRA.columns:
-            df_results_IRA.at[row.name, 'weatherization_rebate_amount'] = 0.00
-
-
 def calculate_rebateIRA(
-        df_results_IRA: pd.DataFrame, 
+        df: pd.DataFrame, 
         category: str, 
-        menu_mp: int) -> pd.DataFrame:
+        menu_mp: int,
+        percentile: str = 'mid'
+        ) -> pd.DataFrame:
     """
-    Calculates rebate amounts for different end-uses based on income designation.
+    Calculate IRA rebate amounts based on income level and equipment costs.
     
-    This function applies the appropriate rebate percentage based on income designation
-    and applies data validation to ensure only valid homes are considered for rebates.
-    Rebates are calculated at different rates:
-    - 100% coverage rate for low-income homes (up to maximum rebate amount)
-    - 50% coverage rate for moderate-income homes (up to maximum rebate amount)
-    - 0% coverage rate for middle-to-upper-income homes
+    PREREQUISITE: Call calculate_upgrade_installed_cost() first to create the required
+    mp{menu_mp}_{category}_upgrade_installed_cost_{percentile} columns.
+    
+    Applies income-based rebate rates:
+    - Low-Income (≤80% AMI): 100% of cost up to max rebate
+    - Moderate-Income (>80-150% AMI): 50% of cost up to max rebate  
+    - Middle-to-Upper Income (>150% AMI): $0 rebate
+    
+    Uses the 5-step validation framework to ensure only valid homes receive rebates.
     
     Args:
-        df_results_IRA: DataFrame containing income designations and cost data
-        category: Equipment category (e.g., 'heating', 'waterHeating')
-        menu_mp: Measure package identifier
+        df: DataFrame with income data and upgrade costs.
+        category: Equipment category (e.g., 'heating', 'cooling', 'waterHeating').
+        menu_mp: Measure package number.
+        percentile: Cost percentile ('low', 'mid', 'high').
         
     Returns:
-        Updated DataFrame with calculated rebate amounts
+        DataFrame with mp{menu_mp}_{category}_rebate_amount_{percentile} column.
         
-    Notes:
-        This function implements the validation framework:
-        1. Uses initialize_validation_tracking() to determine valid homes
-        2. Creates retrofit-only series with NaN for invalid homes
-        3. Calculates rebates only for valid homes
-        4. Applies final verification masking
+    Raises:
+        ValueError: If invalid menu_mp, category, or percentile provided.
+        KeyError: If required columns are missing.
     """
-
-    # Initialize validation tracking
-    df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-        df_results_IRA, category, menu_mp, verbose=True)
+    # Validate inputs
+    if menu_mp not in VALID_MENU_MPS:
+        raise ValueError(f"Invalid menu_mp: {menu_mp}. Must be one of {VALID_MENU_MPS}")
     
-    # Create rebate columns
-    rebate_col = f'mp{menu_mp}_{category}_rebate_amount'
-
-    df_copy[rebate_col] = create_retrofit_only_series(df_copy, valid_mask)
+    # Valid categories are defined in EQUIPMENT_SPECS
+    valid_categories = list(EQUIPMENT_SPECS.keys())
+    if category not in valid_categories:
+        raise ValueError(f"Invalid category: '{category}'. Must be one of {valid_categories}")
     
-    # Track the rebate column
-    category_columns_to_mask.append(rebate_col)
+    if percentile not in ['low', 'mid', 'high']:
+        raise ValueError(f"Invalid percentile: '{percentile}'. Must be 'low', 'mid', or 'high'")
     
-    # Also track and create weatherization rebate column if relevant
+    # Verify prerequisite columns exist
+    cost_col = f'mp{menu_mp}_{category}_upgrade_installed_cost_{percentile}'
+    if cost_col not in df.columns:
+        raise KeyError(
+            f"Missing required column: {cost_col}\n"
+            f"Call calculate_upgrade_installed_cost() first to create this column."
+        )
+    
+    # Verify income data exists
+    required_income_cols = ['income_level']
+    missing_income = [c for c in required_income_cols if c not in df.columns]
+    if missing_income:
+        raise KeyError(
+            f"Missing income columns: {missing_income}\n"
+            f"Call calculate_percent_AMI() first to create these columns."
+        )
+    
+    print(f"\nCalculating {category} rebates (Menu MP{menu_mp}, {percentile} percentile)")
+    
+    # ===== STEP 1: Initialize validation tracking =====
+    df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = \
+        initialize_validation_tracking(df, category, menu_mp=menu_mp, verbose=True)
+    
+    # Define column names
+    rebate_col = f'mp{menu_mp}_{category}_rebate_amount_{percentile}'
+    weatherization_rebate_col = f'mp{menu_mp}_weatherization_rebate_amount_{percentile}'
+    
+    # ===== STEP 2: Initialize result series with template =====
+    # Use create_retrofit_only_series to properly initialize with zeros for valid homes, NaN for others
+    rebate_series = create_retrofit_only_series(df_copy, valid_mask)
+    
+    # Initialize weatherization series if applicable
+    weatherization_series = None
     if menu_mp in [9, 10]:
-        weatherization_col = 'weatherization_rebate_amount'
-        df_copy[weatherization_col] = 0.0
-        
-        # Track weatherization column under the category
-        category_columns_to_mask.append(weatherization_col)
+        weatherization_series = create_retrofit_only_series(df_copy, valid_mask)
     
-    # Apply rebates based on income designation
-    def apply_rebate(row):
-        # Skip invalid homes
-        if not valid_mask.loc[row.name]:
-            return
-            
-        income_designation = row['income_level']
-        if income_designation == 'Low-Income':
-            calculate_rebate(df_copy, row, category, menu_mp, 1.00)
-        elif income_designation == 'Moderate-Income':
-            calculate_rebate(df_copy, row, category, menu_mp, 0.50)
+    # ===== STEP 3 & 4: Calculate for valid homes only =====
+    # Extract cost and income data for valid homes
+    install_cost = df_copy[cost_col]
+    income_level = df_copy['income_level']
+    
+    # Get upgrade column name from REBATE_MAPPING for eligibility check
+    upgrade_column = None
+    max_rebate_base = 0.0
+    if category in REBATE_MAPPING:
+        upgrade_column, conditions, max_rebate_base = REBATE_MAPPING[category]
+        # Check eligibility: home must have qualifying upgrade technology
+        if upgrade_column in df_copy.columns:
+            eligibility_mask = df_copy[upgrade_column].apply(
+                lambda x: any(cond in str(x) for cond in conditions) if pd.notna(x) else False
+            )
         else:
-            df_copy.at[row.name, rebate_col] = 0.00
-            if menu_mp in [9, 10] and 'weatherization_rebate_amount' in df_copy.columns:
-                df_copy.at[row.name, 'weatherization_rebate_amount'] = 0.00
-
-    df_copy.apply(apply_rebate, axis=1)
+            eligibility_mask = pd.Series(False, index=df_copy.index)
+    else:
+        eligibility_mask = pd.Series(False, index=df_copy.index)
     
-    # Apply final verification masking for consistency
+    # Calculate rebates for valid, eligible homes
+    # Low-Income: 100% coverage up to max rebate
+    low_income_mask = valid_mask & eligibility_mask & (income_level == 'Low-Income')
+    if low_income_mask.any():
+        project_coverage = (install_cost * 1.0).round(2)
+        rebate_series.loc[low_income_mask] = np.minimum(project_coverage, max_rebate_base).loc[low_income_mask]
+    
+    # Moderate-Income: 50% coverage up to max rebate
+    moderate_income_mask = valid_mask & eligibility_mask & (income_level == 'Moderate-Income')
+    if moderate_income_mask.any():
+        project_coverage = (install_cost * 0.5).round(2)
+        rebate_series.loc[moderate_income_mask] = np.minimum(project_coverage, max_rebate_base).loc[moderate_income_mask]
+    
+    # Middle-to-Upper Income: No rebate (already initialized to 0)
+    
+    # Calculate weatherization rebates if applicable (MPs 9-10 only)
+    if menu_mp in [9, 10] and weatherization_series is not None:
+        enclosure_col = f'mp{menu_mp}_enclosure_upgrade_installed_cost_{percentile}'
+        
+        if enclosure_col in df_copy.columns:
+            enclosure_cost = df_copy[enclosure_col]
+            max_weatherization = 1600.0
+            
+            # Low-Income: 100% coverage up to max
+            if low_income_mask.any():
+                weatherization_coverage = (enclosure_cost * 1.0).round(2)
+                weatherization_series.loc[low_income_mask] = np.minimum(
+                    weatherization_coverage, max_weatherization
+                ).loc[low_income_mask]
+            
+            # Moderate-Income: 50% coverage up to max
+            if moderate_income_mask.any():
+                weatherization_coverage = (enclosure_cost * 0.5).round(2)
+                weatherization_series.loc[moderate_income_mask] = np.minimum(
+                    weatherization_coverage, max_weatherization
+                ).loc[moderate_income_mask]
+    
+    # Create DataFrame with new columns
+    df_new_columns = pd.DataFrame({rebate_col: rebate_series})
+    if weatherization_series is not None:
+        df_new_columns[weatherization_rebate_col] = weatherization_series
+    
+    # Apply new columns to DataFrame with proper tracking
+    df_copy, all_columns_to_mask = apply_new_columns_to_dataframe(
+        df_copy, df_new_columns, category, category_columns_to_mask, all_columns_to_mask)
+    
+    # ===== STEP 5: Apply final verification masking for consistency =====
     df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=True)
+    
+    # Report summary
+    valid_rebates = df_copy[rebate_col].notna().sum()
+    mean_rebate = df_copy[rebate_col].mean()
+    total_rebates = df_copy[rebate_col].sum()
+    
+    print(f"  Calculated rebates for {valid_rebates:,} homes")
+    print(f"  Mean rebate: ${mean_rebate:,.2f}")
+    print(f"  Total rebates: ${total_rebates:,.2f}\n")
+    
+    if menu_mp in [9, 10] and weatherization_rebate_col in df_copy.columns:
+        valid_weatherization = df_copy[weatherization_rebate_col].notna().sum()
+        mean_weatherization = df_copy[weatherization_rebate_col].mean()
+        print(f"  Weatherization rebates: {valid_weatherization:,} homes (mean: ${mean_weatherization:,.2f})\n")
     
     return df_copy

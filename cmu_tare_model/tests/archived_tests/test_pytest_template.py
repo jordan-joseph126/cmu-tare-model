@@ -240,29 +240,29 @@ def capital_costs_df() -> pd.DataFrame:
     for mp in [7, 8, 9, 10]:
         # Heating columns
         data[f'mp{mp}_heating_installationCost'] = [10000, 12000, 15000, 8000, 11000]
-        data[f'mp{mp}_heating_replacementCost'] = [5000, 6000, 7500, 4000, 5500]
+        data[f'mp{mp}_heating_replacement_installed_cost'] = [5000, 6000, 7500, 4000, 5500]
         data[f'mp{mp}_heating_installation_premium'] = [1000, 1200, 1500, 800, 1100]
         data[f'mp{mp}_heating_rebate_amount'] = [2000, 2400, 3000, 1600, 2200]
         
         # Water heating columns
         data[f'mp{mp}_waterHeating_installationCost'] = [5000, 6000, 7500, 4000, 5500]
-        data[f'mp{mp}_waterHeating_replacementCost'] = [2500, 3000, 3750, 2000, 2750]
+        data[f'mp{mp}_waterHeating_replacement_installed_cost'] = [2500, 3000, 3750, 2000, 2750]
         data[f'mp{mp}_waterHeating_rebate_amount'] = [1000, 1200, 1500, 800, 1100]
         
         # Clothes drying columns
         data[f'mp{mp}_clothesDrying_installationCost'] = [2000, 2400, 3000, 1600, 2200]
-        data[f'mp{mp}_clothesDrying_replacementCost'] = [1000, 1200, 1500, 800, 1100]
+        data[f'mp{mp}_clothesDrying_replacement_installed_cost'] = [1000, 1200, 1500, 800, 1100]
         data[f'mp{mp}_clothesDrying_rebate_amount'] = [400, 480, 600, 320, 440]
         
         # Cooking columns
         data[f'mp{mp}_cooking_installationCost'] = [3000, 3600, 4500, 2400, 3300]
-        data[f'mp{mp}_cooking_replacementCost'] = [1500, 1800, 2250, 1200, 1650]
+        data[f'mp{mp}_cooking_replacement_installed_cost'] = [1500, 1800, 2250, 1200, 1650]
         data[f'mp{mp}_cooking_rebate_amount'] = [600, 720, 900, 480, 660]
     
     # Additional columns needed for weatherization calculations
     data['weatherization_rebate_amount'] = [1000, 1200, 1500, 800, 1100]
-    data['mp9_enclosure_upgradeCost'] = [3000, 3600, 4500, 2400, 3300]
-    data['mp10_enclosure_upgradeCost'] = [4000, 4800, 6000, 3200, 4400]
+    data['mp9_enclosure_upgrade_installed_cost'] = [3000, 3600, 4500, 2400, 3300]
+    data['mp10_enclosure_upgrade_installed_cost'] = [4000, 4800, 6000, 3200, 4400]
     
     return pd.DataFrame(data)
 
@@ -292,7 +292,7 @@ def edge_case_df() -> pd.DataFrame:
         
         # Invalid cost data
         'mp8_heating_installationCost': [10000, 0, -5000, np.nan, 1e10],
-        'mp8_heating_replacementCost': [5000, 0, -2500, np.nan, 1e9],
+        'mp8_heating_replacement_installed_cost': [5000, 0, -2500, np.nan, 1e9],
         'mp8_heating_rebate_amount': [2000, 0, 20000, np.nan, 1e11],  # Rebate > cost
         
         # Mixed data types (will be converted to string)

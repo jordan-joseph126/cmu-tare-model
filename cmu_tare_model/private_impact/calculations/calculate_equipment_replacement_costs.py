@@ -1,22 +1,6 @@
-import pandas as pd
-import numpy as np
-from typing import Literal
-
-from cmu_tare_model.utils.validation_framework import (
-    apply_new_columns_to_dataframe,
-    apply_final_masking,
-    initialize_validation_tracking,
-    create_retrofit_only_series
-)
-from cmu_tare_model.utils.remdb_v4_installed_cost_utils import (
-    map_remdb_cost_parameters,
-    calculate_metric_from_remdb_bounds,
-    remdb_cost_regression_formula
-)
-
 """
 ========================================================================================================================================================================
-OVERVIEW: CALCULATE REPLACEMENT INSTALLED COSTS FOR VARIOUS END USES (REMDB V4 METHODOLOGY)
+CALCULATE REPLACEMENT INSTALLED COSTS FOR VARIOUS END USES (REMDB V4 METHODOLOGY)
 ========================================================================================================================================================================
 This module calculates REPLACEMENT installed costs for equipment retrofits using REMDB v4 regression methodology.
 It replaces the probabilistic sampling approach (REMDB v3) with deterministic regression equations.
@@ -25,8 +9,6 @@ CRITICAL DISTINCTION: REPLACEMENT vs UPGRADE
 - **Replacement costs**: Cost to replace existing equipment with LIKE-FOR-LIKE technology (counterfactual)
 - **Upgrade costs**: Cost to retrofit to improved technology (e.g., gas furnace → heat pump)
 
-PREREQUISITE: Metrics must be extracted FIRST using add_remdb_replacement_metrics() from remdb_v4_installed_cost_utils.py
-
 Key changes from REMDB v3 to v4:
 - Regression-based calculation: Material_Price = (pm1_coef × Metric1) + (pm2_coef × Metric2) + Intercept
 - Costs already in 2023$ (no CPI adjustment needed)
@@ -34,7 +16,13 @@ Key changes from REMDB v3 to v4:
 - Added cooling as new end-use category
 - Dynamic row_id mapping replaces hardcoded technology-efficiency pairs
 
-# UPDATED DECEMBER 11, 2025 - REMDB V4 METHODOLOGY, SIMPLIFIED ARCHITECTURE
+PREREQUISITE: Call add_remdb_replacement_metrics() first to prepare pm1/pm2 columns.
+
+The cost calculation is simple:
+    Material_Price = (pm1 × pm1_coef) + (pm2 × pm2_coef) + intercept
+    Installed_Cost = (Material_Price × multiplier) + adder
+
+# UPDATED DECEMBER 15, 2025 - REMDB V4 METHODOLOGY, SIMPLIFIED ARCHITECTURE
 
 # UPDATED MARCH 24, 2025 @ 4:30 PM - REMOVED RSMEANS CCI ADJUSTMENTS
 # UPDATED APRIL 9, 2025 @ 7:30 PM - IMPROVED DOCUMENTATION
@@ -43,186 +31,112 @@ Key changes from REMDB v3 to v4:
 # UPDATED DECEMBER 10, 2025 @ 2:00 PM - INTEGRATED VALIDATION FRAMEWORK AND UPDATED COLUMN NAMING
 """
 
-# ========== Extract performance metrics for REMDB v4 cost estimation. Then add cols to main df ==========
-# add_remdb_replacement_metrics was moved to calulation_utils.py for modularity
+import pandas as pd
+import numpy as np
 
-# ========== Assign REMDB row_id based on technology ==========
-def add_remdb_replacement_row_ids(
-    df: pd.DataFrame,
-    end_use: str
-) -> pd.DataFrame:
-    """Assign REMDB v4 row_id for baseline equipment cost lookups.
-    
-    Maps baseline equipment technologies to REMDB v4 row identifiers.
-    
-    Args:
-        df: DataFrame with baseline fuel type columns.
-        end_use: Equipment category ('heating', 'cooling').
-        
-    Returns:
-        DataFrame with row_id_{end_use}_replace column added.
+from cmu_tare_model.constants import VALID_MENU_MPS
 
-    FUTURE: After successful testing, expand to non-HVAC end-uses (waterHeating, clothesDrying, cooking).
-        
-    """
-    df_copy = df.copy()
+from cmu_tare_model.utils.validation_framework import (
+    apply_new_columns_to_dataframe,
+    apply_final_masking,
+    initialize_validation_tracking,
+    create_retrofit_only_series
+)
 
-    replace_or_upgrade = 'replace'
-    
-    # The validation/include flags resolve options where there is None
+from cmu_tare_model.constants import EQUIPMENT_SPECS
 
-    # ========== HVAC OPTIONS: HEATING & COOLING ==========
-    # The efficiency level does not impact row_id mapping in REMDB v4 but instead pm1/pm2 in the regression formula
-    # Generally we use multi-zone non-ducted for homes without ducts, but may update to single-zone in the future for smaller homes 
-    # New circuit will be addressed in future versions, but excluded here for simplicity.
-    if end_use == 'heating':
-        if 'base_heating_fuel' not in df_copy.columns:
-            raise ValueError("Missing 'base_heating_fuel' column")
-        
-        conditions = [
-            (df_copy['base_heating_fuel'] == 'Propane'),
-            (df_copy['base_heating_fuel'] == 'Fuel Oil'),
-            (df_copy['base_heating_fuel'] == 'Natural Gas'),
-            (df_copy['base_heating_fuel'] == 'Electricity') & (df_copy['heating_type'] != 'Electricity ASHP'),
-            (df_copy['heating_type'] == 'Electricity ASHP') & (df_copy['hvac_has_ducts'] == 'Yes'),
-            (df_copy['heating_type'] == 'Electricity ASHP') & (df_copy['hvac_has_ducts'] == 'No')
-            ]
-
-        choices = [
-            'furnaces_gas_furnace',  # Proxy for propane
-            'furnaces_gas_furnace',  # Proxy for fuel oil
-            'furnaces_gas_furnace',
-            'electric_baseboard_default',
-            'air_source_heat_pump_centrally_ducted',
-            'air_source_heat_pump_non_ducted_multi_zone'
-            ]
-        
-        df_copy[f'row_id_{end_use}_{replace_or_upgrade}'] = np.select(conditions, choices, default='unknown')
-    
-    elif end_use == 'cooling':
-        if 'hvac_has_ducts' not in df_copy.columns:
-            raise ValueError("Missing 'hvac_has_ducts' column")
-        
-        conditions = [
-            (df_copy['hvac_cooling_type'] == 'Room AC'),
-            (df_copy['hvac_cooling_type'] == 'Central AC'),
-            (df_copy['hvac_cooling_type'] == 'Heat Pump') & (df_copy['hvac_has_ducts'] == 'Yes'),
-            (df_copy['hvac_cooling_type'] == 'Heat Pump') & (df_copy['hvac_has_ducts'] == 'No')
-        ]
-
-        choices = [
-            'air_conditioner_room_ac_window_or_through_wall',
-            'air_conditioner_centrally_ducted',
-            'air_source_heat_pump_centrally_ducted',
-            'air_source_heat_pump_non_ducted_multi_zone'
-        ]
-
-        df_copy[f'row_id_{end_use}_{replace_or_upgrade}'] = np.select(conditions, choices, default='unknown')
-        
-    # =========================================
-    # DELETE FOR NOW - NON-HVAC END USES
-    # =========================================
-
-    else:
-        # raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking'")
-        raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling'")
-
-    return df_copy
-
-# ========== Map cost parameters from REMDB v4 database using unique row_id ==========
-# map_remdb_cost_parameters was moved to calulation_utils.py for modularity
-
-# ========== Calculate installed cost of replacing existing equipment using regression formula ==========
 def calculate_replacement_installed_cost(
     df: pd.DataFrame,
-    remdb_v4_costs: pd.DataFrame,
+    menu_mp: int,
     end_use: str,
     percentile: str = 'mid'
 ) -> pd.DataFrame:
-    """Calculate REPLACEMENT installed costs using REMDB v4 methodology.
+    """
+    Calculate REPLACEMENT installed costs using REMDB v4 regression formula.
     
-    PREREQUISITE: Metrics must be extracted FIRST using add_remdb_replacement_metrics().
-    
+    PREREQUISITE: Call add_remdb_replacement_metrics() first to do the following:
+    - Extract metrics (capacity, efficiency)
+    - Assign row_id (technology mapping)
+    - Map REMDB parameters (coefficients, multiplier)
+
+    Then use this function to calculate installed costs:
+    - Calculate costs (regression formula)
+    - Uses the validation framework to ensure only valid homes receive cost calculations.
+
     Args:
-        df: DataFrame with baseline metrics already extracted.
-        remdb_v4_costs: REMDB v4 cost database (indexed by row_id).
+        df: DataFrame with prepared metrics.
+        menu_mp: Measure package number.
         end_use: Equipment category.
-        percentile: Cost percentile ('low', 'mid', 'high'). Default 'mid'.
+        percentile: Cost percentile.
         
     Returns:
-        DataFrame with baseline_{end_use}_replacement_installed_cost column added.
+        DataFrame with mp{menu_mp}_{end_use}_replacement_installed_cost_{percentile} column.
     """
-    replace_or_upgrade = 'replace'
+    # This function is for retrofit REPLACEMENT installed costs
+    replacement_or_upgrade = 'replacement'
     
+    # Validate inputs
+    if menu_mp not in VALID_MENU_MPS:
+        raise ValueError(f"Invalid menu_mp: {menu_mp}")
+    
+    # Valid categories are defined in EQUIPMENT_SPECS
+    valid_categories = list(EQUIPMENT_SPECS.keys())
+
+    if end_use not in valid_categories:
+        raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of {valid_categories}")
+
     if percentile not in ['low', 'mid', 'high']:
-        raise ValueError(f"Invalid percentile: '{percentile}'. Must be 'low', 'mid', or 'high'")
+        raise ValueError(f"Invalid percentile: '{percentile}'")
     
-    print(f"\nStarting {end_use} replacement cost calculation (REMDB v4)")
+    prefix = f'{end_use}_{replacement_or_upgrade}_'
+
+    # ===== Verify prerequisite columns exist =====
+    required_cols = [
+        f'euss_{end_use}_replacement_pm1',
+        f'euss_{end_use}_replacement_pm2',
+        f'{prefix}pm1_coef_{percentile}',
+        f'{prefix}pm2_coef_{percentile}',
+        f'{prefix}intercept_{percentile}',
+        f'{prefix}multiplier_retrofit',
+        f'{prefix}adder_retrofit',
+    ]
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise KeyError(
+            f"Missing columns: {missing}\n"
+            f"Call add_remdb_replacement_metrics() first to prepare these columns."
+        )
     
+    print(f"\nCalculating {end_use} replacement costs (REMDB v4)")
+
     # ===== STEP 1: Initialize validation tracking =====
     df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-        df, end_use, menu_mp=0, verbose=True)
-    
-    # ===== Assign row_ids =====
-    df_copy = add_remdb_replacement_row_ids(df_copy, end_use)
-    
-    # ===== Map REMDB parameters =====
-    df_copy = map_remdb_cost_parameters(df_copy, remdb_v4_costs, end_use, replace_or_upgrade, percentile)
-    
-    # ===== Missing Performance Metrics Handling =====
-    # Calculate missing metrics from REMDB bounds
-    # This handles any end-use where physical dimensions aren't in home metadata
-    # Currently used for: clothes drying (drum volume), cooking (oven volume)
-    metric1_col = f'{end_use}_{replace_or_upgrade}_metric1'
-    metric2_col = f'{end_use}_{replace_or_upgrade}_metric2'
-
-    # Identify rows with missing metrics
-    metric1_missing_mask = df_copy[metric1_col].isna()
-    metric2_missing_mask = df_copy[metric2_col].isna()
-
-    # Calculate metric1 from bounds where missing
-    if metric1_missing_mask.any():
-        # Check if bounds exist in REMDB (not all end-uses may have bounds)
-        if 'pm1_lower_bound' in remdb_v4_costs.columns and 'pm1_upper_bound' in remdb_v4_costs.columns:
-            df_copy.loc[metric1_missing_mask, metric1_col] = calculate_metric_from_remdb_bounds(
-                df=df_copy[metric1_missing_mask],  # Pass only rows needing calculation
-                remdb_v4_costs=remdb_v4_costs,
-                end_use=end_use,
-                replace_or_upgrade=replace_or_upgrade,
-                lower_bound_col='pm1_lower_bound',
-                upper_bound_col='pm1_upper_bound'
-            )
-            print(f"  Calculated {metric1_missing_mask.sum():,} missing {metric1_col} values from REMDB bounds")
-
-    # Calculate metric2 from bounds where missing
-    if metric2_missing_mask.any():
-        # Check if bounds exist in REMDB (metric2 bounds may not exist for all end-uses)
-        if 'pm2_lower_bound' in remdb_v4_costs.columns and 'pm2_upper_bound' in remdb_v4_costs.columns:
-            df_copy.loc[metric2_missing_mask, metric2_col] = calculate_metric_from_remdb_bounds(
-                df=df_copy[metric2_missing_mask],  # Pass only rows needing calculation
-                remdb_v4_costs=remdb_v4_costs,
-                end_use=end_use,
-                replace_or_upgrade=replace_or_upgrade,
-                lower_bound_col='pm2_lower_bound',
-                upper_bound_col='pm2_upper_bound'
-            )
-            print(f"  Calculated {metric2_missing_mask.sum():,} missing {metric2_col} values from REMDB bounds")
+        df, end_use, menu_mp=menu_mp, verbose=True)
     
     # ===== STEP 2: Initialize result series with template =====
     # Use create_retrofit_only_series to properly initialize with zeros for valid homes, NaN for others
     result_series = create_retrofit_only_series(df_copy, valid_mask)
-    
+
     # ===== STEP 3 & 4: Valid-Only Calculation =====
+    # Calculate cost using REMDB v4 regression formula   
+    pm1 = df_copy[f'euss_{end_use}_replacement_pm1']
+    pm2 = df_copy[f'euss_{end_use}_replacement_pm2']
+    pm1_coef = df_copy[f'{prefix}pm1_coef_{percentile}']
+    pm2_coef = df_copy[f'{prefix}pm2_coef_{percentile}']
+    intercept = df_copy[f'{prefix}intercept_{percentile}']
+    multiplier = df_copy[f'{prefix}multiplier_retrofit']
+    adder = df_copy[f'{prefix}adder_retrofit']
     
-    # UPDATED: Column name changed from 'replacementCost' to 'replacement_installed_cost'
-    cost_col = f'baseline_{end_use}_replacement_installed_cost_{percentile}'
-
-    # Calculate costs - the regression formula applies validation mask internally
-    calculated_costs = remdb_cost_regression_formula(df_copy, replace_or_upgrade, end_use, percentile)
-
+    material_price = (pm1 * pm1_coef) + (pm2 * pm2_coef) + intercept
+    installed_cost = (material_price * multiplier) + adder
+    
+    # ===== Apply validation mask =====
     # Update result series with calculated values (only for valid homes due to internal masking)
-    result_series.loc[valid_mask] = calculated_costs.loc[valid_mask]
-    
+    result_series.loc[valid_mask] = installed_cost.loc[valid_mask].round(2)
+
+    # UPDATED: Column name changed from 'replacementCost' to 'replacement_installed_cost'
+    cost_col = f'mp{menu_mp}_{end_use}_replacement_installed_cost_{percentile}'
+
     # Create DataFrame with new column
     df_new_columns = pd.DataFrame({cost_col: result_series})
     

@@ -64,7 +64,7 @@ def add_remdb_replacement_row_ids(
     Returns:
         DataFrame with row_id_{end_use}_replace column added.
     """
-    replace_or_upgrade = 'replace'
+    replacement_or_upgrade = 'replacement'
     df = df.copy()
     
     if end_use == 'heating':
@@ -102,7 +102,7 @@ def add_remdb_replacement_row_ids(
                 'electric_baseboard_default'
             ]
         
-        df[f'row_id_{end_use}_{replace_or_upgrade}'] = np.select(conditions, choices, default='unknown')
+        df[f'row_id_{end_use}_{replacement_or_upgrade}'] = np.select(conditions, choices, default='unknown')
     
     elif end_use == 'cooling':
         if 'hvac_has_ducts' not in df.columns:
@@ -116,7 +116,7 @@ def add_remdb_replacement_row_ids(
             'air_conditioner_centrally_ducted',
             'air_conditioner_room_ac_window_or_through_wall'
         ]
-        df[f'row_id_{end_use}_{replace_or_upgrade}'] = np.select(conditions, choices, default='unknown')
+        df[f'row_id_{end_use}_{replacement_or_upgrade}'] = np.select(conditions, choices, default='unknown')
     
     elif end_use == 'waterHeating':
         if 'base_waterHeating_fuel' not in df.columns:
@@ -154,7 +154,7 @@ def add_remdb_replacement_row_ids(
                 'water_heater_electric_storage'
             ]
         
-        df[f'row_id_{end_use}_{replace_or_upgrade}'] = np.select(conditions, choices, default='unknown')
+        df[f'row_id_{end_use}_{replacement_or_upgrade}'] = np.select(conditions, choices, default='unknown')
     
     elif end_use == 'clothesDrying':
         if 'base_clothesDrying_fuel' not in df.columns:
@@ -170,7 +170,7 @@ def add_remdb_replacement_row_ids(
             'clothes_dryer_gas',
             'clothes_dryer_gas'
         ]
-        df[f'row_id_{end_use}_{replace_or_upgrade}'] = np.select(conditions, choices, default='unknown')
+        df[f'row_id_{end_use}_{replacement_or_upgrade}'] = np.select(conditions, choices, default='unknown')
     
     elif end_use == 'cooking':
         if 'base_cooking_fuel' not in df.columns:
@@ -186,7 +186,7 @@ def add_remdb_replacement_row_ids(
             'cooking_range_gas',
             'cooking_range_gas'
         ]
-        df[f'row_id_{end_use}_{replace_or_upgrade}'] = np.select(conditions, choices, default='unknown')
+        df[f'row_id_{end_use}_{replacement_or_upgrade}'] = np.select(conditions, choices, default='unknown')
     
     else:
         raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking'")
@@ -216,7 +216,7 @@ def calculate_replacement_installed_cost(
     Returns:
         DataFrame with baseline_{end_use}_replacement_installed_cost column added.
     """
-    replace_or_upgrade = 'replace'
+    replacement_or_upgrade = 'replacement'
     
     if percentile not in ['low', 'mid', 'high']:
         raise ValueError(f"Invalid percentile: '{percentile}'. Must be 'low', 'mid', or 'high'")
@@ -231,12 +231,12 @@ def calculate_replacement_installed_cost(
     df_copy = add_remdb_replacement_row_ids(df_copy, end_use)
     
     # ===== Map REMDB parameters =====
-    df_copy = map_remdb_cost_parameters(df_copy, remdb_v4_costs, end_use, replace_or_upgrade, percentile)
+    df_copy = map_remdb_cost_parameters(df_copy, remdb_v4_costs, end_use, replacement_or_upgrade, percentile)
     
     # For clothes drying and cooking: calculate metric1 from REMDB bounds
     if end_use in ['clothesDrying', 'cooking']:
-        row_id_col = f'row_id_{end_use}_replace'
-        metric1_col = f'{end_use}_replace_metric1'
+        row_id_col = f'row_id_{end_use}_replacement'
+        metric1_col = f'{end_use}_replacement_metric1'
         
         if row_id_col in df_copy.columns and 'pm1_lower_bound' in remdb_v4_costs.columns:
             pm1_lower = df_copy[row_id_col].map(remdb_v4_costs['pm1_lower_bound'])
@@ -248,7 +248,7 @@ def calculate_replacement_installed_cost(
     
     # ===== STEP 3 & 4: Calculate costs =====
     cost_col = f'baseline_{end_use}_replacement_installed_cost'
-    calculated_costs = remdb_cost_regression_formula(df_copy, replace_or_upgrade, end_use, percentile)
+    calculated_costs = remdb_cost_regression_formula(df_copy, replacement_or_upgrade, end_use, percentile)
     result_series.loc[valid_mask] = calculated_costs.loc[valid_mask]
     
     df_new_columns = pd.DataFrame({cost_col: result_series})

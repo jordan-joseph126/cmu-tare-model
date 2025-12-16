@@ -156,7 +156,7 @@ def calculate_replacement_cost_per_row(
                 sampled_costs_dict['otherCost'] +
                 (df_valid['total_heating_load_kBtuh'] * sampled_costs_dict['cost_per_kBtuh']))
             
-            cost_column_name = f'mp{menu_mp}_heating_replacementCost'
+            cost_column_name = f'mp{menu_mp}_heating_replacement_installed_cost'
 
         elif end_use == 'waterHeating':
             # Validate required columns and cost components
@@ -173,7 +173,7 @@ def calculate_replacement_cost_per_row(
                 sampled_costs_dict['unitCost'] +
                 (sampled_costs_dict['cost_per_gallon'] * df_valid['size_water_heater_gal']))
             
-            cost_column_name = f'mp{menu_mp}_waterHeating_replacementCost'
+            cost_column_name = f'mp{menu_mp}_waterHeating_replacement_installed_cost'
 
         else:
             # Validate cost components for clothes drying and cooking
@@ -182,7 +182,7 @@ def calculate_replacement_cost_per_row(
                 
             # For other end uses (cooking, clothes drying), only unit cost applies
             replacement_cost = sampled_costs_dict['unitCost'] 
-            cost_column_name = f'mp{menu_mp}_{end_use}_replacementCost'
+            cost_column_name = f'mp{menu_mp}_{end_use}_replacement_installed_cost'
         
         return replacement_cost, cost_column_name
         
@@ -270,7 +270,7 @@ def calculate_replacement_cost(
             # Calculate the replacement cost for each row
             replacement_cost, cost_column_name = calculate_replacement_cost_per_row(df_valid, sampled_costs_dict, menu_mp, end_use)
         else:
-            cost_column_name = f'mp{menu_mp}_{end_use}_replacementCost'
+            cost_column_name = f'mp{menu_mp}_{end_use}_replacement_installed_cost'
         
         # Initialize the result series properly
         result_series = create_retrofit_only_series(df_copy, valid_mask)

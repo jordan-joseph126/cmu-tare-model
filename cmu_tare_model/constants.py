@@ -1,6 +1,8 @@
 # Constants for the TARE Model (Updated for TRANE Analysis)
 # Adjust or remove them as needed, or move them to a separate config file.
 
+VALID_MENU_MPS = [3, 4, 7, 8, 9, 10]
+
 ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached', 'Mobile Home', 'Multi-Family with 2 - 4 Units']
 
 TD_LOSSES = 0.05 # Updated to 5% based on the latest estimates from EIA, formerly 6%
@@ -76,7 +78,7 @@ UPGRADE_COLUMNS = {
 REBATE_MAPPING = {
     # Be sure to update code logic so that the space conditioning rebate is only applied once (i.e., $8000 total, not $8000 per equipment if both heating and cooling are upgraded)
     'heating': ('upgrade_hvac_heating_efficiency', ['ASHP', 'MSHP'], 8000.00),
-    'cooling': ('upgrade_hvac_cooling_efficiency', ['Heat Pump'], 8000.00),
+    'cooling': ('upgrade_hvac_cooling_efficiency', ['Heat Pump'], 0.00),
     # 'waterHeating': ('upgrade_water_heater_efficiency', ['Electric Heat Pump'], 1750.00),
     # 'clothesDrying': ('upgrade_clothes_dryer', ['Electric, Premium, Heat Pump, Ventless'], 840.00),
     # 'cooking': ('upgrade_cooking_range', ['Electric, '], 840.00)

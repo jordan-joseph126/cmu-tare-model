@@ -139,8 +139,11 @@ def identify_valid_homes(df: pd.DataFrame) -> pd.DataFrame:
             print(f"  Warning: Column {fuel_col} not found")
             df[fuel_flag] = True
         
-        # Handle technology validation only for heating and water heating
-        if category in ['heating', 'waterHeating']:
+        # Handle technology validation only for heating, cooling, and water heating
+        # Clothes drying and cooking:
+        # - Do not have technology type columns, only fuel type specified
+        # - All valid fuels are already filtered above
+        if category in ['heating', 'cooling', 'waterHeating']:
             # Create technology validity flag
             tech_flag = f'valid_tech_{category}'
             tech_col = f'{category}_type'

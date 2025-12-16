@@ -2,6 +2,8 @@ import re
 from typing import Dict, List, Optional, Union, Set
 import pandas as pd
 
+from cmu_tare_model.constants import EQUIPMENT_SPECS
+
 def generate_column_patterns(
     categories: Optional[List[str]] = None,
     scenarios: Optional[List[str]] = None,
@@ -35,8 +37,9 @@ def generate_column_patterns(
     
     # Default values
     if categories is None:
-        categories = ['heating', 'waterHeating', 'clothesDrying', 'cooking']
-    
+        # categories = ['heating', 'waterHeating', 'clothesDrying', 'cooking']
+        categories = list(EQUIPMENT_SPECS.keys())
+
     if scenarios is None:
         scenarios = ['baseline', 'preIRA', 'iraRef']
     
@@ -129,7 +132,7 @@ def generate_column_patterns(
             patterns['costs'].append(f"{prefix}{category}_net_capitalCost")
             patterns['costs'].append(f"{prefix}{category}_lifetime_fuelCost")
             patterns['costs'].append(f"mp{mp_number}_{category}_upgrade_installed_cost")
-            patterns['costs'].append(f"mp{mp_number}_{category}_replacementCost")
+            patterns['costs'].append(f"mp{mp_number}_{category}_replacement_installed_cost")
             patterns['costs'].append(f"mp{mp_number}_{category}_installation_premium")
             patterns['costs'].append(f"mp{mp_number}_{category}_rebate_amount")
             

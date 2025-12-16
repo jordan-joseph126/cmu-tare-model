@@ -45,7 +45,7 @@ def create_sample_data():
             # Installation costs
             df[f'mp{mp}_{category}_upgrade_installed_cost'] = np.random.uniform(5000, 15000, n_homes)
             # Replacement costs
-            df[f'mp{mp}_{category}_replacementCost'] = np.random.uniform(2000, 8000, n_homes)
+            df[f'mp{mp}_{category}_replacement_installed_cost'] = np.random.uniform(2000, 8000, n_homes)
             # Rebate amounts
             df[f'mp{mp}_{category}_rebate_amount'] = np.random.uniform(500, 3000, n_homes)
     
@@ -55,8 +55,8 @@ def create_sample_data():
     
     # Add weatherization columns
     df['weatherization_rebate_amount'] = np.random.uniform(800, 2500, n_homes)
-    df['mp9_enclosure_upgradeCost'] = np.random.uniform(3000, 8000, n_homes)
-    df['mp10_enclosure_upgradeCost'] = np.random.uniform(4000, 10000, n_homes)
+    df['mp9_enclosure_upgrade_installed_cost'] = np.random.uniform(3000, 8000, n_homes)
+    df['mp10_enclosure_upgrade_installed_cost'] = np.random.uniform(4000, 10000, n_homes)
     
     return df
 
@@ -288,8 +288,8 @@ def test_weatherization_cost_integration(sample_data, fuel_cost_data, mock_scena
     )
     
     # Verify that heating columns exist in both
-    heating_mp9_col = 'iraRef_mp9_heating_total_capitalCost'
-    heating_mp8_col = 'iraRef_mp8_heating_total_capitalCost'
+    heating_mp9_col = 'iraRef_mp9_heating_total_capital_cost_{percentile}'
+    heating_mp8_col = 'iraRef_mp8_heating_total_capital_cost_{percentile}'
     
     assert heating_mp9_col in result_mp9.columns, "Should have heating capital cost for MP9"
     assert heating_mp8_col in result_mp8.columns, "Should have heating capital cost for MP8"
@@ -328,8 +328,8 @@ def test_basic_npv_calculation(sample_data, fuel_cost_data, mock_scenario_params
     # Check for expected columns
     for category in ['heating', 'waterHeating']:  # Test subset for brevity
         expected_cols = [
-            f'iraRef_mp8_{category}_total_capitalCost',
-            f'iraRef_mp8_{category}_net_capitalCost',
+            f'iraRef_mp8_{category}_total_capital_cost_{percentile}',
+            f'iraRef_mp8_{category}_net_capital_cost_{percentile}',
             f'iraRef_mp8_{category}_private_npv_lessWTP',
             f'iraRef_mp8_{category}_private_npv_moreWTP'
         ]

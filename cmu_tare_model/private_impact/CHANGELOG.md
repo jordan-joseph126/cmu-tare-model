@@ -234,22 +234,22 @@ Comparing results for policy scenario: No Inflation Reduction Act
 ✓ Column 'mp8_waterHeating_installationCost' matches between implementations
 ✓ Column 'mp8_waterHeating_rebate_amount' matches between implementations
 ✓ Column 'mp8_waterHeating_replacementCost' matches between implementations
-✓ Column 'preIRA_mp8_clothesDrying_net_capitalCost' matches between implementations
+✓ Column 'preIRA_mp8_clothesDrying_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'preIRA_mp8_clothesDrying_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp8_clothesDrying_private_npv_moreWTP' matches between implementations
-✓ Column 'preIRA_mp8_clothesDrying_total_capitalCost' matches between implementations
-✓ Column 'preIRA_mp8_cooking_net_capitalCost' matches between implementations
+✓ Column 'preIRA_mp8_clothesDrying_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'preIRA_mp8_cooking_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'preIRA_mp8_cooking_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp8_cooking_private_npv_moreWTP' matches between implementations
-✓ Column 'preIRA_mp8_cooking_total_capitalCost' matches between implementations
-✓ Column 'preIRA_mp8_heating_net_capitalCost' matches between implementations
+✓ Column 'preIRA_mp8_cooking_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'preIRA_mp8_heating_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'preIRA_mp8_heating_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp8_heating_private_npv_moreWTP' matches between implementations
-✓ Column 'preIRA_mp8_heating_total_capitalCost' matches between implementations
-✓ Column 'preIRA_mp8_waterHeating_net_capitalCost' matches between implementations
+✓ Column 'preIRA_mp8_heating_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'preIRA_mp8_waterHeating_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'preIRA_mp8_waterHeating_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp8_waterHeating_private_npv_moreWTP' matches between implementations
-✓ Column 'preIRA_mp8_waterHeating_total_capitalCost' matches between implementations
+✓ Column 'preIRA_mp8_waterHeating_total_capital_cost_{percentile}' matches between implementations
 ✓ Column 'weatherization_rebate_amount' matches between implementations
 
 Summary: 32/32 columns match exactly between implementations
@@ -332,22 +332,22 @@ Comparing results for policy scenario: AEO2023 Reference Case
 
 ===== COMPARISON RESULTS =====
 ✓ Column 'bldg_id' matches between implementations
-✓ Column 'iraRef_mp8_clothesDrying_net_capitalCost' matches between implementations
+✓ Column 'iraRef_mp8_clothesDrying_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'iraRef_mp8_clothesDrying_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp8_clothesDrying_private_npv_moreWTP' matches between implementations
-✓ Column 'iraRef_mp8_clothesDrying_total_capitalCost' matches between implementations
-✓ Column 'iraRef_mp8_cooking_net_capitalCost' matches between implementations
+✓ Column 'iraRef_mp8_clothesDrying_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'iraRef_mp8_cooking_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'iraRef_mp8_cooking_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp8_cooking_private_npv_moreWTP' matches between implementations
-✓ Column 'iraRef_mp8_cooking_total_capitalCost' matches between implementations
-✓ Column 'iraRef_mp8_heating_net_capitalCost' matches between implementations
+✓ Column 'iraRef_mp8_cooking_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'iraRef_mp8_heating_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'iraRef_mp8_heating_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp8_heating_private_npv_moreWTP' matches between implementations
-✓ Column 'iraRef_mp8_heating_total_capitalCost' matches between implementations
-✓ Column 'iraRef_mp8_waterHeating_net_capitalCost' matches between implementations
+✓ Column 'iraRef_mp8_heating_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'iraRef_mp8_waterHeating_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'iraRef_mp8_waterHeating_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp8_waterHeating_private_npv_moreWTP' matches between implementations
-✓ Column 'iraRef_mp8_waterHeating_total_capitalCost' matches between implementations
+✓ Column 'iraRef_mp8_waterHeating_total_capital_cost_{percentile}' matches between implementations
 ✓ Column 'mp8_clothesDrying_installationCost' matches between implementations
 ✓ Column 'mp8_clothesDrying_rebate_amount' matches between implementations
 ✓ Column 'mp8_clothesDrying_replacementCost' matches between implementations
@@ -462,22 +462,22 @@ Comparing results for policy scenario: No Inflation Reduction Act
 ✓ Column 'mp9_waterHeating_installationCost' matches between implementations
 ✓ Column 'mp9_waterHeating_rebate_amount' matches between implementations
 ✓ Column 'mp9_waterHeating_replacementCost' matches between implementations
-✓ Column 'preIRA_mp9_clothesDrying_net_capitalCost' matches between implementations
+✓ Column 'preIRA_mp9_clothesDrying_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'preIRA_mp9_clothesDrying_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp9_clothesDrying_private_npv_moreWTP' matches between implementations
-✓ Column 'preIRA_mp9_clothesDrying_total_capitalCost' matches between implementations
-✓ Column 'preIRA_mp9_cooking_net_capitalCost' matches between implementations
+✓ Column 'preIRA_mp9_clothesDrying_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'preIRA_mp9_cooking_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'preIRA_mp9_cooking_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp9_cooking_private_npv_moreWTP' matches between implementations
-✓ Column 'preIRA_mp9_cooking_total_capitalCost' matches between implementations
-✓ Column 'preIRA_mp9_heating_net_capitalCost' matches between implementations
+✓ Column 'preIRA_mp9_cooking_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'preIRA_mp9_heating_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'preIRA_mp9_heating_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp9_heating_private_npv_moreWTP' matches between implementations
-✓ Column 'preIRA_mp9_heating_total_capitalCost' matches between implementations
-✓ Column 'preIRA_mp9_waterHeating_net_capitalCost' matches between implementations
+✓ Column 'preIRA_mp9_heating_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'preIRA_mp9_waterHeating_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'preIRA_mp9_waterHeating_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp9_waterHeating_private_npv_moreWTP' matches between implementations
-✓ Column 'preIRA_mp9_waterHeating_total_capitalCost' matches between implementations
+✓ Column 'preIRA_mp9_waterHeating_total_capital_cost_{percentile}' matches between implementations
 ✓ Column 'weatherization_rebate_amount' matches between implementations
 
 Summary: 32/32 columns match exactly between implementations
@@ -560,22 +560,22 @@ Comparing results for policy scenario: AEO2023 Reference Case
 
 ===== COMPARISON RESULTS =====
 ✓ Column 'bldg_id' matches between implementations
-✓ Column 'iraRef_mp9_clothesDrying_net_capitalCost' matches between implementations
+✓ Column 'iraRef_mp9_clothesDrying_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'iraRef_mp9_clothesDrying_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp9_clothesDrying_private_npv_moreWTP' matches between implementations
-✓ Column 'iraRef_mp9_clothesDrying_total_capitalCost' matches between implementations
-✓ Column 'iraRef_mp9_cooking_net_capitalCost' matches between implementations
+✓ Column 'iraRef_mp9_clothesDrying_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'iraRef_mp9_cooking_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'iraRef_mp9_cooking_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp9_cooking_private_npv_moreWTP' matches between implementations
-✓ Column 'iraRef_mp9_cooking_total_capitalCost' matches between implementations
-✓ Column 'iraRef_mp9_heating_net_capitalCost' matches between implementations
+✓ Column 'iraRef_mp9_cooking_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'iraRef_mp9_heating_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'iraRef_mp9_heating_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp9_heating_private_npv_moreWTP' matches between implementations
-✓ Column 'iraRef_mp9_heating_total_capitalCost' matches between implementations
-✓ Column 'iraRef_mp9_waterHeating_net_capitalCost' matches between implementations
+✓ Column 'iraRef_mp9_heating_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'iraRef_mp9_waterHeating_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'iraRef_mp9_waterHeating_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp9_waterHeating_private_npv_moreWTP' matches between implementations
-✓ Column 'iraRef_mp9_waterHeating_total_capitalCost' matches between implementations
+✓ Column 'iraRef_mp9_waterHeating_total_capital_cost_{percentile}' matches between implementations
 ✓ Column 'mp9_clothesDrying_installationCost' matches between implementations
 ✓ Column 'mp9_clothesDrying_rebate_amount' matches between implementations
 ✓ Column 'mp9_clothesDrying_replacementCost' matches between implementations
@@ -690,22 +690,22 @@ Comparing results for policy scenario: No Inflation Reduction Act
 ✓ Column 'mp10_waterHeating_installationCost' matches between implementations
 ✓ Column 'mp10_waterHeating_rebate_amount' matches between implementations
 ✓ Column 'mp10_waterHeating_replacementCost' matches between implementations
-✓ Column 'preIRA_mp10_clothesDrying_net_capitalCost' matches between implementations
+✓ Column 'preIRA_mp10_clothesDrying_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'preIRA_mp10_clothesDrying_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp10_clothesDrying_private_npv_moreWTP' matches between implementations
-✓ Column 'preIRA_mp10_clothesDrying_total_capitalCost' matches between implementations
-✓ Column 'preIRA_mp10_cooking_net_capitalCost' matches between implementations
+✓ Column 'preIRA_mp10_clothesDrying_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'preIRA_mp10_cooking_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'preIRA_mp10_cooking_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp10_cooking_private_npv_moreWTP' matches between implementations
-✓ Column 'preIRA_mp10_cooking_total_capitalCost' matches between implementations
-✓ Column 'preIRA_mp10_heating_net_capitalCost' matches between implementations
+✓ Column 'preIRA_mp10_cooking_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'preIRA_mp10_heating_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'preIRA_mp10_heating_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp10_heating_private_npv_moreWTP' matches between implementations
-✓ Column 'preIRA_mp10_heating_total_capitalCost' matches between implementations
-✓ Column 'preIRA_mp10_waterHeating_net_capitalCost' matches between implementations
+✓ Column 'preIRA_mp10_heating_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'preIRA_mp10_waterHeating_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'preIRA_mp10_waterHeating_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp10_waterHeating_private_npv_moreWTP' matches between implementations
-✓ Column 'preIRA_mp10_waterHeating_total_capitalCost' matches between implementations
+✓ Column 'preIRA_mp10_waterHeating_total_capital_cost_{percentile}' matches between implementations
 ✓ Column 'weatherization_rebate_amount' matches between implementations
 
 Summary: 32/32 columns match exactly between implementations
@@ -788,22 +788,22 @@ Comparing results for policy scenario: AEO2023 Reference Case
 
 ===== COMPARISON RESULTS =====
 ✓ Column 'bldg_id' matches between implementations
-✓ Column 'iraRef_mp10_clothesDrying_net_capitalCost' matches between implementations
+✓ Column 'iraRef_mp10_clothesDrying_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'iraRef_mp10_clothesDrying_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp10_clothesDrying_private_npv_moreWTP' matches between implementations
-✓ Column 'iraRef_mp10_clothesDrying_total_capitalCost' matches between implementations
-✓ Column 'iraRef_mp10_cooking_net_capitalCost' matches between implementations
+✓ Column 'iraRef_mp10_clothesDrying_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'iraRef_mp10_cooking_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'iraRef_mp10_cooking_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp10_cooking_private_npv_moreWTP' matches between implementations
-✓ Column 'iraRef_mp10_cooking_total_capitalCost' matches between implementations
-✓ Column 'iraRef_mp10_heating_net_capitalCost' matches between implementations
+✓ Column 'iraRef_mp10_cooking_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'iraRef_mp10_heating_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'iraRef_mp10_heating_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp10_heating_private_npv_moreWTP' matches between implementations
-✓ Column 'iraRef_mp10_heating_total_capitalCost' matches between implementations
-✓ Column 'iraRef_mp10_waterHeating_net_capitalCost' matches between implementations
+✓ Column 'iraRef_mp10_heating_total_capital_cost_{percentile}' matches between implementations
+✓ Column 'iraRef_mp10_waterHeating_net_capital_cost_{percentile}' matches between implementations
 ✓ Column 'iraRef_mp10_waterHeating_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp10_waterHeating_private_npv_moreWTP' matches between implementations
-✓ Column 'iraRef_mp10_waterHeating_total_capitalCost' matches between implementations
+✓ Column 'iraRef_mp10_waterHeating_total_capital_cost_{percentile}' matches between implementations
 ✓ Column 'mp10_clothesDrying_installationCost' matches between implementations
 ✓ Column 'mp10_clothesDrying_rebate_amount' matches between implementations
 ✓ Column 'mp10_clothesDrying_replacementCost' matches between implementations

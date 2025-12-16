@@ -71,14 +71,14 @@ def add_remdb_upgrade_metrics(
         end_use: Equipment category
         
     Returns:
-        DataFrame with {end_use}_{replace_or_upgrade}_metric1 and {end_use}_{replace_or_upgrade}_metric2 columns
+        DataFrame with {end_use}_{replacement_or_upgrade}_metric1 and {end_use}_{replacement_or_upgrade}_metric2 columns
         
     Note:
         Uses upgrade columns (not baseline) since these are for installation cost calculations.
         For replacement costs, a separate function would extract from baseline columns.
     """
     # This function is for retrofit upgrade installed costs
-    replace_or_upgrade = 'upgrade'
+    replacement_or_upgrade = 'upgrade'
 
     if not isinstance(df, pd.DataFrame):
         raise TypeError(f"Expected DataFrame, got {type(df)}")
@@ -104,13 +104,13 @@ def add_remdb_upgrade_metrics(
             df['total_heating_load_kBtuh'] = sum(df[c].fillna(0) for c in available)
         
         # Convert kBtuh to tons (1 ton = 12,000 Btuh - industry standard)
-        df[f'{end_use}_{replace_or_upgrade}_metric1'] = df['total_heating_load_kBtuh'] / 12.0
+        df[f'{end_use}_{replacement_or_upgrade}_metric1'] = df['total_heating_load_kBtuh'] / 12.0
         
         # Metric2: SEER efficiency rating from upgrade specification
         if 'upgrade_hvac_heating_efficiency' not in df.columns:
             raise KeyError("Missing 'upgrade_hvac_heating_efficiency'")
         # Extract numeric SEER value from strings like "SEER 18, 9.3 HSPF"
-        df[f'{end_use}_{replace_or_upgrade}_metric2'] = df['upgrade_hvac_heating_efficiency'].str.extract(
+        df[f'{end_use}_{replacement_or_upgrade}_metric2'] = df['upgrade_hvac_heating_efficiency'].str.extract(
             r'SEER (\d+\.?\d*)', expand=False).astype(float)
     
     # ========== COOLING PERFORMANCE METRICS  ==========
@@ -125,15 +125,15 @@ def add_remdb_upgrade_metrics(
             else:
                 raise KeyError("Missing cooling load columns")
         
-        df[f'{end_use}_{replace_or_upgrade}_metric1'] = df['total_cooling_load_kBtuh'] / 12.0
+        df[f'{end_use}_{replacement_or_upgrade}_metric1'] = df['total_cooling_load_kBtuh'] / 12.0
         
         # Metric2: SEER efficiency rating
         if 'upgrade_hvac_cooling_efficiency' in df.columns:
-            df[f'{end_use}_{replace_or_upgrade}_metric2'] = df['upgrade_hvac_cooling_efficiency'].str.extract(
+            df[f'{end_use}_{replacement_or_upgrade}_metric2'] = df['upgrade_hvac_cooling_efficiency'].str.extract(
                 r'SEER (\d+\.?\d*)', expand=False).astype(float)
         elif 'upgrade_SEER' in df.columns:
             # Fallback to heating SEER for heat pumps (same equipment serves both)
-            df[f'{end_use}_{replace_or_upgrade}_metric2'] = df['upgrade_SEER'].astype(float)
+            df[f'{end_use}_{replacement_or_upgrade}_metric2'] = df['upgrade_SEER'].astype(float)
         else:
             raise KeyError("Missing upgrade_hvac_cooling_efficiency or upgrade_SEER")
     
@@ -142,18 +142,18 @@ def add_remdb_upgrade_metrics(
         if 'upgrade_water_heater_efficiency' not in df.columns:
             raise KeyError("Missing 'upgrade_water_heater_efficiency'")
         # Extract UEF from strings like "Electric Heat Pump, 50 gal, 3.45 UEF"
-        df[f'{end_use}_{replace_or_upgrade}_metric1'] = df['upgrade_water_heater_efficiency'].str.extract(
+        df[f'{end_use}_{replacement_or_upgrade}_metric1'] = df['upgrade_water_heater_efficiency'].str.extract(
             r'(\d+\.?\d*)\s*UEF', expand=False).astype(float)
         
         # Metric2: Tank capacity in gallons (drives material cost)
         if 'size_water_heater_gal' not in df.columns:
             raise KeyError("Missing 'size_water_heater_gal'")
-        df[f'{end_use}_{replace_or_upgrade}_metric2'] = df['size_water_heater_gal'].astype(float)
+        df[f'{end_use}_{replacement_or_upgrade}_metric2'] = df['size_water_heater_gal'].astype(float)
     
     elif end_use == 'clothesDrying':
         # Metric1: Drum volume (constant across residential dryers - ~7 cu ft)
         # pm1_lower_bound + pm1_upper_bound / 2
-        df[f'{end_use}_{replace_or_upgrade}_metric1'] = 7.0
+        df[f'{end_use}_{replacement_or_upgrade}_metric1'] = 7.0
         
         # Metric2: CEF (Combined Energy Factor) - varies by technology
         if 'upgrade_clothes_dryer' not in df.columns:
@@ -162,15 +162,15 @@ def add_remdb_upgrade_metrics(
         # Heat pump dryers are much more efficient (5.2 vs 2.7 lbs/kWh)
         # The clothes dryer upgrade is either a heat pump or standard electric dryer
         is_hp = df['upgrade_clothes_dryer'].str.contains('Heat Pump|HP', case=False, na=False)
-        df[f'{end_use}_{replace_or_upgrade}_metric2'] = is_hp.map({True: 5.2, False: 2.7})
+        df[f'{end_use}_{replacement_or_upgrade}_metric2'] = is_hp.map({True: 5.2, False: 2.7})
     
     elif end_use == 'cooking':
         # Metric1: Oven volume (constant - ~5 cu ft for residential ranges)
         # DO NOT HARDCODE. USE LOWER+UPPER / 2 TO AVOID HARDCODING
-        df[f'{end_use}_{replace_or_upgrade}_metric1'] = 5.0
+        df[f'{end_use}_{replacement_or_upgrade}_metric1'] = 5.0
         
         # Metric2: Not used for cooking (all ranges have similar configurations)
-        df[f'{end_use}_{replace_or_upgrade}_metric2'] = np.nan
+        df[f'{end_use}_{replacement_or_upgrade}_metric2'] = np.nan
     
     return df
 
@@ -193,10 +193,10 @@ def add_remdb_upgrade_row_ids(
         menu_mp: Measure package (7, 8, 9, 10)
         
     Returns:
-        DataFrame with row_id_{end_use}_{replace_or_upgrade} column
+        DataFrame with row_id_{end_use}_{replacement_or_upgrade} column
     """
     # This function is for retrofit upgrade installed costs
-    replace_or_upgrade = 'upgrade'
+    replacement_or_upgrade = 'upgrade'
 
     df = df.copy()
     
@@ -221,7 +221,7 @@ def add_remdb_upgrade_row_ids(
             'air_source_heat_pump_non_ducted_multi_zone'
         ]
         
-        df[f'row_id_{end_use}_{replace_or_upgrade}'] = np.select(conditions, choices, default='unknown')
+        df[f'row_id_{end_use}_{replacement_or_upgrade}'] = np.select(conditions, choices, default='unknown')
         
     elif end_use == 'cooling':
         # Similar logic to heating - cooling upgrades mirror heat pump installations
@@ -242,11 +242,11 @@ def add_remdb_upgrade_row_ids(
             'air_source_heat_pump_non_ducted_multi_zone'
         ]
         
-        df[f'row_id_{end_use}_{replace_or_upgrade}'] = np.select(conditions, choices, default='unknown')
+        df[f'row_id_{end_use}_{replacement_or_upgrade}'] = np.select(conditions, choices, default='unknown')
         
     elif end_use == 'waterHeating':
         # All water heating upgrades use heat pump water heaters
-        df[f'row_id_{end_use}_{replace_or_upgrade}'] = 'water_heater_hp_tank'
+        df[f'row_id_{end_use}_{replacement_or_upgrade}'] = 'water_heater_hp_tank'
         
     elif end_use == 'clothesDrying':
         if 'upgrade_clothes_dryer' not in df.columns:
@@ -254,7 +254,7 @@ def add_remdb_upgrade_row_ids(
         
         # Heat pump dryers vs standard electric dryers
         is_heat_pump = df['upgrade_clothes_dryer'].str.contains('Heat Pump', na=False)
-        df[f'row_id_{end_use}_{replace_or_upgrade}'] = np.where(
+        df[f'row_id_{end_use}_{replacement_or_upgrade}'] = np.where(
             is_heat_pump,
             'clothes_dryer_heat_pump',
             'clothes_dryer_electric'
@@ -266,7 +266,7 @@ def add_remdb_upgrade_row_ids(
         
         # Induction ranges vs standard electric ranges
         is_induction = df['upgrade_cooking_range'].str.contains('Induction', na=False)
-        df[f'row_id_{end_use}_{replace_or_upgrade}'] = np.where(
+        df[f'row_id_{end_use}_{replacement_or_upgrade}'] = np.where(
             is_induction,
             'cooking_range_induction',
             'cooking_range_electric'
@@ -284,7 +284,7 @@ def calculate_upgrade_installed_cost(
     remdb_v4_costs: pd.DataFrame,
     menu_mp: int,
     end_use: str,
-    replace_or_upgrade: str = 'upgrade',
+    replacement_or_upgrade: str = 'upgrade',
     percentile: str = 'mid'
 ) -> pd.DataFrame:
     """
@@ -303,7 +303,7 @@ def calculate_upgrade_installed_cost(
         remdb_v4_costs: REMDB v4 cost data (indexed by row_id)
         menu_mp: Measure package (7, 8, 9, 10)
         end_use: Equipment category
-        replace_or_upgrade: 'replace' or 'upgrade'
+        replacement_or_upgrade: 'replacement' or 'upgrade'
         percentile: Cost percentile ('low', 'mid', 'high')
         
     Returns:
@@ -317,9 +317,9 @@ def calculate_upgrade_installed_cost(
         4. Applies final verification masking
     """
     # This function is for retrofit upgrade installed costs
-    replace_or_upgrade = 'upgrade'
+    replacement_or_upgrade = 'upgrade'
 
-    print(f"\nStarting {end_use} {replace_or_upgrade} installed cost calculation (REMDB v4)")
+    print(f"\nStarting {end_use} {replacement_or_upgrade} installed cost calculation (REMDB v4)")
     
     if menu_mp not in [7, 8, 9, 10]:
         raise ValueError(f"Invalid menu_mp: {menu_mp}. Must be 7, 8, 9, or 10")
@@ -340,7 +340,7 @@ def calculate_upgrade_installed_cost(
     
     # Step 3: Map cost parameters from REMDB v4 database using unique row_id
     print(f"  Step 3/4: Mapping cost parameters from REMDB v4 database using unique row_id...")
-    df_copy = map_remdb_cost_parameters(df_copy, remdb_v4_costs, end_use, replace_or_upgrade, percentile)
+    df_copy = map_remdb_cost_parameters(df_copy, remdb_v4_costs, end_use, replacement_or_upgrade, percentile)
     
     # ===== STEP 2: Initialize result series with template =====
     # Use create_retrofit_only_series to properly initialize with zeros for valid homes, NaN for others
@@ -354,7 +354,7 @@ def calculate_upgrade_installed_cost(
     cost_col = f'mp{menu_mp}_{end_use}_upgrade_installed_cost'
     
     # Calculate costs - the regression formula applies validation mask internally
-    calculated_costs = remdb_cost_regression_formula(df_copy, replace_or_upgrade, end_use, percentile)
+    calculated_costs = remdb_cost_regression_formula(df_copy, replacement_or_upgrade, end_use, percentile)
     
     # Update result series with calculated values (only for valid homes due to internal masking)
     result_series.loc[valid_mask] = calculated_costs.loc[valid_mask]

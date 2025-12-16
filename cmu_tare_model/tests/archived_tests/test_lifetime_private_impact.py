@@ -76,10 +76,10 @@ def sample_home_data() -> Dict[str, List[Any]]:
         'mp8_cooking_installationCost': [1800, 1900, 1850, 1750, 1820],
         
         # Replacement costs
-        'mp8_heating_replacementCost': [6000, 7500, 7000, 6500, 6250],
-        'mp8_waterHeating_replacementCost': [2000, 2250, 2100, 1900, 2050],
-        'mp8_clothesDrying_replacementCost': [600, 650, 625, 575, 610],
-        'mp8_cooking_replacementCost': [900, 950, 925, 875, 910],
+        'mp8_heating_replacement_installed_cost': [6000, 7500, 7000, 6500, 6250],
+        'mp8_waterHeating_replacement_installed_cost': [2000, 2250, 2100, 1900, 2050],
+        'mp8_clothesDrying_replacement_installed_cost': [600, 650, 625, 575, 610],
+        'mp8_cooking_replacement_installed_cost': [900, 950, 925, 875, 910],
         
         # Rebate amounts
         'mp8_heating_rebate_amount': [4000, 5000, 4500, 4200, 4100],
@@ -88,8 +88,8 @@ def sample_home_data() -> Dict[str, List[Any]]:
         'mp8_cooking_rebate_amount': [500, 550, 525, 475, 510],
         
         # Weatherization costs and rebates
-        'mp9_enclosure_upgradeCost': [8000, 9000, 8500, 7500, 8200],
-        'mp10_enclosure_upgradeCost': [10000, 11000, 10500, 9500, 10200],
+        'mp9_enclosure_upgrade_installed_cost': [8000, 9000, 8500, 7500, 8200],
+        'mp10_enclosure_upgrade_installed_cost': [10000, 11000, 10500, 9500, 10200],
         'weatherization_rebate_amount': [3000, 3500, 3200, 2800, 3100],
         
         # Heating premium cost
@@ -452,7 +452,7 @@ def test_calculate_capital_costs_basic(sample_homes_df):
         sample_homes_df.loc[0, f'mp{menu_mp}_heating_installation_premium']
     )
     
-    expected_net = expected_total - sample_homes_df.loc[0, f'mp{menu_mp}_{category}_replacementCost']
+    expected_net = expected_total - sample_homes_df.loc[0, f'mp{menu_mp}_{category}_replacement_installed_cost']
     
     assert abs(total_capital_cost.iloc[0] - expected_total) < 0.01, \
         f"Total capital cost should be approximately {expected_total}"
@@ -479,7 +479,7 @@ def test_calculate_capital_costs_basic(sample_homes_df):
         sample_homes_df.loc[0, f'mp{menu_mp}_{category}_rebate_amount']
     )
     
-    expected_net = expected_total - sample_homes_df.loc[0, f'mp{menu_mp}_{category}_replacementCost']
+    expected_net = expected_total - sample_homes_df.loc[0, f'mp{menu_mp}_{category}_replacement_installed_cost']
     
     assert abs(total_capital_cost.iloc[0] - expected_total) < 0.01, \
         f"Total capital cost should be approximately {expected_total}"
@@ -571,8 +571,8 @@ def test_calculate_and_update_npv_basic(sample_homes_df, df_fuel_costs, df_basel
     
     # Verify the result contains the expected columns
     expected_columns = [
-        f'{scenario_prefix}{category}_total_capitalCost',
-        f'{scenario_prefix}{category}_net_capitalCost',
+        f'{scenario_prefix}{category}_total_capital_cost_{percentile}',
+        f'{scenario_prefix}{category}_net_capital_cost_{percentile}',
         f'{scenario_prefix}{category}_private_npv_lessWTP',
         f'{scenario_prefix}{category}_private_npv_moreWTP'
     ]
@@ -755,8 +755,8 @@ def test_list_based_collection_in_npv(sample_homes_df, df_fuel_costs, df_baselin
         
         # Create result dictionary
         result_columns = {
-            f'{scenario_prefix}{category}_total_capitalCost': total_capital_cost,
-            f'{scenario_prefix}{category}_net_capitalCost': net_capital_cost,
+            f'{scenario_prefix}{category}_total_capital_cost_{percentile}': total_capital_cost,
+            f'{scenario_prefix}{category}_net_capital_cost_{percentile}': net_capital_cost,
             f'{scenario_prefix}{category}_private_npv_lessWTP': npv_less_wtp,
             f'{scenario_prefix}{category}_private_npv_moreWTP': npv_more_wtp
         }
@@ -886,8 +886,8 @@ def test_calculate_private_npv_basic(sample_homes_df, df_fuel_costs, df_baseline
     # Verify the result DataFrame contains all expected columns
     for category in ['heating', 'waterHeating', 'clothesDrying', 'cooking']:
         expected_columns = [
-            f'iraRef_mp8_{category}_total_capitalCost',
-            f'iraRef_mp8_{category}_net_capitalCost',
+            f'iraRef_mp8_{category}_total_capital_cost_{percentile}',
+            f'iraRef_mp8_{category}_net_capital_cost_{percentile}',
             f'iraRef_mp8_{category}_private_npv_lessWTP',
             f'iraRef_mp8_{category}_private_npv_moreWTP'
         ]
@@ -962,8 +962,8 @@ def test_rebate_application(sample_homes_df, df_fuel_costs, df_baseline_costs, m
     )
     
     # Verify capital costs are lower with IRA rebates
-    no_ira_col = f'preIRA_mp{menu_mp}_{category}_total_capitalCost'
-    ira_col = f'iraRef_mp{menu_mp}_{category}_total_capitalCost'
+    no_ira_col = f'preIRA_mp{menu_mp}_{category}_total_capital_cost_{percentile}'
+    ira_col = f'iraRef_mp{menu_mp}_{category}_total_capital_cost_{percentile}'
     valid_mask = sample_homes_df[f'include_{category}']
     
     for idx in valid_mask.index:
@@ -1031,8 +1031,8 @@ def test_weatherization_costs(sample_homes_df, df_fuel_costs, df_baseline_costs,
     )
     
     # Verify capital costs are higher with weatherization
-    capital_col_08 = f'iraRef_mp{menu_mp}_{category}_total_capitalCost'
-    capital_col_09 = f'iraRef_mp{menu_mp}_{category}_total_capitalCost'
+    capital_col_08 = f'iraRef_mp{menu_mp}_{category}_total_capital_cost_{percentile}'
+    capital_col_09 = f'iraRef_mp{menu_mp}_{category}_total_capital_cost_{percentile}'
     valid_mask = sample_homes_df[f'include_{category}']
     
     for idx in valid_mask.index:
@@ -1041,7 +1041,7 @@ def test_weatherization_costs(sample_homes_df, df_fuel_costs, df_baseline_costs,
             cost_09 = result_df_09.loc[idx, capital_col_09]
             
             # Verify cost with weatherization is higher (even after rebates)
-            enclosure_cost = sample_homes_df.loc[idx, f'mp9_enclosure_upgradeCost']
+            enclosure_cost = sample_homes_df.loc[idx, f'mp9_enclosure_upgrade_installed_cost']
             rebate = sample_homes_df.loc[idx, f'weatherization_rebate_amount']
             
             # The difference should be approximately the net weatherization cost (enclosure_cost - rebate)

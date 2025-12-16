@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 from typing import Literal
 
+from cmu_tare_model.constants import VALID_MENU_MPS
+
 from cmu_tare_model.utils.validation_framework import (
     apply_new_columns_to_dataframe,
     apply_final_masking,
@@ -57,10 +59,13 @@ def add_remdb_replacement_row_ids(
     
     Args:
         df: DataFrame with baseline fuel type columns.
-        end_use: Equipment category ('heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking').
+        end_use: Equipment category ('heating', 'cooling').
         
     Returns:
         DataFrame with row_id_{end_use}_replace column added.
+
+    FUTURE: After successful testing, expand to non-HVAC end-uses (waterHeating, clothesDrying, cooking).
+        
     """
     df_copy = df.copy()
 
@@ -115,75 +120,15 @@ def add_remdb_replacement_row_ids(
         ]
 
         df_copy[f'row_id_{end_use}_{replacement_or_upgrade}'] = np.select(conditions, choices, default='unknown')
-    
-    elif end_use == 'waterHeating':
-        if 'base_waterHeating_fuel' not in df_copy.columns:
-            raise ValueError("Missing 'base_waterHeating_fuel' column")
         
-        # is_hp = df_copy['water_heater_efficiency'].str.contains('Heat Pump', case=False, na=False)
+    # =========================================
+    # DELETE FOR NOW - NON-HVAC END USES
+    # =========================================
 
-        is_hp = df_copy['water_heater_efficiency'].str.contains(
-            r'heat\s*pump|hpwh|hp\s*water', 
-            case=False, 
-            na=False,
-            regex=True
-        )
-
-        conditions = [
-            (df_copy['base_waterHeating_fuel'] == 'Fuel Oil'),
-            (df_copy['base_waterHeating_fuel'] == 'Natural Gas'),
-            (df_copy['base_waterHeating_fuel'] == 'Propane'),
-            (df_copy['base_waterHeating_fuel'] == 'Electricity') & ~is_hp,
-            (df_copy['base_waterHeating_fuel'] == 'Electricity') & is_hp
-            ]
-
-        choices = [
-            'water_heater_gas_storage',
-            'water_heater_gas_storage',
-            'water_heater_gas_storage',
-            'water_heater_electric_storage',
-            'water_heater_hp_tank'
-            ]
-
-        df_copy[f'row_id_{end_use}_{replacement_or_upgrade}'] = np.select(conditions, choices, default='unknown')
-    
-    elif end_use == 'clothesDrying':
-        if 'base_clothesDrying_fuel' not in df_copy.columns:
-            raise ValueError("Missing 'base_clothesDrying_fuel' column")
-        
-        conditions = [
-            (df_copy['base_clothesDrying_fuel'] == 'Electricity'),
-            (df_copy['base_clothesDrying_fuel'] == 'Natural Gas'),
-            (df_copy['base_clothesDrying_fuel'] == 'Propane')
-            ]
-
-        choices = [
-            'clothes_dryer_electric',
-            'clothes_dryer_gas',
-            'clothes_dryer_gas'
-            ]
-
-        df_copy[f'row_id_{end_use}_{replacement_or_upgrade}'] = np.select(conditions, choices, default='unknown')
-    
-    elif end_use == 'cooking':
-        if 'base_cooking_fuel' not in df_copy.columns:
-            raise ValueError("Missing 'base_cooking_fuel' column")
-        
-        conditions = [
-            (df_copy['base_cooking_fuel'] == 'Electricity'),
-            (df_copy['base_cooking_fuel'] == 'Natural Gas'),
-            (df_copy['base_cooking_fuel'] == 'Propane')
-        ]
-        choices = [
-            'cooking_range_electric',
-            'cooking_range_gas',
-            'cooking_range_gas'
-        ]
-        df_copy[f'row_id_{end_use}_{replacement_or_upgrade}'] = np.select(conditions, choices, default='unknown')
-    
     else:
-        raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking'")
-    
+        # raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking'")
+        raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling'")
+
     return df_copy
 
 # ========== Map cost parameters from REMDB v4 database using unique row_id ==========
@@ -193,6 +138,7 @@ def add_remdb_replacement_row_ids(
 def calculate_replacement_installed_cost(
     df: pd.DataFrame,
     remdb_v4_costs: pd.DataFrame,
+    menu_mp: int,
     end_use: str,
     percentile: str = 'mid'
 ) -> pd.DataFrame:
@@ -211,6 +157,9 @@ def calculate_replacement_installed_cost(
     """
     replacement_or_upgrade = 'replacement'
     
+    if menu_mp not in VALID_MENU_MPS:
+        raise ValueError(f"Invalid menu_mp: {menu_mp}. Must be 3, 4, 7, 8, 9, or 10")
+
     if percentile not in ['low', 'mid', 'high']:
         raise ValueError(f"Invalid percentile: '{percentile}'. Must be 'low', 'mid', or 'high'")
     
@@ -272,7 +221,7 @@ def calculate_replacement_installed_cost(
     # ===== STEP 3 & 4: Valid-Only Calculation =====
     
     # UPDATED: Column name changed from 'replacementCost' to 'replacement_installed_cost'
-    cost_col = f'baseline_{end_use}_replacement_installed_cost_{percentile}'
+    cost_col = f'mp{menu_mp}_{end_use}_replacement_installed_cost_{percentile}'
 
     # Calculate costs - the regression formula applies validation mask internally
     calculated_costs = remdb_cost_regression_formula(df_copy, replacement_or_upgrade, end_use, percentile)

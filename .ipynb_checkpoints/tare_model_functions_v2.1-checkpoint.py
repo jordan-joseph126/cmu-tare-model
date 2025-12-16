@@ -907,7 +907,7 @@ def obtain_heating_system_specs(df):
 # In[15]:
 
 
-def calculate_heating_replacementCost(df, cost_dict, rsMeans_national_avg):
+def calculate_heating_replace_installed_cost(df, cost_dict, rsMeans_national_avg):
     # Create conditions for different scenarios
     conditions = [
         (df['base_heating_fuel'] == 'Propane'),
@@ -939,7 +939,7 @@ def calculate_heating_replacementCost(df, cost_dict, rsMeans_national_avg):
         
         # Calculate installed cost
         replacement_cost = (unit_cost + other_cost + df['total_heating_load_kBtuh'] * cost_per_kBtuh) * (df['rsMeans_CCI_avg'] / rsMeans_national_avg)
-        df[f'mp{menu_mp}_heating_replacementCost_{cost_type}'] = np.round(replacement_cost, 2)
+        df[f'mp{menu_mp}_heating_replace_installed_cost_{cost_type}'] = np.round(replacement_cost, 2)
 
     return df
 
@@ -1206,7 +1206,7 @@ def calculate_heating_installation_premium(df, rsMeans_national_avg, cpi_ratio_2
 # In[19]:
 
 
-# def calculate_waterHeating_replacementCost(df, cost_dict, rsMeans_national_avg):
+# def calculate_waterHeating_replace_installed_cost(df, cost_dict, rsMeans_national_avg):
 #     # Create conditions for different scenarios
 #     conditions = [
 #         (df['base_waterHeating_fuel'] == 'Fuel Oil'),
@@ -1237,7 +1237,7 @@ def calculate_heating_installation_premium(df, rsMeans_national_avg, cpi_ratio_2
     
 #         # Calculate installed cost
 #         replacement_cost = (unit_cost + (cost_per_gallon * df['size_water_heater_gal'])) * (df['rsMeans_CCI_avg'] / rsMeans_national_avg)
-#         df[f'mp{menu_mp}_waterHeating_replacementCost_{cost_type}'] = np.round(replacement_cost, 2)
+#         df[f'mp{menu_mp}_waterHeating_replace_installed_cost_{cost_type}'] = np.round(replacement_cost, 2)
 
 #     return df
 
@@ -1249,7 +1249,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-def calculate_waterHeating_replacementCost(df, cost_dict, rsMeans_national_avg, menu_mp):
+def calculate_waterHeating_replace_installed_cost(df, cost_dict, rsMeans_national_avg, menu_mp):
     """
     Calculate the water heating replacement cost based on existing heating fuel types, costs, and efficiency.
 
@@ -1314,7 +1314,7 @@ def calculate_waterHeating_replacementCost(df, cost_dict, rsMeans_national_avg, 
     ) * (df['rsMeans_CCI_avg'] / rsMeans_national_avg)
 
     # Add the calculated costs to the DataFrame, rounded to 2 decimal places
-    df['waterHeating_replacementCost'] = np.round(replacement_cost, 2)
+    df['waterHeating_replace_installed_cost'] = np.round(replacement_cost, 2)
 
     return df
 
@@ -1391,7 +1391,7 @@ def calculate_waterHeating_installationCost(df, cost_dict, rsMeans_national_avg,
 # In[22]:
 
 
-# def calculate_clothesDrying_replacementCost(df, cost_dict, rsMeans_national_avg):
+# def calculate_clothesDrying_replace_installed_cost(df, cost_dict, rsMeans_national_avg):
 #     # Create conditions for different scenarios
 #     conditions = [
 #         (df['base_clothesDrying_fuel'] == 'Electricity'),
@@ -1417,7 +1417,7 @@ def calculate_waterHeating_installationCost(df, cost_dict, rsMeans_national_avg,
     
 #         # Calculate installed cost
 #         replacement_cost = unit_cost * (df['rsMeans_CCI_avg'] / rsMeans_national_avg)
-#         df[f'mp{menu_mp}_clothesDrying_replacementCost_{cost_type}'] = np.round(replacement_cost, 2)
+#         df[f'mp{menu_mp}_clothesDrying_replace_installed_cost_{cost_type}'] = np.round(replacement_cost, 2)
 
 #     return df
 
@@ -1429,7 +1429,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-def calculate_clothesDrying_replacementCost(df, cost_dict, rsMeans_national_avg, menu_mp):
+def calculate_clothesDrying_replace_installed_cost(df, cost_dict, rsMeans_national_avg, menu_mp):
     """
     Calculate the clothes drying replacement cost based on existing fuel types, costs, and efficiency.
 
@@ -1487,7 +1487,7 @@ def calculate_clothesDrying_replacementCost(df, cost_dict, rsMeans_national_avg,
     replacement_cost = sampled_costs_dict['unitCost'] * (df['rsMeans_CCI_avg'] / rsMeans_national_avg)
 
     # Add the calculated costs to the DataFrame, rounded to 2 decimal places
-    df['clothesDrying_replacementCost'] = np.round(replacement_cost, 2)
+    df['clothesDrying_replace_installed_cost'] = np.round(replacement_cost, 2)
 
     return df
 
@@ -1562,7 +1562,7 @@ def calculate_clothesDrying_installationCost(df, cost_dict, rsMeans_national_avg
 # In[25]:
 
 
-# def calculate_cooking_replacementCost(df, cost_dict, rsMeans_national_avg):
+# def calculate_cooking_replace_installed_cost(df, cost_dict, rsMeans_national_avg):
 #     # Create conditions for different scenarios
 #     conditions = [
 #         (df['base_cooking_fuel'] == 'Electricity'),
@@ -1588,7 +1588,7 @@ def calculate_clothesDrying_installationCost(df, cost_dict, rsMeans_national_avg
     
 #         # Calculate installed cost
 #         replacement_cost = unit_cost  * (df['rsMeans_CCI_avg'] / rsMeans_national_avg)
-#         df[f'mp{menu_mp}_cooking_replacementCost_{cost_type}'] = np.round(replacement_cost, 2)
+#         df[f'mp{menu_mp}_cooking_replace_installed_cost_{cost_type}'] = np.round(replacement_cost, 2)
 
 #     return df
 
@@ -1596,7 +1596,7 @@ def calculate_clothesDrying_installationCost(df, cost_dict, rsMeans_national_avg
 # In[26]:
 
 
-def calculate_cooking_replacementCost(df, cost_dict, rsMeans_national_avg, menu_mp):
+def calculate_cooking_replace_installed_cost(df, cost_dict, rsMeans_national_avg, menu_mp):
     """
     Calculate the cooking replacement cost based on existing fuel types, costs, and efficiency.
 
@@ -1654,7 +1654,7 @@ def calculate_cooking_replacementCost(df, cost_dict, rsMeans_national_avg, menu_
     replacement_cost = sampled_costs_dict['unitCost'] * (df['rsMeans_CCI_avg'] / rsMeans_national_avg)
 
     # Add the calculated costs to the DataFrame, rounded to 2 decimal places
-    df['cooking_replacementCost'] = np.round(replacement_cost, 2)
+    df['cooking_replace_installed_cost'] = np.round(replacement_cost, 2)
 
     return df
 
@@ -1855,39 +1855,39 @@ def calculate_costs(df, category, cost_type, ira_rebates):
         if category == 'heating':
             # Include specific weatherization upgrade costs based on scenarios and calculate private NPV
             if input_mp == 'upgrade09':            
-                weatherization_cost = df[f'mp9_enclosure_upgradeCost_{cost_type}']
+                weatherization_cost = df[f'mp9_enclosure_upgrade_installed_cost_{cost_type}']
             elif input_mp == 'upgrade10':
-                weatherization_cost = df[f'mp10_enclosure_upgradeCost_{cost_type}']
+                weatherization_cost = df[f'mp10_enclosure_upgrade_installed_cost_{cost_type}']
             else:
                 weatherization_cost = 0.0
             
             # Add together
             total_capital_cost = df[f'mp{menu_mp}_{category}_installationCost_{cost_type}'] + weatherization_cost + df[f'mp{menu_mp}_heating_installation_premium']
-            net_capital_cost = total_capital_cost - df[f'mp{menu_mp}_{category}_replacementCost_{cost_type}']
+            net_capital_cost = total_capital_cost - df[f'mp{menu_mp}_{category}_replace_installed_cost_{cost_type}']
             
         else:
             total_capital_cost = df[f'mp{menu_mp}_{category}_installationCost_{cost_type}']
-            net_capital_cost = total_capital_cost - df[f'mp{menu_mp}_{category}_replacementCost_{cost_type}']
+            net_capital_cost = total_capital_cost - df[f'mp{menu_mp}_{category}_replace_installed_cost_{cost_type}']
     else:
         if category == 'heating':
             # Include specific weatherization upgrade costs based on scenarios and calculate private NPV
             if input_mp == 'upgrade09':            
-                weatherization_cost = df[f'mp9_enclosure_upgradeCost_{cost_type}'] - df[f'weatherization_rebate_amount_{cost_type}']
+                weatherization_cost = df[f'mp9_enclosure_upgrade_installed_cost_{cost_type}'] - df[f'weatherization_rebate_amount_{cost_type}']
             elif input_mp == 'upgrade10':
-                weatherization_cost = df[f'mp10_enclosure_upgradeCost_{cost_type}'] - df[f'weatherization_rebate_amount_{cost_type}']
+                weatherization_cost = df[f'mp10_enclosure_upgrade_installed_cost_{cost_type}'] - df[f'weatherization_rebate_amount_{cost_type}']
             else:
                 weatherization_cost = 0.0       
             
             installation_cost = df[f'mp{menu_mp}_{category}_installationCost_{cost_type}'] + weatherization_cost + df[f'mp{menu_mp}_{category}_installation_premium']
             rebate_amount = df[f'mp{menu_mp}_{category}_rebate_amount_{cost_type}']
             total_capital_cost = installation_cost - rebate_amount
-            net_capital_cost = total_capital_cost - df[f'mp{menu_mp}_{category}_replacementCost_{cost_type}']
+            net_capital_cost = total_capital_cost - df[f'mp{menu_mp}_{category}_replace_installed_cost_{cost_type}']
         
         else:
             installation_cost = df[f'mp{menu_mp}_{category}_installationCost_{cost_type}']
             rebate_amount = df[f'mp{menu_mp}_{category}_rebate_amount_{cost_type}']
             total_capital_cost = installation_cost - rebate_amount
-            net_capital_cost = total_capital_cost - df[f'mp{menu_mp}_{category}_replacementCost_{cost_type}']
+            net_capital_cost = total_capital_cost - df[f'mp{menu_mp}_{category}_replace_installed_cost_{cost_type}']
 
     return total_capital_cost, net_capital_cost
 
@@ -2111,7 +2111,7 @@ def summarize_results(df_compare, category, upgrade_column):
         # Add enclosure upgrades for MP9 and MP10 heating
         if category == 'heating':
             if menu_mp == 9 or menu_mp == 10:
-                enclosure_columns = [f'mp{menu_mp}_enclosure_upgradeCost_{cost_type}']
+                enclosure_columns = [f'mp{menu_mp}_enclosure_upgrade_installed_cost_{cost_type}']
                 cols_to_display.extend(enclosure_columns)
 
         # The individual year calculation (2018) indicates that it is the gridDecarb scenario
@@ -2124,7 +2124,7 @@ def summarize_results(df_compare, category, upgrade_column):
         # Specific to current cost_type
         cost_type_cols = [
             f'mp{menu_mp}_{category}_installationCost_{cost_type}',
-            f'mp{menu_mp}_{category}_replacementCost_{cost_type}', 
+            f'mp{menu_mp}_{category}_replace_installed_cost_{cost_type}', 
             f'mp{menu_mp}_{category}_net_capitalCost_{cost_type}',
             f'mp{menu_mp}_{category}_private_npv_{cost_type}',
             f'mp{menu_mp}_{category}_net_npv_{cost_type}',
@@ -2268,8 +2268,8 @@ def calculate_rebateIRA(df_results_IRA, category):
                 else:
                     df_results_IRA.at[index, f'mp{menu_mp}_{category}_rebate_amount_{cost_type}'] = max_rebate_amount
 
-                if f'mp{menu_mp}_enclosure_upgradeCost_{cost_type}' in df_results_IRA.columns:
-                    weatherization_project_coverage = row[f'mp{menu_mp}_enclosure_upgradeCost_{cost_type}'] * 1.0  # Full project coverage for low-income
+                if f'mp{menu_mp}_enclosure_upgrade_installed_cost_{cost_type}' in df_results_IRA.columns:
+                    weatherization_project_coverage = row[f'mp{menu_mp}_enclosure_upgrade_installed_cost_{cost_type}'] * 1.0  # Full project coverage for low-income
                     if weatherization_project_coverage <= max_weatherization_rebate_amount:
                         df_results_IRA.at[index, f'weatherization_rebate_amount_{cost_type}'] = weatherization_project_coverage
                     else:
@@ -2282,8 +2282,8 @@ def calculate_rebateIRA(df_results_IRA, category):
                 else:
                     df_results_IRA.at[index, f'mp{menu_mp}_{category}_rebate_amount_{cost_type}'] = max_rebate_amount
 
-                if f'mp{menu_mp}_enclosure_upgradeCost_{cost_type}' in df_results_IRA.columns:
-                    weatherization_project_coverage = row[f'mp{menu_mp}_enclosure_upgradeCost_{cost_type}'] * 0.50  # Half project coverage for moderate-income
+                if f'mp{menu_mp}_enclosure_upgrade_installed_cost_{cost_type}' in df_results_IRA.columns:
+                    weatherization_project_coverage = row[f'mp{menu_mp}_enclosure_upgrade_installed_cost_{cost_type}'] * 0.50  # Half project coverage for moderate-income
                     if weatherization_project_coverage <= max_weatherization_rebate_amount:
                         df_results_IRA.at[index, f'weatherization_rebate_amount_{cost_type}'] = weatherization_project_coverage
                     else:
