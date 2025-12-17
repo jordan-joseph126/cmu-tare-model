@@ -307,6 +307,7 @@ def calculate_and_update_npv(
         menu_mp: Measure package identifier (integer) used for column naming.
         base_year: Base year for calculations.
         verbose: Whether to print detailed progress messages.
+        percentile: Percentile to use for cost calculations (default is 'mid').
 
     Returns:
         A dictionary with new columns (keys are column names, values are Series).

@@ -151,8 +151,12 @@ def df_enduse_refactored(df_baseline: pd.DataFrame) -> pd.DataFrame:
     Raises:
         ValueError: If required columns are missing from the input DataFrame.
     """
-    # Valid categories are defined in EQUIPMENT_SPECS
+    # Updated to handle different enduses based on EQUIPMENT_SPECS.
+    # - Rest of codebase updated so only initial columns created for cooling and replacement cost calculations performed
+    # - This allows for a scenario where only heating is replaced AND one where heating and cooling systems are both replace with HP
+    # - Resolves the excessive data columns and double counting with $8000 rebate. No longer need CDD projections.
     valid_categories = list(EQUIPMENT_SPECS.keys())
+    # valid_categories.append('cooling')
 
     # Initial check
     if df_baseline.empty:
@@ -202,9 +206,8 @@ def df_enduse_refactored(df_baseline: pd.DataFrame) -> pd.DataFrame:
         df_enduse['base_fuelOil_heating_consumption'] = df_baseline['out.fuel_oil.heating.energy_consumption.kwh']
         df_enduse['base_naturalGas_heating_consumption'] = df_baseline['out.natural_gas.heating.energy_consumption.kwh']
         df_enduse['base_propane_heating_consumption'] = df_baseline['out.propane.heating.energy_consumption.kwh']
-    
-    # COOLING - only if in scope
-    if 'cooling' in valid_categories:
+
+        # ADD COOLING COLUMNS FOR REPLACEMENT COST CALCULATIONS 
         df_enduse['base_cooling_fuel'] = 'Electricity'  # Cooling is always electric
         df_enduse['cooling_type'] = df_baseline['in.hvac_cooling_type']
         df_enduse['base_cooling_efficiency'] = df_baseline['in.hvac_cooling_efficiency']
@@ -299,8 +302,12 @@ def df_enduse_compare(
         A merged DataFrame (df_compare) that includes relevant columns for
         baseline and measure packages comparison.
     """
-    # Valid categories are defined in EQUIPMENT_SPECS
+    # Updated to handle different enduses based on EQUIPMENT_SPECS.
+    # - Rest of codebase updated so only initial columns created for cooling and replacement cost calculations performed
+    # - This allows for a scenario where only heating is replaced AND one where heating and cooling systems are both replace with HP
+    # - Resolves the excessive data columns and double counting with $8000 rebate. No longer need CDD projections.
     valid_categories = list(EQUIPMENT_SPECS.keys())
+    # valid_categories.append('cooling')
 
     # ===== STEP 1: Initialize with common columns (always present) =====
     df_compare = pd.DataFrame({
@@ -318,8 +325,7 @@ def df_enduse_compare(
         # df_compare['size_heating_secondary_k_btu_h'] = df_mp['out.params.size_heating_system_secondary_k_btu_h']
         df_compare['upgrade_hvac_heating_efficiency'] = df_mp['upgrade.hvac_heating_efficiency']
     
-    # COOLING - only if in scope
-    if 'cooling' in valid_categories:
+        # ADD COOLING COLUMNS FOR REPLACEMENT COST CALCULATIONS 
         df_compare['hvac_cooling_type'] = df_mp['in.hvac_cooling_type']
         df_compare['hvac_cooling_efficiency'] = df_mp['in.hvac_cooling_efficiency']
         df_compare['size_cooling_system_primary_k_btu_h'] = df_mp['out.params.size_cooling_system_primary_k_btu_h']

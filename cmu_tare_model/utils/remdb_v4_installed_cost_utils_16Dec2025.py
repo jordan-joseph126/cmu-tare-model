@@ -27,7 +27,7 @@ NO LONGER USING THE SUM OF THE HEATING AND COOLING LOADS FOR SYSTEM SIZE AND COS
 import os
 import pandas as pd
 import numpy as np
-from typing import Optional, Tuple, Literal
+from typing import Optional, Tuple
 
 from cmu_tare_model.constants import EQUIPMENT_SPECS
 
@@ -213,58 +213,29 @@ def _map_remdb_parameters(
 
 
 # ===== Convert capacity metric (EUSS) to REMDB units =====
-# def _convert_capacity_by_unit(
-#     df: pd.DataFrame, 
-#     capacity_col: str, 
-#     pm1_unit_col: str
-# ) -> pd.Series:
-#     """Convert capacity to REMDB units based on pm1_unit column.
-    
-#     Unit Conversions:
-#         - "Tons"   --> kBtu/h / 12
-#         - "BTU/hr" --> kBtu/h * 1000
-#     """
-#     result = pd.Series(np.nan, index=df.index)
-    
-#     # Tons: kBtu/h / 12 (heat pumps, central ACs)
-#     tons_mask = df[pm1_unit_col] == 'Tons'
-#     if tons_mask.any():
-#         result.loc[tons_mask] = df.loc[tons_mask, capacity_col] / 12.0
-    
-#     # BTU/hr: kBtu/h * 1000 (furnaces, boilers, baseboard)
-#     btuh_mask = df[pm1_unit_col].str.lower() == 'btu/hr'
-#     if btuh_mask.any():
-#         result.loc[btuh_mask] = df.loc[btuh_mask, capacity_col] * 1000.0
-    
-#     return result
-
-
 def _convert_capacity_by_unit(
-    df: pd.DataFrame,
-    capacity_col: str,
+    df: pd.DataFrame, 
+    capacity_col: str, 
     pm1_unit_col: str
 ) -> pd.Series:
-    """Convert capacity (EUSS, kBtu/h) to REMDB units based on pm1_unit."""
-    if capacity_col not in df.columns:
-        raise KeyError(f"Missing capacity column: '{capacity_col}'")
-    if pm1_unit_col not in df.columns:
-        raise KeyError(f"Missing unit column: '{pm1_unit_col}'")
-
+    """Convert capacity to REMDB units based on pm1_unit column.
+    
+    Unit Conversions:
+        - "Tons"   --> kBtu/h / 12
+        - "BTU/hr" --> kBtu/h * 1000
+    """
     result = pd.Series(np.nan, index=df.index)
-
-    # Normalize units (handles 'Tons ', 'BTU/Hr', etc.)
-    units = df[pm1_unit_col].astype("string").str.strip().str.lower()
-
-    # Tons: kBtu/h / 12
-    tons_mask = units == "tons"
+    
+    # Tons: kBtu/h / 12 (heat pumps, central ACs)
+    tons_mask = df[pm1_unit_col] == 'Tons'
     if tons_mask.any():
         result.loc[tons_mask] = df.loc[tons_mask, capacity_col] / 12.0
-
-    # BTU/hr: kBtu/h * 1000
-    btuh_mask = units == "btu/hr"
+    
+    # BTU/hr: kBtu/h * 1000 (furnaces, boilers, baseboard)
+    btuh_mask = df[pm1_unit_col].str.lower() == 'btu/hr'
     if btuh_mask.any():
         result.loc[btuh_mask] = df.loc[btuh_mask, capacity_col] * 1000.0
-
+    
     return result
 
 
@@ -316,94 +287,147 @@ def _convert_efficiency_by_metric(
     return result
 
 
-OutOfBoundMethod = Literal["masking", "keep_as_is", "keep_as_is_filter_ci"]
-def _check_out_of_bounds_metrics(
+# def _clamp_metric_to_bounds(
+#     df: pd.DataFrame,
+#     metric_col: str,
+#     lower_bound_col: str,
+#     upper_bound_col: str,
+#     metric_name: str
+# ) -> pd.Series:
+#     """
+#     Clamp metric values to REMDB valid bounds.
+    
+#     This handles out-of-bounds equipment (e.g., SEER 8 ACs where REMDB minimum is 13)
+#     by forcing the value to the nearest valid bound. This allows cost calculation using
+#     the best available estimate from REMDB's valid range.
+    
+#     Args:
+#         df: DataFrame with metric and bound columns.
+#         metric_col: Column name of metric to clamp.
+#         lower_bound_col: Column name of lower bound.
+#         upper_bound_col: Column name of upper bound.
+#         metric_name: Descriptive name for warnings.
+        
+#     Returns:
+#         Series with clamped values.
+#     """
+#     metric = df[metric_col].copy()
+#     lower_bound = df[lower_bound_col]
+#     upper_bound = df[upper_bound_col]
+    
+#     # Identify out-of-bounds values
+#     below_bound = (metric < lower_bound) & metric.notna()
+#     above_bound = (metric > upper_bound) & metric.notna()
+    
+#     if below_bound.sum() > 0:
+#         print(f"  WARNING: {below_bound.sum():,} homes have {metric_name} below REMDB lower bound")
+#         print(f"    Range: {metric[below_bound].min():.2f} to {metric[below_bound].max():.2f}")
+#         print(f"    REMDB minimum: {lower_bound.iloc[0]:.2f}")
+#         print(f"    → Clamping to lower bound for cost calculation")
+#         metric.loc[below_bound] = lower_bound.loc[below_bound]
+    
+#     if above_bound.sum() > 0:
+#         print(f"  WARNING: {above_bound.sum():,} homes have {metric_name} above REMDB upper bound")
+#         print(f"    Range: {metric[above_bound].min():.2f} to {metric[above_bound].max():.2f}")
+#         print(f"    REMDB maximum: {upper_bound.iloc[0]:.2f}")
+#         print(f"    → Clamping to upper bound for cost calculation")
+#         metric.loc[above_bound] = upper_bound.loc[above_bound]
+    
+#     return metric
+
+
+def _mask_out_of_bounds_metrics(
     df: pd.DataFrame,
     metric_col: str,
     lower_bound_col: str,
     upper_bound_col: str,
     metric_name: str,
     row_id_col: str,
-    out_of_bound_method: OutOfBoundMethod = "keep_as_is",
+    *,
     verbose: bool = True,
     max_groups_to_print: int = 25,
-) -> tuple[pd.Series, pd.Series]:
+) -> pd.Series:
     """
-    Detect out-of-bounds metrics using *row-specific* REMDB bounds.
+    Mask metric values outside their row-specific REMDB bounds.
+
+    - Compares each row's metric against its own lower/upper bounds (vectorized).
+    - Sets out-of-bounds metrics to NaN.
+    - Optionally prints a grouped warning summary by row_id.
 
     Returns:
-        (metric_series, out_of_bounds_mask)
-
-    Notes on out_of_bound_method:
-        - 'masking': set out-of-bounds values to NaN
-        - 'keep_as_is': keep metric values unchanged (REMDB guidance default)
-        - 'keep_as_is_filter_ci': keep metric values unchanged; caller may
-          switch regression params to mid for out-of-bounds rows
+        A Series aligned to df.index with out-of-bounds values set to NaN.
     """
-    for col in (metric_col, lower_bound_col, upper_bound_col, row_id_col):
-        if col not in df.columns:
-            raise KeyError(f"Missing required column: '{col}'")
+    # Fail fast if required columns are missing
+    required = [metric_col, lower_bound_col, upper_bound_col, row_id_col]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise KeyError(f"Missing required columns for bounds checking: {missing}")
 
-    metric = df[metric_col].copy()
-    lower = df[lower_bound_col]
-    upper = df[upper_bound_col]
+    # Coerce to numeric to avoid weird string comparisons
+    metric = pd.to_numeric(df[metric_col], errors="coerce").copy()
+    lower = pd.to_numeric(df[lower_bound_col], errors="coerce")
+    upper = pd.to_numeric(df[upper_bound_col], errors="coerce")
 
-    checkable = metric.notna() & lower.notna() & upper.notna()
-    below = checkable & (metric < lower)
-    above = checkable & (metric > upper)
+    # Only compare where metric and both bounds exist
+    comparable = metric.notna() & lower.notna() & upper.notna()
+    below = comparable & (metric < lower)
+    above = comparable & (metric > upper)
     oob = below | above
 
-    if verbose and oob.any():
-        total = int(oob.sum())
-        unknown = oob & (df[row_id_col].isna() | (df[row_id_col] == "unknown"))
-        unknown_n = int(unknown.sum())
+    # Mask
+    metric.loc[oob] = np.nan
 
-        print(f"\n  WARNING: {total:,} homes have out-of-bounds {metric_name} (method={out_of_bound_method})")
-        if unknown_n:
-            print(f"    - {unknown_n:,} homes are out-of-bounds but row_id is unknown/NaN (skipping tech grouping)")
+    if not verbose or not oob.any():
+        return metric
 
-        tech_oob = oob & ~unknown
-        if tech_oob.any():
-            top_ids = (
-                df.loc[tech_oob, row_id_col]
-                .value_counts()
-                .head(max_groups_to_print)
-                .index
-                .tolist()
+    # Grouped warnings (exclude unknown)
+    known = df[row_id_col].notna() & (df[row_id_col] != "unknown")
+    affected = df.loc[oob & known, [row_id_col, metric_col, lower_bound_col, upper_bound_col]].copy()
+    if affected.empty:
+        # All out-of-bounds rows had unknown row_id (already masked)
+        print(f"\n  WARNING: Out-of-bounds {metric_name}: {int(oob.sum()):,} homes (row_id='unknown') → masked to NaN")
+        return metric
+
+    # Helpful columns for aggregation
+    affected["_below"] = pd.to_numeric(affected[metric_col], errors="coerce") < pd.to_numeric(affected[lower_bound_col], errors="coerce")
+    affected["_above"] = pd.to_numeric(affected[metric_col], errors="coerce") > pd.to_numeric(affected[upper_bound_col], errors="coerce")
+
+    # Summarize per technology
+    summary = (
+        affected.groupby(row_id_col)
+        .apply(
+            lambda g: pd.Series(
+                {
+                    "below_n": int(g["_below"].sum()),
+                    "above_n": int(g["_above"].sum()),
+                    "metric_min": float(pd.to_numeric(g[metric_col], errors="coerce").min()),
+                    "metric_max": float(pd.to_numeric(g[metric_col], errors="coerce").max()),
+                    "lower": float(pd.to_numeric(g[lower_bound_col], errors="coerce").iloc[0]),
+                    "upper": float(pd.to_numeric(g[upper_bound_col], errors="coerce").iloc[0]),
+                }
             )
+        )
+    )
+    summary["total"] = summary["below_n"] + summary["above_n"]
+    summary = summary.sort_values("total", ascending=False)
 
-            for rid in top_ids:
-                rid_mask = df[row_id_col] == rid
-                rid_below = below & rid_mask
-                rid_above = above & rid_mask
-
-                lb = df.loc[rid_mask, lower_bound_col].dropna()
-                ub = df.loc[rid_mask, upper_bound_col].dropna()
-                lb_val = float(lb.iloc[0]) if not lb.empty else float("nan")
-                ub_val = float(ub.iloc[0]) if not ub.empty else float("nan")
-
-                print(f"    • {rid} (bounds: {lb_val:g} to {ub_val:g})")
-
-                if rid_below.any():
-                    vals = df.loc[rid_below, metric_col]
-                    print(f"      - {int(rid_below.sum()):,} below; range {vals.min():g} to {vals.max():g}")
-
-                if rid_above.any():
-                    vals = df.loc[rid_above, metric_col]
-                    print(f"      - {int(rid_above.sum()):,} above; range {vals.min():g} to {vals.max():g}")
-
-            remaining = total - int(df.loc[tech_oob, row_id_col].isin(top_ids).sum())
+    print(f"\n  WARNING: Out-of-bounds {metric_name}: {int(oob.sum()):,} homes → masked to NaN")
+    for i, (row_id, s) in enumerate(summary.iterrows()):
+        if i >= max_groups_to_print:
+            remaining = len(summary) - max_groups_to_print
             if remaining > 0:
-                print(f"    … plus {remaining:,} additional out-of-bounds homes across other technologies")
+                print(f"    … {remaining:,} additional technologies omitted (increase max_groups_to_print to show more)")
+            break
 
-    if out_of_bound_method == "masking":
-        metric.loc[oob] = np.nan
-    elif out_of_bound_method in ("keep_as_is", "keep_as_is_filter_ci"):
-        pass
-    else:
-        raise ValueError("out_of_bound_method must be one of: masking, keep_as_is, keep_as_is_filter_ci")
+        print(f"    • {row_id} (bounds: {s['lower']:.2f} to {s['upper']:.2f})")
+        if s["below_n"] > 0:
+            print(f"      - {int(s['below_n']):,} below bound")
+        if s["above_n"] > 0:
+            print(f"      - {int(s['above_n']):,} above bound")
+        print(f"      - Problematic range: {s['metric_min']:.2f} to {s['metric_max']:.2f}")
 
-    return metric, oob
+    return metric
+
 
 
 # ===== Fill missing pm1/pm2 values from REMDB bounds =====
@@ -448,10 +472,7 @@ def add_remdb_replacement_metrics(
     remdb_v4_costs: pd.DataFrame,
     end_use: str,
     percentile: str = 'mid',
-    df_detailed: Optional[pd.DataFrame] = None,
-    out_of_bound_method: OutOfBoundMethod = "keep_as_is",
-    bounds_verbose: bool = True,
-    max_groups_to_print: int = 25
+    df_detailed: Optional[pd.DataFrame] = None
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Prepare REPLACEMENT cost metrics from BASELINE equipment for REMDB v4 calculations.
@@ -540,45 +561,25 @@ def add_remdb_replacement_metrics(
     )
 
     prefix = f"{end_use}_{replacement_or_upgrade}_"
+    row_id_col = f"row_id_{end_use}_{replacement_or_upgrade}"
 
     # ===== STEP 4.5: Mask out-of-bounds metrics (row-by-row, technology-specific) =====
-    df_copy[pm1_col], oob_pm1 = _check_out_of_bounds_metrics(
+    df_copy[pm1_col] = _mask_out_of_bounds_metrics(
         df_copy,
         metric_col=pm1_col,
         lower_bound_col=f"{prefix}pm1_lower_bound",
         upper_bound_col=f"{prefix}pm1_upper_bound",
         metric_name="capacity",
         row_id_col=row_id_col,
-        out_of_bound_method=out_of_bound_method,
-        verbose=bounds_verbose,
-        max_groups_to_print=max_groups_to_print,
     )
-
-    df_copy[pm2_col], oob_pm2 = _check_out_of_bounds_metrics(
+    df_copy[pm2_col] = _mask_out_of_bounds_metrics(
         df_copy,
         metric_col=pm2_col,
         lower_bound_col=f"{prefix}pm2_lower_bound",
         upper_bound_col=f"{prefix}pm2_upper_bound",
         metric_name="efficiency",
         row_id_col=row_id_col,
-        out_of_bound_method=out_of_bound_method,
-        verbose=bounds_verbose,
-        max_groups_to_print=max_groups_to_print,
     )
-
-    # REMDB guidance: if outside bounds, use mid coefficients/intercept.
-    if out_of_bound_method == "keep_as_is_filter_ci" and percentile != "mid":
-        oob_any = oob_pm1 | oob_pm2
-        if oob_any.any():
-            missing = [c for c in ("pm1_coef_mid", "pm2_coef_mid", "intercept_mid") if c not in remdb_v4_costs.columns]
-            if missing:
-                raise KeyError(f"Cannot apply keep_as_is_filter_ci; missing columns in remdb_v4_costs: {missing}")
-
-            df_copy.loc[oob_any, f"{prefix}pm1_coef_{percentile}"] = df_copy.loc[oob_any, row_id_col].map(remdb_v4_costs["pm1_coef_mid"])
-            df_copy.loc[oob_any, f"{prefix}pm2_coef_{percentile}"] = df_copy.loc[oob_any, row_id_col].map(remdb_v4_costs["pm2_coef_mid"])
-            df_copy.loc[oob_any, f"{prefix}intercept_{percentile}"] = df_copy.loc[oob_any, row_id_col].map(remdb_v4_costs["intercept_mid"])
-
-            print(f"  Applied mid regression params to {int(oob_any.sum()):,} out-of-bounds homes (percentile='{percentile}' → mid)")
 
     # Report summary (now reflects masking)
     pm1_valid = df_copy[pm1_col].notna().sum()
@@ -644,10 +645,7 @@ def add_remdb_upgrade_metrics(
     remdb_v4_costs: pd.DataFrame,
     end_use: str,
     percentile: str = 'mid',
-    df_detailed: Optional[pd.DataFrame] = None,
-    out_of_bound_method: OutOfBoundMethod = "keep_as_is",
-    bounds_verbose: bool = True,
-    max_groups_to_print: int = 25
+    df_detailed: Optional[pd.DataFrame] = None
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Prepare UPGRADE cost metrics from BASELINE equipment for REMDB v4 calculations.
@@ -735,45 +733,25 @@ def add_remdb_upgrade_metrics(
     )
 
     prefix = f"{end_use}_{replacement_or_upgrade}_"
+    row_id_col = f"row_id_{end_use}_{replacement_or_upgrade}"
 
     # ===== STEP 4.5: Mask out-of-bounds metrics (row-by-row, technology-specific) =====
-    df_copy[pm1_col], oob_pm1 = _check_out_of_bounds_metrics(
+    df_copy[pm1_col] = _mask_out_of_bounds_metrics(
         df_copy,
         metric_col=pm1_col,
         lower_bound_col=f"{prefix}pm1_lower_bound",
         upper_bound_col=f"{prefix}pm1_upper_bound",
         metric_name="capacity",
         row_id_col=row_id_col,
-        out_of_bound_method=out_of_bound_method,
-        verbose=bounds_verbose,
-        max_groups_to_print=max_groups_to_print,
     )
-
-    df_copy[pm2_col], oob_pm2 = _check_out_of_bounds_metrics(
+    df_copy[pm2_col] = _mask_out_of_bounds_metrics(
         df_copy,
         metric_col=pm2_col,
         lower_bound_col=f"{prefix}pm2_lower_bound",
         upper_bound_col=f"{prefix}pm2_upper_bound",
         metric_name="efficiency",
         row_id_col=row_id_col,
-        out_of_bound_method=out_of_bound_method,
-        verbose=bounds_verbose,
-        max_groups_to_print=max_groups_to_print,
     )
-
-    # REMDB guidance: if outside bounds, use mid coefficients/intercept.
-    if out_of_bound_method == "keep_as_is_filter_ci" and percentile != "mid":
-        oob_any = oob_pm1 | oob_pm2
-        if oob_any.any():
-            missing = [c for c in ("pm1_coef_mid", "pm2_coef_mid", "intercept_mid") if c not in remdb_v4_costs.columns]
-            if missing:
-                raise KeyError(f"Cannot apply keep_as_is_filter_ci; missing columns in remdb_v4_costs: {missing}")
-
-            df_copy.loc[oob_any, f"{prefix}pm1_coef_{percentile}"] = df_copy.loc[oob_any, row_id_col].map(remdb_v4_costs["pm1_coef_mid"])
-            df_copy.loc[oob_any, f"{prefix}pm2_coef_{percentile}"] = df_copy.loc[oob_any, row_id_col].map(remdb_v4_costs["pm2_coef_mid"])
-            df_copy.loc[oob_any, f"{prefix}intercept_{percentile}"] = df_copy.loc[oob_any, row_id_col].map(remdb_v4_costs["intercept_mid"])
-
-            print(f"  Applied mid regression params to {int(oob_any.sum()):,} out-of-bounds homes (percentile='{percentile}' → mid)")
 
     # Report summary (now reflects masking)
     pm1_valid = df_copy[pm1_col].notna().sum()

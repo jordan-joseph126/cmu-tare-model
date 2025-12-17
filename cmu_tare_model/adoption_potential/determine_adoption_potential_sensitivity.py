@@ -83,7 +83,8 @@ def adoption_decision(
     policy_scenario: str,
     rcm_model: str,
     cr_function: str,
-    verbose: bool = False
+    verbose: bool = False,
+    percentile: str = 'mid'
 ) -> pd.DataFrame:
     """
     Updates DataFrame with adoption decisions and public impacts based on NPV analysis.
@@ -98,6 +99,7 @@ def adoption_decision(
         rcm_model: RCM model for health impact analysis ('ap2', 'easiur', 'inmap').
         cr_function: Concentration response function ('acs', 'h6c').
         verbose: Enable detailed output for debugging (default: False).
+        percentile: Percentile to use for cost calculations (default is 'mid').
         
     Returns:
         DataFrame with adoption tier and public impact classifications.
@@ -148,16 +150,26 @@ def adoption_decision(
                 for scc in SCC_ASSUMPTIONS:
                     try:
                         # Define column names
-                        lessWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_lessWTP'
-                        moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP'
+                        lessWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_lessWTP_{percentile}'
+                        moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP_{percentile}'
                         public_npv_col = f'{scenario_prefix}{category}_public_npv_{scc}_{rcm_model}_{cr_function}'
-                        rebate_col = f'mp{menu_mp}_{category}_rebate_amount'
+                        rebate_col = f'mp{menu_mp}_{category}_rebate_amount_{percentile}'
                         
+                        # # ===============================================================================================
+                        # # UPDATE THIS TO INCLUDE THE $1600 FROM WEATHERIZATION UPGRADES
+                        # # ===============================================================================================
+                        # if category == 'heating':
+                        #     if menu_mp in [9, 10]:
+                        #         weatherization_rebate_col = f'mp{menu_mp}_weatherization_rebate_amount_{percentile}'
+                        #         total_hvac_rebate_col = f'mp{menu_mp}_heating_withEnclosure_rebate_amount_{percentile}'
+                        #         df_copy[total_hvac_rebate_col] = df[rebate_col] + df_copy[weatherization_rebate_col]
+                        # # ===============================================================================================
+
                         new_col_names = {
                             'health_sensitivity': f'{scenario_prefix}{category}_health_sensitivity',
                             'benefit': f'{scenario_prefix}{category}_benefit_{scc}_{rcm_model}_{cr_function}',
-                            'total_npv': f'{scenario_prefix}{category}_total_npv_{scc}_{rcm_model}_{cr_function}',
-                            'adoption': f'{scenario_prefix}{category}_adoption_{scc}_{rcm_model}_{cr_function}',
+                            'total_npv': f'{scenario_prefix}{category}_total_npv_{scc}_{rcm_model}_{cr_function}_{percentile}',
+                            'adoption': f'{scenario_prefix}{category}_adoption_{scc}_{rcm_model}_{cr_function}_{percentile}',
                             'impact': f'{scenario_prefix}{category}_impact_{scc}_{rcm_model}_{cr_function}'
                         }
                         
@@ -187,12 +199,20 @@ def adoption_decision(
                         if policy_scenario == 'No Inflation Reduction Act':
                             df_new_columns.loc[valid_mask, new_col_names['benefit']] = 0.0
                         else:
+                            # ===============================================================================================
+                            # UPDATE THIS TO INCLUDE THE $1600 FROM WEATHERIZATION UPGRADES
+                            # - Or possibly remove the benefit metric altogether as it is confusing.
+                            # - May be better to calculate that hypothetical subsidy amount (paid by utility or gov)
+                            # - Hypothetical subsidy to encourage public benefit (e.g., air quality or load reduction)
+                            # ===============================================================================================
                             if rebate_col in df_copy.columns:
                                 valid_rows = valid_mask & df_copy[public_npv_col].notna() & df_copy[rebate_col].notna()
                                 df_new_columns.loc[valid_rows, new_col_names['benefit']] = (
                                     df_copy.loc[valid_rows, public_npv_col] - 
                                     df_copy.loc[valid_rows, rebate_col]
                                 ).clip(lower=0)
+                            # ===============================================================================================
+                           
                             else:
                                 valid_rows = valid_mask & df_copy[public_npv_col].notna()
                                 df_new_columns.loc[valid_rows, new_col_names['benefit']] = (
@@ -294,7 +314,8 @@ def calculate_climate_only_adoption_robust(
     menu_mp: int,
     policy_scenario: str,
     scc_assumptions: List[str] = None,
-    verbose: bool = False
+    verbose: bool = False,
+    percentile: str = 'mid'
 ) -> pd.DataFrame:
     """
     Climate-only adoption analysis with simplified output.
@@ -305,6 +326,7 @@ def calculate_climate_only_adoption_robust(
         policy_scenario: Policy scenario name.
         scc_assumptions: List of SCC assumptions to process.
         verbose: Enable detailed output.
+        percentile: Percentile to use for cost calculations (default is 'mid').
         
     Returns:
         DataFrame with climate-only adoption analysis columns.
@@ -340,7 +362,7 @@ def calculate_climate_only_adoption_robust(
             for scc in scc_assumptions:
                 try:
                     # Define column names
-                    moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP'
+                    moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP_{percentile}'
                     climate_npv_col = f'{scenario_prefix}{category}_climate_npv_{scc}'
                     
                     # Validate columns
@@ -355,7 +377,7 @@ def calculate_climate_only_adoption_robust(
                     
                     # Define output column names (simplified - only total NPV for visualization)
                     climate_col_names = {
-                        'total_npv_climate': f'{scenario_prefix}{category}_total_npv_climateOnly_{scc}',
+                        'total_npv_climate': f'{scenario_prefix}{category}_total_npv_climateOnly_{scc}_{percentile}',
                     }
                     
                     # Create new columns DataFrame
@@ -410,7 +432,8 @@ def calculate_health_only_adoption_robust(
     policy_scenario: str,
     rcm_model: str,
     cr_function: str,
-    verbose: bool = False
+    verbose: bool = False,
+    percentile: str = 'mid'
 ) -> pd.DataFrame:
     """
     Health-only adoption analysis with simplified output.
@@ -422,6 +445,7 @@ def calculate_health_only_adoption_robust(
         rcm_model: RCM model name.
         cr_function: Concentration response function.
         verbose: Enable detailed output.
+        percentile: Percentile to use for cost calculations (default is 'mid').
         
     Returns:
         DataFrame with health-only adoption analysis columns.
@@ -452,7 +476,7 @@ def calculate_health_only_adoption_robust(
             
             try:
                 # Define column names
-                moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP'
+                moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP_{percentile}'
                 health_npv_col = f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
                 
                 # Validate columns
@@ -467,7 +491,7 @@ def calculate_health_only_adoption_robust(
                 
                 # Define output column names (simplified - only total NPV for visualization)
                 health_col_names = {
-                    'total_npv_health': f'{scenario_prefix}{category}_total_npv_healthOnly_{rcm_model}_{cr_function}',
+                    'total_npv_health': f'{scenario_prefix}{category}_total_npv_healthOnly_{rcm_model}_{cr_function}_{percentile}',
                 }
                 
                 # Create new columns DataFrame

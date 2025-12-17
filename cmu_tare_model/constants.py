@@ -1,5 +1,10 @@
 # Constants for the TARE Model (Updated for TRANE Analysis)
 # Adjust or remove them as needed, or move them to a separate config file.
+# UPDATE: 
+# - Updated to handle different enduses based on EQUIPMENT_SPECS.
+# - Rest of codebase updated so only initial columns created for cooling and replacement cost calculations performed
+# - This allows for a scenario where only heating is replaced AND one where heating and cooling systems are both replace with HP
+# - Resolves the excessive data columns and double counting with $8000 rebate. No longer need CDD projections.
 
 VALID_MENU_MPS = [3, 4, 7, 8, 9, 10]
 
@@ -59,7 +64,7 @@ ALLOWED_TECHNOLOGIES = {
 # POSSIBLY UPDATE THESE VALUES BASED ON NEW DATA FROM REMBD 2024
 EQUIPMENT_SPECS = {
     'heating': 15,
-    'cooling': 15,
+    # 'cooling': 15,
     # 'waterHeating': 12,
     # 'clothesDrying': 13,
     # 'cooking': 15
@@ -68,7 +73,7 @@ EQUIPMENT_SPECS = {
 # Define equipment categories and their corresponding upgrade columns
 UPGRADE_COLUMNS = {
     'heating': 'upgrade_hvac_heating_efficiency',
-    'cooling': 'upgrade_hvac_cooling_efficiency',
+    # 'cooling': 'upgrade_hvac_cooling_efficiency',
     # 'waterHeating': 'upgrade_water_heater_efficiency',
     # 'clothesDrying': 'upgrade_clothes_dryer',
     # 'cooking': 'upgrade_cooking_range'
@@ -78,7 +83,7 @@ UPGRADE_COLUMNS = {
 REBATE_MAPPING = {
     # Be sure to update code logic so that the space conditioning rebate is only applied once (i.e., $8000 total, not $8000 per equipment if both heating and cooling are upgraded)
     'heating': ('upgrade_hvac_heating_efficiency', ['ASHP', 'MSHP'], 8000.00),
-    'cooling': ('upgrade_hvac_cooling_efficiency', ['Heat Pump'], 0.00),
+    # 'cooling': ('upgrade_hvac_cooling_efficiency', ['Heat Pump'], 0.00),
     # 'waterHeating': ('upgrade_water_heater_efficiency', ['Electric Heat Pump'], 1750.00),
     # 'clothesDrying': ('upgrade_clothes_dryer', ['Electric, Premium, Heat Pump, Ventless'], 840.00),
     # 'cooking': ('upgrade_cooking_range', ['Electric, '], 840.00)

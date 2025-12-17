@@ -33,6 +33,7 @@ The cost calculation is simple:
 
 import pandas as pd
 import numpy as np
+from typing import Tuple
 
 from cmu_tare_model.constants import VALID_MENU_MPS
 
@@ -47,10 +48,11 @@ from cmu_tare_model.constants import EQUIPMENT_SPECS
 
 def calculate_upgrade_installed_cost(
     df: pd.DataFrame,
+    df_detailed: pd.DataFrame,
     menu_mp: int,
     end_use: str,
     percentile: str = 'mid'
-) -> pd.DataFrame:
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Calculate UPGRADE installed costs using REMDB v4 regression formula.
     
@@ -65,12 +67,15 @@ def calculate_upgrade_installed_cost(
 
     Args:
         df: DataFrame with prepared metrics.
+        df_detailed: Detailed DataFrame with regression parameters.
         menu_mp: Measure package number.
         end_use: Equipment category.
         percentile: Cost percentile.
         
     Returns:
-        DataFrame with mp{menu_mp}_{end_use}_upgrade_installed_cost_{percentile} column.
+        Tuple[pd.DataFrame, pd.DataFrame]:
+            - df_copy: Updated DataFrame with new cost column.
+            - df_detailed_out: Updated detailed DataFrame with new cost column.
     """
     # This function is for retrofit upgrade installed costs
     replacement_or_upgrade = 'upgrade'
@@ -100,7 +105,8 @@ def calculate_upgrade_installed_cost(
         f'{prefix}multiplier_retrofit',
         f'{prefix}adder_retrofit',
     ]
-    missing = [c for c in required_cols if c not in df.columns]
+    missing = [c for c in required_cols if c not in df_detailed.columns]    
+
     if missing:
         raise KeyError(f"Missing columns: {missing}. Call add_remdb_upgrade_metrics() first.")
     
@@ -116,17 +122,22 @@ def calculate_upgrade_installed_cost(
 
     # ===== STEP 3 & 4: Valid-Only Calculation =====
     # Calculate cost using REMDB v4 regression formula
-    pm1 = df_copy[f'euss_{end_use}_upgrade_pm1']
-    pm2 = df_copy[f'euss_{end_use}_upgrade_pm2']
-    pm1_coef = df_copy[f'{prefix}pm1_coef_{percentile}']
-    pm2_coef = df_copy[f'{prefix}pm2_coef_{percentile}']
-    intercept = df_copy[f'{prefix}intercept_{percentile}']
-    multiplier = df_copy[f'{prefix}multiplier_retrofit']
-    adder = df_copy[f'{prefix}adder_retrofit']
-    
+    pm1 = df_detailed[f'euss_{end_use}_upgrade_pm1']
+    pm2 = df_detailed[f'euss_{end_use}_upgrade_pm2']
+    pm1_coef = df_detailed[f'{prefix}pm1_coef_{percentile}']
+    pm2_coef = df_detailed[f'{prefix}pm2_coef_{percentile}']
+    intercept = df_detailed[f'{prefix}intercept_{percentile}']
+    multiplier = df_detailed[f'{prefix}multiplier_retrofit']
+    adder = df_detailed[f'{prefix}adder_retrofit']    
+
+    # REMDB v4 regression formula
     material_price = (pm1 * pm1_coef) + (pm2 * pm2_coef) + intercept
     installed_cost = (material_price * multiplier) + adder
     
+    # ===== UPDATE: Ensure costs never go negative =====
+    # Safety net: Ensure costs never go negative (defense against extreme extrapolation)
+    installed_cost = installed_cost.clip(lower=0)
+
     # Update result series with calculated values (only for valid homes due to internal masking)
     result_series.loc[valid_mask] = installed_cost.loc[valid_mask].round(2)
 
@@ -143,9 +154,13 @@ def calculate_upgrade_installed_cost(
     # ===== STEP 5: Apply final verification masking for consistency =====
     df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=True)
     
+    # ===== Add cost column to detailed DataFrame =====
+    df_detailed_out = df_detailed.copy()
+    df_detailed_out[cost_col] = df_copy[cost_col]
+    
     # Report summary
     valid_count = df_copy[cost_col].notna().sum()
     mean_cost = df_copy[cost_col].mean()
     print(f"  Calculated costs for {valid_count:,} homes (mean: ${mean_cost:,.2f})\n")
     
-    return df_copy
+    return df_copy, df_detailed_out
