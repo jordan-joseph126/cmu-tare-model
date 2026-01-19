@@ -5,23 +5,32 @@ REMDB v4 Installed Cost Utilities (SIMPLIFIED)
 
 This module prepares equipment metrics for REMDB v4 cost calculations.
 
-The main function `add_remdb_replacement_metrics` AND 'add_remdb_upgrade_metrics' performs ALL preparation:
-1. Assigns row_id based on equipment type
-2. Maps REMDB coefficients and unit specifications  
-3. Extracts metrics from EUSS data with correct unit conversions
-4. Fills missing values from REMDB bounds
+Key Functions:
+- add_remdb_metrics(): Unified function for both replacement and upgrade metrics
 
-Output columns ready for cost calculation:
-- {end_use}_{replacement_or_upgrade}_pm1: Performance metric 1 (in REMDB units)
-- {end_use}_{replacement_or_upgrade}_pm2: Performance metric 2 (in REMDB units)
-- Plus coefficient, intercept, multiplier, adder columns
+Features:
+- Percentile-based filtering to exclude capacity outliers before processing
+- Unit conversion based on REMDB specifications
+- NaN values propagate naturally for homes with invalid fuel/technology types
 
-# UPDATED DECEMBER 15, 2025 - Simplified architecture, data-driven unit conversion
+Refactored: January 2026
+- Combined duplicate replacement/upgrade logic into single function
+- Added percentile filtering for capacity values
+- Removed dead/commented code
+- Simplified column management
+
+UPDATED: January 12, 2026
+- Fixed argument order in _convert_pm1() call (pm1_metric_col and pm1_unit_col were swapped)
+- Added defensive df.copy() at start of all functions to prevent mutation on re-execution
+- Fixed duplicate column issue in output concatenation
+- Removed _fill_missing_from_bounds() - NaN values propagate naturally per validation framework
+- Removed _check_out_of_bounds() - 95% CI percentile filter handles outliers
+- Removed out_of_bound_method parameter - no longer needed
+- Removed legacy code for clamping and keeping as is - now handled via filtering
 
 NO LONGER USING THE SUM OF THE HEATING AND COOLING LOADS FOR SYSTEM SIZE AND COST ESTIMATION
 - The supplemental heating (electric strip heat) is implicitly included in the REMDB v4 costs
-- Also, the primary system size is the same for both heating and cooling. You wouldnt have two different ASHP tonnages.
-
+- Also, the primary system size is the same for both heating and cooling. You wouldn't have two different ASHP tonnages.
 """
 
 import os
@@ -31,11 +40,18 @@ from typing import Optional, Tuple, Literal
 
 from cmu_tare_model.constants import EQUIPMENT_SPECS
 
+
+# =============================================================================
+# TYPE DEFINITIONS
+# =============================================================================
+
+MetricType = Literal["replacement", "upgrade"]
+
+
 # ============================================================
 # HELPER FUNCTIONS
 # ============================================================
 
-# ===== DATA LOADING FUNCTION =====
 def load_remdb_v4_data(
     data_dir: Optional[str] = None,
     filename: str = "remdb_v4_tare_retrofit_costs.csv"
@@ -66,10 +82,16 @@ def load_remdb_v4_data(
     return df
 
 
-# ===== Assign REMDB row_id based on technology =====
 def _assign_replacement_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
-    """Assign REMDB row_id based on baseline equipment type."""
-
+    """Assign REMDB row_id based on baseline equipment type.
+    
+    Args:
+        df: DataFrame with equipment specifications.
+        end_use: Equipment category ('heating' or 'cooling').
+        
+    Returns:
+        DataFrame with row_id column added.
+    """
     df_copy = df.copy()
     row_id_col = f'row_id_{end_use}_replacement'
         
@@ -85,7 +107,7 @@ def _assign_replacement_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
             (df_copy['base_heating_fuel'] == 'Electricity') & (df_copy['heating_type'] != 'Electricity ASHP'),
             (df_copy['heating_type'] == 'Electricity ASHP') & (df_copy['hvac_has_ducts'] == 'Yes'),
             (df_copy['heating_type'] == 'Electricity ASHP') & (df_copy['hvac_has_ducts'] == 'No')
-            ]
+        ]
 
         choices = [
             'furnaces_gas_furnace',  # Proxy for propane
@@ -94,7 +116,7 @@ def _assign_replacement_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
             'electric_baseboard_default',
             'air_source_heat_pump_centrally_ducted',
             'air_source_heat_pump_non_ducted_multi_zone'
-            ]
+        ]
         
         df_copy[row_id_col] = np.select(conditions, choices, default='unknown')
     
@@ -114,7 +136,7 @@ def _assign_replacement_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
         ]
 
         df_copy[row_id_col] = np.select(conditions, choices, default='unknown')
-        
+
     # =========================================
     # DELETE FOR NOW - NON-HVAC END USES
     # =========================================
@@ -126,15 +148,21 @@ def _assign_replacement_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
     return df_copy
 
 
-# ===== Assign REMDB row_id based on technology =====
 def _assign_upgrade_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
-    """Assign REMDB row_id based on baseline equipment type."""
-
+    """Assign REMDB row_id for upgrade equipment (heat pumps).
+    
+    Args:
+        df: DataFrame with equipment specifications.
+        end_use: Equipment category ('heating' or 'cooling').
+        
+    Returns:
+        DataFrame with row_id column added.
+    """
     df_copy = df.copy()
     row_id_col = f'row_id_{end_use}_upgrade'
-        
+
     # ========== HVAC OPTIONS: HEATING & COOLING ---> HEAT PUMP ==========
-    # MP7 Standard heat pumps (SEER 18) | MP8-10: High-efficiency heat pumps
+    # MP3 and MP7 Standard heat pumps (SEER 18) | MP4 and MP8-10: High-efficiency heat pumps
     # However, the efficiency level does not impact row_id mapping in REMDB v4 but instead pm1/pm2 in the regression formula
     # Generally we use multi-zone non-ducted for homes without ducts, but may update to single-zone in the future for smaller homes 
     # New circuit will be addressed in future versions, but excluded here for simplicity.
@@ -142,33 +170,17 @@ def _assign_upgrade_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
         conditions = [
             (df_copy['hvac_has_ducts'] == 'Yes'),
             (df_copy['hvac_has_ducts'] == 'No'),
-            # (df_copy['hvac_has_ducts'] == 'No') & (df_copy['square_footage'] < 1200)
         ]
         
         choices = [
             'air_source_heat_pump_centrally_ducted',
             'air_source_heat_pump_non_ducted_multi_zone',
-            # 'air_source_heat_pump_non_ducted_single_zone',
         ]
 
         df_copy[row_id_col] = np.select(conditions, choices, default='unknown')
-    
-    # elif end_use == 'cooling':
-    #     # Similar logic to heating - cooling upgrades mirror heat pump installations
-    #     conditions = [
-    #         (df_copy['hvac_has_ducts'] == 'Yes'),
-    #         (df_copy['hvac_has_ducts'] == 'No'),
-    #         # (df_copy['hvac_has_ducts'] == 'No') & (df_copy['square_footage'] < 1200)
-    #     ]
-        
-    #     choices = [
-    #         'air_source_heat_pump_centrally_ducted',
-    #         'air_source_heat_pump_non_ducted_multi_zone',
-    #         # 'air_source_heat_pump_non_ducted_single_zone',
-    #     ]
 
-    #     df_copy[row_id_col] = np.select(conditions, choices, default='unknown')
-        
+    # Cooling only considered as replacement cost because heat pumps are the upgrade option for both heating and cooling
+
     # =========================================
     # DELETE FOR NOW - NON-HVAC END USES
     # =========================================
@@ -180,7 +192,6 @@ def _assign_upgrade_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
     return df_copy
 
 
-# ===== Map REMDB parameters to DataFrame =====
 def _map_remdb_parameters(
     df: pd.DataFrame, 
     remdb_v4_costs: pd.DataFrame, 
@@ -188,23 +199,31 @@ def _map_remdb_parameters(
     replacement_or_upgrade: str,
     percentile: str = 'mid'
 ) -> pd.DataFrame:
-    """
-    Map REMDB coefficients and unit specifications to DataFrame.
-    Documentation and error handling have been moved to the main functions.
+    """Map REMDB coefficients and unit specifications to DataFrame.
+    
+    Args:
+        df: DataFrame with row_id column.
+        remdb_v4_costs: REMDB v4 cost database (indexed by row_id).
+        end_use: Equipment category.
+        replacement_or_upgrade: Metric type.
+        percentile: Cost percentile ('low', 'mid', 'high').
+        
+    Returns:
+        DataFrame with REMDB parameters mapped.
     """
     df_copy = df.copy()
     row_id_col = f'row_id_{end_use}_{replacement_or_upgrade}'
     prefix = f'{end_use}_{replacement_or_upgrade}_'
     
-    # Parameters to map from REMDB
+    # Parameters to map from REMDB (bounds columns included for diagnostic reporting)
     params = [
-        'pm1_metric', 'pm1_unit', f'pm1_coef_{percentile}', 
-        'pm1_lower_bound', 'pm1_upper_bound',  # ← ADD bounds for clamping/masking
+        'pm1_metric', 'pm1_unit', f'pm1_coef_{percentile}',
+        'pm1_lower_bound', 'pm1_upper_bound',
         'pm2_metric', 'pm2_unit', f'pm2_coef_{percentile}',
-        'pm2_lower_bound', 'pm2_upper_bound',  # ← ADD bounds for clamping/masking
+        'pm2_lower_bound', 'pm2_upper_bound',
         f'intercept_{percentile}', 'multiplier_retrofit', 'adder_retrofit'
     ]
-    
+
     for param in params:
         if param in remdb_v4_costs.columns:
             df_copy[prefix + param] = df_copy[row_id_col].map(remdb_v4_costs[param])
@@ -212,621 +231,524 @@ def _map_remdb_parameters(
     return df_copy
 
 
-# ===== Convert capacity metric (EUSS) to REMDB units =====
-# def _convert_capacity_by_unit(
-#     df: pd.DataFrame, 
-#     capacity_col: str, 
-#     pm1_unit_col: str
-# ) -> pd.Series:
-#     """Convert capacity to REMDB units based on pm1_unit column.
-    
-#     Unit Conversions:
-#         - "Tons"   --> kBtu/h / 12
-#         - "BTU/hr" --> kBtu/h * 1000
-#     """
-#     result = pd.Series(np.nan, index=df.index)
-    
-#     # Tons: kBtu/h / 12 (heat pumps, central ACs)
-#     tons_mask = df[pm1_unit_col] == 'Tons'
-#     if tons_mask.any():
-#         result.loc[tons_mask] = df.loc[tons_mask, capacity_col] / 12.0
-    
-#     # BTU/hr: kBtu/h * 1000 (furnaces, boilers, baseboard)
-#     btuh_mask = df[pm1_unit_col].str.lower() == 'btu/hr'
-#     if btuh_mask.any():
-#         result.loc[btuh_mask] = df.loc[btuh_mask, capacity_col] * 1000.0
-    
-#     return result
-
-
-def _convert_capacity_by_unit(
+def _convert_pm1(
     df: pd.DataFrame,
-    capacity_col: str,
+    pm1_euss_value_col: str,
+    pm1_metric_col: str,
     pm1_unit_col: str
 ) -> pd.Series:
-    """Convert capacity (EUSS, kBtu/h) to REMDB units based on pm1_unit."""
-    if capacity_col not in df.columns:
-        raise KeyError(f"Missing capacity column: '{capacity_col}'")
-    if pm1_unit_col not in df.columns:
-        raise KeyError(f"Missing unit column: '{pm1_unit_col}'")
-
-    result = pd.Series(np.nan, index=df.index)
-
-    # Normalize units (handles 'Tons ', 'BTU/Hr', etc.)
-    units = df[pm1_unit_col].astype("string").str.strip().str.lower()
-
-    # Tons: kBtu/h / 12
-    tons_mask = units == "tons"
-    if tons_mask.any():
-        result.loc[tons_mask] = df.loc[tons_mask, capacity_col] / 12.0
-
-    # BTU/hr: kBtu/h * 1000
-    btuh_mask = units == "btu/hr"
-    if btuh_mask.any():
-        result.loc[btuh_mask] = df.loc[btuh_mask, capacity_col] * 1000.0
-
-    return result
-
-
-# ===== Convert efficiency metric (EUSS) to REMDB units =====
-def _convert_efficiency_by_metric(
-    df: pd.DataFrame, 
-    efficiency_col: str, 
-    pm2_metric_col: str
-) -> pd.Series:
-    """Convert efficiency to REMDB units based on pm2_metric column.
+    """Convert PM1 (capacity) to REMDB-expected units.
     
-    Unit Conversions:
-        - "SEER1" → Extract as-is (13-30 range)
-        - "AFUE"  → Extract / 100 (80% → 0.80)
-        - "CEER"  → Extract as-is (9-15 range)
-        - Empty   → Set to 0 (no efficiency metric)
-    """
-    result = pd.Series(np.nan, index=df.index)
+    Conversion rules based on pm1_remdb_col:
+    - "Tons": kBtu/h ÷ 12 (heat pumps, central ACs)
+    - "BTU/hr": kBtu/h × 1000 (furnaces, boilers, baseboard)
+    - Other: keep as-is (R-value, volume, etc.)
     
-    # SEER: Extract as-is
-    seer_mask = df[pm2_metric_col] == 'SEER1'
-    if seer_mask.any():
-        seer_extract = df.loc[seer_mask, efficiency_col].str.extract(
-            r'SEER\s*(\d+\.?\d*)', expand=False)
-        result.loc[seer_mask] = pd.to_numeric(seer_extract, errors='coerce')
-    
-    # AFUE: Extract and divide by 100 (CRITICAL FIX!)
-    afue_mask = df[pm2_metric_col] == 'AFUE'
-    if afue_mask.any():
-        afue_extract = df.loc[afue_mask, efficiency_col].str.extract(
-            r'(\d+\.?\d*)%?\s*AFUE', expand=False)
-        result.loc[afue_mask] = pd.to_numeric(afue_extract, errors='coerce') / 100.0
-    
-    # CEER: Extract as-is
-    # EER IS WHAT IS SPECIFIED IN EUSS, BUT REMDB USES CEER FOR ROOM ACs
-    # THERE IS NO DIRECT CONVERSION SO THIS WILL BE SET TO NAN --> THEN 0.0 
-    ceer_mask = df[pm2_metric_col] == 'CEER'
-    if ceer_mask.any():
-        ceer_extract = df.loc[ceer_mask, efficiency_col].str.extract(
-            r'CEER\s*(\d+\.?\d*)', expand=False)
+    Args:
+        df: DataFrame with capacity and unit columns.
+        pm1_euss_value_col: Column to extract numeric value from (e.g., capacity in kBtu/h).
+        pm1_metric_col: Column with metric name from REMDB.
+        pm1_unit_col: Column with target unit from REMDB.
         
-        result.loc[ceer_mask] = pd.to_numeric(ceer_extract, errors='coerce')
+    Returns:
+        Series with PM1 converted to REMDB units. (pm1_remdb_col)
+    """
+    df_copy = df.copy()
+
+    # Ensure numeric value (e.g., capacity may be numeric or string)
+    pm1_euss_value = df_copy[pm1_euss_value_col]
+    if not pd.api.types.is_numeric_dtype(pm1_euss_value):
+        pm1_euss_value = df_copy[pm1_euss_value_col].astype(str)
+        numeric_value = pm1_euss_value.str.extract(r'([\d.]+)', expand=False).astype(float)
+    else:
+        numeric_value = pm1_euss_value
+
+    # Normalize units (case-insensitive, strip whitespace)
+    pm1_remdb_col = df_copy[pm1_unit_col].str.lower().str.strip()
+
+    result = pd.Series(np.nan, index=df_copy.index)
     
-    # Empty: Set to 0 (no efficiency metric used)
-    empty_mask = df[pm2_metric_col].isna() | (df[pm2_metric_col] == '')
-    if empty_mask.any():
-        result.loc[empty_mask] = 0.0
+    # Tons (heat pumps, ACs): kBtu/h → Tons (÷12)
+    # mask_tons = (pm1_remdb_col == 'tons')
+    mask_tons = pm1_remdb_col.str.contains('ton', na=False)
+    if mask_tons.any():
+        result.loc[mask_tons] = numeric_value.loc[mask_tons] / 12.0
     
+    # BTU/hr (furnaces, boilers, baseboard): kBtu/h → BTU/hr (×1000)
+    mask_btu = pm1_remdb_col.str.contains('btu', na=False)
+    if mask_btu.any():
+        result.loc[mask_btu] = numeric_value.loc[mask_btu] * 1000.0
+        
+    # Other data that is not NaN (R-value, volume, etc.): keep as-is
+    mask_other = ~mask_tons & ~mask_btu & pm1_remdb_col.notna()
+    if mask_other.any():
+        result.loc[mask_other] = numeric_value.loc[mask_other]
+
+    # NEW: Equipment with no pm_metric defined (e.g., electric baseboard)
+    # These have pm_coef=0 in REMDB, so pm doesn't contribute to cost.
+    # Return 0.0 to prevent NaN propagation in the cost formula.
+    mask_no_metric = pm1_remdb_col.isna()
+    if mask_no_metric.any():
+        result.loc[mask_no_metric] = 0.0
+
     return result
 
 
-OutOfBoundMethod = Literal["masking", "keep_as_is", "keep_as_is_filter_ci"]
-def _check_out_of_bounds_metrics(
+def _convert_pm2(
     df: pd.DataFrame,
-    metric_col: str,
+    pm2_euss_value_col: str,
+    pm2_metric_col: str,
+    pm2_unit_col: str
+) -> pd.Series:
+    """Convert PM2 (efficiency) to REMDB-expected format.
+    
+    Conversion rules based on pm2_metric:
+    - AFUE: Extract numeric, divide by 100 (e.g., "80% AFUE" → 0.80)
+    - Other (SEER, HSPF, EER, UEF, CEF): Extract numeric, keep as-is
+    
+    Args:
+        df: DataFrame with efficiency and metric columns.
+        pm2_euss_value_col: Column to extract numeric value from (e.g., SEER or AFUE).
+        pm2_metric_col: Column with metric name from REMDB.
+        pm2_unit_col: Column with unit from REMDB.
+        
+    Returns:
+        Series with PM2 in REMDB format.
+    """
+    df_copy = df.copy()
+
+    # Ensure numeric value (e.g., efficiency may be numeric or string)
+    pm2_euss_value = df_copy[pm2_euss_value_col]
+    if not pd.api.types.is_numeric_dtype(pm2_euss_value):
+        # Efficiency may be stored as string (e.g., SEER 15", "80% AFUE")
+        pm2_euss_value = df_copy[pm2_euss_value_col].astype(str)
+        numeric_value = pm2_euss_value.str.extract(r'([\d.]+)', expand=False).astype(float)
+    else:
+        numeric_value = pm2_euss_value
+
+    # Normalize units (case-insensitive, strip whitespace)
+    pm2_remdb_col = df_copy[pm2_metric_col].str.lower().str.strip()
+    
+    result = pd.Series(np.nan, index=df_copy.index)
+    
+    # AFUE: divide by 100 to convert percentage to decimal
+    # mask_afue = (pm2_metric == 'afue')
+    mask_afue = pm2_remdb_col.str.contains('afue', na=False)
+    if mask_afue.any():
+        result.loc[mask_afue] = numeric_value.loc[mask_afue] / 100.0
+    
+    # Other data that is not NaN (SEER, HSPF, EER, UEF, CEF): keep as-is
+    mask_other = (~mask_afue) & pm2_remdb_col.notna()
+    if mask_other.any():
+        result.loc[mask_other] = numeric_value.loc[mask_other]
+    
+    # NEW: Equipment with no pm_metric defined (e.g., electric baseboard)
+    # These have pm_coef=0 in REMDB, so pm doesn't contribute to cost.
+    # Return 0.0 to prevent NaN propagation in the cost formula.
+    mask_no_metric = pm2_remdb_col.isna()
+    if mask_no_metric.any():
+        result.loc[mask_no_metric] = 0.0
+
+    return result
+
+
+def _report_bounds_comparison(
+    df: pd.DataFrame,
+    row_id_col: str,
+    pm_col: str,
     lower_bound_col: str,
     upper_bound_col: str,
     metric_name: str,
-    row_id_col: str,
-    out_of_bound_method: OutOfBoundMethod = "keep_as_is",
     verbose: bool = True,
-    max_groups_to_print: int = 25,
-) -> tuple[pd.Series, pd.Series]:
-    """
-    Detect out-of-bounds metrics using *row-specific* REMDB bounds.
-
-    Returns:
-        (metric_series, out_of_bounds_mask)
-
-    Notes on out_of_bound_method:
-        - 'masking': set out-of-bounds values to NaN
-        - 'keep_as_is': keep metric values unchanged (REMDB guidance default)
-        - 'keep_as_is_filter_ci': keep metric values unchanged; caller may
-          switch regression params to mid for out-of-bounds rows
-    """
-    for col in (metric_col, lower_bound_col, upper_bound_col, row_id_col):
-        if col not in df.columns:
-            raise KeyError(f"Missing required column: '{col}'")
-
-    metric = df[metric_col].copy()
-    lower = df[lower_bound_col]
-    upper = df[upper_bound_col]
-
-    checkable = metric.notna() & lower.notna() & upper.notna()
-    below = checkable & (metric < lower)
-    above = checkable & (metric > upper)
-    oob = below | above
-
-    if verbose and oob.any():
-        total = int(oob.sum())
-        unknown = oob & (df[row_id_col].isna() | (df[row_id_col] == "unknown"))
-        unknown_n = int(unknown.sum())
-
-        print(f"\n  WARNING: {total:,} homes have out-of-bounds {metric_name} (method={out_of_bound_method})")
-        if unknown_n:
-            print(f"    - {unknown_n:,} homes are out-of-bounds but row_id is unknown/NaN (skipping tech grouping)")
-
-        tech_oob = oob & ~unknown
-        if tech_oob.any():
-            top_ids = (
-                df.loc[tech_oob, row_id_col]
-                .value_counts()
-                .head(max_groups_to_print)
-                .index
-                .tolist()
-            )
-
-            for rid in top_ids:
-                rid_mask = df[row_id_col] == rid
-                rid_below = below & rid_mask
-                rid_above = above & rid_mask
-
-                lb = df.loc[rid_mask, lower_bound_col].dropna()
-                ub = df.loc[rid_mask, upper_bound_col].dropna()
-                lb_val = float(lb.iloc[0]) if not lb.empty else float("nan")
-                ub_val = float(ub.iloc[0]) if not ub.empty else float("nan")
-
-                print(f"    • {rid} (bounds: {lb_val:g} to {ub_val:g})")
-
-                if rid_below.any():
-                    vals = df.loc[rid_below, metric_col]
-                    print(f"      - {int(rid_below.sum()):,} below; range {vals.min():g} to {vals.max():g}")
-
-                if rid_above.any():
-                    vals = df.loc[rid_above, metric_col]
-                    print(f"      - {int(rid_above.sum()):,} above; range {vals.min():g} to {vals.max():g}")
-
-            remaining = total - int(df.loc[tech_oob, row_id_col].isin(top_ids).sum())
-            if remaining > 0:
-                print(f"    … plus {remaining:,} additional out-of-bounds homes across other technologies")
-
-    if out_of_bound_method == "masking":
-        metric.loc[oob] = np.nan
-    elif out_of_bound_method in ("keep_as_is", "keep_as_is_filter_ci"):
-        pass
-    else:
-        raise ValueError("out_of_bound_method must be one of: masking, keep_as_is, keep_as_is_filter_ci")
-
-    return metric, oob
-
-
-# ===== Fill missing pm1/pm2 values from REMDB bounds =====
-def _fill_missing_from_bounds(
-    df: pd.DataFrame,
-    remdb_v4_costs: pd.DataFrame,
-    end_use: str,
-    replacement_or_upgrade: str,
-    pm1_col: str,
-    pm2_col: str
-) -> pd.DataFrame:
-    """Fill missing pm1/pm2 values from REMDB bounds."""
-    df_copy = df.copy()
-    row_id_col = f'row_id_{end_use}_{replacement_or_upgrade}'
+    max_groups_to_print: int = 10
+) -> int:
+    """Report out-of-bounds metrics for diagnostic purposes (no data modification).
     
-    # Fill pm1 from bounds
-    pm1_missing = df_copy[pm1_col].isna()
-    if pm1_missing.any() and 'pm1_lower_bound' in remdb_v4_costs.columns:
-        lower = df_copy.loc[pm1_missing, row_id_col].map(remdb_v4_costs['pm1_lower_bound'])
-        upper = df_copy.loc[pm1_missing, row_id_col].map(remdb_v4_costs['pm1_upper_bound'])
-        df_copy.loc[pm1_missing, pm1_col] = (lower + upper) / 2.0
-        print(f"  Filled {pm1_missing.sum():,} missing {pm1_col} from REMDB bounds")
-    
-    # Fill pm2 from bounds  
-    pm2_missing = df_copy[pm2_col].isna()
-    if pm2_missing.any() and 'pm2_lower_bound' in remdb_v4_costs.columns:
-        lower = df_copy.loc[pm2_missing, row_id_col].map(remdb_v4_costs['pm2_lower_bound'])
-        upper = df_copy.loc[pm2_missing, row_id_col].map(remdb_v4_costs['pm2_upper_bound'])
-        df_copy.loc[pm2_missing, pm2_col] = (lower + upper) / 2.0
-        print(f"  Filled {pm2_missing.sum():,} missing {pm2_col} from REMDB bounds")
-    
-    return df_copy
-
-
-# ============================================================
-# MAIN FUNCTIONS TO MAP MATCHING EQUIPMENT AND PREPARE METRICS FOR COST CALCULATION
-# ============================================================
-
-# ==== Prepare REMDB REPLACEMENT metrics =====
-def add_remdb_replacement_metrics(
-    df: pd.DataFrame,
-    remdb_v4_costs: pd.DataFrame,
-    end_use: str,
-    percentile: str = 'mid',
-    df_detailed: Optional[pd.DataFrame] = None,
-    out_of_bound_method: OutOfBoundMethod = "keep_as_is",
-    bounds_verbose: bool = True,
-    max_groups_to_print: int = 25
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Prepare REPLACEMENT cost metrics from BASELINE equipment for REMDB v4 calculations.
-    
-    This function performs ALL preparation steps:
-    1. Assigns row_id based on equipment type
-    2. Maps REMDB coefficients and unit specifications
-    3. Extracts metrics from EUSS data with correct unit conversions
-    4. Fills missing values from REMDB bounds
-    5. Separates columns into main (summary) and detailed (all intermediates) DataFrames
+    Compares EUSS values against REMDB expected bounds and prints a summary
+    of values falling outside the expected range, separated into BELOW and
+    ABOVE categories. This is informational only - values are NOT modified.
     
     Args:
-        df: DataFrame with baseline equipment specifications.
+        df: DataFrame with metric and bounds columns.
+        row_id_col: Column containing REMDB row_id.
+        pm_col: Column with the performance metric values.
+        lower_bound_col: Column with REMDB lower bounds.
+        upper_bound_col: Column with REMDB upper bounds.
+        metric_name: Human-readable name for reporting (e.g., "capacity", "efficiency").
+        verbose: Whether to print the report.
+        max_groups_to_print: Maximum number of row_id groups to display.
+        
+    Returns:
+        Total count of out-of-bounds values.
+    """
+    if not verbose:
+        return 0
+    
+    # Check if bounds columns exist
+    if lower_bound_col not in df.columns or upper_bound_col not in df.columns:
+        return 0
+    
+    # Coerce to numeric for safe comparison
+    metric = pd.to_numeric(df[pm_col], errors='coerce')
+    lower = pd.to_numeric(df[lower_bound_col], errors='coerce')
+    upper = pd.to_numeric(df[upper_bound_col], errors='coerce')
+    
+    # Only check rows where all values are present
+    comparable = metric.notna() & lower.notna() & upper.notna()
+    below = comparable & (metric < lower)
+    above = comparable & (metric > upper)
+    out_of_bounds = below | above
+    
+    total_oob = int(out_of_bounds.sum())
+    
+    if total_oob == 0:
+        return 0
+    
+    # Exclude unknown row_ids from detailed reporting
+    known = df[row_id_col].notna() & (df[row_id_col] != 'unknown')
+    oob_known = out_of_bounds & known
+    
+    if not oob_known.any():
+        print(f"\n  INFO: {total_oob:,} homes have {metric_name} outside REMDB bounds (row_id='unknown')")
+        return total_oob
+    
+    # Print header
+    print(f"\n  INFO: {total_oob:,} homes have {metric_name} outside REMDB bounds")
+    
+    # Get unique row_ids with out-of-bounds values, sorted by count
+    row_id_counts = df.loc[oob_known, row_id_col].value_counts()
+    
+    for i, (row_id, count) in enumerate(row_id_counts.items()):
+        if i >= max_groups_to_print:
+            remaining = len(row_id_counts) - max_groups_to_print
+            if remaining > 0:
+                print(f"        ... {remaining:,} additional row_ids omitted")
+            break
+        
+        # Get data for this row_id
+        mask = oob_known & (df[row_id_col] == row_id)
+        row_metric = metric[mask]
+        row_lower = lower[mask].iloc[0]
+        row_upper = upper[mask].iloc[0]
+        
+        # Split into below and above
+        below_mask = row_metric < row_lower
+        above_mask = row_metric > row_upper
+        
+        print(f"\n    {row_id}: {count:,} values")
+        print(f"    REMDB Bounds: {row_lower:.2f} - {row_upper:.2f}")
+        print(f"    EUSS Bounds:")
+        
+        if below_mask.any():
+            below_vals = row_metric[below_mask]
+            print(f"        - BELOW ({below_mask.sum():,}): {below_vals.min():.2f} - {below_vals.max():.2f}")
+        if above_mask.any():
+            above_vals = row_metric[above_mask]
+            print(f"        - ABOVE ({above_mask.sum():,}): {above_vals.min():.2f} - {above_vals.max():.2f}")
+    
+    return total_oob
+
+
+def filter_by_percentile(
+    df: pd.DataFrame,
+    column: str,
+    lower_percentile: Optional[float] = None,
+    upper_percentile: Optional[float] = None,
+    verbose: bool = True
+) -> pd.DataFrame:
+    """Filter DataFrame to keep only values within specified percentile range.
+    
+    Args:
+        df: Input DataFrame.
+        column: Column name to filter on.
+        lower_percentile: Lower percentile bound (0-100), or None for no lower bound.
+        upper_percentile: Upper percentile bound (0-100), or None for no upper bound.
+        verbose: Print filtering statistics.
+        
+    Returns:
+        DataFrame filtered to specified percentile range.
+        
+    Example:
+        # Keep values between 2.5th and 97.5th percentile (95% CI)
+        df_filtered = filter_by_percentile(df, 'capacity', 2.5, 97.5)
+    """
+    df_copy = df.copy()
+    
+    if column not in df_copy.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+    
+    n_original = len(df_copy)
+    values = df_copy[column]
+    
+    # Calculate bounds
+    lower_bound = values.quantile(lower_percentile / 100) if lower_percentile is not None else values.min()
+    upper_bound = values.quantile(upper_percentile / 100) if upper_percentile is not None else values.max()
+    
+    # Apply filter
+    mask = (values >= lower_bound) & (values <= upper_bound)
+    df_filtered = df_copy[mask].copy()
+    
+    n_filtered = len(df_filtered)
+    n_removed = n_original - n_filtered
+    
+    if verbose:
+        pct_removed = 100 * n_removed / n_original if n_original > 0 else 0
+        print(f"\nPercentile Filtering on '{column}':")
+        print(f"   Percentile range: {lower_percentile or 0:.1f}% - {upper_percentile or 100:.1f}%")
+        print(f"   Value bounds: {lower_bound:.2f} - {upper_bound:.2f}")
+        print(f"   Original range: {values.min():.2f} - {values.max():.2f}")
+        print(f"   Rows: {n_original:,} → {n_filtered:,} (removed {n_removed:,}, {pct_removed:.2f}%)")
+    
+    return df_filtered
+
+
+# =============================================================================
+# MAIN FUNCTION - UNIFIED METRICS PREPARATION
+# =============================================================================
+
+def add_remdb_metrics(
+    df: pd.DataFrame,
+    remdb_v4_costs: pd.DataFrame,
+    end_use: str,
+    metric_type: MetricType,
+    percentile: str = 'mid',
+    capacity_lower_percentile: Optional[float] = None,
+    capacity_upper_percentile: Optional[float] = None,
+    verbose: bool = True
+) -> Tuple[pd.DataFrame, pd.DataFrame]:  # ← Always return tuple
+    """Prepare REMDB v4 metrics for cost calculations.
+    
+    This function handles both replacement and upgrade metrics with optional
+    percentile-based filtering for capacity outliers. NaN values propagate
+    naturally for homes with invalid fuel/technology types per the validation
+    framework.
+    
+    Args:
+        df: DataFrame with equipment specifications.
         remdb_v4_costs: REMDB v4 cost database (indexed by row_id).
-        end_use: Equipment category ('heating', 'cooling').
+        end_use: Equipment category ('heating' or 'cooling').
+        metric_type: 'replacement' (baseline equipment) or 'upgrade' (heat pump).
         percentile: Cost percentile ('low', 'mid', 'high').
-        df_detailed: Optional detailed DataFrame to append new columns.
+        capacity_lower_percentile: Lower percentile for capacity filtering (0-100), or None.
+        capacity_upper_percentile: Upper percentile for capacity filtering (0-100), or None.
+        verbose: Print progress and statistics.
         
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]:
-            - df_main: Updated DataFrame with summary columns only.
-            - df_detailed_out: Updated detailed DataFrame with all calculation columns.
+            - df_main: Main DataFrame with summary metrics
+            - df_detailed: Detailed DataFrame with all REMDB parameters
+
+    Example:
+        # Basic usage
+        df_main, df_detailed = add_remdb_metrics(df, remdb_costs, 'heating', 'replacement')
+        
+        # With percentile filtering (95% CI)
+        df_main, df_detailed = add_remdb_metrics(
+            df, remdb_costs, 'heating', 'upgrade',
+            capacity_lower_percentile=2.5,
+            capacity_upper_percentile=97.5
+        )
     """
-    df_copy = df.copy()
-    df_detailed_out = df_detailed.copy() if df_detailed is not None else None
-
-    replacement_or_upgrade = 'replacement'
+    # =========================================================================
+    # INPUT VALIDATION
+    # =========================================================================
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(f"Expected DataFrame, got {type(df).__name__}")
     
-    # Validate inputs
-    if not isinstance(df_copy, pd.DataFrame):
-        raise TypeError(f"Expected DataFrame, got {type(df_copy).__name__}")
+    valid_end_uses = list(EQUIPMENT_SPECS.keys()) + ['cooling']
+    if end_use not in valid_end_uses:
+        raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of {valid_end_uses}")
     
-    # Updated to handle different enduses based on EQUIPMENT_SPECS.
-    # - Rest of codebase updated so only initial columns created for cooling and replacement cost calculations performed
-    # - This allows for a scenario where only heating is replaced AND one where heating and cooling systems are both replace with HP
-    # - Resolves the excessive data columns and double counting with $8000 rebate. No longer need CDD projections.
-    valid_categories = list(EQUIPMENT_SPECS.keys())
-    valid_categories.append('cooling')
-
-    if end_use not in valid_categories:
-        raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of {valid_categories}")
+    if metric_type not in ('replacement', 'upgrade'):
+        raise ValueError(f"Invalid metric_type: '{metric_type}'. Must be 'replacement' or 'upgrade'")
     
     if percentile not in ['low', 'mid', 'high']:
         raise ValueError(f"Invalid percentile: '{percentile}'")
     
-    print(f"\nPreparing {end_use} REPLACEMENT metrics (REMDB v4)")
+    if verbose:
+        print(f"\n{'='*60}")
+        print(f"Preparing {end_use} {metric_type.upper()} metrics (REMDB v4)")
+        print(f"{'='*60}")
     
-    # ===== STEP 1: Assign row_id based on equipment type =====
-    df_copy = _assign_replacement_row_id(df_copy, end_use)
-    row_id_col = f'row_id_{end_use}_{replacement_or_upgrade}'
-    unknown_count = (df_copy[row_id_col] == 'unknown').sum()
-    if unknown_count > 0:
-        print(f"  Warning: {unknown_count:,} homes with unknown row_id")
+    # Create defensive copy to prevent mutation on re-execution
+    df_copy = df.copy()
     
-    # ===== STEP 2: Map REMDB parameters =====
-    df_copy = _map_remdb_parameters(df_copy, remdb_v4_costs, end_use, replacement_or_upgrade, percentile)
+    prefix = f"{end_use}_{metric_type}_"
+    row_id_col = f'row_id_{end_use}_{metric_type}'
     
-    # ===== STEP 3: Extract metrics based on REMDB unit specifications =====
-    # Determine source columns
+    # Determine source columns based on end_use and metric_type
+    # UPDATE VARIABLE NAMES FOR WATER HEATING, CLOTHES DRYING, COOKING LATER
     if end_use == 'heating':
         capacity_col = 'size_heating_system_primary_k_btu_h'
-        efficiency_col = 'hvac_heating_efficiency'
+        efficiency_col = 'upgrade_hvac_heating_efficiency' if metric_type == 'upgrade' else 'hvac_heating_efficiency'
     elif end_use == 'cooling':
         capacity_col = 'size_cooling_system_primary_k_btu_h'
         efficiency_col = 'hvac_cooling_efficiency'
-    
-    # Validate source columns
-    if capacity_col not in df_copy.columns:
-        raise KeyError(f"Missing capacity column: '{capacity_col}'")
-    if efficiency_col not in df_copy.columns:
-        raise KeyError(f"Missing efficiency column: '{efficiency_col}'")
-    
-    # Convert pm1 based on pm1_unit
-    pm1_col = f'euss_{end_use}_{replacement_or_upgrade}_pm1'
-    pm1_unit_col = f'{end_use}_{replacement_or_upgrade}_pm1_unit'
-    df_copy[pm1_col] = _convert_capacity_by_unit(df_copy, capacity_col, pm1_unit_col)
-    
-    # Convert pm2 based on pm2_metric
-    pm2_col = f'euss_{end_use}_{replacement_or_upgrade}_pm2'
-    pm2_metric_col = f'{end_use}_{replacement_or_upgrade}_pm2_metric'
-    df_copy[pm2_col] = _convert_efficiency_by_metric(df_copy, efficiency_col, pm2_metric_col)
-    
-    # ===== STEP 4: Fill missing values from REMDB bounds =====
-    df_copy = _fill_missing_from_bounds(
-        df_copy, remdb_v4_costs, end_use, replacement_or_upgrade, pm1_col, pm2_col
-    )
-
-    prefix = f"{end_use}_{replacement_or_upgrade}_"
-
-    # ===== STEP 4.5: Mask out-of-bounds metrics (row-by-row, technology-specific) =====
-    df_copy[pm1_col], oob_pm1 = _check_out_of_bounds_metrics(
-        df_copy,
-        metric_col=pm1_col,
-        lower_bound_col=f"{prefix}pm1_lower_bound",
-        upper_bound_col=f"{prefix}pm1_upper_bound",
-        metric_name="capacity",
-        row_id_col=row_id_col,
-        out_of_bound_method=out_of_bound_method,
-        verbose=bounds_verbose,
-        max_groups_to_print=max_groups_to_print,
-    )
-
-    df_copy[pm2_col], oob_pm2 = _check_out_of_bounds_metrics(
-        df_copy,
-        metric_col=pm2_col,
-        lower_bound_col=f"{prefix}pm2_lower_bound",
-        upper_bound_col=f"{prefix}pm2_upper_bound",
-        metric_name="efficiency",
-        row_id_col=row_id_col,
-        out_of_bound_method=out_of_bound_method,
-        verbose=bounds_verbose,
-        max_groups_to_print=max_groups_to_print,
-    )
-
-    # REMDB guidance: if outside bounds, use mid coefficients/intercept.
-    if out_of_bound_method == "keep_as_is_filter_ci" and percentile != "mid":
-        oob_any = oob_pm1 | oob_pm2
-        if oob_any.any():
-            missing = [c for c in ("pm1_coef_mid", "pm2_coef_mid", "intercept_mid") if c not in remdb_v4_costs.columns]
-            if missing:
-                raise KeyError(f"Cannot apply keep_as_is_filter_ci; missing columns in remdb_v4_costs: {missing}")
-
-            df_copy.loc[oob_any, f"{prefix}pm1_coef_{percentile}"] = df_copy.loc[oob_any, row_id_col].map(remdb_v4_costs["pm1_coef_mid"])
-            df_copy.loc[oob_any, f"{prefix}pm2_coef_{percentile}"] = df_copy.loc[oob_any, row_id_col].map(remdb_v4_costs["pm2_coef_mid"])
-            df_copy.loc[oob_any, f"{prefix}intercept_{percentile}"] = df_copy.loc[oob_any, row_id_col].map(remdb_v4_costs["intercept_mid"])
-
-            print(f"  Applied mid regression params to {int(oob_any.sum()):,} out-of-bounds homes (percentile='{percentile}' → mid)")
-
-    # Report summary (now reflects masking)
-    pm1_valid = df_copy[pm1_col].notna().sum()
-    pm2_valid = df_copy[pm2_col].notna().sum()
-    print(f"  Valid metrics after bounds checking: {pm1_valid:,} pm1, {pm2_valid:,} pm2")
-
-    # ===== STEP 5: Separate columns into main and detailed DataFrames =====
-    # Define columns for main DataFrame (summary only)
-    main_summary_cols = [
-        f'row_id_{end_use}_{replacement_or_upgrade}',
-        f'{prefix}pm1_lower_bound',
-        f'{prefix}pm1_upper_bound',
-        pm1_col,
-        f'{prefix}pm2_lower_bound',
-        f'{prefix}pm2_upper_bound',
-        pm2_col,
-    ]
-    
-    # Define ALL new columns for detailed DataFrame
-    all_new_cols = [
-        f'row_id_{end_use}_{replacement_or_upgrade}',
-        f'{prefix}pm1_metric',
-        f'{prefix}pm1_unit',
-        f'{prefix}pm1_lower_bound',
-        f'{prefix}pm1_upper_bound',
-        pm1_col,
-        f'{prefix}pm1_coef_{percentile}',
-        f'{prefix}pm2_metric',
-        f'{prefix}pm2_unit',
-        f'{prefix}pm2_lower_bound',
-        f'{prefix}pm2_upper_bound',
-        pm2_col,
-        f'{prefix}pm2_coef_{percentile}',
-        f'{prefix}intercept_{percentile}',
-        f'{prefix}multiplier_retrofit',
-        f'{prefix}adder_retrofit',
-    ]
-    
-    # Build dictionary of detailed columns (avoids fragmentation)
-    detailed_dict = {col: df_copy[col] for col in all_new_cols if col in df_copy.columns}
-    
-    # Initialize or update detailed DataFrame
-    if df_detailed_out is None:
-        df_detailed_out = pd.DataFrame(detailed_dict, index=df_copy.index)
     else:
-        # Concatenate new columns to existing detailed DataFrame
-        new_detailed_df = pd.DataFrame(detailed_dict, index=df_copy.index)
-        df_detailed_out = pd.concat([df_detailed_out, new_detailed_df], axis=1)
+        raise ValueError(f"Unsupported end_use: {end_use}")
     
-    # Build main DataFrame: keep original columns + summary columns only
-    main_dict = {col: df_copy[col] for col in main_summary_cols if col in df_copy.columns}
-    main_new_df = pd.DataFrame(main_dict, index=df_copy.index)
+    # Validate required columns exist
+    for col in [capacity_col, efficiency_col]:
+        if col not in df_copy.columns:
+            raise KeyError(f"Missing required column: '{col}'")
     
-    # Concatenate summary columns to original DataFrame
-    df_main = pd.concat([df, main_new_df], axis=1)
+    # =========================================================================
+    # STEP 1: Optional percentile filtering (handles capacity outliers)
+    # =========================================================================
+    if capacity_lower_percentile is not None or capacity_upper_percentile is not None:
+        df_copy = filter_by_percentile(
+            df_copy, 
+            capacity_col,
+            capacity_lower_percentile,
+            capacity_upper_percentile,
+            verbose=verbose
+        )
     
-    return df_main, df_detailed_out
-
-
-# ==== Prepare REMDB UPGRADE metrics =====
-def add_remdb_upgrade_metrics(
-    df: pd.DataFrame,
-    remdb_v4_costs: pd.DataFrame,
-    end_use: str,
-    percentile: str = 'mid',
-    df_detailed: Optional[pd.DataFrame] = None,
-    out_of_bound_method: OutOfBoundMethod = "keep_as_is",
-    bounds_verbose: bool = True,
-    max_groups_to_print: int = 25
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Prepare UPGRADE cost metrics from BASELINE equipment for REMDB v4 calculations.
-    
-    This function performs ALL preparation steps:
-    1. Assigns row_id based on equipment type
-    2. Maps REMDB coefficients and unit specifications
-    3. Extracts metrics from EUSS data with correct unit conversions
-    4. Fills missing values from REMDB bounds
-    5. Separates columns into main (summary) and detailed (all intermediates) DataFrames
-    
-    Args:
-        df: DataFrame with baseline equipment specifications.
-        remdb_v4_costs: REMDB v4 cost database (indexed by row_id).
-        end_use: Equipment category ('heating', 'cooling').
-        percentile: Cost percentile ('low', 'mid', 'high').
-        df_detailed: Optional detailed DataFrame to append new columns.
+    # =========================================================================
+    # STEP 2: Assign row_id based on equipment type
+    # =========================================================================
+    if metric_type == 'replacement':
+        df_copy = _assign_replacement_row_id(df_copy, end_use)
+    else:
+        df_copy = _assign_upgrade_row_id(df_copy, end_use)
         
-    Returns:
-        Tuple[pd.DataFrame, pd.DataFrame]:
-            - df_main: Updated DataFrame with summary columns only.
-            - df_detailed_out: Updated detailed DataFrame with all calculation columns.
-    """
-    df_copy = df.copy()
-    df_detailed_out = df_detailed.copy() if df_detailed is not None else None
-
-    replacement_or_upgrade = 'upgrade'
-    
-    # Validate inputs
-    if not isinstance(df_copy, pd.DataFrame):
-        raise TypeError(f"Expected DataFrame, got {type(df_copy).__name__}")
-    
-    # Valid categories are defined in EQUIPMENT_SPECS
-    valid_categories = list(EQUIPMENT_SPECS.keys())
-
-    # We dont append cooling to valid_categories here because we only care about cooling replacement costs
-    # - Scenario for heating: heating only, heating + cooling
-
-    if end_use not in valid_categories:
-        raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of {valid_categories}")
-    
-    if percentile not in ['low', 'mid', 'high']:
-        raise ValueError(f"Invalid percentile: '{percentile}'")
-    
-    print(f"\nPreparing {end_use} UPGRADE metrics (REMDB v4)")
-    
-    # ===== STEP 1: Assign row_id based on equipment type =====
-    df_copy = _assign_upgrade_row_id(df_copy, end_use)
-    row_id_col = f'row_id_{end_use}_{replacement_or_upgrade}'
     unknown_count = (df_copy[row_id_col] == 'unknown').sum()
-    if unknown_count > 0:
-        print(f"  Warning: {unknown_count:,} homes with unknown row_id")
+    if unknown_count > 0 and verbose:
+        print(f"  {unknown_count:,} homes with unknown row_id (will have NaN costs)")
+    
+    # Diagnostic: Show row_id distribution
+    if verbose:
+        print(f"\n  Row ID Distribution ({row_id_col}):")
+        row_id_counts = df_copy[row_id_col].value_counts()
+        for row_id, count in row_id_counts.items():
+            print(f"    {row_id}: {count:,}")
+
+    # =========================================================================
+    # STEP 3: Map REMDB parameters (coefficients, units)
+    # =========================================================================
+    df_copy = _map_remdb_parameters(df_copy, remdb_v4_costs, end_use, metric_type, percentile)
+    
+    # =========================================================================
+    # STEP 4: Convert metrics to REMDB units
+    # =========================================================================
+    pm1_col = f'{prefix}pm1_euss'
+    pm2_col = f'{prefix}pm2_euss'
+    
+    df_copy[pm1_col] = _convert_pm1(
+        df=df_copy, 
+        pm1_euss_value_col=capacity_col, 
+        pm1_metric_col=f'{prefix}pm1_metric',
+        pm1_unit_col=f'{prefix}pm1_unit'
+    )
+    
+    df_copy[pm2_col] = _convert_pm2(
+        df=df_copy, 
+        pm2_euss_value_col=efficiency_col, 
+        pm2_metric_col=f'{prefix}pm2_metric',
+        pm2_unit_col=f'{prefix}pm2_unit'
+    )
+    
+    # Diagnostic: Explain NaN sources for pm1 and pm2
+    if verbose:
+        pm1_metric_col = f'{prefix}pm1_metric'
+        pm2_metric_col = f'{prefix}pm2_metric'
         
-    # ===== STEP 2: Map REMDB parameters =====
-    df_copy = _map_remdb_parameters(df_copy, remdb_v4_costs, end_use, replacement_or_upgrade, percentile)
+        print(f"\n  NaN Diagnostics:")
+        
+        # pm1 NaN breakdown
+        pm1_nan_mask = df_copy[pm1_col].isna()
+        pm1_nan_from_unknown = pm1_nan_mask & (df_copy[row_id_col] == 'unknown')
+        pm1_nan_from_source = pm1_nan_mask & df_copy[capacity_col].isna()
+        pm1_nan_other = pm1_nan_mask & ~pm1_nan_from_unknown & ~pm1_nan_from_source
+        
+        print(f"    pm1 NaN breakdown ({pm1_nan_mask.sum():,} total):")
+        print(f"      - Unknown row_id: {pm1_nan_from_unknown.sum():,}")
+        print(f"      - Missing source data ({capacity_col}): {pm1_nan_from_source.sum():,}")
+        if pm1_nan_other.sum() > 0:
+            print(f"      - Other: {pm1_nan_other.sum():,}")
+        
+        # pm2 NaN breakdown
+        pm2_nan_mask = df_copy[pm2_col].isna()
+        pm2_nan_from_unknown = pm2_nan_mask & (df_copy[row_id_col] == 'unknown')
+        pm2_nan_from_no_metric = pm2_nan_mask & df_copy[pm2_metric_col].isna()
+        pm2_nan_from_source = pm2_nan_mask & df_copy[efficiency_col].isna()
+        
+        print(f"    pm2 NaN breakdown ({pm2_nan_mask.sum():,} total):")
+        print(f"      - Unknown row_id: {pm2_nan_from_unknown.sum():,}")
+        print(f"      - No pm2_metric defined (e.g., electric baseboard): {(pm2_nan_from_no_metric & ~pm2_nan_from_unknown).sum():,}")
+        print(f"      - Missing source data ({efficiency_col}): {pm2_nan_from_source.sum():,}")
+        
+        # Show pm2_metric distribution to explain why some have no metric
+        print(f"\n  pm2_metric Distribution ({pm2_metric_col}):")
+        pm2_metric_counts = df_copy[pm2_metric_col].value_counts(dropna=False)
+        for metric, count in pm2_metric_counts.items():
+            metric_display = metric if pd.notna(metric) else "(NaN - no efficiency metric)"
+            print(f"    {metric_display}: {count:,}")
     
-    # ===== STEP 3: Extract metrics based on REMDB unit specifications =====
-    # Determine source columns
-    if end_use == 'heating':
-        capacity_col = 'size_heating_system_primary_k_btu_h'
-        efficiency_col = 'upgrade_hvac_heating_efficiency'
-    # elif end_use == 'cooling':
-    #     capacity_col = 'size_cooling_system_primary_k_btu_h'
-    #     efficiency_col = 'upgrade_hvac_cooling_efficiency'
-    
-    # Validate source columns
-    if capacity_col not in df_copy.columns:
-        raise KeyError(f"Missing capacity column: '{capacity_col}'")
-    if efficiency_col not in df_copy.columns:
-        raise KeyError(f"Missing efficiency column: '{efficiency_col}'")
-    
-    # Convert pm1 based on pm1_unit
-    pm1_col = f'euss_{end_use}_{replacement_or_upgrade}_pm1'
-    pm1_unit_col = f'{end_use}_{replacement_or_upgrade}_pm1_unit'
-    df_copy[pm1_col] = _convert_capacity_by_unit(df_copy, capacity_col, pm1_unit_col)
-    
-    # Convert pm2 based on pm2_metric
-    pm2_col = f'euss_{end_use}_{replacement_or_upgrade}_pm2'
-    pm2_metric_col = f'{end_use}_{replacement_or_upgrade}_pm2_metric'
-    df_copy[pm2_col] = _convert_efficiency_by_metric(df_copy, efficiency_col, pm2_metric_col)
-    
-    # ===== STEP 4: Fill missing values from REMDB bounds =====
-    df_copy = _fill_missing_from_bounds(
-        df_copy, remdb_v4_costs, end_use, replacement_or_upgrade, pm1_col, pm2_col
-    )
+    # =========================================================================
+    # STEP 5: Report bounds comparison (diagnostic only - no data modification)
+    # =========================================================================
+    if verbose:
+        _report_bounds_comparison(
+            df=df_copy,
+            row_id_col=row_id_col, 
+            pm_col=pm1_col,  # <-- Corrected to 'pm_col'
+            lower_bound_col=f'{prefix}pm1_lower_bound',
+            upper_bound_col=f'{prefix}pm1_upper_bound',
+            metric_name='capacity',
+            verbose=verbose
+        )
+        _report_bounds_comparison(
+            df=df_copy,
+            row_id_col=row_id_col,
+            pm_col=pm2_col,  # <-- Corrected to 'pm_col'
+            lower_bound_col=f'{prefix}pm2_lower_bound',
+            upper_bound_col=f'{prefix}pm2_upper_bound',
+            metric_name='efficiency',
+            verbose=verbose
+        )    
+    # =========================================================================
+    # STEP 6: Report summary statistics
+    # =========================================================================
+    if verbose:
+        pm1_valid = df_copy[pm1_col].notna().sum()
+        pm2_valid = df_copy[pm2_col].notna().sum()
+        pm1_nan = df_copy[pm1_col].isna().sum()
+        pm2_nan = df_copy[pm2_col].isna().sum()
+        print(f"\n  Valid metrics: {pm1_valid:,} pm1, {pm2_valid:,} pm2")
+        if pm1_nan > 0 or pm2_nan > 0:
+            print(f"  NaN metrics: {pm1_nan:,} pm1, {pm2_nan:,} pm2 (per validation framework)")
 
-    prefix = f"{end_use}_{replacement_or_upgrade}_"
-
-    # ===== STEP 4.5: Mask out-of-bounds metrics (row-by-row, technology-specific) =====
-    df_copy[pm1_col], oob_pm1 = _check_out_of_bounds_metrics(
-        df_copy,
-        metric_col=pm1_col,
-        lower_bound_col=f"{prefix}pm1_lower_bound",
-        upper_bound_col=f"{prefix}pm1_upper_bound",
-        metric_name="capacity",
-        row_id_col=row_id_col,
-        out_of_bound_method=out_of_bound_method,
-        verbose=bounds_verbose,
-        max_groups_to_print=max_groups_to_print,
-    )
-
-    df_copy[pm2_col], oob_pm2 = _check_out_of_bounds_metrics(
-        df_copy,
-        metric_col=pm2_col,
-        lower_bound_col=f"{prefix}pm2_lower_bound",
-        upper_bound_col=f"{prefix}pm2_upper_bound",
-        metric_name="efficiency",
-        row_id_col=row_id_col,
-        out_of_bound_method=out_of_bound_method,
-        verbose=bounds_verbose,
-        max_groups_to_print=max_groups_to_print,
-    )
-
-    # REMDB guidance: if outside bounds, use mid coefficients/intercept.
-    if out_of_bound_method == "keep_as_is_filter_ci" and percentile != "mid":
-        oob_any = oob_pm1 | oob_pm2
-        if oob_any.any():
-            missing = [c for c in ("pm1_coef_mid", "pm2_coef_mid", "intercept_mid") if c not in remdb_v4_costs.columns]
-            if missing:
-                raise KeyError(f"Cannot apply keep_as_is_filter_ci; missing columns in remdb_v4_costs: {missing}")
-
-            df_copy.loc[oob_any, f"{prefix}pm1_coef_{percentile}"] = df_copy.loc[oob_any, row_id_col].map(remdb_v4_costs["pm1_coef_mid"])
-            df_copy.loc[oob_any, f"{prefix}pm2_coef_{percentile}"] = df_copy.loc[oob_any, row_id_col].map(remdb_v4_costs["pm2_coef_mid"])
-            df_copy.loc[oob_any, f"{prefix}intercept_{percentile}"] = df_copy.loc[oob_any, row_id_col].map(remdb_v4_costs["intercept_mid"])
-
-            print(f"  Applied mid regression params to {int(oob_any.sum()):,} out-of-bounds homes (percentile='{percentile}' → mid)")
-
-    # Report summary (now reflects masking)
-    pm1_valid = df_copy[pm1_col].notna().sum()
-    pm2_valid = df_copy[pm2_col].notna().sum()
-    print(f"  Valid metrics after bounds checking: {pm1_valid:,} pm1, {pm2_valid:,} pm2")
-
-    # ===== STEP 5: Separate columns into main and detailed DataFrames =====
-    # Define columns for main DataFrame (summary only)
-    main_summary_cols = [
-        f'row_id_{end_use}_{replacement_or_upgrade}',
-        f'{prefix}pm1_lower_bound',
-        f'{prefix}pm1_upper_bound',
+    # =========================================================================
+    # STEP 7: Prepare output columns
+    # =========================================================================
+    # At the end, always return both (remove the if/else logic)
+    summary_cols = [
+        row_id_col,
         pm1_col,
-        f'{prefix}pm2_lower_bound',
-        f'{prefix}pm2_upper_bound',
         pm2_col,
     ]
     
-    # Define ALL new columns for detailed DataFrame
-    all_new_cols = [
-        f'row_id_{end_use}_{replacement_or_upgrade}',
-        f'{prefix}pm1_metric',
-        f'{prefix}pm1_unit',
-        f'{prefix}pm1_lower_bound',
-        f'{prefix}pm1_upper_bound',
-        pm1_col,
-        f'{prefix}pm1_coef_{percentile}',
-        f'{prefix}pm2_metric',
-        f'{prefix}pm2_unit',
-        f'{prefix}pm2_lower_bound',
-        f'{prefix}pm2_upper_bound',
-        pm2_col,
-        f'{prefix}pm2_coef_{percentile}',
+    detailed_cols = summary_cols + [
+        f'{prefix}pm1_metric', f'{prefix}pm1_unit', f'{prefix}pm1_coef_{percentile}',
+        f'{prefix}pm1_lower_bound', f'{prefix}pm1_upper_bound',
+        f'{prefix}pm2_metric', f'{prefix}pm2_unit', f'{prefix}pm2_coef_{percentile}',
+        f'{prefix}pm2_lower_bound', f'{prefix}pm2_upper_bound',
         f'{prefix}intercept_{percentile}',
-        f'{prefix}multiplier_retrofit',
-        f'{prefix}adder_retrofit',
+        f'{prefix}multiplier_retrofit', f'{prefix}adder_retrofit',
     ]
     
-    # Build dictionary of detailed columns (avoids fragmentation)
-    detailed_dict = {col: df_copy[col] for col in all_new_cols if col in df_copy.columns}
+    # Build both outputs
+    existing_cols = [c for c in summary_cols if c in df_copy.columns]
+    df_original_aligned = df.loc[df_copy.index].copy()
     
-    # Initialize or update detailed DataFrame
-    if df_detailed_out is None:
-        df_detailed_out = pd.DataFrame(detailed_dict, index=df_copy.index)
-    else:
-        new_detailed_df = pd.DataFrame(detailed_dict, index=df_copy.index)
-        df_detailed_out = pd.concat([df_detailed_out, new_detailed_df], axis=1)
+    cols_to_drop = [c for c in existing_cols if c in df_original_aligned.columns]
+    if cols_to_drop:
+        df_original_aligned = df_original_aligned.drop(columns=cols_to_drop)
     
-    # Build main DataFrame: keep original columns + summary columns only
-    main_dict = {col: df_copy[col] for col in main_summary_cols if col in df_copy.columns}
-    main_new_df = pd.DataFrame(main_dict, index=df_copy.index)
+    df_main = pd.concat([df_original_aligned, df_copy[existing_cols]], axis=1)
     
-    # Concatenate summary columns to original DataFrame
-    df_main = pd.concat([df, main_new_df], axis=1)
+    detailed_existing = [c for c in detailed_cols if c in df_copy.columns]
+    df_detailed = df_copy[detailed_existing].copy()
     
-    return df_main, df_detailed_out
+    return df_main, df_detailed  # ← Always return both

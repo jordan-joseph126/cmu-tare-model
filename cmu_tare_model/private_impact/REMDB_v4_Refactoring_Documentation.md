@@ -154,8 +154,8 @@ The implementation distinguishes between **public API functions** and **internal
 - `_assign_replacement_row_id()` - Map baseline equipment to REMDB row_id
 - `_assign_upgrade_row_id()` - Map upgrade equipment to REMDB row_id
 - `_map_remdb_parameters()` - Map REMDB coefficients to DataFrame columns
-- `_convert_capacity_by_unit()` - Convert capacity to REMDB units (data-driven)
-- `_convert_efficiency_by_metric()` - Convert efficiency to REMDB units (data-driven)
+- `_convert_pm1()` - Convert capacity to REMDB units (data-driven)
+- `_convert_pm2()` - Convert efficiency to REMDB units (data-driven)
 - `_fill_missing_from_bounds()` - Fill missing values from REMDB bounds
 
 ### Two-Step Workflow
@@ -249,7 +249,7 @@ Maps upgrade equipment (all heat pumps) based on duct status:
 - Ducted homes → `air_source_heat_pump_centrally_ducted`
 - Non-ducted homes → `air_source_heat_pump_non_ducted_multi_zone`
 
-**`_convert_capacity_by_unit(df, capacity_col, pm1_unit_col)` → pd.Series**
+**`_convert_pm1(df, capacity_col, pm1_unit_col)` → pd.Series**
 
 Data-driven capacity conversion based on `pm1_unit` column from REMDB:
 
@@ -258,7 +258,7 @@ Data-driven capacity conversion based on `pm1_unit` column from REMDB:
 | `"Tons"` | kBtu/h ÷ 12 | Heat pumps, Central ACs |
 | `"BTU/hr"` | kBtu/h × 1000 | Furnaces, Boilers, Baseboard |
 
-**`_convert_efficiency_by_metric(df, efficiency_col, pm2_metric_col)` → pd.Series**
+**`_convert_pm2(df, efficiency_col, pm2_metric_col)` → pd.Series**
 
 Data-driven efficiency conversion based on `pm2_metric` column from REMDB:
 
@@ -423,8 +423,8 @@ A key architectural feature is that unit conversions are **driven by REMDB colum
 ### How It Works
 
 1. `_map_remdb_parameters()` copies `pm1_unit` and `pm2_metric` from REMDB to the DataFrame
-2. `_convert_capacity_by_unit()` reads the `pm1_unit` column to determine conversion
-3. `_convert_efficiency_by_metric()` reads the `pm2_metric` column to determine conversion
+2. `_convert_pm1()` reads the `pm1_unit` column to determine conversion
+3. `_convert_pm2()` reads the `pm2_metric` column to determine conversion
 
 ### Benefits
 

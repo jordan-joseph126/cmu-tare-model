@@ -98,8 +98,8 @@ def calculate_replacement_installed_cost(
 
     # ===== Verify prerequisite columns exist =====
     required_cols = [
-        f'euss_{end_use}_replacement_pm1',
-        f'euss_{end_use}_replacement_pm2',
+        f'{prefix}pm1_euss',
+        f'{prefix}pm2_euss',
         f'{prefix}pm1_coef_{percentile}',
         f'{prefix}pm2_coef_{percentile}',
         f'{prefix}intercept_{percentile}',
@@ -152,8 +152,8 @@ def calculate_replacement_installed_cost(
     # ===== STEP 3 & 4: Valid-Only Calculation =====
     # Calculate cost using REMDB v4 regression formula
     # Read calculation columns from df_detailed
-    pm1 = df_detailed[f'euss_{end_use}_replacement_pm1']
-    pm2 = df_detailed[f'euss_{end_use}_replacement_pm2']
+    pm1 = df_detailed[f'{prefix}pm1_euss']
+    pm2 = df_detailed[f'{prefix}pm2_euss']
     pm1_coef = df_detailed[f'{prefix}pm1_coef_{percentile}']
     pm2_coef = df_detailed[f'{prefix}pm2_coef_{percentile}']
     intercept = df_detailed[f'{prefix}intercept_{percentile}']

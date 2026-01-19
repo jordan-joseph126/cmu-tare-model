@@ -14,7 +14,8 @@ def create_multiIndex_adoption_df(
         category: str,
         scc: str,
         rcm_model: str,
-        cr_function: str
+        cr_function: str,
+        percentile: str = 'mid'
 ) -> pd.DataFrame:
     """
     Creates a multi-index DataFrame showing adoption percentages by LMI/MUI classification and fuel type.
@@ -50,8 +51,8 @@ def create_multiIndex_adoption_df(
     
     # Define column names with sensitivity dimensions
     adoption_cols = [
-        f'preIRA_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}',
-        f'iraRef_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}'
+        f'preIRA_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}_{percentile}',
+        f'iraRef_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}_{percentile}'
     ]
     
     # Try backward compatibility if needed
