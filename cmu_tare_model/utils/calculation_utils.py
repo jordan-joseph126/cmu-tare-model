@@ -358,13 +358,13 @@ def validate_common_parameters(
     valid_scenarios = ['No Inflation Reduction Act', 'AEO2023 Reference Case']
     if policy_scenario not in valid_scenarios:
         raise ValueError(f"Invalid policy_scenario: {policy_scenario}. Must be one of {valid_scenarios}")
-    
+       
     # Validate discounting_method if provided
     if discounting_method is not None:
-        valid_methods = ['public', 'private_fixed']
+        valid_methods = ['public', 'private_fixed', 'private_variable']
         if discounting_method not in valid_methods:
             raise ValueError(f"Invalid discounting_method: {discounting_method}. Must be one of {valid_methods}")
-    
+
     return menu_mp_int, policy_scenario, discounting_method
 
     
@@ -405,13 +405,17 @@ def apply_temporary_validation_and_mask(
     if temp_columns:
         df_new = df_new.drop(columns=list(temp_columns.keys()))
     
-    # Check for overlapping columns AFTER removing temporary validation columns
+    # FIXED: Before a bug led to the columns only being dropped if verbose was True
+    # Remove any columns from df_new that already exist in df_copy to avoid duplication
     overlapping = df_new.columns.intersection(df_copy.columns)
-    if not overlapping.empty and verbose:
-        print(f"Dropping {len(overlapping)} overlapping columns from original DataFrame.")
+    if not overlapping.empty:
+        print(f"WARNING: Replacing {len(overlapping)} existing columns. "
+            f"Function was called on data that already contains results.")
+        if verbose:
+            print(f"Columns being replaced: {overlapping.tolist()}")
         df_copy = df_copy.drop(columns=overlapping)
-    
+
     # Join DataFrames
     df_main = df_copy.join(df_new, how='left')
-    
+        
     return df_main

@@ -5,7 +5,7 @@ from typing import Tuple, Dict, List, Optional, Union
 
 from cmu_tare_model.constants import EQUIPMENT_SPECS
 from cmu_tare_model.utils.modeling_params import define_scenario_params
-from cmu_tare_model.utils.discounting import calculate_discount_factors
+from cmu_tare_model.utils.discounting import calculate_discount_factor
 from cmu_tare_model.utils.validation_framework import (
     create_retrofit_only_series,
     calculate_avoided_values,
@@ -69,19 +69,13 @@ def calculate_private_npv(
 
     Args:
         df (DataFrame): Input DataFrame with installation costs, fuel savings, and potential rebates.
-            IMPORTANT: Must contain discount rate columns created by prepare_discount_rates().
-            Required columns: 'public_discount_rate', 'private_fixed_discount_rate', 
-            'private_variable_discount_rate'.
         df_fuel_costs (DataFrame): DataFrame containing measure package fuel costs.
         df_baseline_costs (DataFrame): DataFrame containing baseline fuel costs.
         input_mp (str): Input policy_scenario for calculating costs.
         menu_mp (int): Measure package identifier.
         policy_scenario (str): Policy scenario that determines electricity grid projections. 
-            - Accepted values: 'No Inflation Reduction Act', 'AEO2023 Reference Case'.
+                               Accepted values: 'No Inflation Reduction Act', 'AEO2023 Reference Case'.
         discounting_method (str): The method used for discounting. Default is 'private_fixed'.
-            - 'private_fixed': 7% discount rate for all households
-            - 'private_variable': Household-specific rate based on AMI (2% to 12%)
-            Note: 'public' discounting is not typically used for private NPV calculations.
         base_year (int): The base year for discounting calculations. Default is 2024.
         verbose (bool): Whether to print detailed processing information. Default is True.
 
@@ -118,48 +112,16 @@ def calculate_private_npv(
 
     # Determine the scenario prefix based on the policy scenario
     scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
-        
-    # Calculate the maximum lifetime across all equipment to determine how many years to pre-calculate
-    max_lifetime = max(EQUIPMENT_SPECS.values())
-
+    
     # Pre-calculate discount factors for each year to avoid redundant calculations
     # This maps from year_label to its discount factor
-    discount_factors: Dict[int, pd.Series] = {}  # Now always Series, not Union or float
+    discount_factors: Dict[int, float] = {}
     
-    # Print diagnostic information about the discount rates being used
-    if verbose:
-        print(f"\n{'='*80}")
-        print(f"DISCOUNT RATE DIAGNOSTIC: {discounting_method}")
-        print(f"{'='*80}")
-        
-        if discounting_method == 'public':
-            rate_used = df_copy['public_discount_rate'].iloc[0]
-            print(f"Using fixed public discount rate: {rate_used:.1%} for all households")
-            
-        elif discounting_method == 'private_fixed':
-            rate_used = df_copy['private_fixed_discount_rate'].iloc[0]
-            print(f"Using fixed private discount rate: {rate_used:.1%} for all households")
-            
-        elif discounting_method == 'private_variable':
-            rate_column = df_copy['private_variable_discount_rate']
-            print(f"Using variable private discount rates based on AMI:")
-            print(f"  Minimum rate: {rate_column.min():.1%} (highest AMI households)")
-            print(f"  Mean rate:    {rate_column.mean():.1%}")
-            print(f"  Median rate:  {rate_column.median():.1%}")
-            print(f"  Maximum rate: {rate_column.max():.1%} (lowest AMI households)")
-        
-        print(f"{'='*80}\n")
-
+    # Calculate the maximum lifetime across all equipment to determine how many years to pre-calculate
+    max_lifetime = max(EQUIPMENT_SPECS.values())
     for year in range(1, max_lifetime + 1):
         year_label = year + (base_year - 1)
-        
-        # Single unified function call - works for all three methods
-        discount_factors[year_label] = calculate_discount_factors(
-            df=df_copy,
-            base_year=base_year,
-            target_year=year_label,
-            discounting_method=discounting_method
-        )
+        discount_factors[year_label] = calculate_discount_factor(base_year, year_label, discounting_method)
 
     # Process each equipment category
     for category, lifetime in EQUIPMENT_SPECS.items():
@@ -303,7 +265,6 @@ def calculate_capital_costs(
 
     return total_capital_cost_masked, net_capital_cost_masked
 
-
 def calculate_and_update_npv(
     df_measure_costs: pd.DataFrame,
     df_baseline_costs: pd.DataFrame,
@@ -313,7 +274,7 @@ def calculate_and_update_npv(
     net_capital_cost: pd.Series,
     policy_scenario: str,
     scenario_prefix: str,
-    discount_factors: Dict[int, pd.Series],
+    discount_factors: Dict[int, float],
     valid_mask: pd.Series,
     menu_mp: int,
     base_year: int = 2024,

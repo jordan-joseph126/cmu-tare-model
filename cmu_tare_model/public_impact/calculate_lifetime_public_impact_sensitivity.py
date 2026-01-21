@@ -4,7 +4,7 @@ from typing import Dict, Tuple, List, Optional
 
 # Constants
 from cmu_tare_model.constants import EQUIPMENT_SPECS, CR_FUNCTIONS, RCM_MODELS, SCC_ASSUMPTIONS
-from cmu_tare_model.utils.discounting import calculate_discount_factor
+from cmu_tare_model.utils.discounting import calculate_discount_factors
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.validation_framework import (
     calculate_avoided_values,
@@ -183,8 +183,16 @@ def calculate_lifetime_damages_grid_scenario(
     
     This function performs sensitivity analysis across multiple dimensions:
     - Equipment categories (with varying lifetimes)
-    - Social Cost of Carbon (SCC) assumptions for climate damages
-    - Health impacts based on specified RCM model and C-R function
+    - Climate Impacts: 
+        Use emission-year SCC values that already represent the NPV of all future climate damages. 
+        NO additional discounting is applied.
+    - Health Impacts: 
+        Use annual marginal social costs (based on specified RCM model and C-R function) represent damages in the emissions year 
+        These MUST be discounted to present value.
+
+    PREREQUISITE:
+        df_copy must have discount rate columns prepared by calling prepare_discount_rates(df)
+        before passing to this function. This is typically done in the main workflow.
 
     Args:
         df_copy: Copy of the original DataFrame to use for calculations.
@@ -208,16 +216,6 @@ def calculate_lifetime_damages_grid_scenario(
     Raises:
         ValueError: If required columns are missing from input DataFrames.
         RuntimeError: If processing fails for a specific category or SCC assumption.
-
-    IMPORTANT ECONOMIC METHODOLOGY:
-    - Climate damages: Use emission-year SCC values that already represent the net present 
-    value of all future climate damages. NO additional discounting is applied.
-    - Health damages: Use annual marginal social costs that represent damages in the year 
-    they occur. These MUST be discounted to present value.
-
-    This distinction arises from fundamental differences in how these values are calculated:
-    - SCC = ∫(future damages) x discount_factor dt (already integrated and discounted)
-    - Health MSC = annual damage cost (needs discounting for NPV)
     """
     # Initialize the masking dictionary if None is provided
     if all_columns_to_mask is None:
@@ -226,12 +224,21 @@ def calculate_lifetime_damages_grid_scenario(
     # Determine the scenario prefix based on the policy scenario
     scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
     
-    # Pre-calculate discount factors for efficiency
-    discount_factors: Dict[int, float] = {}
+    # Calculate the maximum lifetime across all equipment to determine how many years to pre-calculate
     max_lifetime = max(EQUIPMENT_SPECS.values())
+
+    # Pre-calculate discount factors for each year to avoid redundant calculations
+    # This maps from year_label to its discount factor
+    discount_factors: Dict[int, pd.Series] = {}  # Now always Series, not Union or float
+
     for year in range(1, max_lifetime + 1):
         year_label = year + (base_year - 1)
-        discount_factors[year_label] = calculate_discount_factor(base_year, year_label, discounting_method)
+        discount_factors[year_label] = calculate_discount_factors(
+            df=df_copy,
+            base_year=base_year,
+            target_year=year_label,
+            discounting_method=discounting_method
+        )
     
     # Initialize a dictionary to store all NPV results
     all_npvs: Dict[str, pd.Series] = {}

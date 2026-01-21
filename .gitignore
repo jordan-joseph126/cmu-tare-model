@@ -9,8 +9,10 @@ easiur_batchConversion_upload/
 archived_files/
 output_results/
 cmu_tare_model/data/
+cmu_tare_model/data_backup/
 !cmu_tare_model/data/.gitkeep
 data/
+data_backup/
 study_validation/
 reference_material/
 

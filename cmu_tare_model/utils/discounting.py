@@ -1,29 +1,114 @@
-# For private discounting, we use a fixed rate of 7% as per the provided information.
-# For public discounting, we use a fixed rate of 2% as per the provided information.
-def calculate_discount_factor(base_year: int, target_year: int, discounting_method: str) -> float:
+"""
+Discount rate utilities for net present value calculations.
+
+Supports three discounting methods:
+- public: Fixed 2% social discount rate
+- private_fixed: Fixed 7% private discount rate  
+- private_variable: Household-specific rate based on AMI (2% to 12%)
+"""
+import numpy as np
+import pandas as pd
+
+from cmu_tare_model.constants import PUBLIC_DISCOUNT_RATE, PRIVATE_FIXED_RATE, VARIABLE_RATE_MIN, VARIABLE_RATE_MAX, AMI_THRESHOLD
+
+def prepare_discount_rates(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Calculate the discount factor to convert future values to present values.
+    Prepare all discount rate columns in a single operation.
+    
+    Creates three columns:
+    - 'public_discount_rate': 2% constant (for social/public NPV)
+    - 'private_fixed_discount_rate': 7% constant (for private NPV)
+    - 'private_variable_discount_rate': AMI-based 2%-12% (for equity-adjusted private NPV)
     
     Args:
-        base_year (int): The reference year to discount to (e.g., 2024)
-        target_year (int): The future year to discount from (e.g., 2030)
-        discount_rate (float): Annual social discount rate (default: 0.02 or 2%)
+        df: DataFrame containing 'percent_AMI' column for variable rate calculation.
+    
+    Returns:
+        DataFrame with three additional discount rate columns.
+        
+    Raises:
+        ValueError: If 'percent_AMI' column is missing.
+    """    
+    if 'percent_AMI' not in df.columns:
+        raise ValueError(
+            "DataFrame must contain 'percent_AMI' column for variable rate calculation. "
+            f"Available columns: {list(df.columns)}"
+        )
+
+    df_copy = df.copy()
+    
+    # Fixed rates: simple broadcasting
+    df_copy['public_discount_rate'] = PUBLIC_DISCOUNT_RATE  # 0.02 (2%)
+    df_copy['private_fixed_discount_rate'] = PRIVATE_FIXED_RATE  # 0.07 (7%)
+    
+    # Variable rate: AMI-based calculation
+    percent_ami = df_copy['percent_AMI']
+
+    # Define the interpolation bounds
+    ami_x_bounds = [0, AMI_THRESHOLD]                       # x-coordinates: 0% to 150% AMI
+    rate_y_bounds = [VARIABLE_RATE_MAX, VARIABLE_RATE_MIN]  # y-coordinates: 12% down to 2%
+
+    # LINEAR INTERPOLATION: AMI → Discount Rate (INVERSE relationship)
+    # Values below 0% AMI get 12%, above 150% AMI get 2%.
+    # Clamping behavior is built into np.interp
+    variable_rate = np.interp(x=percent_ami, xp=ami_x_bounds, fp=rate_y_bounds)
+    df_copy['private_variable_discount_rate'] = variable_rate
+    
+    return df_copy
+
+
+def calculate_discount_factors(
+    df: pd.DataFrame,
+    base_year: int,
+    target_year: int,
+    discounting_method: str
+) -> pd.Series:
+    """
+    Calculate discount factors for all households using pre-prepared rates.
+    
+    ALWAYS returns Series (never scalar) for consistency.
+    
+    Args:
+        df: DataFrame with discount rate columns already prepared.
+        base_year: Reference year to discount to (e.g., 2024).
+        target_year: Future year to discount from (e.g., 2030).
+        discounting_method: 'public', 'private_fixed', or 'private_variable'.
         
     Returns:
-        float: Discount factor to multiply with future values
+        Series of discount factors (one per household).
+        
+    Raises:
+        ValueError: If discounting_method is invalid or rate column missing.
     """
-    if discounting_method == 'public':
-        discount_rate = 0.02
-    elif discounting_method == 'private_fixed':
-        discount_rate = 0.07
-    else:
-        raise ValueError("Invalid discounting method. Use 'public' or 'private_fixed'.")
+    # Map method to column name
+    rate_column_map = {
+        'public': 'public_discount_rate',
+        'private_fixed': 'private_fixed_discount_rate',
+        'private_variable': 'private_variable_discount_rate'
+    }
     
-    years_difference = target_year - base_year
-    # Cannot have negative years (future must be >= base year)
-    years_difference = max(0, years_difference)
+    if discounting_method not in rate_column_map:
+        valid_methods = list(rate_column_map.keys())
+        raise ValueError(
+            f"Invalid discounting method: '{discounting_method}'. "
+            f"Must be one of {valid_methods}"
+        )
     
-    # Formula: PV = FV / (1+r)^t
-    discount_factor = 1 / ((1 + discount_rate) ** years_difference)
+    rate_col = rate_column_map[discounting_method]
     
-    return discount_factor
+    if rate_col not in df.columns:
+        raise ValueError(
+            f"DataFrame must contain '{rate_col}' column. "
+            f"Call prepare_discount_rates(df) first to create it."
+        )
+    
+    # Get discount rates (ALWAYS a Series)
+    discount_rate = df[rate_col]
+    
+    # Calculate time difference
+    years_difference = max(0, target_year - base_year)
+    
+    # Apply discount formula element-wise: PV = FV / (1+r)^t
+    discount_factors = 1 / ((1 + discount_rate) ** years_difference)
+    
+    return discount_factors
