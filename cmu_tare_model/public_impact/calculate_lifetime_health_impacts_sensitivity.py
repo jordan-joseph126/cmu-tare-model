@@ -84,8 +84,8 @@ def calculate_lifetime_health_impacts(
         KeyError: If an HDD factor is not found for a required year.
     """ 
     # ===== STEP 0: Validate input parameters =====
-    menu_mp, policy_scenario, _ = validate_common_parameters(
-        menu_mp, policy_scenario, None)
+    menu_mp, policy_scenario = validate_common_parameters(
+        menu_mp, policy_scenario)
     
     # Create a copy of the input DataFrame to avoid modifying the original data
     df_copy = df.copy()

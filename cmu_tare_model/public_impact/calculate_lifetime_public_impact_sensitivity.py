@@ -29,7 +29,6 @@ def calculate_public_npv(
     policy_scenario: str, 
     rcm_model: str,
     base_year: int = 2024,
-    discounting_method: str = 'public',
     verbose: bool = False
 ) -> pd.DataFrame:
     """
@@ -61,7 +60,6 @@ def calculate_public_npv(
             Accepted values: 'No Inflation Reduction Act', 'AEO2023 Reference Case'.
         rcm_model (str): The Reduced Complexity Model used for health impact calculations.
         base_year (int, optional): The base year for discounting calculations. Default is 2024.
-        discounting_method (str, optional): The method used for discounting. Default is 'public'.
         verbose (bool, optional): Whether to print detailed progress messages. Defaults to False.
 
     Returns:
@@ -73,8 +71,8 @@ def calculate_public_npv(
         RuntimeError: If processing fails at the category or combination level.
     """
     # ===== STEP 0: Validate input parameters =====
-    menu_mp, policy_scenario, discounting_method = validate_common_parameters(
-        menu_mp, policy_scenario, discounting_method)
+    menu_mp, policy_scenario = validate_common_parameters(
+        menu_mp, policy_scenario)
     
     # Validate RCM model
     if rcm_model not in RCM_MODELS:
@@ -137,7 +135,7 @@ def calculate_public_npv(
                 rcm_model=rcm_model, 
                 cr_function=cr_function, 
                 base_year=base_year, 
-                discounting_method=discounting_method,
+                discounting_method='public',
                 all_columns_to_mask=all_columns_to_mask,
                 verbose=verbose
             )
@@ -237,7 +235,7 @@ def calculate_lifetime_damages_grid_scenario(
             df=df_copy,
             base_year=base_year,
             target_year=year_label,
-            discounting_method=discounting_method
+            discounting_method=discounting_method  # Always public for public NPV
         )
     
     # Initialize a dictionary to store all NPV results

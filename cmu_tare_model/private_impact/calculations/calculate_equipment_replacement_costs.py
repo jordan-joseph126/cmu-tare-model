@@ -142,8 +142,8 @@ def calculate_replacement_cost_per_row(
     try:
         if end_use == 'heating':
             # Validate required columns and cost components
-            if 'total_heating_load_kBtuh' not in df_valid.columns:
-                raise ValueError("Required column 'total_heating_load_kBtuh' not found in DataFrame")
+            if 'size_heating_system_primary_k_btu_h' not in df_valid.columns:
+                raise ValueError("Required column 'size_heating_system_primary_k_btu_h' not found in DataFrame")
             
             required_components = ['unitCost', 'otherCost', 'cost_per_kBtuh']
             for comp in required_components:
@@ -154,7 +154,7 @@ def calculate_replacement_cost_per_row(
             replacement_cost = (
                 sampled_costs_dict['unitCost'] +
                 sampled_costs_dict['otherCost'] +
-                (df_valid['total_heating_load_kBtuh'] * sampled_costs_dict['cost_per_kBtuh']))
+                (df_valid['size_heating_system_primary_k_btu_h'] * sampled_costs_dict['cost_per_kBtuh']))
             
             cost_column_name = f'mp{menu_mp}_heating_replacementCost'
 

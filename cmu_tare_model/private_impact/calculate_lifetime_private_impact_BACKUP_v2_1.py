@@ -50,19 +50,15 @@ def calculate_private_npv(
         input_mp: str,
         menu_mp: int,
         policy_scenario: str,
+        discounting_method: str = 'private_fixed',
         base_year: int = 2024,
         verbose: bool = True
 ) -> pd.DataFrame:
     """
-    Calculate private net present value (NPV) using BOTH fixed and variable discount rates.
-    
-    This function automatically computes NPV for all equipment categories using:
-    - 'private_fixed': 7% discount rate for all households
-    - 'private_variable': Household-specific rate based on AMI (2% to 12%)
-    
-    For each discount method, creates 2 columns per category (one per WTP scenario):
-    - mp{menu_mp}_{category}_private_npv_lessWTP_{fixed|variable}
-    - mp{menu_mp}_{category}_private_npv_moreWTP_{fixed|variable}
+    Calculate the private net present value (NPV) for various equipment categories,
+    considering different cost assumptions and potential IRA rebates. 
+    The function adjusts equipment costs for inflation and calculates NPV based on 
+    cost savings between baseline and retrofit scenarios.
 
     This function follows the five-step validation framework:
     1. Mask Initialization: Identifies valid homes using inclusion flags and retrofit status
@@ -72,27 +68,32 @@ def calculate_private_npv(
     5. Final Masking: Applies consistent masking to all result columns
 
     Args:
-        df: Input DataFrame with installation costs, fuel savings, and potential rebates.
+        df (DataFrame): Input DataFrame with installation costs, fuel savings, and potential rebates.
             IMPORTANT: Must contain discount rate columns created by prepare_discount_rates().
-            Required columns: 'private_fixed_discount_rate', 'private_variable_discount_rate'.
-        df_fuel_costs: DataFrame containing measure package fuel costs.
-        df_baseline_costs: DataFrame containing baseline fuel costs.
-        input_mp: Input policy_scenario for calculating costs.
-        menu_mp: Measure package identifier.
-        policy_scenario: Policy scenario that determines electricity grid projections. 
-            Accepted values: 'No Inflation Reduction Act', 'AEO2023 Reference Case'.
-        base_year: The base year for discounting calculations. Default is 2024.
-        verbose: Whether to print detailed processing information. Default is True.
+            Required columns: 'public_discount_rate', 'private_fixed_discount_rate', 
+            'private_variable_discount_rate'.
+        df_fuel_costs (DataFrame): DataFrame containing measure package fuel costs.
+        df_baseline_costs (DataFrame): DataFrame containing baseline fuel costs.
+        input_mp (str): Input policy_scenario for calculating costs.
+        menu_mp (int): Measure package identifier.
+        policy_scenario (str): Policy scenario that determines electricity grid projections. 
+            - Accepted values: 'No Inflation Reduction Act', 'AEO2023 Reference Case'.
+        discounting_method (str): The method used for discounting. Default is 'private_fixed'.
+            - 'private_fixed': 7% discount rate for all households
+            - 'private_variable': Household-specific rate based on AMI (2% to 12%)
+            Note: 'public' discounting is not typically used for private NPV calculations.
+        base_year (int): The base year for discounting calculations. Default is 2024.
+        verbose (bool): Whether to print detailed processing information. Default is True.
 
     Returns:
-        DataFrame with 4 new NPV columns per category (2 WTP scenarios × 2 discount methods).
+        DataFrame: The input DataFrame updated with calculated private NPV and adjusted equipment costs.
 
     Raises:
         ValueError: If an invalid policy_scenario or menu_mp is provided.
     """
     # ===== STEP 0: Validate input parameters =====
-    menu_mp, policy_scenario = validate_common_parameters(
-        menu_mp, policy_scenario)
+    menu_mp, policy_scenario, discounting_method = validate_common_parameters(
+        menu_mp, policy_scenario, discounting_method)
 
     # Create copies to avoid modifying original dataframes
     df_copy = df.copy()
@@ -122,28 +123,42 @@ def calculate_private_npv(
     max_lifetime = max(EQUIPMENT_SPECS.values())
 
     # Pre-calculate discount factors for each year to avoid redundant calculations
-    # This maps from year_label to its discount factor. Series not scalar.
-    discount_factors_fixed: Dict[int, pd.Series] = {}
-    discount_factors_variable: Dict[int, pd.Series] = {}
+    # This maps from year_label to its discount factor
+    discount_factors: Dict[int, pd.Series] = {}  # Now always Series, not Union or float
+    
+    # Print diagnostic information about the discount rates being used
+    if verbose:
+        print(f"\n{'='*80}")
+        print(f"DISCOUNT RATE DIAGNOSTIC: {discounting_method}")
+        print(f"{'='*80}")
+        
+        if discounting_method == 'public':
+            rate_used = df_copy['public_discount_rate'].iloc[0]
+            print(f"Using fixed public discount rate: {rate_used:.1%} for all households")
+            
+        elif discounting_method == 'private_fixed':
+            rate_used = df_copy['private_fixed_discount_rate'].iloc[0]
+            print(f"Using fixed private discount rate: {rate_used:.1%} for all households")
+            
+        elif discounting_method == 'private_variable':
+            rate_column = df_copy['private_variable_discount_rate']
+            print(f"Using variable private discount rates based on AMI:")
+            print(f"  Minimum rate: {rate_column.min():.1%} (highest AMI households)")
+            print(f"  Mean rate:    {rate_column.mean():.1%}")
+            print(f"  Median rate:  {rate_column.median():.1%}")
+            print(f"  Maximum rate: {rate_column.max():.1%} (lowest AMI households)")
+        
+        print(f"{'='*80}\n")
 
     for year in range(1, max_lifetime + 1):
         year_label = year + (base_year - 1)
         
-        # ===== Calculate private discount factors for fixed and variable methods =====
-        # Fixed rate discount factors
-        discount_factors_fixed[year_label] = calculate_discount_factors(
-            df=df_copy,
-            base_year=base_year, 
-            target_year=year_label,
-            discounting_method='private_fixed'
-        )
-        
-        # Variable rate discount factors
-        discount_factors_variable[year_label] = calculate_discount_factors(
+        # Single unified function call - works for all three methods
+        discount_factors[year_label] = calculate_discount_factors(
             df=df_copy,
             base_year=base_year,
             target_year=year_label,
-            discounting_method='private_variable'
+            discounting_method=discounting_method
         )
 
     # Process each equipment category
@@ -165,9 +180,8 @@ def calculate_private_npv(
             valid_mask=valid_mask
         )
         
-        # ===== Calculate private discount factors for fixed and variable methods =====
-        # Calculate and get NPV values using FIXED discounting method
-        result_cols_fixed = calculate_and_update_npv(
+        # Calculate and get NPV values
+        new_columns = calculate_and_update_npv(
             df_measure_costs=df_fuel_costs_copy,
             df_baseline_costs=df_baseline_costs_copy,
             category=category,
@@ -176,37 +190,15 @@ def calculate_private_npv(
             net_capital_cost=net_capital_cost,
             policy_scenario=policy_scenario,
             scenario_prefix=scenario_prefix,
-            discount_factors=discount_factors_fixed,
-            method_suffix='_fixed',
-            valid_mask=valid_mask,
-            menu_mp=menu_mp,
-            base_year=base_year,
-            verbose=verbose
-        )
-        # Calculate and get NPV values using VARIABLE discounting method
-        result_cols_variable = calculate_and_update_npv(
-            df_measure_costs=df_fuel_costs_copy,
-            df_baseline_costs=df_baseline_costs_copy,
-            category=category,
-            lifetime=lifetime,
-            total_capital_cost=total_capital_cost,
-            net_capital_cost=net_capital_cost,
-            policy_scenario=policy_scenario,
-            scenario_prefix=scenario_prefix,
-            discount_factors=discount_factors_variable,
-            method_suffix='_variable',
+            discount_factors=discount_factors,
             valid_mask=valid_mask,
             menu_mp=menu_mp,
             base_year=base_year,
             verbose=verbose
         )
         
-        # Add both sets of new results columns to df_new_columns
-        for col_name, values in result_cols_fixed.items():
-            df_new_columns[col_name] = values
-            category_columns_to_mask.append(col_name)
-
-        for col_name, values in result_cols_variable.items():
+        # Add new columns to df_new_columns
+        for col_name, values in new_columns.items():
             df_new_columns[col_name] = values
             category_columns_to_mask.append(col_name)
         
@@ -322,7 +314,6 @@ def calculate_and_update_npv(
     policy_scenario: str,
     scenario_prefix: str,
     discount_factors: Dict[int, pd.Series],
-    method_suffix: str,  # ← NEW: '_fixed' or '_variable'
     valid_mask: pd.Series,
     menu_mp: int,
     base_year: int = 2024,
@@ -347,7 +338,6 @@ def calculate_and_update_npv(
         policy_scenario: Policy scenario that determines column naming.
         scenario_prefix: Prefix for column names based on policy scenario.
         discount_factors: Dictionary mapping years to discount factors.
-        method_suffix: Suffix indicating discounting method ('_fixed' or '_variable').
         valid_mask: Series indicating which rows have valid data for the category.
         menu_mp: Measure package identifier (integer) used for column naming.
         base_year: Base year for calculations.
@@ -387,6 +377,21 @@ def calculate_and_update_npv(
         cols_exist = (base_cost_col in df_baseline_costs.columns and 
                       measure_cost_col in df_measure_costs.columns)
         
+        # if cols_exist:
+        #     # Calculate avoided costs for this year (baseline - measure)
+        #     avoided_costs = ((df_baseline_costs[base_cost_col] - 
+        #                     df_measure_costs[measure_cost_col]) * discount_factor)
+            
+        #     # Apply validation mask for measure packages
+        #     if menu_mp != 0:
+        #         avoided_costs.loc[~valid_mask] = 0.0
+                
+        #     yearly_avoided_costs.append(avoided_costs)
+        #     years_processed += 1
+            
+        # elif verbose:
+        #     print(f"  Warning: Fuel cost data missing for year {year_label}")
+
         if cols_exist:
             # Use calculate_avoided_values function for consistency
             avoided_costs = calculate_avoided_values(
@@ -405,6 +410,7 @@ def calculate_and_update_npv(
     if yearly_avoided_costs:
         # Convert list of Series to DataFrame and sum
         avoided_costs_df = pd.concat(yearly_avoided_costs, axis=1)
+        # total_discounted_savings = avoided_costs_df.sum(axis=1)
         total_discounted_savings = avoided_costs_df.sum(axis=1, skipna=False)  # Use skipna=False to propagate NaN values
 
         # Apply validation mask for measure packages
@@ -434,8 +440,8 @@ def calculate_and_update_npv(
     result_columns = {
         f'{scenario_prefix}{category}_total_capitalCost': total_capital_cost,
         f'{scenario_prefix}{category}_net_capitalCost': net_capital_cost,
-        f'{scenario_prefix}{category}_private_npv_lessWTP{method_suffix}': npv_less_wtp,
-        f'{scenario_prefix}{category}_private_npv_moreWTP{method_suffix}': npv_more_wtp
+        f'{scenario_prefix}{category}_private_npv_lessWTP': npv_less_wtp,
+        f'{scenario_prefix}{category}_private_npv_moreWTP': npv_more_wtp
     }
 
     return result_columns

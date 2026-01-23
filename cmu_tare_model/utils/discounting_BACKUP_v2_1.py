@@ -11,7 +11,7 @@ import pandas as pd
 
 from cmu_tare_model.constants import PUBLIC_DISCOUNT_RATE, PRIVATE_FIXED_RATE, VARIABLE_RATE_MIN, VARIABLE_RATE_MAX, AMI_THRESHOLD
 
-def prepare_discount_rates(df: pd.DataFrame, verbose: bool = False) -> pd.DataFrame:
+def prepare_discount_rates(df: pd.DataFrame) -> pd.DataFrame:
     """
     Prepare all discount rate columns in a single operation.
     
@@ -54,29 +54,6 @@ def prepare_discount_rates(df: pd.DataFrame, verbose: bool = False) -> pd.DataFr
     variable_rate = np.interp(x=percent_ami, xp=ami_x_bounds, fp=rate_y_bounds)
     df_copy['private_variable_discount_rate'] = variable_rate
     
-    if verbose:
-        print(f"\n{'='*80}")
-        print(f"DISCOUNT RATE DIAGNOSTIC: Calculating for BOTH private discount methods")
-        print(f"{'='*80}")
-        
-        # ===== PUBLIC Discount Rate Diagnostic =====
-        public_rate_fixed = df_copy['public_discount_rate'].iloc[0]
-        print(f"Public Rate: {public_rate_fixed:.1%} (constant across all households)")
-
-        # ===== PRIVATE Discount Rate Diagnostic =====
-        # Private fixed rate diagnostic
-        private_rate_fixed = df_copy['private_fixed_discount_rate'].iloc[0]
-        print(f"Private Fixed Rate: {private_rate_fixed:.1%} (constant across all households)")
-        
-        # Private variable rate diagnostic  
-        private_rate_variable = df_copy['private_variable_discount_rate']
-        print(f"Private Variable Rate (AMI-based):")
-        print(f"  Minimum: {private_rate_variable.min():.1%} (highest AMI)")
-        print(f"  Median:  {private_rate_variable.median():.1%}")
-        print(f"  Maximum: {private_rate_variable.max():.1%} (lowest AMI)")
-        
-        print(f"{'='*80}\n")
-
     return df_copy
 
 

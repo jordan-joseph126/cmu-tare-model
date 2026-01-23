@@ -3,6 +3,7 @@ import numpy as np
 from typing import Dict, List, Tuple, Optional
 
 from cmu_tare_model.constants import SCC_ASSUMPTIONS, RCM_MODELS, CR_FUNCTIONS, UPGRADE_COLUMNS
+from cmu_tare_model.tests.test_validation_framework import menu_mp
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.validation_framework import (
     create_retrofit_only_series,
@@ -83,8 +84,7 @@ def adoption_decision(
     policy_scenario: str,
     rcm_model: str,
     cr_function: str,
-    method_suffix: str,  # ← NEW: '_fixed' or '_variable'
-    verbose: bool = False,
+    verbose: bool = False
 ) -> pd.DataFrame:
     """
     Updates DataFrame with adoption decisions and public impacts based on NPV analysis.
@@ -98,7 +98,6 @@ def adoption_decision(
             Accepted values: 'No Inflation Reduction Act', 'AEO2023 Reference Case'.
         rcm_model: RCM model for health impact analysis ('ap2', 'easiur', 'inmap').
         cr_function: Concentration response function ('acs', 'h6c').
-        method_suffix: Suffix indicating discounting method ('_fixed' or '_variable').
         verbose: Enable detailed output for debugging (default: False).
         
     Returns:
@@ -109,165 +108,184 @@ def adoption_decision(
         KeyError: If required columns are missing.
         TypeError: If data type conversion fails.
     """
+    # Validate inputs
+    validate_input_parameters(menu_mp, policy_scenario, rcm_model, cr_function)
+    
+    # Check required upgrade columns
+    missing_columns = [col for col in UPGRADE_COLUMNS.values() if col not in df.columns]
+    if missing_columns:
+        raise KeyError(f"Required upgrade columns missing: {missing_columns}")
+    
+    # Setup
+    df_copy = df.copy()
+    df_copy = fix_duplicate_columns(df_copy)
+    
+    # Get scenario prefix
     try:
-        # Validate inputs
-        validate_input_parameters(menu_mp, policy_scenario, rcm_model, cr_function)
-        
-        # Check required upgrade columns
-        missing_columns = [col for col in UPGRADE_COLUMNS.values() if col not in df.columns]
-        if missing_columns:
-            raise KeyError(f"Required upgrade columns missing: {missing_columns}")
-        
-        # Setup
-        df_copy = df.copy()
-        df_copy = fix_duplicate_columns(df_copy)
-        
-        # Get scenario prefix
-        try:
-            scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
-        except Exception as e:
-            raise ValueError(f"Error determining scenario parameters: {str(e)}")
-        
-        # Single header for nation-level analysis
-        if not verbose:
-            print(f"\nAdoption Analysis: {policy_scenario} | {rcm_model}-{cr_function}")
-        
-        all_columns_to_mask = {cat: [] for cat in UPGRADE_COLUMNS}
-        category_summaries = []
-        
-        # Process each equipment category
-        for category, upgrade_column in UPGRADE_COLUMNS.items():
-            try:
-                # Initialize validation tracking (silent unless verbose)
-                df_copy, valid_mask, _, category_columns_to_mask = initialize_validation_tracking(
-                    df_copy, category, menu_mp, verbose=verbose)
+        scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
+    except Exception as e:
+        raise ValueError(f"Error determining scenario parameters: {str(e)}")
+    
+    # Validate required NPV columns exist (fail on first missing column)
+    print("Validating required NPV columns...")
+    for category in UPGRADE_COLUMNS.keys():
+        for method_suffix in ['_fixed', '_variable']:
+            for scc in SCC_ASSUMPTIONS:
+                required_cols = [
+                    f'{scenario_prefix}{category}_private_npv_lessWTP{method_suffix}',
+                    f'{scenario_prefix}{category}_private_npv_moreWTP{method_suffix}',
+                    f'{scenario_prefix}{category}_public_npv_{scc}_{rcm_model}_{cr_function}'
+                ]
+                for col in required_cols:
+                    if col not in df_copy.columns:
+                        raise KeyError(
+                            f"Missing required column: {col}\n"
+                            f"Category: {category}, Method: {method_suffix}, SCC: {scc}\n"
+                            f"Ensure calculate_private_npv() and calculate_public_npv() completed successfully."
+                        )
+    print("✓ All required columns found")
+    
+    # Single header for nation-level analysis
+    if not verbose:
+        print(f"\nAdoption Analysis: {policy_scenario} | {rcm_model}-{cr_function}")
+    
+    all_columns_to_mask = {cat: [] for cat in UPGRADE_COLUMNS}
+    category_summaries = []
+    
+    # Process each equipment category
+    for category, upgrade_column in UPGRADE_COLUMNS.items():
+        # Initialize validation tracking once per category (not per method)
+        df_copy, valid_mask, _, category_columns_to_mask = initialize_validation_tracking(
+            df_copy, category, menu_mp, verbose=verbose)
+            
+        valid_count = valid_mask.sum()
+        total_count = len(df_copy)
+            
+        # Process BOTH discount methods
+        for method_suffix in ['_fixed', '_variable']:
+            if verbose:
+                print(f"\n  Processing {category} using private{method_suffix} discount rate...")
                 
-                valid_count = valid_mask.sum()
-                total_count = len(df_copy)
+            # Process all SCC assumptions for this discount method
+            scc_processed = 0
+            for scc in SCC_ASSUMPTIONS:
+                # Define column names with method suffix
+                lessWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_lessWTP{method_suffix}'
+                moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP{method_suffix}'
+                public_npv_col = f'{scenario_prefix}{category}_public_npv_{scc}_{rcm_model}_{cr_function}'
+                rebate_col = f'mp{menu_mp}_{category}_rebate_amount'
+
+                # Define output column names with method suffix
+                new_col_names = {
+                    'health_sensitivity': f'{scenario_prefix}{category}_health_sensitivity{method_suffix}',
+                    'benefit': f'{scenario_prefix}{category}_benefit_{scc}_{rcm_model}_{cr_function}{method_suffix}',
+                    'total_npv': f'{scenario_prefix}{category}_total_npv_{scc}_{rcm_model}_{cr_function}{method_suffix}',
+                    'adoption': f'{scenario_prefix}{category}_adoption_{scc}_{rcm_model}_{cr_function}{method_suffix}',
+                    'impact': f'{scenario_prefix}{category}_impact_{scc}_{rcm_model}_{cr_function}{method_suffix}'
+                }
+
+                category_columns_to_mask.extend(new_col_names.values())
+
+                # Convert to numeric (coerce errors to NaN)
+                for col in [lessWTP_private_npv_col, moreWTP_private_npv_col, public_npv_col]:
+                    df_copy[col] = pd.to_numeric(df_copy[col], errors='coerce')
+                    
+                # Convert rebate column if it exists
+                if rebate_col in df_copy.columns:
+                    df_copy[rebate_col] = pd.to_numeric(df_copy[rebate_col], errors='coerce')
                 
-                # Process all SCC assumptions
-                scc_processed = 0
-                for scc in SCC_ASSUMPTIONS:
-                    try:
-                        # Define column names
-                        lessWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_lessWTP{method_suffix}'
-                        moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP{method_suffix}'
-                        public_npv_col = f'{scenario_prefix}{category}_public_npv_{scc}_{rcm_model}_{cr_function}'
-                        rebate_col = f'mp{menu_mp}_{category}_rebate_amount'
-                        
-                        new_col_names = {
-                            'health_sensitivity': f'{scenario_prefix}{category}_health_sensitivity',
-                            'benefit': f'{scenario_prefix}{category}_benefit_{scc}_{rcm_model}_{cr_function}',
-                            'total_npv': f'{scenario_prefix}{category}_total_npv_{scc}_{rcm_model}_{cr_function}{method_suffix}',
-                            'adoption': f'{scenario_prefix}{category}_adoption_{scc}_{rcm_model}_{cr_function}{method_suffix}',
-                            'impact': f'{scenario_prefix}{category}_impact_{scc}_{rcm_model}_{cr_function}'
-                        }
-                        
-                        category_columns_to_mask.extend(new_col_names.values())
-                        
-                        # Validate required columns
-                        required_cols = [lessWTP_private_npv_col, moreWTP_private_npv_col, public_npv_col]
-                        missing_required = [col for col in required_cols if col not in df_copy.columns]
-                        if missing_required:
-                            raise KeyError(f"Required NPV columns missing: {missing_required}")
-                        
-                        # Convert to numeric
-                        for col in required_cols + ([rebate_col] if rebate_col in df_copy.columns else []):
-                            df_copy[col] = pd.to_numeric(df_copy[col], errors='coerce')
-                        
-                        # Create new columns DataFrame
-                        df_new_columns = pd.DataFrame(index=df_copy.index)
-                        
-                        # Initialize columns
-                        for col_name in new_col_names.values():
-                            if col_name == new_col_names['health_sensitivity']:
-                                df_new_columns[col_name] = f'{rcm_model}, {cr_function}'
-                            else:
-                                df_new_columns[col_name] = create_retrofit_only_series(df_copy, valid_mask)
-                        
-                        # Calculate additional public benefit
-                        if policy_scenario == 'No Inflation Reduction Act':
-                            df_new_columns.loc[valid_mask, new_col_names['benefit']] = 0.0
+                # Create new columns DataFrame
+                df_new_columns = pd.DataFrame(index=df_copy.index)
+
+                for col_name in new_col_names.values():
+                    if col_name == new_col_names['health_sensitivity']:
+                        df_new_columns[col_name] = f'{rcm_model}, {cr_function}'
+                    else:
+                        df_new_columns[col_name] = create_retrofit_only_series(df_copy, valid_mask)
+
+                    # Calculate additional public benefit
+                    if policy_scenario == 'No Inflation Reduction Act':
+                        df_new_columns.loc[valid_mask, new_col_names['benefit']] = 0.0
+
+                    else:
+                        if rebate_col in df_copy.columns:
+                            valid_rows = valid_mask & df_copy[public_npv_col].notna() & df_copy[rebate_col].notna()
+                            df_new_columns.loc[valid_rows, new_col_names['benefit']] = (
+                                df_copy.loc[valid_rows, public_npv_col] -
+                                df_copy.loc[valid_rows, rebate_col]
+                            ).clip(lower=0)
+
                         else:
-                            if rebate_col in df_copy.columns:
-                                valid_rows = valid_mask & df_copy[public_npv_col].notna() & df_copy[rebate_col].notna()
-                                df_new_columns.loc[valid_rows, new_col_names['benefit']] = (
-                                    df_copy.loc[valid_rows, public_npv_col] - 
-                                    df_copy.loc[valid_rows, rebate_col]
-                                ).clip(lower=0)
-                            else:
-                                valid_rows = valid_mask & df_copy[public_npv_col].notna()
-                                df_new_columns.loc[valid_rows, new_col_names['benefit']] = (
-                                    df_copy.loc[valid_rows, public_npv_col]
-                                ).clip(lower=0)
-                        
-                        # Calculate total NPV values
-                        valid_npv_rows = valid_mask & df_copy[moreWTP_private_npv_col].notna() & df_copy[public_npv_col].notna()
-                        df_new_columns.loc[valid_npv_rows, new_col_names['total_npv']] = (
-                            df_copy.loc[valid_npv_rows, moreWTP_private_npv_col] + 
-                            df_copy.loc[valid_npv_rows, public_npv_col]
+                            valid_rows = valid_mask & df_copy[public_npv_col].notna()
+                            df_new_columns.loc[valid_rows, new_col_names['benefit']] = (
+                                df_copy.loc[valid_rows, public_npv_col]
+                            ).clip(lower=0)
+
+                    # Calculate total NPV values
+                    valid_npv_rows = valid_mask & df_copy[moreWTP_private_npv_col].notna() & df_copy[public_npv_col].notna()
+                    df_new_columns.loc[valid_npv_rows, new_col_names['total_npv']] = (
+                        df_copy.loc[valid_npv_rows, moreWTP_private_npv_col] + 
+                        df_copy.loc[valid_npv_rows, public_npv_col]
                         )
                         
-                        # Set defaults
-                        df_new_columns[new_col_names['adoption']] = 'N/A: Invalid Baseline Fuel/Tech'
-                        df_new_columns[new_col_names['impact']] = 'N/A: Invalid Baseline Fuel/Tech'
+                    # Set defaults
+                    df_new_columns[new_col_names['adoption']] = 'N/A: Invalid Baseline Fuel/Tech'
+                    df_new_columns[new_col_names['impact']] = 'N/A: Invalid Baseline Fuel/Tech'
                         
-                        # Adoption tier classification
-                        valid_homes_with_npv = valid_mask & df_copy[lessWTP_private_npv_col].notna() & df_copy[moreWTP_private_npv_col].notna()
-                        df_new_columns.loc[valid_homes_with_npv, new_col_names['adoption']] = 'Tier 4: Averse'
+                    # Adoption tier classification
+                    valid_homes_with_npv = valid_mask & df_copy[lessWTP_private_npv_col].notna() & df_copy[moreWTP_private_npv_col].notna()
+                    df_new_columns.loc[valid_homes_with_npv, new_col_names['adoption']] = 'Tier 4: Averse'
                         
-                        no_upgrade_mask = valid_mask & df_copy[upgrade_column].isna()
-                        df_new_columns.loc[no_upgrade_mask, new_col_names['adoption']] = 'N/A: Already Upgraded!'
+                    no_upgrade_mask = valid_mask & df_copy[upgrade_column].isna()
+                    df_new_columns.loc[no_upgrade_mask, new_col_names['adoption']] = 'N/A: Already Upgraded!'
                         
-                        tier1_mask = valid_mask & df_copy[lessWTP_private_npv_col].notna() & (df_copy[lessWTP_private_npv_col] > 0)
-                        df_new_columns.loc[tier1_mask, new_col_names['adoption']] = 'Tier 1: Feasible'
+                    tier1_mask = valid_mask & df_copy[lessWTP_private_npv_col].notna() & (df_copy[lessWTP_private_npv_col] > 0)
+                    df_new_columns.loc[tier1_mask, new_col_names['adoption']] = 'Tier 1: Feasible'
                         
-                        tier2_mask = (valid_mask & 
-                                     df_copy[lessWTP_private_npv_col].notna() & 
-                                     df_copy[moreWTP_private_npv_col].notna() & 
-                                     (df_copy[lessWTP_private_npv_col] < 0) & 
-                                     (df_copy[moreWTP_private_npv_col] > 0))
-                        df_new_columns.loc[tier2_mask, new_col_names['adoption']] = 'Tier 2: Feasible vs. Alternative'
-                        
-                        tier3_mask = (valid_mask & 
-                                     df_copy[lessWTP_private_npv_col].notna() & 
-                                     df_copy[moreWTP_private_npv_col].notna() & 
-                                     df_new_columns[new_col_names['total_npv']].notna() & 
-                                     (df_copy[lessWTP_private_npv_col] < 0) & 
-                                     (df_copy[moreWTP_private_npv_col] < 0) & 
-                                     (df_new_columns[new_col_names['total_npv']] > 0))
-                        df_new_columns.loc[tier3_mask, new_col_names['adoption']] = 'Tier 3: Subsidy-Dependent Feasibility'
-                        
-                        # Public impact classification
-                        df_new_columns.loc[valid_mask, new_col_names['impact']] = 'N/A: Already Upgraded!'
-                        
-                        zero_impact_mask = valid_mask & df_copy[public_npv_col].notna() & (df_copy[public_npv_col] == 0)
-                        df_new_columns.loc[zero_impact_mask, new_col_names['impact']] = 'Public NPV is Zero'
-                        
-                        benefit_mask = valid_mask & df_copy[public_npv_col].notna() & (df_copy[public_npv_col] > 0)
-                        df_new_columns.loc[benefit_mask, new_col_names['impact']] = 'Public Benefit'
-                        
-                        detriment_mask = valid_mask & df_copy[public_npv_col].notna() & (df_copy[public_npv_col] < 0)
-                        df_new_columns.loc[detriment_mask, new_col_names['impact']] = 'Public Detriment'
-                        
-                        # Apply new columns
-                        df_copy, all_columns_to_mask = apply_new_columns_to_dataframe(
-                            df_copy, df_new_columns, category, category_columns_to_mask, all_columns_to_mask
+                    tier2_mask = (
+                        valid_mask & 
+                        df_copy[lessWTP_private_npv_col].notna() & 
+                        df_copy[moreWTP_private_npv_col].notna() & 
+                        (df_copy[lessWTP_private_npv_col] > 0) &
+                        (df_copy[lessWTP_private_npv_col] < 0) & 
+                        (df_copy[moreWTP_private_npv_col] > 0)
                         )
+                    
+                    df_new_columns.loc[tier2_mask, new_col_names['adoption']] = 'Tier 2: Feasible vs. Alternative'
                         
-                        scc_processed += 1
+                    tier3_mask = (
+                        valid_mask & 
+                        df_copy[lessWTP_private_npv_col].notna() & 
+                        df_copy[moreWTP_private_npv_col].notna() & 
+                        df_new_columns[new_col_names['total_npv']].notna() & 
+                        (df_copy[lessWTP_private_npv_col] < 0) & 
+                        (df_copy[moreWTP_private_npv_col] < 0) & 
+                        (df_new_columns[new_col_names['total_npv']] > 0)
+                        )
+                    
+                    df_new_columns.loc[tier3_mask, new_col_names['adoption']] = 'Tier 3: Subsidy-Dependent Feasibility'
                         
-                    except Exception as e:
-                        if verbose:
-                            print(f"Error processing {scc} for {category}: {str(e)}")
-                        continue
+                    # Public impact classification
+                    df_new_columns.loc[valid_mask, new_col_names['impact']] = 'N/A: Already Upgraded!'
+                        
+                    zero_impact_mask = valid_mask & df_copy[public_npv_col].notna() & (df_copy[public_npv_col] == 0)
+                    df_new_columns.loc[zero_impact_mask, new_col_names['impact']] = 'Public NPV is Zero'
+                        
+                    benefit_mask = valid_mask & df_copy[public_npv_col].notna() & (df_copy[public_npv_col] > 0)
+                    df_new_columns.loc[benefit_mask, new_col_names['impact']] = 'Public Benefit'
+                        
+                    detriment_mask = valid_mask & df_copy[public_npv_col].notna() & (df_copy[public_npv_col] < 0)
+                    df_new_columns.loc[detriment_mask, new_col_names['impact']] = 'Public Detriment'
+                        
+                    # Apply new columns
+                    df_copy, all_columns_to_mask = apply_new_columns_to_dataframe(
+                        df_copy, df_new_columns, category, category_columns_to_mask, all_columns_to_mask
+                    )
+                        
+                    scc_processed += 1
                 
                 # Category summary
                 category_summaries.append(f"  {category}: {valid_count:,}/{total_count:,} valid homes, {scc_processed} scenarios")
-                
-            except Exception as e:
-                print(f"ERROR: Failed to process {category}: {str(e)}")
-                continue
         
         # Apply final masking
         total_columns = sum(len(cols) for cols in all_columns_to_mask.values())
@@ -280,22 +298,12 @@ def adoption_decision(
                 print(summary)
             print(f"  Total columns: {total_columns}")
         
-        return df_copy
-        
-    except (ValueError, KeyError, TypeError) as e:
-        print(f"ERROR: {str(e)}")
-        raise
-    except Exception as e:
-        error_message = f"An unexpected error occurred in adoption_decision: {str(e)}"
-        print(f"ERROR: {error_message}")
-        raise RuntimeError(error_message) from e
-
+    return df_copy
 
 def calculate_climate_only_adoption_robust(
     df: pd.DataFrame,
     menu_mp: int,
     policy_scenario: str,
-    method_suffix: str,  # ← NEW: '_fixed' or '_variable'
     scc_assumptions: List[str] = None,
     verbose: bool = False
 ) -> pd.DataFrame:
@@ -306,7 +314,6 @@ def calculate_climate_only_adoption_robust(
         df: Input DataFrame.
         menu_mp: Measure package identifier.
         policy_scenario: Policy scenario name.
-        method_suffix: Suffix indicating discounting method ('_fixed' or '_variable').
         scc_assumptions: List of SCC assumptions to process.
         verbose: Enable detailed output.
         
@@ -344,7 +351,7 @@ def calculate_climate_only_adoption_robust(
             for scc in scc_assumptions:
                 try:
                     # Define column names
-                    moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP{method_suffix}'
+                    moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP'
                     climate_npv_col = f'{scenario_prefix}{category}_climate_npv_{scc}'
                     
                     # Validate columns
@@ -359,7 +366,7 @@ def calculate_climate_only_adoption_robust(
                     
                     # Define output column names (simplified - only total NPV for visualization)
                     climate_col_names = {
-                        'total_npv_climate': f'{scenario_prefix}{category}_total_npv_climateOnly_{scc}{method_suffix}',
+                        'total_npv_climate': f'{scenario_prefix}{category}_total_npv_climateOnly_{scc}',
                     }
                     
                     # Create new columns DataFrame
@@ -414,7 +421,6 @@ def calculate_health_only_adoption_robust(
     policy_scenario: str,
     rcm_model: str,
     cr_function: str,
-    method_suffix: str,  # '_fixed' or '_variable'
     verbose: bool = False
 ) -> pd.DataFrame:
     """
@@ -426,7 +432,6 @@ def calculate_health_only_adoption_robust(
         policy_scenario: Policy scenario name.
         rcm_model: RCM model name.
         cr_function: Concentration response function.
-        method_suffix: Suffix indicating discounting method ('_fixed' or '_variable').
         verbose: Enable detailed output.
         
     Returns:
@@ -458,7 +463,7 @@ def calculate_health_only_adoption_robust(
             
             try:
                 # Define column names
-                moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP{method_suffix}'
+                moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP'
                 health_npv_col = f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
                 
                 # Validate columns
@@ -473,7 +478,7 @@ def calculate_health_only_adoption_robust(
                 
                 # Define output column names (simplified - only total NPV for visualization)
                 health_col_names = {
-                    'total_npv_health': f'{scenario_prefix}{category}_total_npv_healthOnly_{rcm_model}_{cr_function}{method_suffix}',
+                    'total_npv_health': f'{scenario_prefix}{category}_total_npv_healthOnly_{rcm_model}_{cr_function}',
                 }
                 
                 # Create new columns DataFrame

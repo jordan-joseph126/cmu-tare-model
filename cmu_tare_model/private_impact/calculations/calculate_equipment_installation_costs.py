@@ -31,56 +31,11 @@ progressive (10th percentile), reference (50th percentile), and conservative (90
 # ========================================================================================================================================================================
 
 
-# def obtain_heating_system_specs(df: pd.DataFrame) -> pd.DataFrame:
-#     """
-#     Extract and process heating system specifications from input dataframe.
-    
-#     Calculates total heating load and extracts efficiency metrics from raw data. 
-    
-#     Args:
-#         df (pd.DataFrame): Input dataframe containing heating system data
-        
-#     Returns:
-#         pd.DataFrame: Updated dataframe with calculated heating system specs
-        
-#     Raises:
-#         ValueError: If dataframe is missing required columns
-#     """
-#     # Check if necessary columns are in the DataFrame
-#     necessary_columns = ['size_heating_system_primary_k_btu_h', 'size_heat_pump_backup_primary_k_btu_h',
-#                          'size_heating_system_secondary_k_btu_h', 'baseline_heating_type']
-#     if not all(column in df.columns for column in necessary_columns):
-#         raise ValueError("DataFrame does not contain all necessary columns.")
-
-#     # Total heating load in kBtuh
-#     df['total_heating_load_kBtuh'] = df['size_heating_system_primary_k_btu_h'] + df['size_heat_pump_backup_primary_k_btu_h'] + df['size_heating_system_secondary_k_btu_h']
-    
-# #     # Total heating load in kW
-# #     df['total_heating_load_kW'] = df['total_heating_load_kBtuh'] * 1000 / 3412.142
-   
-#     # Use regex to remove the fuel and leave only the heating type:
-#     df['baseline_heating_type'] = df['baseline_heating_type'].str.extract(r'^(?:\d+\s+)?(?:Natural Gas|Electricity|Propane|Fuel Oil|Fuel)\s+(?:Fuel\s+)?(?:Electric\s+)?(.+)$')
-    
-#     # AFUE extraction for existing, baseline equipment (Replacement Costs)
-#     df['baseline_AFUE'] = df['hvac_heating_efficiency'].str.extract(r'([\d.]+)%').astype(float)
-    
-#     # SEER extraction for existing, baseline equipment (Replacement Costs)
-#     df['baseline_SEER'] = df['hvac_heating_efficiency'].str.extract(r'SEER ([\d.]+)').astype(float)
-    
-#     # HSPF extraction for existing, baseline equipment (Replacement Costs)
-#     df['baseline_HSPF'] = df['hvac_heating_efficiency'].str.extract(r'([\d.]+) HSPF').astype(float)
-
-#     # HSPF extraction for upgraded equipment (New Install Costs)
-#     df['ugrade_newInstall_HSPF'] = df['upgrade_hvac_heating_efficiency'].str.extract(r'(\d+\.\d+)')
-
-#     return df
-
-
 def obtain_heating_system_specs(df: pd.DataFrame) -> pd.DataFrame:
     """
     Extract and process heating system specifications from input dataframe.
     
-    Calculates total heating load and extracts efficiency metrics from raw data. 
+    Used to calculates total heating load. Code has been updated to use primary system capacity for heating and cooling costs.
     
     Args:
         df (pd.DataFrame): Input dataframe containing heating system data
@@ -95,14 +50,6 @@ def obtain_heating_system_specs(df: pd.DataFrame) -> pd.DataFrame:
     necessary_columns = ['hvac_heating_efficiency', 'upgrade_hvac_heating_efficiency']
     if not all(column in df.columns for column in necessary_columns):
         raise ValueError("DataFrame does not contain all necessary columns.")
-
-    # Calculate total heating load if columns exist
-    heating_load_columns = ['size_heating_system_primary_k_btu_h', 'size_heat_pump_backup_primary_k_btu_h',
-                         'size_heating_system_secondary_k_btu_h']
-    if all(column in df.columns for column in heating_load_columns):
-        df['total_heating_load_kBtuh'] = df['size_heating_system_primary_k_btu_h'] + \
-                                        df['size_heat_pump_backup_primary_k_btu_h'] + \
-                                        df['size_heating_system_secondary_k_btu_h']
     
     # Extract AFUE from pattern "XX% AFUE"
     df['baseline_AFUE'] = df['hvac_heating_efficiency'].str.extract(r'(\d+\.?\d*)% AFUE').astype(float)
@@ -287,10 +234,11 @@ def calculate_installation_cost_per_row(
         KeyError: If required cost components are missing from sampled_costs_dict
     """
     try:
+
         if end_use == 'heating':
             # Validate required columns and cost components
-            if 'total_heating_load_kBtuh' not in df_valid.columns:
-                raise ValueError("Required column 'total_heating_load_kBtuh' not found in DataFrame")
+            if 'size_heating_system_primary_k_btu_h' not in df_valid.columns:
+                raise ValueError("Required column 'size_heating_system_primary_k_btu_h' not found in DataFrame")
             
             required_components = ['unitCost', 'otherCost', 'cost_per_kBtuh']
             for comp in required_components:
@@ -301,7 +249,7 @@ def calculate_installation_cost_per_row(
             installation_cost = (
                 sampled_costs_dict['unitCost'] +
                 sampled_costs_dict['otherCost'] +
-                (df_valid['total_heating_load_kBtuh'] * sampled_costs_dict['cost_per_kBtuh']))
+                (df_valid['size_heating_system_primary_k_btu_h'] * sampled_costs_dict['cost_per_kBtuh']))
             cost_column_name = f'mp{menu_mp}_heating_installationCost'
             
         elif end_use == 'waterHeating':
