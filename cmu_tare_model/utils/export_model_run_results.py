@@ -3,135 +3,131 @@ import pandas as pd
 from typing import Union, Optional
 import pathlib
 
+
 def export_model_run_output(
     df_results_export: pd.DataFrame,
     results_category: str,
     menu_mp: Union[int, str],
-    output_folder_path: Optional[str] = None,
-    location_id: Optional[str] = None,
-    results_export_formatted_date: Optional[str] = None
+    output_folder_path: str,
+    location_id: str,
+    results_export_formatted_date: str,
+    rcm_model: Optional[str] = None,
+    discount_rate_col: Optional[str] = None
 ) -> None:
-    """Export data for various result categories to appropriate directories.
+    """Export model run results to CSV files with sensitivity tracking.
     
-    This function exports DataFrame results to CSV files in the appropriate 
-    directory based on the results category and measure package. It supports
-    the expanded sensitivity analysis categories and directory structure.
+    This function exports DataFrame results to CSV files organized by result type.
+    For retrofit summary results, it adds sensitivity columns (RCM model and discount
+    rate method) to the DataFrame before export, enabling easy filtering and analysis
+    of sensitivity scenarios.
+    
+    Directory Structure:
+        baseline_summary/summary_baseline/
+            - baseline_results_{location_id}_{date}.csv
+        
+        retrofit_mp{menu_mp}_results/summary_mp{menu_mp}_{rcm_model}_{discount_rate_col}/
+            - mp{menu_mp}_results_{location_id}_{date}.csv
+            - DataFrame includes: rcm_model, discount_rate_col columns
+        
+        supplemental_data_damages/{results_category}/
+            - mp{menu_mp}_{results_category}_{location_id}_{date}.csv
+        
+        supplemental_data_fuelCosts/{results_category}/
+            - mp{menu_mp}_{results_category}_{location_id}_{date}.csv
     
     Args:
-        df_results_export: DataFrame containing the data to be exported.
-        results_category: Type of results being exported:
-            - For summaries: 'summary_baseline', 'summary_basic_ap2', etc.
-            - For damages: 'damages_climate_IRA', 'damages_climate_noIRA', etc.
-            - For fuel costs: 'fuel_costs_IRA', 'fuel_costs_noIRA'
-            - For consumption: 'consumption'
+        df_results_export: DataFrame containing the results to export.
+        results_category: Category of results being exported. Valid options:
+            - 'summary_baseline': Baseline summary results
+            - 'summary': Retrofit summary results (requires rcm_model and discount_rate_col)
+            - 'damages_climate_IRA', 'damages_climate_noIRA': Climate damages
+            - 'damages_health_IRA', 'damages_health_noIRA': Health damages
+            - 'fuel_costs_IRA', 'fuel_costs_noIRA': Fuel costs
         menu_mp: Measure package identifier (0 for baseline, 8/9/10 for retrofits).
-        output_folder_path: Base directory for exporting results. If None, uses
-            a global/predefined variable.
-        location_id: Location identifier for the filename. If None, uses
-            a global/predefined variable.
-        results_export_formatted_date: Formatted date string for the filename. If None,
-            uses a global/predefined variable.
+        output_folder_path: Base directory for all exports.
+        location_id: Location identifier for the filename (e.g., 'NYC', 'LA').
+        results_export_formatted_date: Date string for the filename (e.g., '2024_01_15').
+        rcm_model: RCM model used for health damage calculations (e.g., 'ap2', 'easiur', 
+            'inmap'). Required when results_category='summary' and menu_mp != 0.
+        discount_rate_col: Discount rate method used (e.g., 'private_discount_rate_fixed_base',
+            'private_discount_rate_variable'). Required when results_category='summary' and menu_mp != 0.
             
     Raises:
-        ValueError: If the results_category is not recognized or if required
-            parameters are missing.
+        ValueError: If any required parameter is missing, results_category is invalid,
+            or sensitivity parameters are missing when required.
         OSError: If there is an error creating directories or writing the file.
     """
-    print("-------------------------------------------------------------------------------------------------------")
+    print("---" * 35)
     
-    # Use global variables if parameters are not provided
-    global_vars = globals()
+    # Validate required parameters
     if output_folder_path is None:
-        if 'output_folder_path' in global_vars:
-            output_folder_path = global_vars['output_folder_path']
-        else:
-            raise ValueError("output_folder_path must be provided either as a parameter or as a global variable")
-    
+        raise ValueError("output_folder_path is required")
     if location_id is None:
-        if 'location_id' in global_vars:
-            location_id = global_vars['location_id']
-        else:
-            raise ValueError("location_id must be provided either as a parameter or as a global variable")
-    
+        raise ValueError("location_id is required")
     if results_export_formatted_date is None:
-        if 'results_export_formatted_date' in global_vars:
-            results_export_formatted_date = global_vars['results_export_formatted_date']
-        else:
-            raise ValueError("results_export_formatted_date must be provided either as a parameter or as a global variable")
+        raise ValueError("results_export_formatted_date is required")
     
     # Standardize menu_mp to string
     menu_mp = str(menu_mp)
     
-    # Determine output directory and filename based on results_category
-    if results_category.startswith('summary_'):
-        # Handle summary results with different models
-        model_type = results_category.split('_', 1)[1]  # e.g., 'baseline', 'basic_ap2'
+    # Create a copy of the DataFrame to avoid modifying the original
+    df_results_export_copy = df_results_export.copy()
+    
+    # Build directory path and filename based on results_category
+    if results_category == 'summary_baseline':
+        # Baseline summary results
+        directory_path = os.path.join("baseline_summary", "summary_baseline")
+        filename = f"baseline_results_{location_id}_{results_export_formatted_date}.csv"
+        print(f"BASELINE SUMMARY RESULTS:")
         
-        if model_type == 'baseline':
-            results_filename = f"baseline_results_{location_id}_{results_export_formatted_date}.csv"
-            results_change_directory = os.path.join("baseline_summary", "summary_baseline")
-            print(f"BASELINE SUMMARY RESULTS:")
-        else:
-            # Parse retrofit level and model from model_type
-            # e.g., 'basic_ap2' -> retrofit_level='basic', model='ap2'
-            parts = model_type.split('_', 1)
-            retrofit_level = parts[0]  # 'basic', 'moderate', 'advanced'
-            model = parts[1] if len(parts) > 1 else ''  # 'ap2', 'easiur', 'inmap'
-            
-            # Map retrofit level to directory and expected menu_mp
-            if retrofit_level == 'basic':
-                retrofit_dir = "retrofit_basic_summary"
-                menu_mp_expected = '8'
-            elif retrofit_level == 'moderate':
-                retrofit_dir = "retrofit_moderate_summary"
-                menu_mp_expected = '9'
-            elif retrofit_level == 'advanced':
-                retrofit_dir = "retrofit_advanced_summary"
-                menu_mp_expected = '10'
-            else:
-                raise ValueError(f"Unrecognized retrofit level in results_category: {retrofit_level}")
-            
-            # Validate that menu_mp matches the expected value for the retrofit level
-            if menu_mp != menu_mp_expected:
-                print(f"Warning: menu_mp={menu_mp} doesn't match expected value {menu_mp_expected} for {retrofit_level} retrofit")
-            
-            results_filename = f"mp{menu_mp}_results_{location_id}_{results_export_formatted_date}.csv"
-            results_change_directory = os.path.join(retrofit_dir, f"summary_{retrofit_level}_{model}")
-            print(f"MEASURE PACKAGE {menu_mp} (MP{menu_mp}) RESULTS for model {model}:")
-            
-    elif results_category.startswith(('damages_', 'fuel_costs_')):
-        # Handle damages and fuel costs with different policy scenarios
-        if results_category.startswith('damages_'):
-            base_dir = "supplemental_data_damages"
-        else:  # fuel_costs
-            base_dir = "supplemental_data_fuelCosts"
+    elif results_category == 'summary':
+        # Retrofit summary results with sensitivity tracking
+        # Validate that sensitivity parameters are provided
+        if rcm_model is None:
+            raise ValueError("rcm_model is required for retrofit summary results (results_category='summary')")
+        if discount_rate_col is None:
+            raise ValueError("discount_rate_col is required for retrofit summary results (results_category='summary')")
+                
+        # Build directory path using sensitivity parameters
+        directory_path = os.path.join(
+            f"retrofit_mp{menu_mp}_results",
+            f"summary_mp{menu_mp}_{rcm_model}_{discount_rate_col}"
+        )
+        filename = f"mp{menu_mp}_results_{location_id}_{results_export_formatted_date}.csv"
+        print(f"MEASURE PACKAGE {menu_mp} SUMMARY RESULTS:")
+        print(f"  RCM Model: {rcm_model}")
+        print(f"  Discount Rate: {discount_rate_col}")
         
-        # Use the full results_category as the subdirectory name
-        results_change_directory = os.path.join(base_dir, results_category)
-        results_filename = f"mp{menu_mp}_{results_category}_{location_id}_{results_export_formatted_date}.csv"
-        print(f"SUPPLEMENTAL INFORMATION DATAFRAME: {results_category}")
+    elif results_category.startswith('damages_'):
+        # Damages results (climate or health, IRA or noIRA)
+        directory_path = os.path.join("supplemental_data_damages", results_category)
+        filename = f"mp{menu_mp}_{results_category}_{location_id}_{results_export_formatted_date}.csv"
+        print(f"SUPPLEMENTAL DAMAGES: {results_category}")
         
-    elif results_category == 'consumption':
-        # Handle consumption data
-        results_change_directory = os.path.join("supplemental_data_consumption", "consumption_all_scenarios")
-        results_filename = f"mp{menu_mp}_data_{results_category}_{location_id}_{results_export_formatted_date}.csv"
-        print(f"SUPPLEMENTAL INFORMATION DATAFRAME: {results_category}")
+    elif results_category.startswith('fuel_costs_'):
+        # Fuel costs results (IRA or noIRA)
+        directory_path = os.path.join("supplemental_data_fuelCosts", results_category)
+        filename = f"mp{menu_mp}_{results_category}_{location_id}_{results_export_formatted_date}.csv"
+        print(f"SUPPLEMENTAL FUEL COSTS: {results_category}")
         
     else:
-        raise ValueError(f"Unrecognized results_category: {results_category}")
+        raise ValueError(
+            f"Unrecognized results_category: {results_category}. "
+            f"Must be 'summary_baseline', 'summary', 'damages_*', or 'fuel_costs_*'"
+        )
     
-    # Create output directory if it doesn't exist
-    full_directory = os.path.join(output_folder_path, results_change_directory)
+    # Create full directory path (creates empty directory if it doesn't exist)
+    full_directory = os.path.join(output_folder_path, directory_path)
     pathlib.Path(full_directory).mkdir(parents=True, exist_ok=True)
     
-    # Export dataframe results as a CSV to the specified filepath
-    results_export_filepath = os.path.join(full_directory, results_filename)
+    # Export DataFrame to CSV
+    full_filepath = os.path.join(full_directory, filename)
     
     try:
-        df_results_export.to_csv(results_export_filepath)
-        print(f"Dataframe results will be saved in this csv file: {results_filename}")
-        print(f"Dataframe for MP{menu_mp} {results_category} results were exported here: {results_export_filepath}")
+        df_results_export_copy.to_csv(full_filepath)
+        print(f"Saved to: {filename}")
+        print(f"Full path: {full_filepath}")
     except Exception as e:
-        raise OSError(f"Error exporting data to {results_export_filepath}: {str(e)}")
+        raise OSError(f"Error exporting data to {full_filepath}: {str(e)}")
     
-    print("-------------------------------------------------------------------------------------------------------", "\n")
+    print("---" * 35, "\n")
