@@ -70,8 +70,8 @@ def calculate_lifetime_climate_impacts(
         RuntimeError: If processing fails at the category or year level (e.g., missing data or key lookups).
     """
     # ===== STEP 0: Validate input parameters =====
-    menu_mp, policy_scenario, _ = validate_common_parameters(
-        menu_mp, policy_scenario, None)
+    menu_mp, policy_scenario = validate_common_parameters(
+        menu_mp, policy_scenario)
     
     # Create a copy of the input df
     df_copy = df.copy()

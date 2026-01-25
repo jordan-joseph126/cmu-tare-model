@@ -328,19 +328,22 @@ def sample_costs_from_distributions(
 # ===== Input Parameter Validation =====
 def validate_common_parameters(
     menu_mp: Union[int, str],
-    policy_scenario: str
-) -> Tuple[int, str]:
+    policy_scenario: str,
+    discounting_method: Optional[str] = None
+) -> Tuple[int, str, Optional[str]]:
     """
     Validates common input parameters used across calculation functions.
     
     Args:
         menu_mp: Measure package identifier (int or str).
         policy_scenario: Policy scenario name.
-
+        discounting_method: Optional discounting method name.
+        
     Returns:
         Tuple containing:
         - menu_mp_int: Validated menu_mp as integer
         - policy_scenario: Validated policy scenario string
+        - discounting_method: Validated discounting method or None
         
     Raises:
         ValueError: If any parameter is invalid.
@@ -356,9 +359,13 @@ def validate_common_parameters(
     if policy_scenario not in valid_scenarios:
         raise ValueError(f"Invalid policy_scenario: {policy_scenario}. Must be one of {valid_scenarios}")
        
-    # No longer validating discounting_method because using both methods for private NPV
+    # Validate discounting_method if provided
+    if discounting_method is not None:
+        valid_methods = ['public', 'private_fixed', 'private_variable']
+        if discounting_method not in valid_methods:
+            raise ValueError(f"Invalid discounting_method: {discounting_method}. Must be one of {valid_methods}")
 
-    return menu_mp_int, policy_scenario
+    return menu_mp_int, policy_scenario, discounting_method
 
     
 # ===== Apply Temporary Validation and Masking, Remove Duplicate Columns =====

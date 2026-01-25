@@ -10,7 +10,8 @@ def validate_damage_dataframes(
     menu_mp: str,
     policy_scenario: str,
     base_year: int,
-    equipment_specs: Dict[str, int]
+    equipment_specs: Dict[str, int],
+    verbose: bool = False
 ) -> Tuple[bool, List[str]]:
     """
     Validate that the baseline and retrofit damage DataFrames have the expected columns
@@ -25,7 +26,8 @@ def validate_damage_dataframes(
         policy_scenario: Specifies the grid scenario.
         base_year: The base year for calculations.
         equipment_specs: Dictionary mapping equipment categories to their lifetimes.
-        
+        verbose: Whether to print detailed validation messages. Defaults to False.
+
     Returns:
         Tuple containing:
             - Boolean indicating if the DataFrames are valid
@@ -88,13 +90,17 @@ def validate_damage_dataframes(
         if (found_baseline_climate and found_baseline_health and 
             found_retrofit_climate and found_retrofit_health):
             break
+        
+    # Return True if all expected column patterns were found
+    is_valid = (found_baseline_climate and found_baseline_health and 
+                found_retrofit_climate and found_retrofit_health)
     
-    # Print validation results for each DataFrame
-    print(f"Baseline Climate DataFrame: {'✓ Valid' if found_baseline_climate else '✗ Missing expected columns'}")
-    print(f"Baseline Health DataFrame: {'✓ Valid' if found_baseline_health else '✗ Missing expected columns'}")
-    print(f"Retrofit Climate DataFrame: {'✓ Valid' if found_retrofit_climate else '✗ Missing expected columns'}")
-    print(f"Retrofit Health DataFrame: {'✓ Valid' if found_retrofit_health else '✗ Missing expected columns'}")
-    
+    if verbose or not is_valid:
+        print(f"Baseline Climate DataFrame: {'✓ Valid' if found_baseline_climate else '✗ Missing expected columns'}")
+        print(f"Baseline Health DataFrame: {'✓ Valid' if found_baseline_health else '✗ Missing expected columns'}")
+        print(f"Retrofit Climate DataFrame: {'✓ Valid' if found_retrofit_climate else '✗ Missing expected columns'}")
+        print(f"Retrofit Health DataFrame: {'✓ Valid' if found_retrofit_health else '✗ Missing expected columns'}")
+
     # Generate warning messages for missing columns
     if not found_baseline_climate:
         messages.append(f"ERROR: No baseline climate damage columns found. Expected pattern: 'baseline_YEAR_CATEGORY_damages_climate_lrmer_BOUND'")
@@ -111,9 +117,5 @@ def validate_damage_dataframes(
     if not found_retrofit_health:
         messages.append(f"ERROR: No retrofit health damage columns found. Expected pattern: '{scenario_prefix}YEAR_CATEGORY_damages_health_MODEL_FUNCTION'")
         messages.append(f"Example missing column: {example_retrofit_health}")
-    
-    # Return True if all expected column patterns were found
-    is_valid = (found_baseline_climate and found_baseline_health and 
-                found_retrofit_climate and found_retrofit_health)
     
     return is_valid, messages

@@ -59,20 +59,19 @@ SCC_ASSUMPTIONS = ['lower', 'central', 'upper']
 # =============================================================
 # DOLLAR_YEAR = 2023
 # INFLATION_ADJUSTED_USD = f'USD{DOLLAR_YEAR}'
-# FUEL_PRICE_ASSUMPTIONS = ['lower', 'central', 'upper']
+
+FUEL_PRICE_ASSUMPTIONS = ['lower', 'central', 'upper']
 
 # Discount rate constants (centralized for easy modification)
-PUBLIC_DISCOUNT_RATE = 0.02      # 2% social discount rate, converted to decimal
-
-# Fixed Private Discount Rate Constants
-PRIVATE_FIXED_RATE_LOW = 0.02
-PRIVATE_FIXED_RATE_BASE = 0.07
-PRIVATE_FIXED_RATE_HIGH = 0.12
-
-# Variable Private Discount Rate Parameters
-VARIABLE_RATE_MIN = 0.07         # Minimum rate for high-AMI households (>=150% AMI)
-VARIABLE_RATE_MAX = 0.45         # Maximum rate for low-AMI households (0% AMI)
+PUBLIC_DISCOUNT_RATE = 0.02      # 2% social discount rate
+PRIVATE_FIXED_RATE = 0.07        # 7% private discount rate
+VARIABLE_RATE_MIN = 0.02         # Minimum rate for high-AMI households (>=150% AMI)
+VARIABLE_RATE_MAX = 0.12         # Maximum rate for low-AMI households (0% AMI)
 AMI_THRESHOLD = 150              # AMI percentage at which minimum rate applies
+
+# Configuration
+PRIVATE_DISCOUNTING_METHOD = 'private_variable'  # Options: 'private_fixed' or 'private_variable'
+PUBLIC_DISCOUNTING_METHOD = 'public'          # Always 'public' for social discounting (fixed at 2%)
 
 # Define equipment categories and their corresponding upgrade columns
 UPGRADE_COLUMNS = {

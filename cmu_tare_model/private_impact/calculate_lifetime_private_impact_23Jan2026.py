@@ -36,20 +36,7 @@ considering different cost assumptions and potential IRA rebates.
     def calculate_and_update_npv:
         - Modified this function to accept a validation mask, initialize with valid values only, update only valid homes 
           during calculations, and return a dictionary of columns instead of directly updating the DataFrame.
-# UPDATED JANUARY 23, 2026
-    1.Add defensive column validation in calculate_capital_costs().
-    2. Add _validate_required_columns() helper function and early column existence
-    checking in calculate_capital_costs() to prevent KeyError when required
-    installation cost columns are missing (e.g., mp10_heating_installationCost).
 
-    The fix:
-    - Builds a list of required columns based on category and policy scenario
-    - Validates all required columns exist before accessing them
-    - Raises a clear, actionable KeyError with the list of missing columns
-    and guidance to ensure installation costs are calculated first
-
-    This prevents cryptic KeyError messages and helps debug data pipeline
-    issues where installation cost columns weren't created upstream.
 """
 
 # ========================================================================================================================================================================
@@ -202,41 +189,21 @@ def calculate_private_npv(
     return df_result
 
 
-def _validate_required_columns(
-    df: pd.DataFrame,
-    required_cols: List[str],
-    context: str
-) -> List[str]:
-    """
-    Validate that required columns exist in the DataFrame.
-
-    Args:
-        df: DataFrame to check.
-        required_cols: List of column names that must exist.
-        context: Description of the calculation context for error messages.
-
-    Returns:
-        List of missing column names (empty if all columns exist).
-    """
-    missing = [col for col in required_cols if col not in df.columns]
-    return missing
-
-
 def calculate_capital_costs(
-    df_copy: pd.DataFrame,
-    category: str,
-    input_mp: str,
-    menu_mp: int,
+    df_copy: pd.DataFrame, 
+    category: str, 
+    input_mp: str, 
+    menu_mp: int, 
     policy_scenario: str,
     valid_mask: pd.Series
-) -> Tuple[pd.Series, pd.Series]:
+) -> Tuple[pd.Series, pd.Series]:    
     """
     Calculate total and net capital costs for an equipment category.
-
+    
     This function computes the total capital cost and net capital cost (after accounting
     for replacement costs) based on the equipment category, measure package, and whether
     IRA rebates are applied.
-
+    
     Args:
         df_copy: DataFrame containing cost data.
         category: Equipment category (e.g., 'heating', 'waterHeating').
@@ -244,63 +211,29 @@ def calculate_capital_costs(
         menu_mp: Measure package identifier (integer) used for column naming.
         policy_scenario: Policy scenario that determines if IRA rebates are applied.
                        'No Inflation Reduction Act' means no rebates are applied.
-                       'AEO2023 Reference Case' means IRA rebates are applied.
+                       'AEO2023 Reference Case' means IRA rebates are applied. 
         valid_mask: Series indicating which rows have valid data for the category.
-
+        
     Returns:
         A tuple containing:
             - total_capital_cost: Series with total capital costs
             - net_capital_cost: Series with net capital costs (total - replacement)
-
-    Raises:
-        KeyError: If required installation cost columns are missing from the DataFrame.
-
+            
     Notes:
         Current modeling assumes equipment prices are the same under IRA Reference
         and IRA High scenarios. Costs differ for pre-IRA because no rebates are applied.
-
+    
     """
 
     print(f"""\nCalculating costs for {category}...
           input_mp: {input_mp}, menu_mp: {menu_mp}, policy_scenario: {policy_scenario}""")
 
-    # Build list of required columns based on category and policy scenario
-    install_cost_col = f'mp{menu_mp}_{category}_installationCost'
-    replacement_cost_col = f'mp{menu_mp}_{category}_replacementCost'
-    required_cols = [install_cost_col, replacement_cost_col]
-
-    if category == 'heating':
-        required_cols.append(f'mp{menu_mp}_heating_installation_premium')
-        if input_mp in ['upgrade09', 'upgrade10']:
-            required_cols.append(f'mp{menu_mp}_enclosure_upgradeCost')
-
-            # Weatherization rebate only applies to MP9 and MP10 under IRA scenarios
-            if policy_scenario != 'No Inflation Reduction Act':
-                required_cols.append('weatherization_rebate_amount')
-
-        if policy_scenario != 'No Inflation Reduction Act':
-            required_cols.append(f'mp{menu_mp}_{category}_rebate_amount')
-
-    elif policy_scenario != 'No Inflation Reduction Act':
-        required_cols.append(f'mp{menu_mp}_{category}_rebate_amount')
-
-    # Validate required columns exist
-    missing_cols = _validate_required_columns(df_copy, required_cols,
-        f"{category} capital cost calculation for MP{menu_mp}")
-
-    if missing_cols:
-        raise KeyError(
-            f"Missing required columns for {category} capital cost calculation "
-            f"(MP{menu_mp}, {policy_scenario}): {missing_cols}. "
-            f"Ensure installation costs are calculated before calling calculate_private_npv()."
-        )
-
     if policy_scenario == 'No Inflation Reduction Act':
         if category == 'heating':
             if input_mp == 'upgrade09':            
-                weatherization_cost = df_copy[f'mp{menu_mp}_enclosure_upgradeCost'].fillna(0)
+                weatherization_cost = df_copy[f'mp9_enclosure_upgradeCost'].fillna(0)
             elif input_mp == 'upgrade10':
-                weatherization_cost = df_copy[f'mp{menu_mp}_enclosure_upgradeCost'].fillna(0)
+                weatherization_cost = df_copy[f'mp10_enclosure_upgradeCost'].fillna(0)
             else:
                 weatherization_cost = 0.0
             
@@ -315,12 +248,10 @@ def calculate_capital_costs(
     
     else:
         if category == 'heating':
-            if input_mp == 'upgrade09':
-                # menu_mp should be 9            
-                weatherization_cost = df_copy[f'mp{menu_mp}_enclosure_upgradeCost'].fillna(0) - df_copy[f'weatherization_rebate_amount'].fillna(0)
+            if input_mp == 'upgrade09':            
+                weatherization_cost = df_copy[f'mp9_enclosure_upgradeCost'].fillna(0) - df_copy[f'weatherization_rebate_amount'].fillna(0)
             elif input_mp == 'upgrade10':
-                # menu_mp should be 10
-                weatherization_cost = df_copy[f'mp{menu_mp}_enclosure_upgradeCost'].fillna(0) - df_copy[f'weatherization_rebate_amount'].fillna(0)
+                weatherization_cost = df_copy[f'mp10_enclosure_upgradeCost'].fillna(0) - df_copy[f'weatherization_rebate_amount'].fillna(0)
             else:
                 weatherization_cost = 0.0       
             
