@@ -14,31 +14,39 @@ def create_multiIndex_adoption_df(
         category: str,
         scc: str,
         rcm_model: str,
-        cr_function: str
+        cr_function: str,
+        discount_rate: str
 ) -> pd.DataFrame:
     """
     Creates a multi-index DataFrame showing adoption percentages by LMI/MUI classification and fuel type.
     
+    This function processes adoption decision data that has been exported with v2.2 naming conventions,
+    which include all sensitivity parameters (RCM model, discount rate) as suffixes to column names.
+    
     Args:
-        df: DataFrame with adoption data
-        menu_mp: Measure package identifier
-        category: Equipment category
-        scc: Social cost of carbon assumption
-        rcm_model: RCM model
-        cr_function: Concentration-response function
+        df: DataFrame with adoption data. Expected to have columns matching the pattern:
+            {policy}_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}_{discount_rate}
+        menu_mp: Measure package identifier (8=Basic, 9=Moderate, 10=Advanced)
+        category: Equipment category ('heating', 'waterHeating', 'clothesDrying', 'cooking')
+        scc: Social cost of carbon assumption ('lower', 'central', 'upper')
+        rcm_model: Reduced complexity model ('ap2', 'easiur', 'inmap')
+        cr_function: Concentration-response function ('acs', 'h6c')
+        discount_rate: Discount rate method ('fixed_low', 'fixed_base', 'fixed_high', 'variable')
         
     Returns:
-        Multi-index DataFrame with adoption percentages
+        Multi-index DataFrame with adoption percentages by fuel type and income level.
+        Structure: (fuel_type, income_level) → (policy_scenario, adoption_tier) → percentage
         
     Raises:
-        ValueError: If required columns are not found in the DataFrame
+        ValueError: If required columns are not found in the DataFrame or if the DataFrame
+                   structure doesn't match expected format
     """
     # Define LMI/MUI categories for sorting
     lmi_mui_categories = ['LMI', 'MUI']
     
     # Validate that the required column exists
     if 'lmi_or_mui' not in df.columns:
-        raise ValueError("Required column 'lmi_or_mui' not found in DataFrame."
+        raise ValueError("Required column 'lmi_or_mui' not found in DataFrame. "
                         "Please ensure the DataFrame has been processed with the updated calculate_percent_AMI function.")
     
     # Convert to categorical for proper sorting
@@ -48,26 +56,11 @@ def create_multiIndex_adoption_df(
         ordered=True
     )
     
-    # Define column names with sensitivity dimensions
+    # Define column names with ALL sensitivity dimensions (v2.2 naming convention)
     adoption_cols = [
-        f'preIRA_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}',
-        f'iraRef_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}'
+        f'preIRA_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}_{discount_rate}',
+        f'iraRef_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}_{discount_rate}'
     ]
-    
-    # Try backward compatibility if needed
-    if not all(col in df.columns for col in adoption_cols):
-        old_cols = [
-            f'preIRA_mp{menu_mp}_{category}_adoption_lrmer',
-            f'iraRef_mp{menu_mp}_{category}_adoption_lrmer'
-        ]
-        
-        if all(col in df.columns for col in old_cols):
-            adoption_cols = old_cols
-            print(f"Using backward-compatible column names for {category}")
-        else:
-            available_cols = [col for col in df.columns if 'adoption' in col]
-            raise ValueError(f"Required adoption columns not found for {category}. "
-                           f"Expected: {adoption_cols}. Available adoption columns: {available_cols}")
     
     try:
         # Group by fuel and LMI/MUI classification, calculate normalized counts
@@ -79,6 +72,7 @@ def create_multiIndex_adoption_df(
         ).unstack().fillna(0) * 100
         
         percentages_df = percentages_df.round(0)
+
     except Exception as e:
         raise ValueError(f"Error calculating percentages for {category}: {str(e)}. "
                         f"Check that required columns exist and contain expected values.")

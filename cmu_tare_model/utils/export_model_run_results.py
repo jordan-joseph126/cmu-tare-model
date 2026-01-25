@@ -131,3 +131,56 @@ def export_model_run_output(
         raise OSError(f"Error exporting data to {full_filepath}: {str(e)}")
     
     print("---" * 35, "\n")
+
+# ===============================================================
+# EXAMPLE USAGE:
+# ===============================================================
+
+"""
+# ===================================================================================================================================================================================
+# EXPORT RESULTS TO CSV - SUMMARY RESULTS FOR RCM MODELS AND DISCOUNT RATES SENSITIVITY ANALYSIS
+# ===================================================================================================================================================================================
+DATAFRAMES_MP8_RCM_DISCOUNT_RATE_RESULTS = {
+    'ap2': {
+        'private_discount_rate_fixed_low': df_euss_am_mp8_home_ap2_fixed_low,
+        'private_discount_rate_fixed_base': df_euss_am_mp8_home_ap2_fixed_base,
+        'private_discount_rate_fixed_high': df_euss_am_mp8_home_ap2_fixed_high,
+        'private_discount_rate_variable': df_euss_am_mp8_home_ap2_variable
+    },
+    'easiur': {
+        'private_discount_rate_fixed_low': df_euss_am_mp8_home_easiur_fixed_low,
+        'private_discount_rate_fixed_base': df_euss_am_mp8_home_easiur_fixed_base,
+        'private_discount_rate_fixed_high': df_euss_am_mp8_home_easiur_fixed_high,
+        'private_discount_rate_variable': df_euss_am_mp8_home_easiur_variable
+    },
+    'inmap': {
+        'private_discount_rate_fixed_low': df_euss_am_mp8_home_inmap_fixed_low,
+        'private_discount_rate_fixed_base': df_euss_am_mp8_home_inmap_fixed_base,
+        'private_discount_rate_fixed_high': df_euss_am_mp8_home_inmap_fixed_high,
+        'private_discount_rate_variable': df_euss_am_mp8_home_inmap_variable
+    }
+}
+
+# Process each RCM model
+for rcm_model in RCM_MODELS:
+    print(f"Exporting SUMMARY RESULTS for {rcm_model.upper()} model...")
+    
+    # Process each discount method
+    for discount_rate_col in PRIVATE_DISCOUNT_RATE_COLS:
+        print(f"  Private Discounting Method: {discount_rate_col}")
+        
+        # Get the specific DataFrame for this RCM × discount rate combination
+        df_results_export = DATAFRAMES_MP8_RCM_DISCOUNT_RATE_RESULTS[rcm_model][discount_rate_col]
+        
+        # Export summary results with explicit sensitivity parameters
+        export_model_run_output(
+            df_results_export=df_results_export,
+            results_category='summary',  # Simplified - no parsing needed!
+            menu_mp=menu_mp,
+            output_folder_path=output_folder_path,
+            location_id=location_id,
+            results_export_formatted_date=model_run_date_time,
+            rcm_model=rcm_model,  # Explicit sensitivity parameter
+            discount_rate_col=discount_rate_col  # Explicit sensitivity parameter
+        )
+"""
