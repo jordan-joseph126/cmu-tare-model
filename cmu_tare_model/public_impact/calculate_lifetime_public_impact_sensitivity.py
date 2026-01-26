@@ -11,13 +11,13 @@ from cmu_tare_model.utils.validation_framework import (
     create_retrofit_only_series,
     initialize_validation_tracking,
     replace_small_values_with_nan,
-    # apply_final_masking
 )
 from cmu_tare_model.utils.calculation_utils import (
     validate_common_parameters,
     apply_temporary_validation_and_mask
 )
 from cmu_tare_model.public_impact.data_processing.validate_damages_dataframes import validate_damage_dataframes
+
 
 def _sum_yearly_damages(
     yearly_damages: List[pd.Series],
@@ -39,7 +39,7 @@ def _sum_yearly_damages(
     if yearly_damages:
         # Convert list of Series to DataFrame and sum
         damages_df = pd.concat(yearly_damages, axis=1)
-        total_npv = damages_df.sum(axis=1, skipna=False)  # Use skipna=False to propagate NaN values
+        total_npv = damages_df.sum(axis=1, skipna=False)
         
         # Apply validation mask for measure packages
         if menu_mp != 0:
@@ -51,6 +51,193 @@ def _sum_yearly_damages(
         total_npv = template_series
     
     return total_npv
+
+
+def calculate_climate_npv(
+    df_copy: pd.DataFrame,
+    df_baseline_climate: pd.DataFrame,
+    df_mp_climate: pd.DataFrame,
+    menu_mp: int,
+    policy_scenario: str,
+    base_year: int,
+    all_columns_to_mask: Dict[str, List[str]],
+    verbose: bool = VERBOSE
+) -> Dict[str, pd.Series]:
+    """
+    Calculate climate NPV for all equipment categories and SCC assumptions.
+    - Only calculate Climate NPV ONCE: Does NOT vary by CR function or RCM model
+    - NO additional discounting: Climate damages SCC values are already discounted back to the specific emission-year SCC.
+    
+    Args:
+        df_copy: DataFrame for validation tracking.
+        df_baseline_climate: Baseline climate damage projections.
+        df_mp_climate: Post-retrofit climate damage projections.
+        menu_mp: Measure package identifier.
+        policy_scenario: Policy scenario name.
+        base_year: Base year for calculations.
+        all_columns_to_mask: Dictionary tracking columns for masking.
+        verbose: Whether to print progress messages.
+        
+    Returns:
+        Dictionary mapping column names to climate NPV Series (unrounded).
+    """
+    scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
+    
+    all_npvs: Dict[str, pd.Series] = {}
+    
+    for category, lifetime in EQUIPMENT_SPECS.items():
+        if verbose:
+            print(f"    Climate NPV for {category}...")
+        
+        df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = \
+            initialize_validation_tracking(df_copy, category, menu_mp, verbose=False)
+        
+        climate_npv_template = create_retrofit_only_series(df_copy, valid_mask)
+        
+        for scc in SCC_ASSUMPTIONS:
+            climate_npv_key = f'{scenario_prefix}{category}_climate_npv_{scc}'
+            yearly_climate_avoided = []
+            
+            for year in range(1, lifetime + 1):
+                year_label = year + (base_year - 1)
+                
+                base_climate_col = f'baseline_{year_label}_{category}_damages_climate_lrmer_{scc}'
+                retrofit_climate_col = f'{scenario_prefix}{year_label}_{category}_damages_climate_lrmer_{scc}'
+                
+                if (base_climate_col in df_baseline_climate.columns and 
+                    retrofit_climate_col in df_mp_climate.columns):
+                    
+                    # No discount factor - SCC already represents NPV of future damages
+                    avoided_climate = calculate_avoided_values(
+                        baseline_values=df_baseline_climate[base_climate_col],
+                        measure_values=df_mp_climate[retrofit_climate_col],
+                        retrofit_mask=(valid_mask if menu_mp != 0 else None)
+                    )
+                    yearly_climate_avoided.append(avoided_climate)
+            
+            climate_npv = _sum_yearly_damages(
+                yearly_damages=yearly_climate_avoided,
+                template_series=climate_npv_template,
+                valid_mask=valid_mask,
+                menu_mp=menu_mp
+            )
+            
+            climate_npv = replace_small_values_with_nan(climate_npv)
+        
+        #     all_npvs[climate_npv_key] = climate_npv
+            
+        #     if climate_npv_key not in category_columns_to_mask:
+        #         category_columns_to_mask.append(climate_npv_key)
+        
+        # all_columns_to_mask[category].extend(category_columns_to_mask)
+    
+    return all_npvs
+
+
+def calculate_health_npv(
+    df_copy: pd.DataFrame,
+    df_baseline_health: pd.DataFrame,
+    df_mp_health: pd.DataFrame,
+    menu_mp: int,
+    policy_scenario: str,
+    rcm_model: str,
+    cr_function: str,
+    base_year: int,
+    discount_rate_col: str,
+    all_columns_to_mask: Dict[str, List[str]],
+    verbose: bool = VERBOSE
+) -> Dict[str, pd.Series]:
+    """
+    Calculate health NPV for all equipment categories for a specific CR function.
+    
+    Health NPV varies by RCM model and CR function. Unlike climate, health damages 
+    require discounting because they represent annual marginal social costs.
+    
+    Args:
+        df_copy: DataFrame for validation tracking.
+        df_baseline_health: Baseline health damage projections.
+        df_mp_health: Post-retrofit health damage projections.
+        menu_mp: Measure package identifier.
+        policy_scenario: Policy scenario name.
+        rcm_model: RCM model name.
+        cr_function: Concentration-response function name.
+        base_year: Base year for discounting.
+        discount_rate_col: Discount rate column name.
+        all_columns_to_mask: Dictionary tracking columns for masking.
+        verbose: Whether to print progress messages.
+        
+    Returns:
+        Dictionary mapping column names to health NPV Series (unrounded).
+    """
+    scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
+    max_lifetime = max(EQUIPMENT_SPECS.values())
+    
+    # Pre-calculate discount factors
+    discount_factors: Dict[int, pd.Series] = {}
+    for year in range(1, max_lifetime + 1):
+        year_label = year + (base_year - 1)
+        discount_factors[year_label] = calculate_discount_factors(
+            df=df_copy,
+            base_year=base_year,
+            target_year=year_label,
+            discount_rate_col=discount_rate_col
+        )
+    
+    all_npvs: Dict[str, pd.Series] = {}
+    
+    for category, lifetime in EQUIPMENT_SPECS.items():
+        if verbose:
+            print(f"      Health NPV for {category}...")
+        
+        # ===== STEP 1: Initialize validation tracking =====
+        # Moved outside of SCC loop: Validation only depends on category, not SCC
+        # MEMORY OPTIMIZATION: copy=False since df_copy was already copied at the start
+        _, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
+            df_copy, category, menu_mp, verbose=verbose, copy=False)
+        
+        # # ===== STEP 2: Initialize result series for health NPV =====
+        health_npv_template = create_retrofit_only_series(df_copy, valid_mask)
+        # health_npv_key = f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
+        yearly_health_avoided = []
+        
+        # ===== STEP 3 & 4: Valid-Only Calculation and Updates =====
+        for year in range(1, lifetime + 1):
+            year_label = year + (base_year - 1)
+            discount_factor = discount_factors[year_label]
+            
+            base_health_col = f'baseline_{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
+            retrofit_health_col = f'{scenario_prefix}{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
+            
+            if (base_health_col in df_baseline_health.columns and 
+                retrofit_health_col in df_mp_health.columns):
+                
+                avoided_health = calculate_avoided_values(
+                    baseline_values=df_baseline_health[base_health_col],
+                    measure_values=df_mp_health[retrofit_health_col],
+                    retrofit_mask=(valid_mask if menu_mp != 0 else None)
+                ) * discount_factor
+                
+                yearly_health_avoided.append(avoided_health)
+        
+        health_npv = _sum_yearly_damages(
+            yearly_damages=yearly_health_avoided,
+            template_series=health_npv_template,
+            valid_mask=valid_mask,
+            menu_mp=menu_mp
+        )
+        
+        health_npv_unrounded = replace_small_values_with_nan(health_npv)
+
+    return health_npv_unrounded
+
+    #     all_npvs[health_npv_key] = health_npv
+        
+    #     if health_npv_key not in category_columns_to_mask:
+    #         category_columns_to_mask.append(health_npv_key)
+        
+    #     all_columns_to_mask[category].extend(category_columns_to_mask)
+    
+    # return all_npvs
 
 
 def calculate_public_npv(
@@ -67,69 +254,48 @@ def calculate_public_npv(
     verbose: bool = VERBOSE
 ) -> pd.DataFrame:
     """
-    Calculate the public Net Present Value (NPV) for specific categories of damages,
-    considering different policy scenarios related to grid decarbonization.
+    Calculate the public Net Present Value (NPV) for climate and health damages.
 
-    The function compares baseline damages with post-measure package (mp) damages
-    to determine the avoided damages (benefits) from implementing retrofits.
-
-    This function follows the five-step validation framework:
-    1. Mask Initialization: Identifies valid homes using inclusion flags and retrofit status
-    2. Series Initialization: Creates result series with zeros for valid homes, NaN for others
-    3. Valid-Only Calculation: Performs calculations only for valid homes
-    4. Valid-Only Updates: Uses list-based collection of yearly values instead of incremental updates
-    5. Final Masking: Applies consistent masking to all result columns
-
-    The list-based collection approach stores yearly values in lists and sums them using pandas
-    vectorized operations after all years have been processed. This approach prevents accumulation
-    errors that can occur with incremental updates.
+    This function compares baseline damages with post-retrofit damages to determine
+    avoided damages (benefits) from implementing retrofits.
+    
+    Key change from v2.2: Climate NPV is calculated ONCE (outside CR function loop)
+    since it doesn't vary by CR function. This prevents duplicate column creation.
 
     Args:
-        df (pd.DataFrame): Input DataFrame containing base data for calculations.
-        df_baseline_climate (pd.DataFrame): DataFrame containing baseline climate damage projections.
-        df_baseline_health (pd.DataFrame): DataFrame containing baseline health damage projections.
-        df_mp_climate (pd.DataFrame): DataFrame containing post-retrofit climate damage projections.
-        df_mp_health (pd.DataFrame): DataFrame containing post-retrofit health damage projections.
-        menu_mp (int): Menu identifier used to construct column names for the measure package.
-        policy_scenario (str): Policy scenario that determines electricity grid projections.
-            Accepted values: 'No Inflation Reduction Act', 'AEO2023 Reference Case'.
-        rcm_model (str): The Reduced Complexity Model used for health impact calculations.
-        discount_rate_col (str, optional): The column name for the discount rate to use. Default is 'public_discount_rate'.
-        base_year (int, optional): The base year for discounting calculations. Default is 2024.
-        verbose (bool, optional): Whether to print detailed progress messages. Defaults to VERBOSE.
+        df: Input DataFrame containing base data for calculations.
+        df_baseline_climate: DataFrame containing baseline climate damage projections.
+        df_baseline_health: DataFrame containing baseline health damage projections.
+        df_mp_climate: DataFrame containing post-retrofit climate damage projections.
+        df_mp_health: DataFrame containing post-retrofit health damage projections.
+        menu_mp: Menu identifier for the measure package.
+        policy_scenario: Policy scenario for grid projections.
+        rcm_model: Reduced Complexity Model for health impact calculations.
+        discount_rate_col: Column name for discount rate. Default 'public_discount_rate'.
+        base_year: Base year for discounting. Default 2024.
+        verbose: Whether to print progress messages.
 
     Returns:
-        pd.DataFrame: DataFrame with additional columns containing the calculated public NPVs for each 
-        equipment category, damage type, and sensitivity analysis combination.
+        DataFrame with calculated public NPV columns.
         
     Raises:
-        ValueError: If input parameters are invalid or if required data columns are missing.
-        RuntimeError: If processing fails at the category or combination level.
+        ValueError: If input parameters are invalid or required columns are missing.
     """
     # ===== STEP 0: Validate input parameters =====
-    menu_mp, policy_scenario = validate_common_parameters(
-        menu_mp, policy_scenario)
+    menu_mp, policy_scenario = validate_common_parameters(menu_mp, policy_scenario)
     
-    # Validate RCM model
     if rcm_model not in RCM_MODELS:
         raise ValueError(f"Invalid rcm_model: {rcm_model}. Must be one of {RCM_MODELS}")
     
-    # Validate input data structure
     if verbose:
         print("\nValidating input data structure...")
     
     is_valid, messages = validate_damage_dataframes(
-        df_baseline_climate,
-        df_baseline_health,
-        df_mp_climate,
-        df_mp_health,
-        menu_mp, 
-        policy_scenario, 
-        base_year, 
-        EQUIPMENT_SPECS
+        df_baseline_climate, df_baseline_health,
+        df_mp_climate, df_mp_health,
+        menu_mp, policy_scenario, base_year, EQUIPMENT_SPECS
     )
     
-    # Print any validation messages
     if verbose and messages:
         for message in messages:
             print(message)
@@ -140,277 +306,106 @@ def calculate_public_npv(
     if verbose:
         print("✓ Input data validation passed.")
 
-    # Create copies to avoid modifying original dataframes
+    # MEMORY OPTIMIZATION: Only copy the main DataFrame since we'll add columns to it.
+    # The baseline and measure package DataFrames are read-only, so no copy needed.
     df_copy = df.copy()
-    df_baseline_climate_copy = df_baseline_climate.copy()
-    df_baseline_health_copy = df_baseline_health.copy()
-    df_mp_climate_copy = df_mp_climate.copy()
-    df_mp_health_copy = df_mp_health.copy()
     
-    # Initialize dictionary to track columns for masking verification
+    # Use references to read-only DataFrames (no copy needed - saves ~4.9 GB for large datasets)
+    df_baseline_climate_ref = df_baseline_climate
+    df_baseline_health_ref = df_baseline_health
+    df_mp_climate_ref = df_mp_climate
+    df_mp_health_ref = df_mp_health
+    
     all_columns_to_mask = {category: [] for category in EQUIPMENT_SPECS}
     df_new_columns = pd.DataFrame(index=df_copy.index)
+    
+    scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
 
+    # ===== Calculate climate NPV ONCE (doesn't vary by CR function) =====
     if verbose:
-        print("\nCalculating NPV for each concentration-response function...")
+        print("\nCalculating climate NPV (independent of CR function)...")
+    
+    climate_npvs = calculate_climate_npv(
+        df_copy=df_copy,
+        df_baseline_climate=df_baseline_climate_ref,
+        df_mp_climate=df_mp_climate_ref,
+        menu_mp=menu_mp,
+        policy_scenario=policy_scenario,
+        base_year=base_year,
+        all_columns_to_mask=all_columns_to_mask,
+        verbose=verbose
+    )
+    
+    if climate_npvs:
+        temp_df = pd.DataFrame(climate_npvs, index=df_copy.index)
+        df_new_columns = pd.concat([df_new_columns, temp_df], axis=1)
+
+    # ===== Calculate health NPV for each CR function =====
+    if verbose:
+        print("\nCalculating health NPV for each CR function...")
     
     for cr_function in CR_FUNCTIONS:
-        print(f"\nProcessing CR Function: {cr_function}")
+        if verbose:
+            print(f"  Processing CR Function: {cr_function}")
         
-        # Calculate the lifetime damages and corresponding NPV 
-        new_columns_dict = calculate_lifetime_damages_grid_scenario(
-            df_copy=df_copy, 
-            df_baseline_climate=df_baseline_climate_copy,
-            df_baseline_health=df_baseline_health_copy,
-            df_mp_climate=df_mp_climate_copy,
-            df_mp_health=df_mp_health_copy,
+        health_npvs = calculate_health_npv(
+            df_copy=df_copy,
+            df_baseline_health=df_baseline_health_ref,
+            df_mp_health=df_mp_health_ref,
             menu_mp=menu_mp,
-            policy_scenario=policy_scenario, 
-            rcm_model=rcm_model, 
-            cr_function=cr_function, 
-            base_year=base_year, 
+            policy_scenario=policy_scenario,
+            rcm_model=rcm_model,
+            cr_function=cr_function,
+            base_year=base_year,
             discount_rate_col=discount_rate_col,
             all_columns_to_mask=all_columns_to_mask,
             verbose=verbose
         )
-
-        # Collect NPV results in a dictionary first
-        if new_columns_dict:
-            # Create a temporary DataFrame from the collected columns
-            temp_df = pd.DataFrame(new_columns_dict, index=df_copy.index)
-            # Add all columns at once with concat
+        
+        if health_npvs:
+            temp_df = pd.DataFrame(health_npvs, index=df_copy.index)
             df_new_columns = pd.concat([df_new_columns, temp_df], axis=1)
 
-    # STEP 5: Apply final masking to all new columns
+    # ===== Calculate combined public NPV (climate + health) =====
+    if verbose:
+        print("\nCalculating combined public NPV...")
+    
+    for category in EQUIPMENT_SPECS.keys():
+        category_columns_to_mask = []
+        
+        for scc in SCC_ASSUMPTIONS:
+            climate_npv_key = f'{scenario_prefix}{category}_climate_npv_{scc}'
+            for cr_function in CR_FUNCTIONS:
+                health_npv_key = f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
+                public_npv_key = f'{scenario_prefix}{category}_public_npv_{scc}_{rcm_model}_{cr_function}'
+                
+                if climate_npv_key in df_new_columns.columns and health_npv_key in df_new_columns.columns:
+                    # Sum unrounded values, then round (matches original behavior)
+                    public_npv = (
+                        df_new_columns[climate_npv_key] + 
+                        df_new_columns[health_npv_key]
+                    ).round(2)
+                    
+                    df_new_columns[public_npv_key] = public_npv
+                    category_columns_to_mask.append(public_npv_key)
+        
+        all_columns_to_mask[category].extend(category_columns_to_mask)
+
+    # ===== Apply deferred rounding to climate and health columns =====
+    # This matches original behavior: public_npv calculated from unrounded values
+    for col in df_new_columns.columns:
+        if '_climate_npv_' in col or '_health_npv_' in col:
+            df_new_columns[col] = df_new_columns[col].round(2)
+
+    # ===== Apply final masking =====
     if verbose:
         print("\nApplying final masking to calculated columns...")
         
-    df_result = apply_temporary_validation_and_mask(df_copy, df_new_columns, all_columns_to_mask, verbose=verbose)
+    df_result = apply_temporary_validation_and_mask(
+        df_copy, df_new_columns, all_columns_to_mask, verbose=verbose
+    )
     
     if verbose:
         print(f"\nNPV calculation completed. Added {len(df_new_columns.columns)} new columns.")
         
     return df_result
-
-def calculate_lifetime_damages_grid_scenario(
-    df_copy: pd.DataFrame, 
-    df_baseline_climate: pd.DataFrame,
-    df_baseline_health: pd.DataFrame,
-    df_mp_climate: pd.DataFrame,
-    df_mp_health: pd.DataFrame,
-    menu_mp: int, 
-    policy_scenario: str, 
-    rcm_model: str,
-    cr_function: str,
-    base_year: int = 2024,
-    discount_rate_col: str = 'public_discount_rate',
-    all_columns_to_mask: Optional[Dict[str, List[str]]] = None,
-    verbose: bool = VERBOSE
-) -> Dict[str, pd.Series]:
-    """
-    Calculate the NPV of climate, health, and public damages over the equipment's lifetime.
-    
-    This function performs sensitivity analysis across multiple dimensions:
-    - Equipment categories (with varying lifetimes)
-    - Climate Impacts: 
-        Use emission-year SCC values that already represent the NPV of all future climate damages. 
-        NO additional discounting is applied.
-    - Health Impacts: 
-        Use annual marginal social costs (based on specified RCM model and C-R function) represent damages in the emissions year 
-        These MUST be discounted to present value.
-
-    PREREQUISITE:
-        df_copy must have discount rate columns prepared by calling prepare_discount_rates(df)
-        before passing to this function. This is typically done in the main workflow.
-
-    Args:
-        df_copy: Copy of the original DataFrame to use for calculations.
-        df_baseline_climate: DataFrame containing baseline climate damage projections.
-        df_baseline_health: DataFrame containing baseline health damage projections.
-        df_mp_climate: DataFrame containing post-retrofit climate damage projections.
-        df_mp_health: DataFrame containing post-retrofit health damage projections.
-        menu_mp: Menu identifier used to construct column names for the measure package.
-        policy_scenario: Specifies the grid scenario.
-        rcm_model: The Reduced Complexity Model used for health impact calculations.
-        cr_function: The Concentration-Response function used for health impact calculations.
-        base_year: The base year for discounting calculations. Default is 2024.
-        discount_rate_col: The column name for the discount rate to use. Default is 'public_discount_rate'.
-        all_columns_to_mask: Dictionary to track columns for masking verification by category.
-        verbose: Whether to print detailed progress messages.
-
-    Returns:
-        Dictionary mapping column names to Series of calculated NPV values for 
-        each category, damage type, and sensitivity combination.
-        
-    Raises:
-        ValueError: If required columns are missing from input DataFrames.
-        RuntimeError: If processing fails for a specific category or SCC assumption.
-    """
-    # Initialize the masking dictionary if None is provided
-    if all_columns_to_mask is None:
-        all_columns_to_mask = {category: [] for category in EQUIPMENT_SPECS}
-
-    # Determine the scenario prefix based on the policy scenario
-    scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
-    
-    # Calculate the maximum lifetime across all equipment to determine how many years to pre-calculate
-    max_lifetime = max(EQUIPMENT_SPECS.values())
-
-    # Pre-calculate discount factors for each year to avoid redundant calculations
-    # This maps from year_label to its discount factor
-    discount_factors: Dict[int, pd.Series] = {}  # Now always Series, not Union or float
-
-    for year in range(1, max_lifetime + 1):
-        year_label = year + (base_year - 1)
-        discount_factors[year_label] = calculate_discount_factors(
-            df=df_copy,
-            base_year=base_year,
-            target_year=year_label,
-            discount_rate_col=discount_rate_col
-        )
-    
-    # No method suffix needed for public discounting because there is only one 2% fixed rate method
-    # method_suffix = PUBLIC_DISCOUNTING_METHOD_SUFFIXES[discounting_method] ---> '' because column name is 'public_discount_rate'
-
-    # Initialize a dictionary to store all NPV results
-    all_npvs: Dict[str, pd.Series] = {}
-    
-    # Process each equipment category
-    for category, lifetime in EQUIPMENT_SPECS.items():
-        if verbose:
-            print(f"  Calculating Public NPV for {category}...")
-        
-        # ===== STEP 1: Initialize validation tracking =====
-        # Moved outside of SCC loop: Validation only depends on category, not SCC
-        df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-            df_copy, category, menu_mp, verbose=verbose)
-
-        # ===== STEP 2: Initialize result series with template =====
-        # Use create_retrofit_only_series to properly initialize with zeros for valid homes, NaN for others
-        # Move outside of SCC loop: Template is the same for all SCCs and only depends on valid_mask, not SCC
-        climate_npv_template = create_retrofit_only_series(df_copy, valid_mask)
-        health_npv_template = create_retrofit_only_series(df_copy, valid_mask)
-
-        # Process each SCC assumption for climate damages
-        for scc in SCC_ASSUMPTIONS:
-            if verbose:
-                print(f"    SCC: {scc}, RCM: {rcm_model}, C-R: {cr_function}")
-            
-            # Define column names for NPV results
-            climate_npv_key = f'{scenario_prefix}{category}_climate_npv_{scc}'
-            health_npv_key = f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
-            public_npv_key = f'{scenario_prefix}{category}_public_npv_{scc}_{rcm_model}_{cr_function}'
-            
-            # Create lists to store yearly avoided damages
-            yearly_climate_avoided = []
-            yearly_health_avoided = []
-
-            # Track if any year's data was successfully processed
-            climate_years_processed = 0
-            health_years_processed = 0
-                            
-            # ===== STEP 3: Valid-Only Calculation =====
-            # Calculate NPVs for each year in the equipment's lifetime
-            for year in range(1, lifetime + 1):
-                year_label = year + (base_year - 1)
-                discount_factor = discount_factors[year_label]
-                    
-                # Get column names for baseline damages
-                base_climate_col = f'baseline_{year_label}_{category}_damages_climate_lrmer_{scc}'
-                base_health_col = f'baseline_{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
-                    
-                # Get column names for retrofit damages
-                retrofit_climate_col = f'{scenario_prefix}{year_label}_{category}_damages_climate_lrmer_{scc}'
-                retrofit_health_col = f'{scenario_prefix}{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
-                    
-                # Check if climate columns exist before calculation
-                climate_cols_exist = (base_climate_col in df_baseline_climate.columns and 
-                                      retrofit_climate_col in df_mp_climate.columns)
-                    
-                # Check if health columns exist before calculation
-                health_cols_exist = (base_health_col in df_baseline_health.columns and 
-                                     retrofit_health_col in df_mp_health.columns)
-                                        
-                # ===== STEP 4: Valid-Only Updates =====
-                # Calculate avoided climate damages if columns exist (store in list instead of incremental update)
-                if climate_cols_exist:
-                    # Climate damages use SCC which already represents NPV of future damages
-                    # Do NOT apply discount factor to avoid double-discounting
-                    avoided_climate = calculate_avoided_values(
-                        baseline_values=df_baseline_climate[base_climate_col],
-                        measure_values=df_mp_climate[retrofit_climate_col],
-                        retrofit_mask=(valid_mask if menu_mp != 0 else None))  # No discount_factor multiplication
-                        
-                    yearly_climate_avoided.append(avoided_climate)
-                    climate_years_processed += 1
-
-                # Calculate avoided health damages if columns exist (store in list instead of incremental update)
-                if health_cols_exist:
-                    # Use calculate_avoided_values function for consistency
-                    avoided_health = calculate_avoided_values(
-                        baseline_values=df_baseline_health[base_health_col],
-                        measure_values=df_mp_health[retrofit_health_col],
-                        retrofit_mask=(valid_mask if menu_mp != 0 else None)
-                    ) * discount_factor
-
-                    yearly_health_avoided.append(avoided_health)
-                    health_years_processed += 1
-
-            # Sum up all yearly avoided damages using helper function
-            climate_npv = _sum_yearly_damages(
-                yearly_damages=yearly_climate_avoided,
-                template_series=climate_npv_template,
-                valid_mask=valid_mask,
-                menu_mp=menu_mp
-            )
-
-            health_npv = _sum_yearly_damages(
-                yearly_damages=yearly_health_avoided,
-                template_series=health_npv_template,
-                valid_mask=valid_mask,
-                menu_mp=menu_mp
-            )
-
-            # Replace tiny values with NaN to avoid numerical artifacts
-            climate_npv = replace_small_values_with_nan(climate_npv)
-            health_npv = replace_small_values_with_nan(health_npv)
-
-            # ===========================================================================================
-            # Potential Optimization
-            # Calculate public NPV from sum of climate and health NPVs (unrounded values), then round
-            # public_npv = (climate_npv + health_npv).round(2)
-            
-            # # Round climate and health NPVs for storage
-            # climate_npv_rounded = climate_npv.round(2)
-            # health_npv_rounded = health_npv.round(2)
-
-            # # Store NPVs in the results dictionary
-            # all_npvs[climate_npv_key] = climate_npv_rounded
-            # all_npvs[health_npv_key] = health_npv_rounded
-            # all_npvs[public_npv_key] = public_npv
-            # ===========================================================================================
-
-            # Store the unrounded values for final calculation
-            climate_npv_unrounded = climate_npv.copy()
-            health_npv_unrounded = health_npv.copy()
-
-            # Round values for display/storage
-            climate_npv = climate_npv_unrounded.round(2)
-            health_npv = health_npv_unrounded.round(2)
-
-            # Calculate public NPV from sum of climate and health NPVs (unrounded values), then round
-            public_npv = (climate_npv_unrounded + health_npv_unrounded).round(2)
-            
-            # Store NPVs in the results dictionary
-            all_npvs[climate_npv_key] = climate_npv
-            all_npvs[health_npv_key] = health_npv
-            all_npvs[public_npv_key] = public_npv
-
-            # Track NPV columns for masking verification
-            category_columns_to_mask.extend([climate_npv_key, health_npv_key, public_npv_key])
-            
-            # Add all columns for this category to the masking dictionary
-            all_columns_to_mask[category].extend(category_columns_to_mask)
-    
-    # Return the dictionary of Series
-    return all_npvs
