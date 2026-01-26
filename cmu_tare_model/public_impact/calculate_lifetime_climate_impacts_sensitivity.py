@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from typing import Optional, Tuple
 
-from cmu_tare_model.constants import EQUIPMENT_SPECS, TD_LOSSES_MULTIPLIER, MER_TYPES, SCC_ASSUMPTIONS
+from cmu_tare_model.constants import EQUIPMENT_SPECS, TD_LOSSES_MULTIPLIER, MER_TYPES, SCC_ASSUMPTIONS, VERBOSE
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 
 from cmu_tare_model.utils.hdd_consumption_utils import (
@@ -32,7 +32,7 @@ def calculate_lifetime_climate_impacts(
         policy_scenario: str,
         base_year: int = 2024,
         df_baseline_damages: Optional[pd.DataFrame] = None,
-        verbose: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        verbose: bool = VERBOSE) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Calculate lifetime climate impacts (CO2e emissions and climate damages) for each
     equipment category across all (mer_type, scc_value) combinations.

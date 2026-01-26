@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 
+from cmu_tare_model.constants import VERBOSE
+
 from cmu_tare_model.utils.validation_framework import (
     create_retrofit_only_series,
     initialize_validation_tracking,
@@ -191,10 +193,12 @@ def calculate_replacement_cost_per_row(
     
 
 def calculate_replacement_cost(
-        df: pd.DataFrame, 
-        cost_dict: dict, 
-        menu_mp: int, 
-        end_use: str) -> pd.DataFrame:
+    df: pd.DataFrame, 
+    cost_dict: dict, 
+    menu_mp: int, 
+    end_use: str,
+    verbose: bool = VERBOSE
+) -> pd.DataFrame:
     """
     Calculate replacement costs for various end-uses based on fuel types, costs, and efficiency.
     
@@ -228,7 +232,7 @@ def calculate_replacement_cost(
 
     # Initialize validation tracking
     df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-        df, end_use, menu_mp, verbose=True)
+        df, end_use, menu_mp, verbose=verbose)
     
     print(f"Found {valid_mask.sum()} valid homes out of {len(df_copy)} for {end_use} replacement")
 
@@ -261,7 +265,7 @@ def calculate_replacement_cost(
         print(f"After tech filtering: {len(valid_calculation_indices)} homes remain valid for {end_use} replacement")
 
         if df_valid.empty:
-            print(f"Warning: No valid homes found for {end_use} replacement cost calculation.")
+            raise ValueError(f"Warning: No valid homes found for {end_use} replacement cost calculation.")
             
         # Sample costs from distributions only if we have valid homes
         if not df_valid.empty:
@@ -292,7 +296,7 @@ def calculate_replacement_cost(
         df_copy, df_new_columns, end_use, category_columns_to_mask, all_columns_to_mask)
     
     # Apply final verification masking for consistency
-    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=True)
+    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=verbose)
 
     return df_copy
 

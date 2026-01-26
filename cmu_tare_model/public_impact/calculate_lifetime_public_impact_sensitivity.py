@@ -3,7 +3,7 @@ import numpy as np
 from typing import Dict, Tuple, List, Optional
 
 # Constants
-from cmu_tare_model.constants import EQUIPMENT_SPECS, CR_FUNCTIONS, RCM_MODELS, SCC_ASSUMPTIONS
+from cmu_tare_model.constants import EQUIPMENT_SPECS, CR_FUNCTIONS, RCM_MODELS, SCC_ASSUMPTIONS, VERBOSE
 from cmu_tare_model.utils.discounting import calculate_discount_factors, PUBLIC_DISCOUNTING_METHOD_SUFFIXES
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.validation_framework import (
@@ -64,7 +64,7 @@ def calculate_public_npv(
     rcm_model: str,
     discount_rate_col: str = 'public_discount_rate',
     base_year: int = 2024,
-    verbose: bool = False
+    verbose: bool = VERBOSE
 ) -> pd.DataFrame:
     """
     Calculate the public Net Present Value (NPV) for specific categories of damages,
@@ -96,7 +96,7 @@ def calculate_public_npv(
         rcm_model (str): The Reduced Complexity Model used for health impact calculations.
         discount_rate_col (str, optional): The column name for the discount rate to use. Default is 'public_discount_rate'.
         base_year (int, optional): The base year for discounting calculations. Default is 2024.
-        verbose (bool, optional): Whether to print detailed progress messages. Defaults to False.
+        verbose (bool, optional): Whether to print detailed progress messages. Defaults to VERBOSE.
 
     Returns:
         pd.DataFrame: DataFrame with additional columns containing the calculated public NPVs for each 
@@ -205,7 +205,7 @@ def calculate_lifetime_damages_grid_scenario(
     base_year: int = 2024,
     discount_rate_col: str = 'public_discount_rate',
     all_columns_to_mask: Optional[Dict[str, List[str]]] = None,
-    verbose: bool = False
+    verbose: bool = VERBOSE
 ) -> Dict[str, pd.Series]:
     """
     Calculate the NPV of climate, health, and public damages over the equipment's lifetime.
@@ -280,6 +280,17 @@ def calculate_lifetime_damages_grid_scenario(
         if verbose:
             print(f"  Calculating Public NPV for {category}...")
         
+        # ===== STEP 1: Initialize validation tracking =====
+        # Moved outside of SCC loop: Validation only depends on category, not SCC
+        df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
+            df_copy, category, menu_mp, verbose=verbose)
+
+        # ===== STEP 2: Initialize result series with template =====
+        # Use create_retrofit_only_series to properly initialize with zeros for valid homes, NaN for others
+        # Move outside of SCC loop: Template is the same for all SCCs and only depends on valid_mask, not SCC
+        climate_npv_template = create_retrofit_only_series(df_copy, valid_mask)
+        health_npv_template = create_retrofit_only_series(df_copy, valid_mask)
+
         # Process each SCC assumption for climate damages
         for scc in SCC_ASSUMPTIONS:
             if verbose:
@@ -290,15 +301,6 @@ def calculate_lifetime_damages_grid_scenario(
             health_npv_key = f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
             public_npv_key = f'{scenario_prefix}{category}_public_npv_{scc}_{rcm_model}_{cr_function}'
             
-            # ===== STEP 1: Initialize validation tracking =====
-            df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-                df_copy, category, menu_mp, verbose=False)
-
-            # ===== STEP 2: Initialize result series with template =====
-            # Use create_retrofit_only_series to properly initialize with zeros for valid homes, NaN for others
-            climate_npv_template = create_retrofit_only_series(df_copy, valid_mask)
-            health_npv_template = create_retrofit_only_series(df_copy, valid_mask)
-
             # Create lists to store yearly avoided damages
             yearly_climate_avoided = []
             yearly_health_avoided = []
@@ -372,6 +374,21 @@ def calculate_lifetime_damages_grid_scenario(
             # Replace tiny values with NaN to avoid numerical artifacts
             climate_npv = replace_small_values_with_nan(climate_npv)
             health_npv = replace_small_values_with_nan(health_npv)
+
+            # ===========================================================================================
+            # Potential Optimization
+            # Calculate public NPV from sum of climate and health NPVs (unrounded values), then round
+            # public_npv = (climate_npv + health_npv).round(2)
+            
+            # # Round climate and health NPVs for storage
+            # climate_npv_rounded = climate_npv.round(2)
+            # health_npv_rounded = health_npv.round(2)
+
+            # # Store NPVs in the results dictionary
+            # all_npvs[climate_npv_key] = climate_npv_rounded
+            # all_npvs[health_npv_key] = health_npv_rounded
+            # all_npvs[public_npv_key] = public_npv
+            # ===========================================================================================
 
             # Store the unrounded values for final calculation
             climate_npv_unrounded = climate_npv.copy()

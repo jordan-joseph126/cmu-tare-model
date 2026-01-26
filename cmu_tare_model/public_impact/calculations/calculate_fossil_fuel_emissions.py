@@ -1,7 +1,7 @@
 import pandas as pd
 from typing import Dict, Optional
 
-from cmu_tare_model.constants import POLLUTANTS, EQUIPMENT_SPECS
+from cmu_tare_model.constants import POLLUTANTS, EQUIPMENT_SPECS, VERBOSE
 from cmu_tare_model.utils.hdd_consumption_utils import (
     get_hdd_factor_for_year,
     apply_hdd_adjustment
@@ -19,7 +19,7 @@ def calculate_fossil_fuel_emissions(
     lookup_emissions_fossil_fuel: Dict[str, Dict[str, float]],
     menu_mp: int,
     retrofit_mask: Optional[pd.Series] = None,
-    verbose: bool = False
+    verbose: bool = VERBOSE
 ) -> Dict[str, pd.Series]:
     """
     Calculate fossil fuel emissions (SO2, NOx, PM2.5, and CO2e) for a given category and scenario.
@@ -54,7 +54,7 @@ def calculate_fossil_fuel_emissions(
 
     # Initialize emissions series: zeros for retrofit homes, NaN elsewhere
     total_fossil_emissions = {
-        pollutant: create_retrofit_only_series(df, retrofit_mask, verbose=False)
+        pollutant: create_retrofit_only_series(df, retrofit_mask, verbose=verbose)
         for pollutant in POLLUTANTS
     }
 

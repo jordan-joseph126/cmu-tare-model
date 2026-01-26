@@ -3,7 +3,7 @@ import pandas as pd
 from scipy.stats import norm
 from typing import Dict, List, Optional, Tuple, Union, Callable
 
-from cmu_tare_model.constants import REBATE_MAPPING
+from cmu_tare_model.constants import REBATE_MAPPING, VERBOSE
 from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2023_2022
 from cmu_tare_model.utils.validation_framework import (
     create_retrofit_only_series,
@@ -272,7 +272,7 @@ def calculate_rebate(
         else:
             df_results_IRA.at[row.name, rebate_col] = 0.00
             if coverage_rate > 0 and max_rebate_amount > 0:
-                print(f"Warning: Installation cost data missing for row {row.name}, category {category}. Setting rebate to 0.")
+                raise ValueError(f"Warning: Installation cost data missing for row {row.name}, category {category}. Setting rebate to 0.")
         
         # Calculate weatherization rebate if applicable
         if f'mp{menu_mp}_enclosure_upgradeCost' in df_results_IRA.columns and menu_mp in [9, 10]:
@@ -282,10 +282,11 @@ def calculate_rebate(
             else:
                 df_results_IRA.at[row.name, 'weatherization_rebate_amount'] = 0.00
                 if coverage_rate > 0 and menu_mp in [9, 10]:
-                    print(f"Warning: Enclosure cost data missing for row {row.name}. Setting weatherization rebate to 0.")
+                    raise ValueError(f"Warning: Enclosure cost data missing for row {row.name}. Setting weatherization rebate to 0.")
     
     except Exception as e:
         print(f"Error calculating rebate for row {row.name}, category {category}: {str(e)}")
+        
         # Set default values to prevent calculations from breaking
         df_results_IRA.at[row.name, rebate_col] = 0.00
         if menu_mp in [9, 10] and 'weatherization_rebate_amount' in df_results_IRA.columns:
@@ -293,9 +294,11 @@ def calculate_rebate(
 
 
 def calculate_rebateIRA(
-        df_results_IRA: pd.DataFrame, 
-        category: str, 
-        menu_mp: int) -> pd.DataFrame:
+    df_results_IRA: pd.DataFrame, 
+    category: str, 
+    menu_mp: int,
+    verbose: bool = VERBOSE
+) -> pd.DataFrame:
     """
     Calculates rebate amounts for different end-uses based on income designation.
     
@@ -310,6 +313,7 @@ def calculate_rebateIRA(
         df_results_IRA: DataFrame containing income designations and cost data
         category: Equipment category (e.g., 'heating', 'waterHeating')
         menu_mp: Measure package identifier
+        verbose: Flag to enable verbose logging
         
     Returns:
         Updated DataFrame with calculated rebate amounts
@@ -324,7 +328,7 @@ def calculate_rebateIRA(
 
     # Initialize validation tracking
     df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-        df_results_IRA, category, menu_mp, verbose=True)
+        df_results_IRA, category, menu_mp, verbose=verbose)
     
     # Create rebate columns
     rebate_col = f'mp{menu_mp}_{category}_rebate_amount'
@@ -361,6 +365,6 @@ def calculate_rebateIRA(
     df_copy.apply(apply_rebate, axis=1)
     
     # Apply final verification masking for consistency
-    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=True)
+    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=verbose)
     
     return df_copy

@@ -128,13 +128,11 @@ def print_summary_stats(
         
         # Check if column exists in the current DataFrame
         if col not in current_df.columns:
-            print(f"Warning: Column '{col}' not found in DataFrame at index {df_indices[i]}. Available columns: {list(current_df.columns)[:10]} ...")
-            continue
+            raise ValueError(f"Warning: Column '{col}' not found in DataFrame at index {df_indices[i]}. Available columns: {list(current_df.columns)[:10]} ...")
             
         # Check if fuel column exists when needed
         if by_fuel_type and fuel_column not in current_df.columns:
-            print(f"Warning: Fuel column '{fuel_column}' not found in DataFrame at index {df_indices[i]}. Available columns: {list(current_df.columns)[:10]} ...")
-            continue
+            raise ValueError(f"Warning: Fuel column '{fuel_column}' not found in DataFrame at index {df_indices[i]}. Available columns: {list(current_df.columns)[:10]} ...")
         
         # Get display name
         display_name = subplot_titles[i] if subplot_titles and i < len(subplot_titles) else col

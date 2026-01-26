@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional
 
-from cmu_tare_model.constants import SCC_ASSUMPTIONS, RCM_MODELS, CR_FUNCTIONS, UPGRADE_COLUMNS
+from cmu_tare_model.constants import SCC_ASSUMPTIONS, RCM_MODELS, CR_FUNCTIONS, UPGRADE_COLUMNS, VERBOSE
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.validation_framework import (
     create_retrofit_only_series,
@@ -153,7 +153,7 @@ def adoption_decision(
     rcm_model: str,
     cr_function: str,
     discount_rate_col: str,
-    verbose: bool = False,
+    verbose: bool = VERBOSE,
 ) -> pd.DataFrame:
     """
     Updates DataFrame with adoption decisions and public impacts based on NPV analysis.
@@ -216,7 +216,7 @@ def adoption_decision(
     )
 
     # Single header for nation-level analysis
-    if not verbose:
+    if verbose:
         print(f"\nAdoption Analysis: {policy_scenario} | {rcm_model}-{cr_function}")
     
     all_columns_to_mask = {cat: [] for cat in UPGRADE_COLUMNS}
@@ -344,15 +344,15 @@ def adoption_decision(
     
     # Apply final masking
     total_columns = sum(len(cols) for cols in all_columns_to_mask.values())
-    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=False)
+    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=verbose)
     
     # Final summary output
-    if not verbose:
+    if verbose:
         print("\nSummary:")
         for summary in category_summaries:
             print(summary)
         print(f"  Total columns: {total_columns}")
-    
+        
     return df_copy
 
 
@@ -362,7 +362,7 @@ def calculate_climate_only_adoption_robust(
     policy_scenario: str,
     discount_rate_col: str,
     scc_assumptions: List[str] = None,
-    verbose: bool = False
+    verbose: bool = VERBOSE
 ) -> pd.DataFrame:
     """
     Climate-only adoption analysis with simplified output.
@@ -420,7 +420,7 @@ def calculate_climate_only_adoption_robust(
         context_params={'Analysis': 'Climate-only', 'Method': method_suffix, 'Policy': policy_scenario}
         )
     
-    if not verbose:
+    if verbose:
         print(f"\nClimate-only Analysis: {policy_scenario}")
     
     all_columns_to_mask = {cat: [] for cat in UPGRADE_COLUMNS}
@@ -429,7 +429,7 @@ def calculate_climate_only_adoption_robust(
     for category, upgrade_column in UPGRADE_COLUMNS.items():
         # Initialize validation tracking
         df_copy, valid_mask, _, category_columns_to_mask = initialize_validation_tracking(
-            df_copy, category, menu_mp, verbose=False)
+            df_copy, category, menu_mp, verbose=verbose)
         
         for scc in scc_assumptions:
             # Define column names (validation guarantees these exist)
@@ -453,9 +453,9 @@ def calculate_climate_only_adoption_robust(
             )
     
     # Apply final masking
-    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=False)
+    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=verbose)
     
-    if not verbose:
+    if verbose:
         total_columns = sum(len(cols) for cols in all_columns_to_mask.values())
         print(f"  Climate-only: {total_columns} columns added")
     
@@ -469,7 +469,7 @@ def calculate_health_only_adoption_robust(
     rcm_model: str,
     cr_function: str,
     discount_rate_col: str,
-    verbose: bool = False
+    verbose: bool = VERBOSE
 ) -> pd.DataFrame:
     """
     Health-only adoption analysis with simplified output.
@@ -516,7 +516,7 @@ def calculate_health_only_adoption_robust(
         context_params={'Analysis': 'Health-only', 'Method': method_suffix, 'Policy': policy_scenario, 'RCM Model': rcm_model, 'CR Function': cr_function}
         )    
 
-    if not verbose:
+    if verbose:
         print(f"\nHealth-only Analysis: {policy_scenario} | {rcm_model}-{cr_function}")
     
     all_columns_to_mask = {cat: [] for cat in UPGRADE_COLUMNS}
@@ -525,7 +525,7 @@ def calculate_health_only_adoption_robust(
     for category, upgrade_column in UPGRADE_COLUMNS.items():
         # Initialize validation tracking
         df_copy, valid_mask, _, category_columns_to_mask = initialize_validation_tracking(
-            df_copy, category, menu_mp, verbose=False)
+            df_copy, category, menu_mp, verbose=verbose)
         
         # Define column names (validation guarantees these exist)
         moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP{method_suffix}'
@@ -548,9 +548,9 @@ def calculate_health_only_adoption_robust(
         )
     
     # Apply final masking
-    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=False)
+    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=verbose)
     
-    if not verbose:
+    if verbose:
         total_columns = sum(len(cols) for cols in all_columns_to_mask.values())
         print(f"  Health-only: {total_columns} columns added")
     

@@ -3,7 +3,7 @@ import numpy as np
 from typing import Optional, Tuple, Dict, List
 
 # Constants
-from cmu_tare_model.constants import EQUIPMENT_SPECS, POLLUTANTS, TD_LOSSES_MULTIPLIER, CR_FUNCTIONS, RCM_MODELS
+from cmu_tare_model.constants import EQUIPMENT_SPECS, POLLUTANTS, TD_LOSSES_MULTIPLIER, CR_FUNCTIONS, RCM_MODELS, VERBOSE
 
 # Imports for lookup dictionaries, functions, and calculations
 from cmu_tare_model.utils.modeling_params import define_scenario_params
@@ -42,7 +42,7 @@ def calculate_lifetime_health_impacts(
     base_year: int = 2024,
     df_baseline_damages: Optional[pd.DataFrame] = None,
     debug: bool = False,
-    verbose: bool = False
+    verbose: bool = VERBOSE
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Calculate lifetime health impacts for each equipment category over all (rcm, cr) combinations.
@@ -111,7 +111,7 @@ def calculate_lifetime_health_impacts(
             lookup_health_electricity_h6c=lookup_health_electricity_h6c,
             rcm_models=RCM_MODELS,
             cr_functions=CR_FUNCTIONS,
-            verbose=True
+            verbose=verbose
         )
     
     # Dictionary to hold lifetime health impacts columns for each category

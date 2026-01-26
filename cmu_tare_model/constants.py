@@ -4,6 +4,10 @@
 # =============================================================
 # CONSTANTS: TARE MODEL
 # =============================================================
+# Configuration
+VERBOSE = False
+PRINT_DEBUG = False
+
 
 # Excludes HP Tech for Space/Water Heating and Clothes Drying. Also excludes electric resistance cooking and induction cooking.
 ALLOWED_TECHNOLOGIES = {

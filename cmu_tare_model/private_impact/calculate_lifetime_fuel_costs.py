@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from typing import Optional, Tuple, Dict, List
 
-from cmu_tare_model.constants import EQUIPMENT_SPECS, FUEL_MAPPING
+from cmu_tare_model.constants import EQUIPMENT_SPECS, FUEL_MAPPING, VERBOSE
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.validation_framework import (
     apply_final_masking,
@@ -24,7 +24,7 @@ def calculate_lifetime_fuel_costs(
     menu_mp: int,
     policy_scenario: str,
     df_baseline_costs: Optional[pd.DataFrame] = None,
-    verbose: bool = True
+    verbose: bool = VERBOSE
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Calculate lifetime fuel costs for each equipment category.
@@ -47,7 +47,7 @@ def calculate_lifetime_fuel_costs(
             (e.g., 'No Inflation Reduction Act' or 'AEO2023 Reference Case').
         df_baseline_costs: Optional DataFrame with baseline costs for computing operational savings.
             Default is None.
-        verbose: Whether to print detailed processing information. Default is True.
+        verbose: Whether to print detailed processing information. Default is VERBOSE constant.
 
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]:
@@ -123,7 +123,7 @@ def calculate_lifetime_fuel_costs(
             # Check if all homes are invalid for this category
             if not valid_mask.any():
                 if verbose:
-                    print(f"Warning: All homes are invalid for category '{category}'. Results will be all NaN.")
+                    raise ValueError(f"Warning: All homes are invalid for category '{category}'. Results will be all NaN.")
                 
                 # Create NaN columns for lifetime fuel costs
                 costs_col = f'{scenario_prefix}{category}_lifetime_fuel_cost'
@@ -276,7 +276,7 @@ def calculate_lifetime_fuel_costs(
                     # Track columns for masking
                     category_columns_to_mask.extend([baseline_costs_col, savings_cost_col])
                 elif verbose:
-                    print(f"Warning: Baseline costs column '{baseline_costs_col}' not found. Skipping avoided cost calculation.")
+                    raise ValueError(f"Warning: Baseline costs column '{baseline_costs_col}' not found. Skipping avoided cost calculation.")
 
             # Store in global lifetime dictionary and add to detailed DataFrame
             lifetime_columns_data.update(lifetime_dict)
@@ -325,7 +325,7 @@ def calculate_annual_fuel_costs(
     scenario_prefix: str,
     is_elec_or_gas: Optional[pd.Series] = None,
     valid_mask: Optional[pd.Series] = None,
-    verbose: bool = False
+    verbose: bool = VERBOSE
 ) -> Tuple[Dict[str, pd.Series], pd.Series]:
     """
     Calculate annual fuel costs for a given category/year.
@@ -346,7 +346,7 @@ def calculate_annual_fuel_costs(
             Default is None. Required for baseline (menu_mp=0) calculations.
         valid_mask: Boolean Series indicating which homes have valid data.
             Default is None. If provided, will be used for masking calculations.
-        verbose: Whether to print detailed processing information. Default is False.
+        verbose: Whether to print detailed processing information. Default is VERBOSE.
 
     Returns:
         Tuple[Dict[str, pd.Series], pd.Series]:
@@ -441,7 +441,7 @@ def calculate_annual_fuel_costs(
         if "consumption" in str(e):
             # More informative error for missing consumption columns
             if verbose:
-                print(f"Warning: Missing consumption data for year {year_label}, category '{category}': {e}")
+                raise ValueError(f"Warning: Missing consumption data for year {year_label}, category '{category}': {e}")
             return {}, pd.Series(0, index=df.index)
         else:
             # Re-raise other KeyErrors

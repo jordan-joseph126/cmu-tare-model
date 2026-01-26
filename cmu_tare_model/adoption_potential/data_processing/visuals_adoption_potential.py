@@ -113,7 +113,7 @@ def create_multiIndex_adoption_df(
     if keep_cols:
         filtered_df = percentages_df.loc[:, keep_cols]
     else:
-        print(f"Warning: No tier columns found for {category}")
+        raise ValueError(f"Warning: No tier columns found for {category}")
         return percentages_df  # Return unfiltered if no tiers found
 
     # Sort by index (fuel type and LMI/MUI classification)
@@ -258,8 +258,8 @@ def plot_adoption_rate_bar(
                     label='Tier 3: Subsidy-Dependent Feasibility' if i == 0 else ""
                 )
             else:
-                print(f"Warning: Missing tier columns for scenario {scenario}")
-                print(f"Available columns: {adoption_data.columns.tolist()}")
+                raise ValueError(f"""Warning: Missing tier columns for scenario {scenario} \
+                                 Available columns: {adoption_data.columns.tolist()}""")
                 
         except Exception as e:
             print(f"Error plotting scenario {scenario}: {str(e)}")
@@ -520,8 +520,7 @@ def print_adoption_decision_percentages(
                              col.lower().replace('-', '').replace('_', '')]
         
         if not scenario_columns:
-            print(f"Warning: No columns found for scenario '{scenario_name}' in DataFrame")
-            continue
+            raise ValueError(f"Warning: No columns found for scenario '{scenario_name}' in DataFrame")
             
         scenario_col = scenario_columns[0]  # Take the first matching column
         

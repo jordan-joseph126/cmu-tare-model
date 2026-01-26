@@ -10,7 +10,8 @@ import numpy as np
 import pandas as pd
 
 from cmu_tare_model.constants import (
-    PUBLIC_DISCOUNT_RATE, PRIVATE_FIXED_RATE_LOW, PRIVATE_FIXED_RATE_BASE, PRIVATE_FIXED_RATE_HIGH, VARIABLE_RATE_MIN, VARIABLE_RATE_MAX, AMI_THRESHOLD
+    PUBLIC_DISCOUNT_RATE, PRIVATE_FIXED_RATE_LOW, PRIVATE_FIXED_RATE_BASE, PRIVATE_FIXED_RATE_HIGH,
+    VARIABLE_RATE_MIN, VARIABLE_RATE_MAX, AMI_THRESHOLD, VERBOSE
 )
 
 # Method suffixes for fixed and variable discounting
@@ -32,7 +33,10 @@ PUBLIC_DISCOUNTING_METHOD_SUFFIXES = {
     'public_discount_rate': ''
 }
 
-def prepare_discount_rates(df: pd.DataFrame, verbose: bool = False) -> pd.DataFrame:
+def prepare_discount_rates(
+    df: pd.DataFrame,
+    verbose: bool = VERBOSE
+) -> pd.DataFrame:
     """
     Prepare all discount rate columns in a single operation.
     

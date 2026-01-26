@@ -3,7 +3,7 @@ import numpy as np
 import re
 from typing import Any, Optional
 
-from cmu_tare_model.constants import EQUIPMENT_SPECS
+from cmu_tare_model.constants import EQUIPMENT_SPECS, VERBOSE
 
 from cmu_tare_model.utils.validation_framework import get_valid_calculation_mask
 from cmu_tare_model.utils.calculation_utils import (
@@ -135,7 +135,10 @@ def preprocess_fuel_data(df: pd.DataFrame,
     return df
 
 
-def df_enduse_refactored(df_baseline: pd.DataFrame) -> pd.DataFrame:
+def df_enduse_refactored(
+    df_baseline: pd.DataFrame,
+    verbose: bool = VERBOSE
+) -> pd.DataFrame:
     """Creates a standardized energy usage DataFrame and applies data quality filters.
 
     This function creates a new DataFrame with standardized column names and structure,
@@ -232,7 +235,7 @@ def df_enduse_refactored(df_baseline: pd.DataFrame) -> pd.DataFrame:
     print("\nApplying data validation (baseline only):")
     for category in EQUIPMENT_SPECS.keys():
         # Get validation mask (this already knows it's baseline)
-        valid_mask = get_valid_calculation_mask(df_enduse, category, menu_mp=0, verbose=True)
+        valid_mask = get_valid_calculation_mask(df_enduse, category, menu_mp=0, verbose=verbose)
         
         # Apply masking to consumption columns
         columns_to_mask = get_all_possible_fuel_columns(category)
@@ -252,11 +255,13 @@ def df_enduse_refactored(df_baseline: pd.DataFrame) -> pd.DataFrame:
     return df_enduse
 
 
-def df_enduse_compare(df_mp: pd.DataFrame, 
-                      input_mp: str, 
-                      menu_mp: int, 
-                      df_baseline: pd.DataFrame, 
-                      df_cooking_range: pd.DataFrame
+def df_enduse_compare(
+    df_mp: pd.DataFrame, 
+    input_mp: str, 
+    menu_mp: int, 
+    df_baseline: pd.DataFrame, 
+    df_cooking_range: pd.DataFrame,
+    verbose: bool = VERBOSE
 ) -> pd.DataFrame:
     """Creates a comparison DataFrame by merging multiple DataFrames based on measure packages.
 
@@ -271,6 +276,7 @@ def df_enduse_compare(df_mp: pd.DataFrame,
         menu_mp: The menu measure package number.
         df_baseline: The baseline DataFrame to merge with df_compare.
         df_cooking_range: Additional DataFrame for cooking range parameters/outputs.
+        verbose: Whether to print detailed comparison information.
 
     Returns:
         A merged DataFrame (df_compare) that includes relevant columns for
@@ -378,7 +384,7 @@ def df_enduse_compare(df_mp: pd.DataFrame,
     print("\nApplying combined validation (data quality + retrofit status):")
     for category in EQUIPMENT_SPECS.keys():
         # Get combined validation mask
-        valid_mask = get_valid_calculation_mask(df_compare, category, menu_mp, verbose=True)
+        valid_mask = get_valid_calculation_mask(df_compare, category, menu_mp, verbose=verbose)
         
         # Determine which columns to mask for this category
         category_cols = []

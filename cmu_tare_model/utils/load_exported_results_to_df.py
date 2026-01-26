@@ -1,9 +1,10 @@
 import os
+from matplotlib.pylab import rint
 import pandas as pd
 import gc
 from typing import Optional, Dict, Union
 
-from cmu_tare_model.constants import RCM_MODELS
+from cmu_tare_model.constants import RCM_MODELS, VERBOSE
 from cmu_tare_model.utils.discounting import PRIVATE_DISCOUNT_RATE_COLS
 
 def load_model_run_output(
@@ -16,7 +17,8 @@ def load_model_run_output(
     discount_rate_col: Optional[str] = None,
     columns_to_string: Optional[Dict[Union[str, int], str]] = None,
     use_chunked_loading: bool = True,
-    chunk_size: int = 50000
+    chunk_size: int = 50000,
+    verbose: bool = VERBOSE
 ) -> Optional[pd.DataFrame]:
     """Load model run results from CSV files (reverse of export_model_run_output).
     
@@ -142,49 +144,47 @@ def load_model_run_output(
     
     # Check if file exists
     if not os.path.isfile(full_filepath):
-        print(f"Warning: File not found: {full_filepath}")
-        return None
+        raise FileNotFoundError(f"File not found: {full_filepath}")
     
     # Load the DataFrame
-    try:
-        if use_chunked_loading:
-            # Load file in chunks to reduce memory usage
+    if use_chunked_loading:
+        # Load file in chunks to reduce memory usage
+        if verbose:
             print(f"Loading {filename} in chunks of {chunk_size:,} rows...")
-            
-            # Read file in chunks using pandas built-in chunksize parameter
-            chunk_reader = pd.read_csv(full_filepath, index_col=0, dtype=columns_to_string, chunksize=chunk_size)
-            
-            # Collect all chunks in a list for concatenation
-            chunk_list = []
-            chunk_count = 0
-            
-            for chunk in chunk_reader:
-                chunk_list.append(chunk)
-                chunk_count += 1
-                
-                # Provide progress updates every 5 chunks to monitor loading
-                if chunk_count % 5 == 0:
-                    print(f"  Loaded chunk {chunk_count} ({len(chunk):,} rows)")
-            
-            # Combine all chunks into a single DataFrame preserving the original index
-            df_model_run_output = pd.concat(chunk_list, ignore_index=False)
-            
-            # Clean up chunk list to free intermediate memory
-            del chunk_list
-            gc.collect()  # Force garbage collection to free memory immediately
-            
-            print(f"  Successfully combined {chunk_count} chunks into DataFrame with shape {df_model_run_output.shape}")
-            
-        else:
-            # Use standard loading method
-            df_model_run_output = pd.read_csv(full_filepath, index_col=0, dtype=columns_to_string)
         
+        # Read file in chunks using pandas built-in chunksize parameter
+        chunk_reader = pd.read_csv(full_filepath, index_col=0, dtype=columns_to_string, chunksize=chunk_size)
+        
+        # Collect all chunks in a list for concatenation
+        chunk_list = []
+        chunk_count = 0
+        
+        for chunk in chunk_reader:
+            chunk_list.append(chunk)
+            chunk_count += 1
+            
+            # Provide progress updates every 5 chunks to monitor loading
+            if chunk_count % 5 == 0:
+                if verbose:
+                    print(f"  Loaded chunk {chunk_count} ({len(chunk):,} rows)")
+        
+        # Combine all chunks into a single DataFrame preserving the original index
+        df_model_run_output = pd.concat(chunk_list, ignore_index=False)
+        
+        # Clean up chunk list to free intermediate memory
+        del chunk_list
+        gc.collect()  # Force garbage collection to free memory immediately
+        
+        if verbose:
+            print(f"  Successfully combined {chunk_count} chunks into DataFrame with shape {df_model_run_output.shape}")
+        
+    else:
+        # Use standard loading method
+        df_model_run_output = pd.read_csv(full_filepath, index_col=0, dtype=columns_to_string)
+        
+    if verbose:
         print(f"Loaded: {filename}")
         print(f"Shape: {df_model_run_output.shape}")
         print()
-        
-        return df_model_run_output
-        
-    except Exception as e:
-        print(f"Error loading file {full_filepath}: {str(e)}")
-        return None
+    
+    return df_model_run_output
