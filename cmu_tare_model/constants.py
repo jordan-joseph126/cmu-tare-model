@@ -7,7 +7,7 @@
 # Configuration
 VERBOSE = False
 PRINT_DEBUG = False
-
+PRINT_VERBOSE_DATAFRAMES = False
 
 # Excludes HP Tech for Space/Water Heating and Clothes Drying. Also excludes electric resistance cooking and induction cooking.
 ALLOWED_TECHNOLOGIES = {

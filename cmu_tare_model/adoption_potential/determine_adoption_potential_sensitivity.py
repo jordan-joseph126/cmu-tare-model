@@ -225,8 +225,9 @@ def adoption_decision(
     # Process each equipment category
     for category, upgrade_column in UPGRADE_COLUMNS.items():
         # Initialize validation tracking (silent unless verbose)
-        df_copy, valid_mask, _, category_columns_to_mask = initialize_validation_tracking(
-            df_copy, category, menu_mp, verbose=verbose)
+        # MEMORY OPTIMIZATION: copy=False since df_copy was already copied at the start
+        _, valid_mask, _, category_columns_to_mask = initialize_validation_tracking(
+            df_copy, category, menu_mp, verbose=verbose, copy=False)
         
         valid_count = valid_mask.sum()
         total_count = len(df_copy)
@@ -428,9 +429,10 @@ def calculate_climate_only_adoption_robust(
     # Process each equipment category
     for category, upgrade_column in UPGRADE_COLUMNS.items():
         # Initialize validation tracking
-        df_copy, valid_mask, _, category_columns_to_mask = initialize_validation_tracking(
-            df_copy, category, menu_mp, verbose=verbose)
-        
+        # MEMORY OPTIMIZATION: copy=False since df_copy was already copied at the start
+        _, valid_mask, _, category_columns_to_mask = initialize_validation_tracking(
+            df_copy, category, menu_mp, verbose=verbose, copy=False)
+
         for scc in scc_assumptions:
             # Define column names (validation guarantees these exist)
             moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP{method_suffix}'
@@ -524,9 +526,10 @@ def calculate_health_only_adoption_robust(
     # Process each equipment category
     for category, upgrade_column in UPGRADE_COLUMNS.items():
         # Initialize validation tracking
-        df_copy, valid_mask, _, category_columns_to_mask = initialize_validation_tracking(
-            df_copy, category, menu_mp, verbose=verbose)
-        
+        # MEMORY OPTIMIZATION: copy=False since df_copy was already copied at the start
+        _, valid_mask, _, category_columns_to_mask = initialize_validation_tracking(
+            df_copy, category, menu_mp, verbose=verbose, copy=False)
+
         # Define column names (validation guarantees these exist)
         moreWTP_private_npv_col = f'{scenario_prefix}{category}_private_npv_moreWTP{method_suffix}'
         health_npv_col = f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'

@@ -104,8 +104,9 @@ def calculate_lifetime_climate_impacts(
                 print(f"Calculating Climate Emissions and Damages from 2024 to {2024 + lifetime} for {category}")                    
             
             # ===== STEP 1: Initialize validation tracking for this category =====
-            df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-                df_copy, category, menu_mp, verbose=verbose)
+            # MEMORY OPTIMIZATION: copy=False since df_copy was already copied at the start
+            _, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
+                df_copy, category, menu_mp, verbose=verbose, copy=False)
 
             # ===== STEP 2: Initialize result series for emissions and damages =====
             # Create templates for emissions and damages (for initialization only)
@@ -158,19 +159,27 @@ def calculate_lifetime_climate_impacts(
                     )
 
                     # ===== STEP 3 & 4: Store annual emissions and damages in lists =====
+                    # MEMORY OPTIMIZATION: Use vectorized masking instead of .copy() + .loc[]
                     for mer_type in MER_TYPES:
-                        emissions_values = annual_emissions.get(mer_type, 0.0).copy()
-                        # Apply validation mask for measure packages
-                        if menu_mp != 0:  
-                            emissions_values.loc[~valid_mask] = np.nan  # Use NaN for consistency
+                        emissions_values = annual_emissions.get(mer_type, 0.0)
+                        # Apply validation mask for measure packages using vectorized np.where
+                        if menu_mp != 0:
+                            emissions_values = pd.Series(
+                                np.where(valid_mask, emissions_values, np.nan),
+                                index=emissions_values.index
+                            )
                         yearly_emissions_lists[mer_type].append(emissions_values)
 
                     # Store annual damages in lists
                     for key, value in annual_damages.items():
-                        damages_values = value.copy()
-                        # Apply validation mask for measure packages
+                        # Apply validation mask for measure packages using vectorized np.where
                         if menu_mp != 0:
-                            damages_values.loc[~valid_mask] = np.nan  # Use NaN for consistency
+                            damages_values = pd.Series(
+                                np.where(valid_mask, value, np.nan),
+                                index=value.index
+                            )
+                        else:
+                            damages_values = value
                         yearly_damages_lists[key].append(damages_values)
                     
                     # Store annual results in a temporary dictionary

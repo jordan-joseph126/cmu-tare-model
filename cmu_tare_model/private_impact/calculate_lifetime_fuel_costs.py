@@ -117,8 +117,9 @@ def calculate_lifetime_fuel_costs(
                 print(f"Calculating Fuel Costs from 2024 to {2024 + lifetime} for {category}")
             
             # ===== STEP 1: Initialize validation tracking =====
-            df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-                df_copy, category, menu_mp, verbose=verbose)
+            # MEMORY OPTIMIZATION: copy=False since df_copy was already copied at the start
+            _, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
+                df_copy, category, menu_mp, verbose=verbose, copy=False)
             
             # Check if all homes are invalid for this category
             if not valid_mask.any():

@@ -1,4 +1,5 @@
 # Updated
+from tabnanny import verbose
 import pandas as pd
 import numpy as np
 from typing import Tuple, Dict, List, Optional, Union
@@ -104,6 +105,10 @@ def calculate_private_npv(
     menu_mp, policy_scenario = validate_common_parameters(
         menu_mp, policy_scenario)
 
+    if verbose:
+        print(f"""\nCalculating Private NPV with parameters:
+          input_mp: {input_mp}, menu_mp: {menu_mp}, policy_scenario: {policy_scenario}""")
+
     # Create copies to avoid modifying original dataframes
     df_copy = df.copy()
     df_fuel_costs_copy = df_fuel_costs.copy()
@@ -154,8 +159,9 @@ def calculate_private_npv(
             print(f"\nDetermining lifetime private impacts for category: {category} with lifetime: {lifetime}")
 
         # ===== STEP 1: Initialize validation tracking =====
-        df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-            df_copy, category, menu_mp, verbose=verbose)
+        # MEMORY OPTIMIZATION: copy=False since df_copy was already copied at the start
+        _, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
+            df_copy, category, menu_mp, verbose=verbose, copy=False)
         
         # Calculate total and net capital costs based on policy scenario        
         total_capital_cost, net_capital_cost = calculate_capital_costs(
@@ -260,9 +266,8 @@ def calculate_capital_costs(
         and IRA High scenarios. Costs differ for pre-IRA because no rebates are applied.
 
     """
-
-    print(f"""\nCalculating costs for {category}...
-          input_mp: {input_mp}, menu_mp: {menu_mp}, policy_scenario: {policy_scenario}""")
+    if verbose:
+        print(f"\nCalculating costs for {category}... ")
 
     # Build list of required columns based on category and policy scenario
     install_cost_col = f'mp{menu_mp}_{category}_installationCost'
@@ -395,11 +400,7 @@ def calculate_and_update_npv(
 
     Raises:
         ValueError: If the category is not recognized or if the DataFrame is empty.
-    """
-    print(f"""Calculating Private NPV for {category} with lifetime: {lifetime} years
-          policy_scenario: {policy_scenario} --> scenario_prefix: {scenario_prefix}
-          """)
-    
+    """    
     # ===== STEP 2: Initialize result series with template =====
     # Use create_retrofit_only_series to properly initialize with zeros for valid homes, NaN for others
     discounted_savings_template = create_retrofit_only_series(df_measure_costs, valid_mask)
@@ -435,8 +436,8 @@ def calculate_and_update_npv(
             yearly_avoided_costs.append(avoided_costs)
             years_processed += 1
             
-        elif verbose:
-            print(f"  Warning: Fuel cost data missing for year {year_label}")
+        else:
+            raise ValueError(f"  Warning: Fuel cost data missing for year {year_label}")
     
     # Sum up all yearly avoided costs using pandas operations
     if yearly_avoided_costs:
@@ -459,9 +460,9 @@ def calculate_and_update_npv(
     # Check if any data was processed
     if verbose:
         if years_processed == 0:
-            print(f"  Warning: No fuel cost data found for {category}")
+            raise ValueError(f"  Warning: No fuel cost data found for {category}")
         elif years_processed < lifetime:
-            print(f"  Warning: Only processed {years_processed}/{lifetime} years for fuel costs")
+            raise ValueError(f"  Warning: Only processed {years_processed}/{lifetime} years for fuel costs")
     
     # Calculate NPV for less WTP and more WTP scenarios
     npv_less_wtp = round(total_discounted_savings - total_capital_cost, 2)

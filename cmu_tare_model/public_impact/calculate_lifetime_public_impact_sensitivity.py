@@ -39,18 +39,18 @@ def _sum_yearly_damages(
     if yearly_damages:
         # Convert list of Series to DataFrame and sum
         damages_df = pd.concat(yearly_damages, axis=1)
-        total_npv = damages_df.sum(axis=1, skipna=False)
+        npv = damages_df.sum(axis=1, skipna=False)
         
         # Apply validation mask for measure packages
         if menu_mp != 0:
-            total_npv = pd.Series(
-                np.where(valid_mask, total_npv, np.nan),
-                index=total_npv.index
+            npv = pd.Series(
+                np.where(valid_mask, npv, np.nan),
+                index=npv.index
             )
     else:
-        total_npv = template_series
+        npv = template_series
     
-    return total_npv
+    return npv
 
 
 def calculate_climate_npv(
@@ -115,6 +115,7 @@ def calculate_climate_npv(
                     )
                     yearly_climate_avoided.append(avoided_climate)
             
+            # Sum yearly avoided climate damages (scc was already discounted) into total NPV
             climate_npv = _sum_yearly_damages(
                 yearly_damages=yearly_climate_avoided,
                 template_series=climate_npv_template,
@@ -124,12 +125,12 @@ def calculate_climate_npv(
             
             climate_npv = replace_small_values_with_nan(climate_npv)
         
-        #     all_npvs[climate_npv_key] = climate_npv
+            all_npvs[climate_npv_key] = climate_npv
             
-        #     if climate_npv_key not in category_columns_to_mask:
-        #         category_columns_to_mask.append(climate_npv_key)
+            if climate_npv_key not in category_columns_to_mask:
+                category_columns_to_mask.append(climate_npv_key)
         
-        # all_columns_to_mask[category].extend(category_columns_to_mask)
+        all_columns_to_mask[category].extend(category_columns_to_mask)
     
     return all_npvs
 
@@ -197,7 +198,7 @@ def calculate_health_npv(
         
         # # ===== STEP 2: Initialize result series for health NPV =====
         health_npv_template = create_retrofit_only_series(df_copy, valid_mask)
-        # health_npv_key = f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
+        health_npv_key = f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
         yearly_health_avoided = []
         
         # ===== STEP 3 & 4: Valid-Only Calculation and Updates =====
@@ -219,6 +220,7 @@ def calculate_health_npv(
                 
                 yearly_health_avoided.append(avoided_health)
         
+        # Sum discounted yearly avoided health damages into total NPV
         health_npv = _sum_yearly_damages(
             yearly_damages=yearly_health_avoided,
             template_series=health_npv_template,
@@ -226,18 +228,16 @@ def calculate_health_npv(
             menu_mp=menu_mp
         )
         
-        health_npv_unrounded = replace_small_values_with_nan(health_npv)
+        health_npv = replace_small_values_with_nan(health_npv)
 
-    return health_npv_unrounded
-
-    #     all_npvs[health_npv_key] = health_npv
+        all_npvs[health_npv_key] = health_npv
         
-    #     if health_npv_key not in category_columns_to_mask:
-    #         category_columns_to_mask.append(health_npv_key)
+        if health_npv_key not in category_columns_to_mask:
+            category_columns_to_mask.append(health_npv_key)
         
-    #     all_columns_to_mask[category].extend(category_columns_to_mask)
+        all_columns_to_mask[category].extend(category_columns_to_mask)
     
-    # return all_npvs
+    return all_npvs
 
 
 def calculate_public_npv(
@@ -373,20 +373,26 @@ def calculate_public_npv(
     for category in EQUIPMENT_SPECS.keys():
         category_columns_to_mask = []
         
+        # Get the climate NPV key once (same for all CR functions)
         for scc in SCC_ASSUMPTIONS:
             climate_npv_key = f'{scenario_prefix}{category}_climate_npv_{scc}'
+
+            # Now loop over CR functions to create health npv key and combined public NPV key
             for cr_function in CR_FUNCTIONS:
                 health_npv_key = f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
                 public_npv_key = f'{scenario_prefix}{category}_public_npv_{scc}_{rcm_model}_{cr_function}'
                 
+                # Check if both climate and health NPV columns exist, then calculate combined public NPV
                 if climate_npv_key in df_new_columns.columns and health_npv_key in df_new_columns.columns:
-                    # Sum unrounded values, then round (matches original behavior)
+                    # Sum unrounded values first, then round
                     public_npv = (
                         df_new_columns[climate_npv_key] + 
                         df_new_columns[health_npv_key]
-                    ).round(2)
+                    )
                     
-                    df_new_columns[public_npv_key] = public_npv
+                    public_npv_rounded = public_npv.round(2)
+
+                    df_new_columns[public_npv_key] = public_npv_rounded
                     category_columns_to_mask.append(public_npv_key)
         
         all_columns_to_mask[category].extend(category_columns_to_mask)

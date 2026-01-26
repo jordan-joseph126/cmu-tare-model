@@ -25,43 +25,49 @@ from cmu_tare_model.constants import EQUIPMENT_SPECS, UPGRADE_COLUMNS, VERBOSE
 # ====================================================================================================
 
 def initialize_validation_tracking(
-    df: pd.DataFrame, 
-    category: str, 
-    menu_mp: Union[int, str], 
-    verbose: bool = VERBOSE  # Changed default to False
+    df: pd.DataFrame,
+    category: str,
+    menu_mp: Union[int, str],
+    verbose: bool = VERBOSE,
+    copy: bool = False
 ) -> Tuple[pd.DataFrame, pd.Series, Dict[str, List[str]], List[str]]:
     """
     Initialize validation tracking for cost calculations.
-    
+
     Sets up common validation elements needed for all calculation functions:
-    - Creates a copy of the input DataFrame
+    - Optionally creates a copy of the input DataFrame (disabled by default for memory efficiency)
     - Determines which homes have valid data
     - Initializes column tracking dictionaries
-    
+
+    MEMORY OPTIMIZATION: By default, this function no longer creates a copy of the DataFrame.
+    The caller is responsible for creating a copy if needed before calling this function.
+    Set copy=True only when you need to modify the DataFrame and want to preserve the original.
+
     Args:
         df: DataFrame containing the data to validate
         category: Equipment category (e.g., 'heating', 'waterHeating')
         menu_mp: Measure package identifier (0 for baseline, nonzero for measure packages)
         verbose: Whether to print validation information
-        
+        copy: Whether to create a copy of the DataFrame (default: False for memory efficiency)
+
     Returns:
         Tuple containing:
-        - df_copy: Copy of input DataFrame
+        - df_ref: Reference to input DataFrame (or copy if copy=True)
         - valid_mask: Boolean Series indicating valid homes
         - all_columns_to_mask: Dictionary to track columns by category
         - category_columns_to_mask: List to track columns for this category
     """
-    # Create a copy of the original DataFrame to avoid modifying it directly
-    df_copy = df.copy()
-    
+    # Only create a copy if explicitly requested (memory optimization)
+    df_ref = df.copy() if copy else df
+
     # Initialize dictionary to track columns for masking verification
     all_columns_to_mask = {cat: [] for cat in EQUIPMENT_SPECS}
     category_columns_to_mask = []
-    
+
     # Determine which homes have valid data for this category
-    valid_mask = get_valid_calculation_mask(df_copy, category, menu_mp, verbose=verbose)
-    
-    return df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask
+    valid_mask = get_valid_calculation_mask(df_ref, category, menu_mp, verbose=verbose)
+
+    return df_ref, valid_mask, all_columns_to_mask, category_columns_to_mask
 
 
 def get_valid_fuel_types(category: str) -> List[str]:
@@ -309,58 +315,68 @@ def apply_final_masking(
 
 
 def mask_category_specific_data(
-        df: pd.DataFrame, 
-        columns: List[str], 
+        df: pd.DataFrame,
+        columns: List[str],
         category: str,
-        verbose: bool = VERBOSE) -> pd.DataFrame:
+        verbose: bool = VERBOSE,
+        inplace: bool = True) -> pd.DataFrame:
     """
     Applies NaN masking to specified columns based on a category's inclusion flag.
-    
-    This utility function applies NaN masking to all provided columns based 
+
+    This utility function applies NaN masking to all provided columns based
     on the inclusion flag for the specified category. It can be used anywhere
     in the codebase after calculations to ensure data quality.
-    
+
+    MEMORY OPTIMIZATION: By default, this function modifies the DataFrame in-place
+    to avoid creating unnecessary copies of large DataFrames.
+
     Args:
         df: DataFrame with inclusion flags already created.
         columns: List of column names to apply masking to.
         category: The equipment category that determines which inclusion flag to use.
         verbose: Whether to print details about masking operations.
-        
+        inplace: Whether to modify the DataFrame in-place (default: True for memory efficiency).
+                 Set to False only when you need to preserve the original DataFrame.
+
     Returns:
         DataFrame with specified columns masked based on the category's inclusion flag.
-        
+
     Raises:
         ValueError: If the category's inclusion flag is not found in the DataFrame.
     """
     include_col = f'include_{category}'
-    
+
     if include_col not in df.columns:
         raise ValueError(f"Inclusion flag '{include_col}' not found in DataFrame")
-        
+
     # Filter out columns that don't exist in the DataFrame
     valid_columns = [col for col in columns if col in df.columns]
-    
+
     if not valid_columns:
         if verbose:
             print(f"No valid columns to mask for category '{category}'")
         return df
-        
+
     if verbose:
         print(f"Masking {len(valid_columns)} columns for category '{category}'")
-        
+
     masked_count = 0
-    df_copy = df.copy()
-    
+    # Only create a copy if not operating in-place (memory optimization)
+    df_result = df if inplace else df.copy()
+
+    # Pre-compute the mask once for efficiency
+    invalid_mask = ~df_result[include_col]
+
     for col in valid_columns:
         # Count non-NaN values before masking
-        non_nan_before = df_copy[col].notna().sum()
-        
-        # Apply masking
-        df_copy.loc[~df_copy[include_col], col] = np.nan
-        
+        non_nan_before = df_result[col].notna().sum()
+
+        # Apply masking using vectorized operation
+        df_result.loc[invalid_mask, col] = np.nan
+
         # Count non-NaN values after masking
-        non_nan_after = df_copy[col].notna().sum()
-        
+        non_nan_after = df_result[col].notna().sum()
+
         # Handle different types safely
         try:
             # Try direct conversion for scalar values
@@ -372,16 +388,16 @@ def mask_category_specific_data(
             else:
                 # For other types, try a more robust approach
                 masked_this_col = int(float(non_nan_before - non_nan_after))
-        
+
         # Now masked_this_col is guaranteed to be a scalar
         if masked_this_col > 0 and verbose:
             print(f"    {col}: Masked {masked_this_col} values")
             masked_count += masked_this_col
-            
+
     if verbose and masked_count > 0:
         print(f"  Total: Masked {masked_count} values across {len(valid_columns)} columns")
-        
-    return df_copy
+
+    return df_result
 
 # ====================================================================================================
 # HELPER FUNCTIONS

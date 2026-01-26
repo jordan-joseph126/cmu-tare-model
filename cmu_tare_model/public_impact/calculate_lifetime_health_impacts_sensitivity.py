@@ -131,8 +131,9 @@ def calculate_lifetime_health_impacts(
                 print(f"Calculating Health Emissions and Damages from {base_year} to {base_year + lifetime - 1} for {category}")
             
             # ===== STEP 1: Initialize validation tracking =====
-            df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-                df_copy, category, menu_mp, verbose=verbose)
+            # MEMORY OPTIMIZATION: copy=False since df_copy was already copied at the start
+            _, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
+                df_copy, category, menu_mp, verbose=verbose, copy=False)
             
             # ===== STEP 2: Initialize result series for damages =====
             # Create templates for health damages (for initialization only)
@@ -188,13 +189,17 @@ def calculate_lifetime_health_impacts(
 
                             #===== STEP 4: Valid-Only Updates =====
                             # Store annual health damages in lists instead of updating incrementally
+                            # MEMORY OPTIMIZATION: Use vectorized masking instead of .copy() + .loc[]
                             overall_col = f'{scenario_prefix}{year_label}_{category}_damages_health_{rcm}_{cr}'
                             if overall_col in health_results_pair:
-                                health_values = health_results_pair[overall_col].copy()
+                                health_values = health_results_pair[overall_col]
 
-                                # Apply validation mask for measure packages
+                                # Apply validation mask for measure packages using vectorized np.where
                                 if menu_mp != 0:
-                                    health_values.loc[~valid_mask] = np.nan
+                                    health_values = pd.Series(
+                                        np.where(valid_mask, health_values, np.nan),
+                                        index=health_values.index
+                                    )
                                 yearly_health_damages_lists[(rcm, cr)].append(health_values)
 
                             # CHANGED LINE 2: Collect ALL results in year-level dictionary

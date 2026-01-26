@@ -84,34 +84,34 @@ def prepare_discount_rates(
     variable_rate = np.interp(x=percent_ami, xp=ami_x_bounds, fp=rate_y_bounds)
     df_copy['private_discount_rate_variable'] = variable_rate
     
-    if verbose:
-        print(f"\n{'='*80}")
-        print(f"DISCOUNT RATE DIAGNOSTIC: Calculating for BOTH private discount methods")
-        print(f"{'='*80}")
+    # Verbose diagnostic output. Only prints once per scenario run.
+    print(f"\n{'='*80}")
+    print(f"DISCOUNT RATE DIAGNOSTIC: Calculating for BOTH private discount methods")
+    print(f"{'='*80}")
         
-        # ===== PUBLIC Discount Rate Diagnostic =====
-        public_rate_fixed = df_copy['public_discount_rate'].iloc[0]
-        print(f"Public Rate: {public_rate_fixed:.1%} (constant across all households)")
+    # ===== PUBLIC Discount Rate Diagnostic =====
+    public_rate_fixed = df_copy['public_discount_rate'].iloc[0]
+    print(f"Public Rate: {public_rate_fixed:.1%} (constant across all households)")
 
-        # ===== PRIVATE Discount Rate Diagnostic =====
-        # Private fixed rate diagnostic
-        private_rate_fixed_low = df_copy['private_discount_rate_fixed_low'].iloc[0]
-        print(f"Private Fixed Rate (Low): {private_rate_fixed_low:.1%} (constant across all households)")
+    # ===== PRIVATE Discount Rate Diagnostic =====
+    # Private fixed rate diagnostic
+    private_rate_fixed_low = df_copy['private_discount_rate_fixed_low'].iloc[0]
+    print(f"Private Fixed Rate (Low): {private_rate_fixed_low:.1%} (constant across all households)")
         
-        private_rate_fixed_base = df_copy['private_discount_rate_fixed_base'].iloc[0]
-        print(f"Private Fixed Rate (Base): {private_rate_fixed_base:.1%} (constant across all households)")
+    private_rate_fixed_base = df_copy['private_discount_rate_fixed_base'].iloc[0]
+    print(f"Private Fixed Rate (Base): {private_rate_fixed_base:.1%} (constant across all households)")
 
-        private_rate_fixed_high = df_copy['private_discount_rate_fixed_high'].iloc[0]
-        print(f"Private Fixed Rate (High): {private_rate_fixed_high:.1%} (constant across all households)")
+    private_rate_fixed_high = df_copy['private_discount_rate_fixed_high'].iloc[0]
+    print(f"Private Fixed Rate (High): {private_rate_fixed_high:.1%} (constant across all households)")
         
-        # Private variable rate diagnostic  
-        private_rate_variable = df_copy['private_discount_rate_variable']
-        print(f"Private Variable Rate (AMI-based):")
-        print(f"  Minimum: {private_rate_variable.min():.1%} (highest AMI)")
-        print(f"  Median:  {private_rate_variable.median():.1%}")
-        print(f"  Maximum: {private_rate_variable.max():.1%} (lowest AMI)")
+    # Private variable rate diagnostic  
+    private_rate_variable = df_copy['private_discount_rate_variable']
+    print(f"Private Variable Rate (AMI-based):")
+    print(f"  Minimum: {private_rate_variable.min():.1%} (highest AMI)")
+    print(f"  Median:  {private_rate_variable.median():.1%}")
+    print(f"  Maximum: {private_rate_variable.max():.1%} (lowest AMI)")
         
-        print(f"{'='*80}\n")
+    print(f"{'='*80}\n")
 
     return df_copy
 
