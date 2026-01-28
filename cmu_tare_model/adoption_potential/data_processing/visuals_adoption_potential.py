@@ -454,40 +454,132 @@ def subplot_grid_adoption_vBar(
     return fig
 
 
+# =========================================================================
+# UPDATED PRINTING FUNCTIONS FOR ADOPTION DECISION PERCENTAGES
+# =========================================================================
+"""
+Print adoption decision percentages with REQUIRED population-weighted overall calculation.
+
+This version always calculates "Overall" using population weights (number of homes
+in each fuel×income group) to match the methodology used in the climate impact analysis.
+
+Required inputs:
+- source_dataframes: Original DataFrames for population weighting
+- category: Equipment category to find fuel column (e.g., 'heating' -> 'base_heating_fuel')
+"""
+
 def print_adoption_decision_percentages(
     dataframes: List[pd.DataFrame],
     scenario_names: List[str],
+    source_dataframes: List[pd.DataFrame],
+    category: str,
     title: str = None,
     subtitle: Optional[str] = None,
     print_header_key: bool = True,
     filter_fuel: Optional[List[str]] = None,
 ) -> None:
     """
-    Print adoption decision percentages using the same logic as create_multiIndex_adoption_df.
+    Print adoption decision percentages with population-weighted overall calculation.
+    
+    Calculates "Overall" using population weights to match the climate analysis 
+    methodology where each home is weighted equally.
     
     Args:
-        dataframes: List of DataFrames with multi-index structure from create_multiIndex_adoption_df
-        scenario_names: List of scenario names (e.g., ['Pre-IRA', 'IRA-Reference'])
-        title: Section title
-        subtitle: Optional subtitle for the section
-        print_header_key: Whether to print the header key for the output
-        filter_fuel: Optional list of fuels to include (uses same filtering as existing module)
-    """
+        dataframes: List of multi-index DataFrames from create_multiIndex_adoption_df.
+        scenario_names: List of scenario names (e.g., ['preIRA_mp8_...', 'iraRef_mp8_...']).
+        source_dataframes: List of original DataFrames for population weighting.
+            Must have same length as scenario_names.
+        category: Equipment category (e.g., 'heating', 'waterHeating', 'cooking').
+            Used to find fuel column: f'base_{category}_fuel'
+        title: Optional section title.
+        subtitle: Optional subtitle for the section.
+        print_header_key: Whether to print the header key explaining the output format.
+        filter_fuel: Optional list of fuels to include. 
+            Default: ['Electricity', 'Natural Gas', 'Propane', 'Fuel Oil']
     
-    # Define the mapping based on the existing module's tier structure
-    tier_mapping = {
-        'Tier 1: Feasible': 'AD',
-        'Total Adoption Potential': 'TAD', 
-        'Total Adoption Potential (Additional Subsidy)': 'TADS',
+    Returns:
+        None. Prints formatted output to stdout.
+    
+    Raises:
+        ValueError: If source_dataframes length doesn't match scenario_names.
+        KeyError: If required columns (fuel, income) are missing from source DataFrames.
+    
+    Example Output:
+        ('Overall [Pop-Weighted]'): T1 23% + T2 8% = TAD 31%, TAD + T3 46% = TADS 77%
+    """
+    # =================================================================
+    # INPUT VALIDATION (Fail Fast)
+    # =================================================================
+    
+    # Validate source_dataframes is provided and has correct length
+    if source_dataframes is None:
+        raise ValueError(
+            "source_dataframes is required for population-weighted calculation. "
+            "Pass the original DataFrames used to create the multi-index DataFrames."
+        )
+    
+    if len(source_dataframes) != len(scenario_names):
+        raise ValueError(
+            f"source_dataframes length ({len(source_dataframes)}) must match "
+            f"scenario_names length ({len(scenario_names)})."
+        )
+    
+    if len(dataframes) != len(scenario_names):
+        raise ValueError(
+            f"dataframes length ({len(dataframes)}) must match "
+            f"scenario_names length ({len(scenario_names)})."
+        )
+    
+    # Define column names based on category
+    fuel_col = f'base_{category}_fuel'
+    income_col = 'lmi_or_mui'
+    
+    # Validate required columns exist in all source DataFrames
+    for idx, source_df in enumerate(source_dataframes):
+        missing_cols = []
+        if fuel_col not in source_df.columns:
+            missing_cols.append(fuel_col)
+        if income_col not in source_df.columns:
+            missing_cols.append(income_col)
+        
+        if missing_cols:
+            raise KeyError(
+                f"Source DataFrame at index {idx} is missing required columns: {missing_cols}. "
+                f"Available columns (first 10): {list(source_df.columns)[:10]}..."
+            )
+    
+    # =================================================================
+    # SETUP
+    # =================================================================
+    
+    # Column name mapping for individual tiers
+    tier_columns = {
+        'T1': 'Tier 1: Feasible',
+        'T2': 'Tier 2: Feasible vs. Alternative',
+        'T3': 'Tier 3: Subsidy-Dependent Feasibility',
+        'TAD': 'Total Adoption Potential',
+        'TADS': 'Total Adoption Potential (Additional Subsidy)',
     }
     
+    # Header key explaining the format
     header_key = """(Base Fuel, Income Level): 
-    AD (%):   --> Tier 1 (%): Adopters that recover the total capital cost of retrofit
-    TAD (%):  --> Tier 1+2 (%): Adopters that recover either the total or net capital cost of retrofit
-    TADS (%): --> Tier 1+2+3 (%): Both less and more WTP Adopters plus those that require subsidies to adopt (positive total NPV)
+    T1 (%):   --> Tier 1 (%): Adopters that recover the total capital cost of retrofit
+    T2 (%):   --> Tier 2 (%): Adopters that recover only the net capital cost of retrofit
+    T3 (%):   --> Tier 3 (%): Adopters that require subsidies (positive total NPV)
+    TAD (%):  --> T1 + T2: Total Adoption Potential (recovers total or net capital cost)
+    TADS (%): --> TAD + T3: Total Adoption Potential with Additional Subsidy
+    
+    Format: T1 + T2 = TAD, TAD + T3 = TADS
+    Note: Overall is population-weighted (each home weighted equally)
     """
-
-    # Print header (matching user's desired format)
+    
+    # Define allowed fuels for filtering
+    allowed_fuels = filter_fuel if filter_fuel else ['Electricity', 'Natural Gas', 'Propane', 'Fuel Oil']
+    
+    # =================================================================
+    # PRINT HEADER
+    # =================================================================
+    
     if title is not None:
         print("-" * 80)
         print(f"{title.upper()}")
@@ -502,106 +594,338 @@ def print_adoption_decision_percentages(
     print(f"Scenarios: {' | '.join(scenario_names)}")
     print("-" * 80)
     
-    # Process each dataframe and collect results
+    # =================================================================
+    # CALCULATE AND PRINT POPULATION WEIGHTS
+    # =================================================================
+    
+    print("\nPopulation Weights by Scenario:")
+    print("-" * 40)
+    
+    # Store weights for each scenario
+    all_weights = []
+    
+    for idx, (source_df, scenario_name) in enumerate(zip(source_dataframes, scenario_names)):
+        # Filter to allowed fuels and valid income levels
+        valid_source = source_df[
+            source_df[fuel_col].isin(allowed_fuels) & 
+            source_df[income_col].isin(['LMI', 'MUI'])
+        ]
+        
+        # Count homes in each fuel × income group
+        group_counts = valid_source.groupby([fuel_col, income_col], observed=True).size()
+        total_homes = group_counts.sum()
+        
+        # Print weights for this scenario
+        short_name = scenario_name.split('_')[0]  # e.g., 'preIRA' or 'iraRef'
+        print(f"\n  {short_name} ({scenario_name[:50]}...):")
+        
+        for (fuel, income), count in sorted(group_counts.items()):
+            pct = count / total_homes * 100
+            print(f"    ({fuel}, {income}): {count:,} homes ({pct:.1f}%)")
+        
+        print(f"    TOTAL: {total_homes:,} homes")
+        
+        # Store for later use
+        all_weights.append({
+            'group_counts': group_counts,
+            'total_homes': total_homes
+        })
+    
+    print("-" * 40)
+    print()
+    
+    # =================================================================
+    # PROCESS DATAFRAMES AND CALCULATE PERCENTAGES
+    # =================================================================
+    
     all_results = {}
     
-    for df, scenario_name in zip(dataframes, scenario_names):
-        # Apply fuel filtering using the same logic as the existing module
+    for idx, (df, scenario_name, weights) in enumerate(zip(dataframes, scenario_names, all_weights)):
+        group_counts = weights['group_counts']
+        total_homes = weights['total_homes']
+        
+        # Apply fuel filtering to multi-index DataFrame
         if filter_fuel is not None:
-            # Use the same fuel filtering logic as subplot_grid_adoption_vBar
             fuel_level_names = [name for name in df.index.names if 'fuel' in name.lower()]
             if fuel_level_names:
                 fuel_level = fuel_level_names[0]
                 df = df[df.index.get_level_values(fuel_level).isin(filter_fuel)]
         
-        # Find the scenario columns in the MultiIndex columns
-        scenario_columns = [col for col in df.columns.get_level_values(0).unique() 
-                          if scenario_name.lower().replace('-', '').replace('_', '') in 
-                             col.lower().replace('-', '').replace('_', '')]
+        # Find the scenario column in the MultiIndex
+        scenario_columns = [
+            col for col in df.columns.get_level_values(0).unique() 
+            if scenario_name.lower().replace('-', '').replace('_', '') in 
+               col.lower().replace('-', '').replace('_', '')
+        ]
         
         if not scenario_columns:
-            raise ValueError(f"Warning: No columns found for scenario '{scenario_name}' in DataFrame")
+            raise ValueError(f"No columns found for scenario '{scenario_name}' in DataFrame")
             
-        scenario_col = scenario_columns[0]  # Take the first matching column
+        scenario_col = scenario_columns[0]
         
-        # Calculate overall percentages using the same approach as the module
-        overall_percentages = []
-        for tier, abbr in tier_mapping.items():
-            if (scenario_col, tier) in df.columns:
-                # Calculate mean across all groups (same as overall calculation)
-                overall_pct = df[(scenario_col, tier)].mean()
-                overall_percentages.append(f"{abbr} {overall_pct:.0f}%")
+        # Helper function to format output
+        def format_scenario_output(t1: float, t2: float, t3: float, tad: float, tads: float) -> str:
+            """Format the tier values in the troubleshooting pattern."""
+            return f"T1 {t1:.0f}% + T2 {t2:.0f}% = TAD {tad:.0f}%, TAD + T3 {t3:.0f}% = TADS {tads:.0f}%"
         
-        overall_key = "('Overall')"
+        # =============================================================
+        # CALCULATE POPULATION-WEIGHTED OVERALL
+        # =============================================================
+        
+        weighted_t1 = 0.0
+        weighted_t2 = 0.0
+        weighted_t3 = 0.0
+        weighted_tad = 0.0
+        weighted_tads = 0.0
+        
+        for group_idx in df.index:
+            if not isinstance(group_idx, tuple):
+                continue  # Skip non-tuple indices
+            
+            fuel, income = group_idx
+            
+            # Get the weight for this group
+            if (fuel, income) in group_counts.index:
+                weight = group_counts[(fuel, income)] / total_homes
+            else:
+                weight = 0.0
+            
+            # Get tier values for this group
+            row_data = df.loc[group_idx]
+            t1 = row_data.get((scenario_col, tier_columns['T1']), 0)
+            t2 = row_data.get((scenario_col, tier_columns['T2']), 0)
+            t3 = row_data.get((scenario_col, tier_columns['T3']), 0)
+            tad = row_data.get((scenario_col, tier_columns['TAD']), 0)
+            tads = row_data.get((scenario_col, tier_columns['TADS']), 0)
+            
+            # Accumulate weighted values
+            weighted_t1 += t1 * weight
+            weighted_t2 += t2 * weight
+            weighted_t3 += t3 * weight
+            weighted_tad += tad * weight
+            weighted_tads += tads * weight
+        
+        # Store overall result
+        overall_key = "('Overall [Pop-Weighted]')"
         if overall_key not in all_results:
             all_results[overall_key] = []
-        all_results[overall_key].append(", ".join(overall_percentages))
+        all_results[overall_key].append(
+            format_scenario_output(weighted_t1, weighted_t2, weighted_t3, weighted_tad, weighted_tads)
+        )
         
-        # Calculate percentages for each group using the existing index structure
+        # =============================================================
+        # CALCULATE INDIVIDUAL GROUP PERCENTAGES
+        # =============================================================
+        
         for group_idx in df.index:
-            # Handle both single-level and multi-level indices
             if isinstance(group_idx, tuple):
                 fuel, income = group_idx
                 group_key = f"('{fuel}', '{income}')"
             else:
                 group_key = f"('{group_idx}')"
             
-            group_percentages = []
-            for tier, abbr in tier_mapping.items():
-                if (scenario_col, tier) in df.columns:
-                    value = df.loc[group_idx, (scenario_col, tier)]
-                    group_percentages.append(f"{abbr} {value:.0f}%")
+            # Extract tier values for this group
+            row_data = df.loc[group_idx]
+            t1 = row_data.get((scenario_col, tier_columns['T1']), 0)
+            t2 = row_data.get((scenario_col, tier_columns['T2']), 0)
+            t3 = row_data.get((scenario_col, tier_columns['T3']), 0)
+            tad = row_data.get((scenario_col, tier_columns['TAD']), 0)
+            tads = row_data.get((scenario_col, tier_columns['TADS']), 0)
             
             if group_key not in all_results:
                 all_results[group_key] = []
-            all_results[group_key].append(", ".join(group_percentages))
+            all_results[group_key].append(
+                format_scenario_output(t1, t2, t3, tad, tads)
+            )
     
-    # Print results in the same order as the existing module (Overall first, then sorted groups)
+    # =================================================================
+    # PRINT RESULTS
+    # =================================================================
+    
     for group_key, scenario_results in all_results.items():
         combined_results = " | ".join(scenario_results)
         print(f"{group_key}: {combined_results}")
     
     print()  # Add blank line after section
 
-# scc = 'central'
-# rcm_model = 'inmap'
-# cr_function = 'acs'
 
-# print_adoption_decision_percentages(
-#         dataframes=[
-#             df_mi_basic_heating_adoption_inmap_acs, df_mi_basic_heating_adoption_inmap_acs,
-#             ],
-#         scenario_names=[
-#             f'preIRA_mp8_heating_adoption_{scc}_{rcm_model}_{cr_function}',
-#             f'iraRef_mp8_heating_adoption_{scc}_{rcm_model}_{cr_function}',
-#             ],
-#         title="Space Heating Air-Source Heat Pump (ASHP) Retrofit Scenario Comparison",
-#         subtitle="Basic Retrofit (MP8): Central SCC|InMAP|ACS",
-#         print_header_key=True,
-#     )
+# =============================================================================
+# EXAMPLE USAGE
+# =============================================================================
+"""
+scc = 'central'
+rcm_model = 'inmap'
+cr_function = 'acs'
+discount_rate = 'fixed_base'
 
-# print_adoption_decision_percentages(
-#         dataframes=[
-#             df_mi_moderate_heating_adoption_inmap_acs, df_mi_moderate_heating_adoption_inmap_acs,
-#             ],
-#         scenario_names=[
-#             f'preIRA_mp9_heating_adoption_{scc}_{rcm_model}_{cr_function}',
-#             f'iraRef_mp9_heating_adoption_{scc}_{rcm_model}_{cr_function}',
-#             ],
-#         title=None,
-#         subtitle="Moderate Retrofit (MP9): Central SCC|InMAP|ACS",
-#         print_header_key=False,
-#     )
+print_adoption_decision_percentages(
+    dataframes=[
+        df_mi_mp8_heating_adoption_inmap_acs_FIXED_BASE,
+        df_mi_mp8_heating_adoption_inmap_acs_FIXED_BASE,
+    ],
+    scenario_names=[
+        f'preIRA_mp8_heating_adoption_{scc}_{rcm_model}_{cr_function}_{discount_rate}',
+        f'iraRef_mp8_heating_adoption_{scc}_{rcm_model}_{cr_function}_{discount_rate}',
+    ],
+    source_dataframes=[
+        df_outputs_mp8_inmap_fixed_base,
+        df_outputs_mp8_inmap_fixed_base,
+    ],
+    category='heating',
+    title="SPACE HEATING ADOPTION POTENTIAL (MP8, MP9, MP10): HEALTH RCM-CRF SENSITIVITY",
+    subtitle="ASHP Only:\nNo IRA vs. IRA-Reference",
+    print_header_key=True,
+)
+"""
 
-# print_adoption_decision_percentages(
-#         dataframes=[
-#             df_mi_advanced_heating_adoption_inmap_acs, df_mi_advanced_heating_adoption_inmap_acs
-#             ],
-#         scenario_names=[
-#             f'preIRA_mp10_heating_adoption_{scc}_{rcm_model}_{cr_function}',
-#             f'iraRef_mp10_heating_adoption_{scc}_{rcm_model}_{cr_function}'
-#             ],
-#         title=None,
-#         subtitle="Advanced Retrofit (MP10): Central SCC|InMAP|ACS",
-#         print_header_key=False,
-#     )
+# def print_adoption_decision_percentages(
+#     dataframes: List[pd.DataFrame],
+#     scenario_names: List[str],
+#     title: str = None,
+#     subtitle: Optional[str] = None,
+#     print_header_key: bool = True,
+#     filter_fuel: Optional[List[str]] = None,
+# ) -> None:
+#     """
+#     Print adoption decision percentages using the same logic as create_multiIndex_adoption_df.
+    
+#     Args:
+#         dataframes: List of DataFrames with multi-index structure from create_multiIndex_adoption_df
+#         scenario_names: List of scenario names (e.g., ['Pre-IRA', 'IRA-Reference'])
+#         title: Section title
+#         subtitle: Optional subtitle for the section
+#         print_header_key: Whether to print the header key for the output
+#         filter_fuel: Optional list of fuels to include (uses same filtering as existing module)
+#     """
+    
+#     # Define the mapping based on the existing module's tier structure
+#     tier_mapping = {
+#         'Tier 1: Feasible': 'AD',
+#         'Total Adoption Potential': 'TAD', 
+#         'Total Adoption Potential (Additional Subsidy)': 'TADS',
+#     }
+    
+#     header_key = """(Base Fuel, Income Level): 
+#     AD (%):   --> Tier 1 (%): Adopters that recover the total capital cost of retrofit
+#     TAD (%):  --> Tier 1+2 (%): Adopters that recover either the total or net capital cost of retrofit
+#     TADS (%): --> Tier 1+2+3 (%): Both less and more WTP Adopters plus those that require subsidies to adopt (positive total NPV)
+#     """
+
+#     # Print header (matching user's desired format)
+#     if title is not None:
+#         print("-" * 80)
+#         print(f"{title.upper()}")
+#         print("-" * 80)
+
+#     if print_header_key:
+#         print(header_key)
+
+#     if subtitle is not None:
+#         print(f"\n{subtitle.upper()}\n")
+
+#     print(f"Scenarios: {' | '.join(scenario_names)}")
+#     print("-" * 80)
+    
+#     # Process each dataframe and collect results
+#     all_results = {}
+    
+#     for df, scenario_name in zip(dataframes, scenario_names):
+#         # Apply fuel filtering using the same logic as the existing module
+#         if filter_fuel is not None:
+#             # Use the same fuel filtering logic as subplot_grid_adoption_vBar
+#             fuel_level_names = [name for name in df.index.names if 'fuel' in name.lower()]
+#             if fuel_level_names:
+#                 fuel_level = fuel_level_names[0]
+#                 df = df[df.index.get_level_values(fuel_level).isin(filter_fuel)]
+        
+#         # Find the scenario columns in the MultiIndex columns
+#         scenario_columns = [col for col in df.columns.get_level_values(0).unique() 
+#                           if scenario_name.lower().replace('-', '').replace('_', '') in 
+#                              col.lower().replace('-', '').replace('_', '')]
+        
+#         if not scenario_columns:
+#             raise ValueError(f"Warning: No columns found for scenario '{scenario_name}' in DataFrame")
+            
+#         scenario_col = scenario_columns[0]  # Take the first matching column
+        
+#         # Calculate overall percentages using the same approach as the module
+#         overall_percentages = []
+#         for tier, abbr in tier_mapping.items():
+#             if (scenario_col, tier) in df.columns:
+#                 # Calculate mean across all groups (same as overall calculation)
+#                 overall_pct = df[(scenario_col, tier)].mean()
+#                 overall_percentages.append(f"{abbr} {overall_pct:.0f}%")
+        
+#         overall_key = "('Overall')"
+#         if overall_key not in all_results:
+#             all_results[overall_key] = []
+#         all_results[overall_key].append(", ".join(overall_percentages))
+        
+#         # Calculate percentages for each group using the existing index structure
+#         for group_idx in df.index:
+#             # Handle both single-level and multi-level indices
+#             if isinstance(group_idx, tuple):
+#                 fuel, income = group_idx
+#                 group_key = f"('{fuel}', '{income}')"
+#             else:
+#                 group_key = f"('{group_idx}')"
+            
+#             group_percentages = []
+#             for tier, abbr in tier_mapping.items():
+#                 if (scenario_col, tier) in df.columns:
+#                     value = df.loc[group_idx, (scenario_col, tier)]
+#                     group_percentages.append(f"{abbr} {value:.0f}%")
+            
+#             if group_key not in all_results:
+#                 all_results[group_key] = []
+#             all_results[group_key].append(", ".join(group_percentages))
+    
+#     # Print results in the same order as the existing module (Overall first, then sorted groups)
+#     for group_key, scenario_results in all_results.items():
+#         combined_results = " | ".join(scenario_results)
+#         print(f"{group_key}: {combined_results}")
+    
+#     print()  # Add blank line after section
+
+# # scc = 'central'
+# # rcm_model = 'inmap'
+# # cr_function = 'acs'
+
+# # print_adoption_decision_percentages(
+# #         dataframes=[
+# #             df_mi_basic_heating_adoption_inmap_acs, df_mi_basic_heating_adoption_inmap_acs,
+# #             ],
+# #         scenario_names=[
+# #             f'preIRA_mp8_heating_adoption_{scc}_{rcm_model}_{cr_function}',
+# #             f'iraRef_mp8_heating_adoption_{scc}_{rcm_model}_{cr_function}',
+# #             ],
+# #         title="Space Heating Air-Source Heat Pump (ASHP) Retrofit Scenario Comparison",
+# #         subtitle="Basic Retrofit (MP8): Central SCC|InMAP|ACS",
+# #         print_header_key=True,
+# #     )
+
+# # print_adoption_decision_percentages(
+# #         dataframes=[
+# #             df_mi_moderate_heating_adoption_inmap_acs, df_mi_moderate_heating_adoption_inmap_acs,
+# #             ],
+# #         scenario_names=[
+# #             f'preIRA_mp9_heating_adoption_{scc}_{rcm_model}_{cr_function}',
+# #             f'iraRef_mp9_heating_adoption_{scc}_{rcm_model}_{cr_function}',
+# #             ],
+# #         title=None,
+# #         subtitle="Moderate Retrofit (MP9): Central SCC|InMAP|ACS",
+# #         print_header_key=False,
+# #     )
+
+# # print_adoption_decision_percentages(
+# #         dataframes=[
+# #             df_mi_advanced_heating_adoption_inmap_acs, df_mi_advanced_heating_adoption_inmap_acs
+# #             ],
+# #         scenario_names=[
+# #             f'preIRA_mp10_heating_adoption_{scc}_{rcm_model}_{cr_function}',
+# #             f'iraRef_mp10_heating_adoption_{scc}_{rcm_model}_{cr_function}'
+# #             ],
+# #         title=None,
+# #         subtitle="Advanced Retrofit (MP10): Central SCC|InMAP|ACS",
+# #         print_header_key=False,
+# #     )
