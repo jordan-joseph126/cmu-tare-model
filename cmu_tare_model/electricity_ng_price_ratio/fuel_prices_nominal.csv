@@ -1,0 +1,117 @@
+﻿state_region,location_map,source,fuel_type,base_units,2018_nominal_unit_price,2019_nominal_unit_price,2020_nominal_unit_price,2021_nominal_unit_price,2022_nominal_unit_price
+National,National,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",10.50,10.51,10.78,12.18,14.75
+AL,AL,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",15.22,15.63,16.01,15.72,17.36
+AK,AK,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",10.99,11.11,11.14,10.94,11.08
+AZ,AZ,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",15.35,13.46,13.10,15.52,17.81
+AR,AR,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",11.77,11.05,12.28,12.55,16.78
+CA,CA,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",12.30,12.95,14.14,16.34,20.15
+CO,CO,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",7.74,7.77,7.22,9.11,12.72
+CT,CT,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",13.92,14.61,14.68,16.06,18.36
+DE,DE,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",12.60,12.10,12.95,13.14,15.00
+DC,DC,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",11.78,12.81,11.92,14.29,16.68
+FL,FL,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",21.34,21.66,21.38,22.90,26.21
+GA,GA,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",13.98,14.88,15.45,15.91,18.06
+HI,HI,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",43.48,44.14,37.75,46.99,57.46
+ID,ID,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",7.11,6.50,6.73,7.00,7.97
+IL,IL,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",8.15,8.04,7.94,10.51,13.80
+IN,IN,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",8.72,8.68,8.59,10.05,11.60
+IA,IA,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",8.94,8.19,7.78,10.20,13.04
+KS,KS,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",10.18,9.24,9.37,11.11,14.37
+KY,KY,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",10.56,10.85,11.14,12.21,14.58
+LA,LA,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",11.65,11.49,12.16,12.87,15.84
+ME,ME,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",16.32,16.05,14.88,16.54,20.73
+MD,MD,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",11.79,12.55,13.07,14.70,16.97
+MA,MA,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",15.47,14.72,14.71,16.02,20.45
+MI,MI,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",8.19,8.08,8.25,9.21,11.31
+MN,MN,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",8.69,8.06,8.04,9.40,12.12
+MS,MS,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",10.44,10.58,11.51,12.64,14.59
+MO,MO,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",10.37,10.41,10.39,10.87,14.29
+MT,MT,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",7.32,7.09,7.22,8.86,10.42
+NE,NE,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",8.54,7.90,8.04,9.59,12.83
+NV,NV,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",9.24,9.50,10.36,9.72,12.72
+NH,NH,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",15.35,15.75,14.66,16.31,20.51
+NJ,NJ,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",9.09,9.73,9.92,10.26,12.53
+NM,NM,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",7.89,6.40,7.04,9.77,12.51
+NY,NY,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",12.37,12.61,12.80,13.78,16.34
+NC,NC,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",12.11,12.88,13.23,14.12,17.20
+ND,ND,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",7.20,7.00,6.82,9.11,10.90
+OH,OH,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",9.10,9.58,9.53,11.08,13.07
+OK,OK,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",9.25,9.40,9.11,10.31,14.76
+OR,OR,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",10.65,9.97,10.91,11.76,12.83
+PA,PA,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",11.25,11.70,11.48,12.01,14.94
+RI,RI,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",15.65,15.36,15.06,16.18,18.17
+SC,SC,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",13.46,13.07,13.49,14.29,15.67
+SD,SD,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",7.66,7.29,7.11,9.75,10.99
+TN,TN,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",9.46,9.46,8.97,10.29,12.46
+TX,TX,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",11.42,10.61,11.64,13.77,16.52
+UT,UT,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",9.04,7.82,8.15,8.99,10.48
+VT,VT,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",13.65,13.14,13.21,14.01,15.51
+VA,VA,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",11.71,12.62,12.72,13.68,16.10
+WA,WA,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",10.28,9.82,10.97,11.63,12.83
+WV,WV,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",9.84,9.90,10.11,10.46,12.08
+WI,WI,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",8.04,7.68,7.52,9.74,11.34
+WY,WY,EIA Average Residential Price,naturalGas,"NOMINAL, dollars per cf",8.60,8.06,8.84,10.04,13.40
+National,National,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",12.87,13.01,13.15,13.66,15.04
+AK,AK,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",21.94,22.92,22.57,22.55,23.10
+AL,AL,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",12.18,12.53,12.57,12.96,14.25
+AR,AR,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",9.81,9.80,10.41,11.27,12.05
+AZ,AZ,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",12.77,12.43,12.27,12.54,13.02
+CA,CA,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",18.84,19.15,20.45,22.82,25.84
+CO,CO,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",12.15,12.18,12.36,13.07,14.19
+CT,CT,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",21.20,21.87,22.71,21.91,24.61
+DC,DC,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",12.84,12.98,12.63,13.09,14.18
+DE,DE,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",12.53,12.55,12.56,12.52,13.71
+FL,FL,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",11.54,11.70,11.27,11.90,13.90
+GA,GA,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",11.47,11.76,12.02,12.51,13.80
+HI,HI,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",32.47,32.06,30.28,33.49,43.03
+IA,IA,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",12.24,12.46,12.46,12.73,13.15
+ID,ID,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",10.15,9.89,9.95,10.16,10.37
+IL,IL,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",12.77,13.03,13.04,13.18,15.65
+IN,IN,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",12.26,12.58,12.83,13.37,14.59
+KS,KS,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",13.35,12.71,12.85,12.98,13.99
+KY,KY,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",10.60,10.80,10.87,11.50,12.91
+LA,LA,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",9.59,9.80,9.67,11.02,12.93
+MA,MA,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",21.61,21.92,21.97,22.89,25.97
+MD,MD,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",13.30,13.12,13.01,13.12,14.46
+ME,ME,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",16.84,17.89,16.81,17.02,22.44
+MI,MI,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",15.45,15.74,16.26,17.54,17.86
+MN,MN,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",13.14,13.04,13.17,13.50,14.25
+MO,MO,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",11.34,11.14,11.22,11.41,11.74
+MS,MS,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",11.12,11.27,11.17,11.56,12.41
+MT,MT,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",10.96,11.13,11.24,11.22,11.33
+NC,NC,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",11.09,11.42,11.38,11.32,11.62
+ND,ND,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",10.25,10.30,10.44,10.85,10.92
+NE,NE,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",10.70,10.77,10.80,10.75,10.79
+NH,NH,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",19.69,20.05,19.04,19.85,25.46
+NJ,NJ,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",15.41,15.85,16.03,16.35,16.74
+NM,NM,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",12.68,12.51,12.94,13.52,13.84
+NV,NV,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",11.85,12.00,11.34,11.49,13.78
+NY,NY,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",18.52,17.94,18.36,19.48,22.08
+OH,OH,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",12.56,12.38,12.29,12.77,13.85
+OK,OK,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",10.30,10.21,10.12,11.00,12.44
+OR,OR,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",10.98,11.01,11.17,11.37,11.42
+PA,PA,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",13.89,13.80,13.58,13.76,15.94
+RI,RI,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",20.55,21.73,22.01,22.30,23.21
+SC,SC,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",12.44,12.99,12.78,12.86,13.59
+SD,SD,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",11.59,11.55,11.75,12.22,12.09
+TN,TN,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",10.71,10.87,10.76,11.07,12.25
+TX,TX,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",11.20,11.76,11.71,12.11,13.76
+UT,UT,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",10.41,10.40,10.44,10.43,10.84
+VA,VA,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",11.73,12.07,12.03,11.96,13.34
+VT,VT,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",18.02,17.71,19.54,19.26,19.93
+WA,WA,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",9.75,9.71,9.87,10.11,10.26
+WI,WI,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",14.02,14.18,14.32,14.52,15.62
+WV,WV,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",11.18,11.25,11.80,12.15,13.23
+WY,WY,EIA Average Retail Price of Electricity,electricity,"NOMINAL, cents per kilowatthour",11.29,11.18,11.11,11.17,11.09
+National,National,"EIA Weekly Heating Oil and Propane Prices, Data Series (Residential Propane, Monthly), Calculated Average",propane,"NOMINAL, dollars per gallon",2.48,2.18,1.91,2.48,2.76
+New England ,New England ,"EIA Weekly Heating Oil and Propane Prices, Data Series (Residential Propane, Monthly), Calculated Average",propane,"NOMINAL, dollars per gallon",3.25,2.93,2.73,3.30,3.67
+Central Atlantic,Middle Atlantic,"EIA Weekly Heating Oil and Propane Prices, Data Series (Residential Propane, Monthly), Calculated Average",propane,"NOMINAL, dollars per gallon",3.28,2.82,2.44,3.00,3.34
+Lower Atlantic,South Atlantic,"EIA Weekly Heating Oil and Propane Prices, Data Series (Residential Propane, Monthly), Calculated Average",propane,"NOMINAL, dollars per gallon",3.26,2.91,2.63,3.20,3.46
+Midwest,Midwest,"EIA Weekly Heating Oil and Propane Prices, Data Series (Residential Propane, Monthly), Calculated Average",propane,"NOMINAL, dollars per gallon",1.89,1.68,1.52,2.13,2.37
+Gulf Coast ,West South Central,"EIA Weekly Heating Oil and Propane Prices, Data Series (Residential Propane, Monthly), Calculated Average",propane,"NOMINAL, dollars per gallon",2.48,2.28,2.12,2.64,2.95
+Rocky Mountain,Mountain,"EIA Weekly Heating Oil and Propane Prices, Data Series (Residential Propane, Monthly), Calculated Average",propane,"NOMINAL, dollars per gallon",2.19,1.92,1.66,2.23,2.52
+National,National,"EIA Weekly Heating Oil and Propane Prices, Data Series (Residential Heating Oil, Monthly), Calculated Average",fuelOil,"NOMINAL, dollars per gallon",3.20,3.09,2.55,3.02,4.70
+New England,New England,"EIA Weekly Heating Oil and Propane Prices, Data Series (Residential Propane, Monthly), Calculated Average",fuelOil,"NOMINAL, dollars per gallon",3.17,3.03,2.47,2.96,4.67
+Central Atlantic,Middle Atlantic,"EIA Weekly Heating Oil and Propane Prices, Data Series (Residential Propane, Monthly), Calculated Average",fuelOil,"NOMINAL, dollars per gallon",3.26,3.18,2.65,3.11,4.79
+Lower Atlantic,South Atlantic,"EIA Weekly Heating Oil and Propane Prices, Data Series (Residential Propane, Monthly), Calculated Average",fuelOil,"NOMINAL, dollars per gallon",2.87,2.80,2.45,2.91,4.44
+Midwest,Midwest,"EIA Weekly Heating Oil and Propane Prices, Data Series (Residential Propane, Monthly), Calculated Average",fuelOil,"NOMINAL, dollars per gallon",2.72,2.61,2.28,2.87,4.25
