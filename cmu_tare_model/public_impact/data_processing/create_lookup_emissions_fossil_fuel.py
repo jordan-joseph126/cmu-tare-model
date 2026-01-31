@@ -10,10 +10,10 @@ print_verbose = False
 
 if print_verbose:
     print("""
-    ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    FUNCTIONS: FOSSIL FUEL EMISSIONS FACTORS
-    ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    """)
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+FUNCTIONS: FOSSIL FUEL EMISSIONS FACTORS
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+""")
 
 # LAST UPDATED MARCH 26, 2025 @ 6:45 PM
 def calculate_fossil_fuel_emission_factor(
@@ -115,6 +115,7 @@ fuel_oil_factors = calculate_fossil_fuel_emission_factor(
     conversion_factor1=1000,
     conversion_factor2=138_500
 )
+
 # Natural Gas
 natural_gas_factors = calculate_fossil_fuel_emission_factor(
     fuel_type="naturalGas",
@@ -124,6 +125,7 @@ natural_gas_factors = calculate_fossil_fuel_emission_factor(
     conversion_factor1=1_000_000,
     conversion_factor2=1039
 )
+
 # Propane
 propane_factors = calculate_fossil_fuel_emission_factor(
     fuel_type="propane",

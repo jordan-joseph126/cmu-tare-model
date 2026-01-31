@@ -10,7 +10,7 @@ from config import PROJECT_ROOT
 # Set print_verbose to True for detailed output, or False for minimal output
 # By default, print_verbose is set to False because define_scenario_params is imported multiple times in the codebase
 # and we don't want to print the same information multiple times.
-print_verbose = True
+print_verbose = False
 # ====================================================================================================================================================================================
 
 """
@@ -178,11 +178,10 @@ def create_cambium_co2e_lookup(df_cambium_processed: pd.DataFrame) -> dict:
 
 if print_verbose:
     print("""
-    -------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------
     PRE-IRA LONG RUN AND SHORT RUN MARGINAL EMISSIONS RATES (LRMER, SRMER) FROM CAMBIUM 2021 RELEASE
-    -------------------------------------------------------------------------------------------------------
-
-    """)
+-------------------------------------------------------------------------------------------------------
+""")
 
 # CAMBIUM 2021 FOR PRE-IRA SCENARIO
 filename = 'cambium21_midCase_annual_gea.xlsx'
@@ -200,8 +199,8 @@ if print_verbose:
     {df_cambium21_margEmis_electricity}
 
     Creating lookup dictionary for LRMER and SRMER ...
-    -------------------------------------------------------------------------------------------------------
-    """)
+-------------------------------------------------------------------------------------------------------
+""")
 
 # Calculate electricity emission factors for Cambium 2021
 df_cambium21_processed = calculate_electricity_co2e_cambium(df_cambium21_margEmis_electricity)
@@ -211,10 +210,10 @@ lookup_emissions_electricity_climate_preIRA = create_cambium_co2e_lookup(df_camb
 
 if print_verbose:
     print("""
-    -------------------------------------------------------------------------------------------------------
-    IRA LONG RUN AND SHORT RUN MARGINAL EMISSIONS RATES (LRMER, SRMER) FROM CAMBIUM 2022 RELEASE
-    -------------------------------------------------------------------------------------------------------
-    """)
+-------------------------------------------------------------------------------------------------------
+IRA LONG RUN AND SHORT RUN MARGINAL EMISSIONS RATES (LRMER, SRMER) FROM CAMBIUM 2022 RELEASE
+-------------------------------------------------------------------------------------------------------
+""")
 
 # CAMBIUM 2022 FOR IRA SCENARIO
 filename = 'cambium22_allScenarios_annual_gea.xlsx'
@@ -232,8 +231,8 @@ if print_verbose:
     {df_cambium22_margEmis_electricity}
 
     Creating lookup dictionary for 2024 LRMER and SRMER ...
-    -------------------------------------------------------------------------------------------------------
-    """)
+-------------------------------------------------------------------------------------------------------
+""")
 
 # Calculate electricity emission factors for Cambium 2022
 df_cambium22_processed = calculate_electricity_co2e_cambium(df_cambium22_margEmis_electricity)

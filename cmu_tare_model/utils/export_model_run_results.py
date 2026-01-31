@@ -167,7 +167,7 @@ for rcm_model in RCM_MODELS:
     
     # Process each discount method
     for discount_rate_col in PRIVATE_DISCOUNT_RATE_COLS:
-        print(f"  Private Discounting Method: {discount_rate_col}")
+        print(f"Private Discounting Method: {discount_rate_col}")
         
         # Get the specific DataFrame for this RCM × discount rate combination
         df_results_export = DATAFRAMES_MP8_RCM_DISCOUNT_RATE_RESULTS[rcm_model][discount_rate_col]

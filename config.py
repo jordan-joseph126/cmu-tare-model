@@ -5,3 +5,4 @@ import os
 PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
 
 print(f"Project root directory: {PROJECT_ROOT}")
+
