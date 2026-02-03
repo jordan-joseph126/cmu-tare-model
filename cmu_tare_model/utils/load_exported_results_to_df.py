@@ -188,3 +188,92 @@ def load_model_run_output(
         print()
     
     return df_model_run_output
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+from typing import Dict, Optional
+
+def load_measure_package_data(
+    menu_mp: int,
+    output_folder_path: str,
+    location_id: str,
+    model_run_date_time: str,
+    columns_to_string: Optional[Dict[int, type]] = None
+) -> Dict[str, Dict[str, pd.DataFrame]]:
+    """Load all RCM × discount rate combinations for a measure package.
+    
+    Creates a nested dictionary structure matching the export format:
+    {rcm_model: {discount_rate_col: DataFrame}}
+    
+    Args:
+        menu_mp: Measure package identifier (8, 9, or 10).
+        output_folder_path: Base directory containing exported results.
+        location_id: Geographic identifier used in filenames.
+        model_run_date_time: Timestamp string from the model run.
+        columns_to_string: Optional dict mapping column indices to str type.
+    
+    Returns:
+        Nested dictionary: {rcm_model: {discount_rate_col: DataFrame}}
+    """
+    if columns_to_string is None:
+        columns_to_string = {16: str, 19: str, 20: str, 21: str}
+    
+    # Initialize nested dictionary
+    dataframes = {
+        rcm: {dr: None for dr in PRIVATE_DISCOUNT_RATE_COLS}
+        for rcm in RCM_MODELS
+    }
+    
+    print(f"Loading MP{menu_mp} data...")
+    
+    for rcm_model in RCM_MODELS:
+        print(f"  {rcm_model.upper()}: ", end="")
+        
+        for discount_rate_col in PRIVATE_DISCOUNT_RATE_COLS:
+            df = load_model_run_output(
+                results_category='summary',
+                menu_mp=menu_mp,
+                output_folder_path=output_folder_path,
+                location_id=location_id,
+                results_export_formatted_date=model_run_date_time,
+                rcm_model=rcm_model,
+                discount_rate_col=discount_rate_col,
+                columns_to_string=columns_to_string,
+                use_chunked_loading=True,
+                chunk_size=10000
+            )
+            
+            dataframes[rcm_model][discount_rate_col] = df
+            print("✓" if df is not None else "✗", end=" ")
+        
+        print()  # Newline after each RCM model
+    
+    print(f"MP{menu_mp} loading complete!\n")
+    return dataframes
+
+
+def get_df(
+    dataframes: Dict[str, Dict[str, pd.DataFrame]], 
+    rcm: str, 
+    discount: str
+) -> pd.DataFrame:
+    """Convenience accessor for nested dataframe dictionary.
+    
+    Provides shorter syntax for accessing dataframes:
+        get_df(DATAFRAMES_MP8, 'inmap', 'fixed_base')
+    Instead of:
+        DATAFRAMES_MP8['inmap']['private_discount_rate_fixed_base']
+    
+    Args:
+        dataframes: Nested dictionary from load_measure_package_data.
+        rcm: RCM model name ('ap2', 'easiur', 'inmap').
+        discount: Short discount rate name ('fixed_low', 'fixed_base', 
+                  'fixed_high', 'variable').
+    
+    Returns:
+        The requested DataFrame.
+    """
+    discount_key = f'private_discount_rate_{discount}'
+    return dataframes[rcm][discount_key]
