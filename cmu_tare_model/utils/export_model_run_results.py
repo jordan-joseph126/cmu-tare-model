@@ -12,7 +12,7 @@ def export_model_run_output(
     location_id: str,
     results_export_formatted_date: str,
     rcm_model: Optional[str] = None,
-    discount_rate_short: Optional[str] = None
+    discount_rate: Optional[str] = None
 ) -> None:
     """Export model run results to CSV files with sensitivity tracking.
     
@@ -24,7 +24,7 @@ def export_model_run_output(
         baseline_summary/summary_baseline/
             - baseline_results_{location_id}_{date}.csv
         
-        retrofit_mp{menu_mp}_results/summary_mp{menu_mp}_{rcm_model}_{discount_rate_short}/
+        retrofit_mp{menu_mp}_results/summary_mp{menu_mp}_{rcm_model}_{discount_rate}/
             - mp{menu_mp}_results_{location_id}_{date}.csv
             - Directory uses short key (e.g., 'fixed_base')
             - DataFrame columns use full names (e.g., 'private_discount_rate_fixed_base')
@@ -33,7 +33,7 @@ def export_model_run_output(
         df_results_export: DataFrame containing the results to export.
         results_category: Category of results being exported. Valid options:
             - 'summary_baseline': Baseline summary results
-            - 'summary': Retrofit summary results (requires rcm_model and discount_rate_short)
+            - 'summary': Retrofit summary results (requires rcm_model and discount_rate)
             - 'damages_climate_IRA', 'damages_climate_noIRA': Climate damages
             - 'damages_health_IRA', 'damages_health_noIRA': Health damages
             - 'fuel_costs_IRA', 'fuel_costs_noIRA': Fuel costs
@@ -43,7 +43,7 @@ def export_model_run_output(
         results_export_formatted_date: Date string for the filename (e.g., '2024_01_15').
         rcm_model: RCM model used for health damage calculations (e.g., 'ap2', 'easiur', 
             'inmap'). Required when results_category='summary' and menu_mp != 0.
-        discount_rate_short: Short key for discount rate method (e.g., 'fixed_base', 'variable').
+        discount_rate: Short key for discount rate method (e.g., 'fixed_base', 'variable').
             'private_discount_rate_variable'). Required when results_category='summary' and menu_mp != 0.
             
     Raises:
@@ -79,25 +79,25 @@ def export_model_run_output(
         # Validate that sensitivity parameters are provided
         if rcm_model is None:
             raise ValueError("rcm_model is required for retrofit summary results (results_category='summary')")
-        if discount_rate_short is None:
-            raise ValueError("discount_rate_short is required for retrofit summary results (results_category='summary')")
+        if discount_rate is None:
+            raise ValueError("discount_rate is required for retrofit summary results (results_category='summary')")
 
         # Validate short key is valid
-        if discount_rate_short not in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
+        if discount_rate not in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
             raise ValueError(
-                f"discount_rate_short must be one of {list(PRIVATE_DISCOUNT_RATE_SHORT_KEYS)}, "
-                f"got '{discount_rate_short}'"
+                f"discount_rate must be one of {list(PRIVATE_DISCOUNT_RATE_SHORT_KEYS)}, "
+                f"got '{discount_rate}'"
             )
 
         # Build directory path using sensitivity parameters
         directory_path = os.path.join(
             f"retrofit_mp{menu_mp}_results",
-            f"summary_mp{menu_mp}_{rcm_model}_{discount_rate_short}"
+            f"summary_mp{menu_mp}_{rcm_model}_{discount_rate}"
         )
         filename = f"mp{menu_mp}_results_{location_id}_{results_export_formatted_date}.csv"
         print(f"MEASURE PACKAGE {menu_mp} SUMMARY RESULTS:")
         print(f"  RCM Model: {rcm_model}")
-        print(f"  Discount Rate: {discount_rate_short}")
+        print(f"  Discount Rate: {discount_rate}")
         
     elif results_category.startswith('damages_'):
         # Damages results (climate or health, IRA or noIRA)
