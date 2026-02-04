@@ -5,7 +5,7 @@ import gc
 from typing import Optional, Dict, Union
 
 from cmu_tare_model.constants import RCM_MODELS, VERBOSE
-from cmu_tare_model.utils.discounting import PRIVATE_DISCOUNT_RATE_COLS
+from cmu_tare_model.utils.discounting import PRIVATE_DISCOUNT_RATE_SHORT_KEYS
 
 def load_model_run_output(
     results_category: str,
@@ -14,7 +14,7 @@ def load_model_run_output(
     location_id: str,
     results_export_formatted_date: str,
     rcm_model: Optional[str] = None,
-    discount_rate_col: Optional[str] = None,
+    discount_rate_short: Optional[str] = None,
     columns_to_string: Optional[Dict[Union[str, int], str]] = None,
     use_chunked_loading: bool = True,
     chunk_size: int = 50000,
@@ -39,8 +39,8 @@ def load_model_run_output(
         results_export_formatted_date: Date string in the filename (e.g., '2024-01-24_10-30').
         rcm_model: RCM model used for health damage calculations (e.g., 'ap2', 'easiur', 
             'inmap'). Required when results_category='summary' and menu_mp != 0.
-        discount_rate_col: Discount rate method used (e.g., 'private_discount_rate_fixed_base',
-            'private_discount_rate_variable'). Required when results_category='summary' and menu_mp != 0.
+        discount_rate_short: Short key for discount rate method (e.g., 'fixed_base', 'variable').
+            Required when results_category='summary' and menu_mp != 0.
         columns_to_string: Dictionary mapping column indices/names to string dtype.
         use_chunked_loading: Whether to load the file in chunks to reduce memory usage.
         chunk_size: Number of rows to read per chunk when using chunked loading.
@@ -71,7 +71,7 @@ def load_model_run_output(
         ...     location_id='national',
         ...     results_export_formatted_date='2024-01-24_10-30',
         ...     rcm_model='ap2',
-        ...     discount_rate_col='private_discount_rate_fixed_base'
+        ...     discount_rate_short='fixed_base'
         ... )
     """
     # Validate required parameters
@@ -96,8 +96,8 @@ def load_model_run_output(
         # Validate that sensitivity parameters are provided
         if rcm_model is None:
             raise ValueError("rcm_model is required for retrofit summary results (results_category='summary')")
-        if discount_rate_col is None:
-            raise ValueError("discount_rate_col is required for retrofit summary results (results_category='summary')")
+        if discount_rate_short is None:
+            raise ValueError("discount_rate_short is required for retrofit summary results (results_category='summary')")
         
         # Validate measure package (only for summary results)
         if menu_mp not in ['8', '9', '10']:
@@ -108,13 +108,16 @@ def load_model_run_output(
             raise ValueError(f"rcm_model must be one of {RCM_MODELS}, got '{rcm_model}'")
         
         # Validate discount rate is valid
-        if discount_rate_col not in PRIVATE_DISCOUNT_RATE_COLS:
-            raise ValueError(f"discount_rate_col must be one of {PRIVATE_DISCOUNT_RATE_COLS}, got '{discount_rate_col}'")
+        if discount_rate_short not in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
+            raise ValueError(
+                f"discount_rate_short must be one of {PRIVATE_DISCOUNT_RATE_SHORT_KEYS}, "
+                f"got '{discount_rate_short}'"
+            )
                 
         # Build directory path using sensitivity parameters
         directory_path = os.path.join(
             f"retrofit_mp{menu_mp}_results",
-            f"summary_mp{menu_mp}_{rcm_model}_{discount_rate_col}"
+            f"summary_mp{menu_mp}_{rcm_model}_{discount_rate_short}"
         )
         filename = f"mp{menu_mp}_results_{location_id}_{results_export_formatted_date}.csv"
         
@@ -202,10 +205,10 @@ def load_measure_package_data(
     model_run_date_time: str,
     columns_to_string: Optional[Dict[int, type]] = None
 ) -> Dict[str, Dict[str, pd.DataFrame]]:
-    """Load all RCM × discount rate combinations for a measure package.
+    """Load all discount rate × RCM combinations for a measure package.
     
-    Creates a nested dictionary structure matching the export format:
-    {rcm_model: {discount_rate_col: DataFrame}}
+    Creates a nested dictionary structure using short keys:
+    {discount_rate_short: {rcm_model: DataFrame}}
     
     Args:
         menu_mp: Measure package identifier (8, 9, or 10).
@@ -215,23 +218,24 @@ def load_measure_package_data(
         columns_to_string: Optional dict mapping column indices to str type.
     
     Returns:
-        Nested dictionary: {rcm_model: {discount_rate_col: DataFrame}}
+        Nested dictionary: {discount_rate_short: {rcm_model: DataFrame}}
     """
     if columns_to_string is None:
         columns_to_string = {16: str, 19: str, 20: str, 21: str}
     
-    # Initialize nested dictionary
+    # Initialize nested dictionary with SHORT KEYS and proper level ordering
     dataframes = {
-        rcm: {dr: None for dr in PRIVATE_DISCOUNT_RATE_COLS}
-        for rcm in RCM_MODELS
+        discount_rate: {rcm: None for rcm in RCM_MODELS}
+        for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS
     }
     
     print(f"Loading MP{menu_mp} data...")
     
-    for rcm_model in RCM_MODELS:
-        print(f"  {rcm_model.upper()}: ", end="")
+    # Iterate in same order as dictionary structure: discount rate → RCM
+    for discount_rate_short in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
+        print(f"  {discount_rate_short}: ", end="")
         
-        for discount_rate_col in PRIVATE_DISCOUNT_RATE_COLS:
+        for rcm_model in RCM_MODELS:
             df = load_model_run_output(
                 results_category='summary',
                 menu_mp=menu_mp,
@@ -239,41 +243,16 @@ def load_measure_package_data(
                 location_id=location_id,
                 results_export_formatted_date=model_run_date_time,
                 rcm_model=rcm_model,
-                discount_rate_col=discount_rate_col,
+                discount_rate_short=discount_rate_short,  # Use short key
                 columns_to_string=columns_to_string,
                 use_chunked_loading=True,
                 chunk_size=10000
             )
             
-            dataframes[rcm_model][discount_rate_col] = df
+            dataframes[discount_rate_short][rcm_model] = df
             print("✓" if df is not None else "✗", end=" ")
         
-        print()  # Newline after each RCM model
+        print()  # Newline after each discount rate
     
     print(f"MP{menu_mp} loading complete!\n")
     return dataframes
-
-
-def get_df(
-    dataframes: Dict[str, Dict[str, pd.DataFrame]], 
-    rcm: str, 
-    discount: str
-) -> pd.DataFrame:
-    """Convenience accessor for nested dataframe dictionary.
-    
-    Provides shorter syntax for accessing dataframes:
-        get_df(DATAFRAMES_MP8, 'inmap', 'fixed_base')
-    Instead of:
-        DATAFRAMES_MP8['inmap']['private_discount_rate_fixed_base']
-    
-    Args:
-        dataframes: Nested dictionary from load_measure_package_data.
-        rcm: RCM model name ('ap2', 'easiur', 'inmap').
-        discount: Short discount rate name ('fixed_low', 'fixed_base', 
-                  'fixed_high', 'variable').
-    
-    Returns:
-        The requested DataFrame.
-    """
-    discount_key = f'private_discount_rate_{discount}'
-    return dataframes[rcm][discount_key]
