@@ -10,9 +10,9 @@
 # CONSTANTS: TARE MODEL
 # =============================================================
 # Configuration
-VERBOSE = False
-PRINT_DEBUG = False
-PRINT_VERBOSE_DATAFRAMES = False
+VERBOSE = True
+PRINT_DEBUG = True
+PRINT_VERBOSE_DATAFRAMES = True
 
 # ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached', 'Mobile Home', 'Multi-Family with 2 - 4 Units']
 ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached']

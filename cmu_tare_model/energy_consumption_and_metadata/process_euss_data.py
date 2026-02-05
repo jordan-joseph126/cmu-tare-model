@@ -147,6 +147,7 @@ def df_enduse_refactored(
 
     Args:
         df_baseline: The baseline DataFrame containing raw EUSS/ResStock data.
+        verbose: Whether to print detailed processing information.
 
     Returns:
         A standardized DataFrame with processed consumption data and data quality flags.
@@ -154,6 +155,13 @@ def df_enduse_refactored(
     Raises:
         ValueError: If required columns are missing from the input DataFrame.
     """
+    # Updated to handle different enduses based on EQUIPMENT_SPECS.
+    # - Rest of codebase updated so only initial columns created for cooling and replacement cost calculations performed
+    # - This allows for a scenario where only heating is replaced AND one where heating and cooling systems are both replace with HP
+    # - Resolves the excessive data columns and double counting with $8000 rebate. No longer need CDD projections.
+    valid_categories = list(EQUIPMENT_SPECS.keys())
+    # valid_categories.append('cooling')
+
     # Initial check
     if df_baseline.empty:
         print("Warning: Input DataFrame is empty")
@@ -163,8 +171,7 @@ def df_enduse_refactored(
     df_baseline = preprocess_fuel_data(df_baseline, 'in.clothes_dryer')
     df_baseline = preprocess_fuel_data(df_baseline, 'in.cooking_range')
 
-    # Initialize df_enduse from df_baseline with all required columns
-    # Create a new DataFrame named df_enduse using pd.DataFrame constructor
+    # ===== STEP 1: Initialize with common columns (always present) =====
     df_enduse = pd.DataFrame({
         'square_footage': df_baseline['in.sqft'],
         'census_region': df_baseline['in.census_region'],
@@ -189,33 +196,52 @@ def df_enduse_refactored(
         'occupancy': df_baseline['in.occupants'],
         'tenure': df_baseline['in.tenure'],
         'vacancy_status': df_baseline['in.vacancy_status'],
-        'base_heating_fuel': df_baseline['in.heating_fuel'],
-        'heating_type': df_baseline['in.hvac_heating_type_and_fuel'],
-        'hvac_cooling_type': df_baseline['in.hvac_cooling_type'],
-        'vintage': df_baseline['in.vintage'],
-        'base_heating_efficiency': df_baseline['in.hvac_heating_efficiency'],
-        'base_electricity_heating_consumption': df_baseline['out.electricity.heating.energy_consumption.kwh'],
-        'base_fuelOil_heating_consumption': df_baseline['out.fuel_oil.heating.energy_consumption.kwh'],
-        'base_naturalGas_heating_consumption': df_baseline['out.natural_gas.heating.energy_consumption.kwh'],
-        'base_propane_heating_consumption': df_baseline['out.propane.heating.energy_consumption.kwh'],
-        'base_waterHeating_fuel': df_baseline['in.water_heater_fuel'],
-        'waterHeating_type': df_baseline['in.water_heater_efficiency'],
-        'base_electricity_waterHeating_consumption': df_baseline['out.electricity.hot_water.energy_consumption.kwh'],
-        'base_fuelOil_waterHeating_consumption': df_baseline['out.fuel_oil.hot_water.energy_consumption.kwh'],
-        'base_naturalGas_waterHeating_consumption': df_baseline['out.natural_gas.hot_water.energy_consumption.kwh'],
-        'base_propane_waterHeating_consumption': df_baseline['out.propane.hot_water.energy_consumption.kwh'],
-        'base_clothesDrying_fuel': df_baseline['in.clothes_dryer'],
-        'base_electricity_clothesDrying_consumption': df_baseline['out.electricity.clothes_dryer.energy_consumption.kwh'],
-        'base_naturalGas_clothesDrying_consumption': df_baseline['out.natural_gas.clothes_dryer.energy_consumption.kwh'],
-        'base_propane_clothesDrying_consumption': df_baseline['out.propane.clothes_dryer.energy_consumption.kwh'],
-        'base_cooking_fuel': df_baseline['in.cooking_range'],
-        'base_electricity_cooking_consumption': df_baseline['out.electricity.range_oven.energy_consumption.kwh'],
-        'base_naturalGas_cooking_consumption': df_baseline['out.natural_gas.range_oven.energy_consumption.kwh'],
-        'base_propane_cooking_consumption': df_baseline['out.propane.range_oven.energy_consumption.kwh']
+        'vintage': df_baseline['in.vintage']
     })
 
-    # UPDATED: Uses get_all_possible_fuel_columns() for consumption calculation
-    for category in EQUIPMENT_SPECS.keys():
+    # ===== STEP 2: Conditionally add category-specific columns =====
+    
+    # HEATING - only if in scope
+    if 'heating' in valid_categories:
+        df_enduse['base_heating_fuel'] = df_baseline['in.heating_fuel']
+        df_enduse['heating_type'] = df_baseline['in.hvac_heating_type_and_fuel']
+        df_enduse['base_heating_efficiency'] = df_baseline['in.hvac_heating_efficiency']
+        df_enduse['base_electricity_heating_consumption'] = df_baseline['out.electricity.heating.energy_consumption.kwh']
+        df_enduse['base_fuelOil_heating_consumption'] = df_baseline['out.fuel_oil.heating.energy_consumption.kwh']
+        df_enduse['base_naturalGas_heating_consumption'] = df_baseline['out.natural_gas.heating.energy_consumption.kwh']
+        df_enduse['base_propane_heating_consumption'] = df_baseline['out.propane.heating.energy_consumption.kwh']
+
+        # ADD COOLING COLUMNS FOR REPLACEMENT COST CALCULATIONS 
+        df_enduse['base_cooling_fuel'] = 'Electricity'  # Cooling is always electric
+        df_enduse['cooling_type'] = df_baseline['in.hvac_cooling_type']
+        df_enduse['base_cooling_efficiency'] = df_baseline['in.hvac_cooling_efficiency']
+        df_enduse['base_electricity_cooling_consumption'] = df_baseline['out.electricity.cooling.energy_consumption.kwh']
+    
+    # WATER HEATING - only if in scope
+    if 'waterHeating' in valid_categories:
+        df_enduse['base_waterHeating_fuel'] = df_baseline['in.water_heater_fuel']
+        df_enduse['waterHeating_type'] = df_baseline['in.water_heater_efficiency']
+        df_enduse['base_electricity_waterHeating_consumption'] = df_baseline['out.electricity.hot_water.energy_consumption.kwh']
+        df_enduse['base_fuelOil_waterHeating_consumption'] = df_baseline['out.fuel_oil.hot_water.energy_consumption.kwh']
+        df_enduse['base_naturalGas_waterHeating_consumption'] = df_baseline['out.natural_gas.hot_water.energy_consumption.kwh']
+        df_enduse['base_propane_waterHeating_consumption'] = df_baseline['out.propane.hot_water.energy_consumption.kwh']
+    
+    # CLOTHES DRYING - only if in scope
+    if 'clothesDrying' in valid_categories:
+        df_enduse['base_clothesDrying_fuel'] = df_baseline['in.clothes_dryer']
+        df_enduse['base_electricity_clothesDrying_consumption'] = df_baseline['out.electricity.clothes_dryer.energy_consumption.kwh']
+        df_enduse['base_naturalGas_clothesDrying_consumption'] = df_baseline['out.natural_gas.clothes_dryer.energy_consumption.kwh']
+        df_enduse['base_propane_clothesDrying_consumption'] = df_baseline['out.propane.clothes_dryer.energy_consumption.kwh']
+    
+    # COOKING - only if in scope
+    if 'cooking' in valid_categories:
+        df_enduse['base_cooking_fuel'] = df_baseline['in.cooking_range']
+        df_enduse['base_electricity_cooking_consumption'] = df_baseline['out.electricity.range_oven.energy_consumption.kwh']
+        df_enduse['base_naturalGas_cooking_consumption'] = df_baseline['out.natural_gas.range_oven.energy_consumption.kwh']
+        df_enduse['base_propane_cooking_consumption'] = df_baseline['out.propane.range_oven.energy_consumption.kwh']
+   
+    # ===== STEP 3: Calculate total consumption for each category in scope =====
+    for category in valid_categories:
         # Get consumption columns for this category
         consumption_columns = get_all_possible_fuel_columns(category)
         
@@ -227,14 +253,13 @@ def df_enduse_refactored(
         df_enduse[f'baseline_{category}_consumption'] = total_consumption.replace(0, np.nan)
         print(f"Calculated total {category} consumption")
     
-    # Step 1: Create data quality flags
+    # ===== STEP 4: Create data quality flags =====
     df_enduse = identify_valid_homes(df_enduse)
     
-    # Step 2: Apply validation using the combined validation system
-    # Since this is baseline data, menu_mp = 0
+    # ===== STEP 5: Apply validation =====
     print("\nApplying data validation (baseline only):")
-    for category in EQUIPMENT_SPECS.keys():
-        # Get validation mask (this already knows it's baseline)
+    for category in valid_categories:
+        # Get validation mask (baseline, so menu_mp = 0)
         valid_mask = get_valid_calculation_mask(df_enduse, category, menu_mp=0, verbose=verbose)
         
         # Apply masking to consumption columns
@@ -267,8 +292,9 @@ def df_enduse_compare(
 
     This function constructs a new DataFrame (df_compare) that includes columns
     from df_mp, df_cooking_range, and merges them with df_baseline to compare
-    baseline vs. measure package outputs for heating, water heating, clothes drying,
-    and cooking.
+    baseline vs. measure package outputs.
+    
+    Only includes columns for equipment categories present in EQUIPMENT_SPECS.
 
     Args:
         df_mp: The main DataFrame containing modeling parameters and outputs.
@@ -276,36 +302,63 @@ def df_enduse_compare(
         menu_mp: The menu measure package number.
         df_baseline: The baseline DataFrame to merge with df_compare.
         df_cooking_range: Additional DataFrame for cooking range parameters/outputs.
-        verbose: Whether to print detailed comparison information.
+        verbose: Whether to print detailed processing information.
 
     Returns:
         A merged DataFrame (df_compare) that includes relevant columns for
         baseline and measure packages comparison.
     """
-    # Build df_compare from relevant columns in df_mp and df_cooking_range
-    df_compare = pd.DataFrame({
-        'hvac_has_ducts': df_mp['in.hvac_has_ducts'],
-        'baseline_heating_type': df_mp['in.hvac_heating_type_and_fuel'],
-        'hvac_heating_efficiency': df_mp['in.hvac_heating_efficiency'],
-        'hvac_heating_type_and_fuel': df_mp['in.hvac_heating_type_and_fuel'],
-        'size_heat_pump_backup_primary_k_btu_h': df_mp['out.params.size_heat_pump_backup_primary_k_btu_h'],
-        'size_heating_system_primary_k_btu_h': df_mp['out.params.size_heating_system_primary_k_btu_h'],
-        'size_heating_system_secondary_k_btu_h': df_mp['out.params.size_heating_system_secondary_k_btu_h'],
-        'upgrade_hvac_heating_efficiency': df_mp['upgrade.hvac_heating_efficiency'],
-        'water_heater_efficiency': df_mp['in.water_heater_efficiency'],
-        'water_heater_fuel': df_mp['in.water_heater_fuel'],
-        'water_heater_in_unit': df_mp['in.water_heater_in_unit'],
-        'size_water_heater_gal': df_mp['out.params.size_water_heater_gal'],
-        'upgrade_water_heater_efficiency': df_mp['upgrade.water_heater_efficiency'],
-        'clothes_dryer_in_unit': df_mp['in.clothes_dryer'],
-        'upgrade_clothes_dryer': df_mp['upgrade.clothes_dryer'],
-        'cooking_range_in_unit': df_cooking_range['in.cooking_range'],
-        'upgrade_cooking_range': df_cooking_range['upgrade.cooking_range']
-    })
+    # Updated to handle different enduses based on EQUIPMENT_SPECS.
+    # - Rest of codebase updated so only initial columns created for cooling and replacement cost calculations performed
+    # - This allows for a scenario where only heating is replaced AND one where heating and cooling systems are both replace with HP
+    # - Resolves the excessive data columns and double counting with $8000 rebate. No longer need CDD projections.
+    valid_categories = list(EQUIPMENT_SPECS.keys())
+    # valid_categories.append('cooling')
 
-    for category in EQUIPMENT_SPECS.keys():
+    # ===== STEP 1: Initialize with common columns (always present) =====
+    df_compare = pd.DataFrame({
+        'hvac_has_ducts': df_mp['in.hvac_has_ducts']
+    })
+    
+    # ===== STEP 2: Conditionally add category-specific metadata columns =====
+    
+    # HEATING - only if in scope
+    if 'heating' in valid_categories:
+        df_compare['hvac_heating_type_and_fuel'] = df_mp['in.hvac_heating_type_and_fuel']
+        df_compare['hvac_heating_efficiency'] = df_mp['in.hvac_heating_efficiency']
+        # df_compare['size_heat_pump_backup_k_btu_h'] = df_mp['out.params.size_heat_pump_backup_primary_k_btu_h']
+        df_compare['size_heating_system_primary_k_btu_h'] = df_mp['out.params.size_heating_system_primary_k_btu_h']
+        # df_compare['size_heating_secondary_k_btu_h'] = df_mp['out.params.size_heating_system_secondary_k_btu_h']
+        df_compare['upgrade_hvac_heating_efficiency'] = df_mp['upgrade.hvac_heating_efficiency']
+    
+        # ADD COOLING COLUMNS FOR REPLACEMENT COST CALCULATIONS 
+        df_compare['hvac_cooling_type'] = df_mp['in.hvac_cooling_type']
+        df_compare['hvac_cooling_efficiency'] = df_mp['in.hvac_cooling_efficiency']
+        df_compare['size_cooling_system_primary_k_btu_h'] = df_mp['out.params.size_cooling_system_primary_k_btu_h']
+        df_compare['upgrade_hvac_cooling_efficiency'] = df_mp['upgrade.hvac_cooling_efficiency']
+    
+    # WATER HEATING - only if in scope
+    if 'waterHeating' in valid_categories:
+        df_compare['water_heater_efficiency'] = df_mp['in.water_heater_efficiency']
+        df_compare['water_heater_fuel'] = df_mp['in.water_heater_fuel']
+        df_compare['water_heater_in_unit'] = df_mp['in.water_heater_in_unit']
+        df_compare['size_water_heater_gal'] = df_mp['out.params.size_water_heater_gal']
+        df_compare['upgrade_water_heater_efficiency'] = df_mp['upgrade.water_heater_efficiency']
+    
+    # CLOTHES DRYING - only if in scope
+    if 'clothesDrying' in valid_categories:
+        df_compare['clothes_dryer_in_unit'] = df_mp['in.clothes_dryer']
+        df_compare['upgrade_clothes_dryer'] = df_mp['upgrade.clothes_dryer']
+    
+    # COOKING - only if in scope
+    if 'cooking' in valid_categories:
+        df_compare['cooking_range_in_unit'] = df_cooking_range['in.cooking_range']
+        df_compare['upgrade_cooking_range'] = df_cooking_range['upgrade.cooking_range']
+
+    # ===== STEP 3: Add consumption columns for each category in scope =====
+    for category in valid_categories:
         if category == 'heating':
-            # Special handling for measure packages 9 and 10 (MP9, MP10)
+            # Special handling for measure packages 9 and 10 (MP9, MP10) with enclosure upgrades
             if input_mp == 'upgrade09':
                 menu_mp = 9
                 df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp['out.electricity.heating.energy_consumption.kwh'].round(2)
@@ -313,52 +366,56 @@ def df_enduse_compare(
                 # Basic Enclosure Package
                 df_compare['base_insulation_atticFloor'] = df_mp['in.insulation_ceiling']
                 df_compare['upgrade_insulation_atticFloor'] = df_mp['upgrade.insulation_ceiling']
-                df_compare['out_params_floor_area_attic_ft_2'] = df_mp['out.params.floor_area_attic_ft_2']
+                df_compare['floor_area_attic_ft2'] = df_mp['out.params.floor_area_attic_ft_2']
 
                 df_compare['upgrade_infiltration_reduction'] = df_mp['upgrade.infiltration_reduction']
 
                 df_compare['base_ducts'] = df_mp['in.ducts']
                 df_compare['upgrade_duct_sealing'] = df_mp['upgrade.ducts']
-                df_compare['out_params_duct_unconditioned_surface_area_ft_2'] = df_mp['out.params.duct_unconditioned_surface_area_ft_2']
+                df_compare['duct_unconditioned_area_ft2'] = df_mp['out.params.duct_unconditioned_surface_area_ft_2']
 
                 df_compare['base_insulation_wall'] = df_mp['in.insulation_wall']
                 df_compare['upgrade_insulation_wall'] = df_mp['upgrade.insulation_wall']
-                df_compare['out_params_wall_area_above_grade_exterior_ft_2'] = df_mp['out.params.wall_area_above_grade_exterior_ft_2']
+                df_compare['wall_area_above_grade_ft2'] = df_mp['out.params.wall_area_above_grade_exterior_ft_2']
 
             elif input_mp == 'upgrade10':
                 menu_mp = 10
                 df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp['out.electricity.heating.energy_consumption.kwh'].round(2)
 
-                # Basic Enclosure Package
+                # Basic Enclosure Package (same as MP9)
                 df_compare['base_insulation_atticFloor'] = df_mp['in.insulation_ceiling']
                 df_compare['upgrade_insulation_atticFloor'] = df_mp['upgrade.insulation_ceiling']
-                df_compare['out_params_floor_area_attic_ft_2'] = df_mp['out.params.floor_area_attic_ft_2']
+                df_compare['floor_area_attic_ft2'] = df_mp['out.params.floor_area_attic_ft_2']
 
                 df_compare['upgrade_infiltration_reduction'] = df_mp['upgrade.infiltration_reduction']
 
                 df_compare['base_ducts'] = df_mp['in.ducts']
                 df_compare['upgrade_duct_sealing'] = df_mp['upgrade.ducts']
-                df_compare['out_params_duct_unconditioned_surface_area_ft_2'] = df_mp['out.params.duct_unconditioned_surface_area_ft_2']
+                df_compare['duct_unconditioned_area_ft2'] = df_mp['out.params.duct_unconditioned_surface_area_ft_2']
 
                 df_compare['base_insulation_wall'] = df_mp['in.insulation_wall']
                 df_compare['upgrade_insulation_wall'] = df_mp['upgrade.insulation_wall']
-                df_compare['out_params_wall_area_above_grade_exterior_ft_2'] = df_mp['out.params.wall_area_above_grade_exterior_ft_2']
+                df_compare['wall_area_above_grade_ft2'] = df_mp['out.params.wall_area_above_grade_exterior_ft_2']
 
-                # Enhanced Enclosure Package
+                # Enhanced Enclosure Package (MP10 only)
                 df_compare['base_foundation_type'] = df_mp['in.geometry_foundation_type']
                 df_compare['base_insulation_foundation_wall'] = df_mp['in.insulation_foundation_wall']
                 df_compare['base_insulation_rim_joist'] = df_mp['in.insulation_rim_joist']
                 df_compare['upgrade_insulation_foundation_wall'] = df_mp['upgrade.insulation_foundation_wall']
-                df_compare['out_params_floor_area_foundation_ft_2'] = df_mp['out.params.floor_area_foundation_ft_2']
-                df_compare['out_params_rim_joist_area_above_grade_exterior_ft_2'] = df_mp['out.params.rim_joist_area_above_grade_exterior_ft_2']
+                df_compare['floor_area_foundation_ft2'] = df_mp['out.params.floor_area_foundation_ft_2']
+                df_compare['rim_joist_area_above_grade_ft2'] = df_mp['out.params.rim_joist_area_above_grade_exterior_ft_2']
 
                 df_compare['upgrade_seal_crawlspace'] = df_mp['upgrade.geometry_foundation_type']
                 df_compare['base_insulation_roof'] = df_mp['in.insulation_roof']
                 df_compare['upgrade_insulation_roof'] = df_mp['upgrade.insulation_roof']
-                df_compare['out_params_roof_area_ft_2'] = df_mp['out.params.roof_area_ft_2']
+                df_compare['roof_area_ft2'] = df_mp['out.params.roof_area_ft_2']
 
             else:
+                # Standard heating consumption (no enclosure upgrades)
                 df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp['out.electricity.heating.energy_consumption.kwh'].round(2)
+
+        elif category == 'cooling':
+            df_compare[f'mp{menu_mp}_cooling_consumption'] = df_mp['out.electricity.cooling.energy_consumption.kwh'].round(2)
 
         elif category == 'waterHeating':
             df_compare[f'mp{menu_mp}_waterHeating_consumption'] = df_mp['out.electricity.hot_water.energy_consumption.kwh'].round(2)
@@ -369,10 +426,10 @@ def df_enduse_compare(
         elif category == 'cooking':
             df_compare[f'mp{menu_mp}_cooking_consumption'] = df_cooking_range['out.electricity.range_oven.energy_consumption.kwh'].round(2)
 
-    # Merge the baseline DataFrame and df_compare on their index
+    # ===== STEP 4: Merge with baseline DataFrame =====
     df_compare = pd.merge(df_baseline, df_compare, how='inner', left_index=True, right_index=True)
     
-    # Ensure validation flags are preserved from the baseline DataFrame
+    # ===== STEP 5: Ensure validation flags are preserved =====
     validation_flags = [col for col in df_baseline.columns 
                        if col.startswith('valid_') or col.startswith('include_')]
     
@@ -380,9 +437,9 @@ def df_enduse_compare(
         if flag in df_baseline.columns and flag not in df_compare.columns:
             df_compare[flag] = df_baseline[flag]
     
-    # Apply combined validation (data quality + retrofit status)
+    # ===== STEP 6: Apply combined validation (data quality + retrofit status) =====
     print("\nApplying combined validation (data quality + retrofit status):")
-    for category in EQUIPMENT_SPECS.keys():
+    for category in valid_categories:
         # Get combined validation mask
         valid_mask = get_valid_calculation_mask(df_compare, category, menu_mp, verbose=verbose)
         

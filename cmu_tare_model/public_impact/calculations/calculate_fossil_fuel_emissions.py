@@ -2,7 +2,7 @@ import pandas as pd
 from typing import Dict, Optional
 
 from cmu_tare_model.constants import POLLUTANTS, EQUIPMENT_SPECS, VERBOSE
-from cmu_tare_model.utils.hdd_consumption_utils import (
+from cmu_tare_model.utils.degree_day_consumption_utils import (
     get_hdd_factor_for_year,
     apply_hdd_adjustment
 )
