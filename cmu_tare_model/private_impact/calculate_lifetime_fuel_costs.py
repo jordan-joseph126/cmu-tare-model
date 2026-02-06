@@ -15,7 +15,7 @@ from cmu_tare_model.utils.calculation_utils import (
     apply_temporary_validation_and_mask
 )
 
-from cmu_tare_model.utils.degree_day_consumption_utils import (
+from cmu_tare_model.utils.hdd_consumption_utils import (
     get_hdd_adjusted_consumption
 )
 

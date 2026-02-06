@@ -349,7 +349,7 @@ calculate_installation_cost(df, cost_dict, menu_mp, end_use)
         end_use: Category ('heating', 'waterHeating', etc.)
     
     Returns:
-        DataFrame with new cost column: mp{X}_{end_use}_installationCost
+        DataFrame with new cost column: mp{X}_{end_use}_upgrade_installed_cost
     """
 ```
 
@@ -373,7 +373,7 @@ calculate_replacement_cost(df, cost_dict, menu_mp, end_use)
     but matches to baseline/existing technologies instead of upgrades.
     
     Returns:
-        DataFrame with new cost column: mp{X}_{end_use}_replacementCost
+        DataFrame with new cost column: mp{X}_{end_use}_replacement_installed_cost
     """
 ```
 

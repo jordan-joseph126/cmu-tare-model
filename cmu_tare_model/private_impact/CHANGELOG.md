@@ -220,20 +220,20 @@ Comparing results for policy scenario: No Inflation Reduction Act
 
 ===== COMPARISON RESULTS =====
 ✓ Column 'bldg_id' matches between implementations
-✓ Column 'mp8_clothesDrying_installationCost' matches between implementations
+✓ Column 'mp8_clothesDrying_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp8_clothesDrying_rebate_amount' matches between implementations
-✓ Column 'mp8_clothesDrying_replacementCost' matches between implementations
-✓ Column 'mp8_cooking_installationCost' matches between implementations
+✓ Column 'mp8_clothesDrying_replacement_installed_cost' matches between implementations
+✓ Column 'mp8_cooking_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp8_cooking_rebate_amount' matches between implementations
-✓ Column 'mp8_cooking_replacementCost' matches between implementations
+✓ Column 'mp8_cooking_replacement_installed_cost' matches between implementations
 ✓ Column 'mp8_enclosure_upgradeCost' matches between implementations
-✓ Column 'mp8_heating_installationCost' matches between implementations
+✓ Column 'mp8_heating_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp8_heating_installation_premium' matches between implementations
 ✓ Column 'mp8_heating_rebate_amount' matches between implementations
-✓ Column 'mp8_heating_replacementCost' matches between implementations
-✓ Column 'mp8_waterHeating_installationCost' matches between implementations
+✓ Column 'mp8_heating_replacement_installed_cost' matches between implementations
+✓ Column 'mp8_waterHeating_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp8_waterHeating_rebate_amount' matches between implementations
-✓ Column 'mp8_waterHeating_replacementCost' matches between implementations
+✓ Column 'mp8_waterHeating_replacement_installed_cost' matches between implementations
 ✓ Column 'preIRA_mp8_clothesDrying_net_capitalCost' matches between implementations
 ✓ Column 'preIRA_mp8_clothesDrying_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp8_clothesDrying_private_npv_moreWTP' matches between implementations
@@ -348,20 +348,20 @@ Comparing results for policy scenario: AEO2023 Reference Case
 ✓ Column 'iraRef_mp8_waterHeating_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp8_waterHeating_private_npv_moreWTP' matches between implementations
 ✓ Column 'iraRef_mp8_waterHeating_total_capitalCost' matches between implementations
-✓ Column 'mp8_clothesDrying_installationCost' matches between implementations
+✓ Column 'mp8_clothesDrying_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp8_clothesDrying_rebate_amount' matches between implementations
-✓ Column 'mp8_clothesDrying_replacementCost' matches between implementations
-✓ Column 'mp8_cooking_installationCost' matches between implementations
+✓ Column 'mp8_clothesDrying_replacement_installed_cost' matches between implementations
+✓ Column 'mp8_cooking_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp8_cooking_rebate_amount' matches between implementations
-✓ Column 'mp8_cooking_replacementCost' matches between implementations
+✓ Column 'mp8_cooking_replacement_installed_cost' matches between implementations
 ✓ Column 'mp8_enclosure_upgradeCost' matches between implementations
-✓ Column 'mp8_heating_installationCost' matches between implementations
+✓ Column 'mp8_heating_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp8_heating_installation_premium' matches between implementations
 ✓ Column 'mp8_heating_rebate_amount' matches between implementations
-✓ Column 'mp8_heating_replacementCost' matches between implementations
-✓ Column 'mp8_waterHeating_installationCost' matches between implementations
+✓ Column 'mp8_heating_replacement_installed_cost' matches between implementations
+✓ Column 'mp8_waterHeating_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp8_waterHeating_rebate_amount' matches between implementations
-✓ Column 'mp8_waterHeating_replacementCost' matches between implementations
+✓ Column 'mp8_waterHeating_replacement_installed_cost' matches between implementations
 ✓ Column 'weatherization_rebate_amount' matches between implementations
 
 Summary: 32/32 columns match exactly between implementations
@@ -448,20 +448,20 @@ Comparing results for policy scenario: No Inflation Reduction Act
 
 ===== COMPARISON RESULTS =====
 ✓ Column 'bldg_id' matches between implementations
-✓ Column 'mp9_clothesDrying_installationCost' matches between implementations
+✓ Column 'mp9_clothesDrying_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp9_clothesDrying_rebate_amount' matches between implementations
-✓ Column 'mp9_clothesDrying_replacementCost' matches between implementations
-✓ Column 'mp9_cooking_installationCost' matches between implementations
+✓ Column 'mp9_clothesDrying_replacement_installed_cost' matches between implementations
+✓ Column 'mp9_cooking_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp9_cooking_rebate_amount' matches between implementations
-✓ Column 'mp9_cooking_replacementCost' matches between implementations
+✓ Column 'mp9_cooking_replacement_installed_cost' matches between implementations
 ✓ Column 'mp9_enclosure_upgradeCost' matches between implementations
-✓ Column 'mp9_heating_installationCost' matches between implementations
+✓ Column 'mp9_heating_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp9_heating_installation_premium' matches between implementations
 ✓ Column 'mp9_heating_rebate_amount' matches between implementations
-✓ Column 'mp9_heating_replacementCost' matches between implementations
-✓ Column 'mp9_waterHeating_installationCost' matches between implementations
+✓ Column 'mp9_heating_replacement_installed_cost' matches between implementations
+✓ Column 'mp9_waterHeating_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp9_waterHeating_rebate_amount' matches between implementations
-✓ Column 'mp9_waterHeating_replacementCost' matches between implementations
+✓ Column 'mp9_waterHeating_replacement_installed_cost' matches between implementations
 ✓ Column 'preIRA_mp9_clothesDrying_net_capitalCost' matches between implementations
 ✓ Column 'preIRA_mp9_clothesDrying_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp9_clothesDrying_private_npv_moreWTP' matches between implementations
@@ -576,20 +576,20 @@ Comparing results for policy scenario: AEO2023 Reference Case
 ✓ Column 'iraRef_mp9_waterHeating_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp9_waterHeating_private_npv_moreWTP' matches between implementations
 ✓ Column 'iraRef_mp9_waterHeating_total_capitalCost' matches between implementations
-✓ Column 'mp9_clothesDrying_installationCost' matches between implementations
+✓ Column 'mp9_clothesDrying_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp9_clothesDrying_rebate_amount' matches between implementations
-✓ Column 'mp9_clothesDrying_replacementCost' matches between implementations
-✓ Column 'mp9_cooking_installationCost' matches between implementations
+✓ Column 'mp9_clothesDrying_replacement_installed_cost' matches between implementations
+✓ Column 'mp9_cooking_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp9_cooking_rebate_amount' matches between implementations
-✓ Column 'mp9_cooking_replacementCost' matches between implementations
+✓ Column 'mp9_cooking_replacement_installed_cost' matches between implementations
 ✓ Column 'mp9_enclosure_upgradeCost' matches between implementations
-✓ Column 'mp9_heating_installationCost' matches between implementations
+✓ Column 'mp9_heating_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp9_heating_installation_premium' matches between implementations
 ✓ Column 'mp9_heating_rebate_amount' matches between implementations
-✓ Column 'mp9_heating_replacementCost' matches between implementations
-✓ Column 'mp9_waterHeating_installationCost' matches between implementations
+✓ Column 'mp9_heating_replacement_installed_cost' matches between implementations
+✓ Column 'mp9_waterHeating_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp9_waterHeating_rebate_amount' matches between implementations
-✓ Column 'mp9_waterHeating_replacementCost' matches between implementations
+✓ Column 'mp9_waterHeating_replacement_installed_cost' matches between implementations
 ✓ Column 'weatherization_rebate_amount' matches between implementations
 
 Summary: 32/32 columns match exactly between implementations
@@ -676,20 +676,20 @@ Comparing results for policy scenario: No Inflation Reduction Act
 
 ===== COMPARISON RESULTS =====
 ✓ Column 'bldg_id' matches between implementations
-✓ Column 'mp10_clothesDrying_installationCost' matches between implementations
+✓ Column 'mp10_clothesDrying_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp10_clothesDrying_rebate_amount' matches between implementations
-✓ Column 'mp10_clothesDrying_replacementCost' matches between implementations
-✓ Column 'mp10_cooking_installationCost' matches between implementations
+✓ Column 'mp10_clothesDrying_replacement_installed_cost' matches between implementations
+✓ Column 'mp10_cooking_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp10_cooking_rebate_amount' matches between implementations
-✓ Column 'mp10_cooking_replacementCost' matches between implementations
+✓ Column 'mp10_cooking_replacement_installed_cost' matches between implementations
 ✓ Column 'mp10_enclosure_upgradeCost' matches between implementations
-✓ Column 'mp10_heating_installationCost' matches between implementations
+✓ Column 'mp10_heating_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp10_heating_installation_premium' matches between implementations
 ✓ Column 'mp10_heating_rebate_amount' matches between implementations
-✓ Column 'mp10_heating_replacementCost' matches between implementations
-✓ Column 'mp10_waterHeating_installationCost' matches between implementations
+✓ Column 'mp10_heating_replacement_installed_cost' matches between implementations
+✓ Column 'mp10_waterHeating_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp10_waterHeating_rebate_amount' matches between implementations
-✓ Column 'mp10_waterHeating_replacementCost' matches between implementations
+✓ Column 'mp10_waterHeating_replacement_installed_cost' matches between implementations
 ✓ Column 'preIRA_mp10_clothesDrying_net_capitalCost' matches between implementations
 ✓ Column 'preIRA_mp10_clothesDrying_private_npv_lessWTP' matches between implementations
 ✓ Column 'preIRA_mp10_clothesDrying_private_npv_moreWTP' matches between implementations
@@ -804,20 +804,20 @@ Comparing results for policy scenario: AEO2023 Reference Case
 ✓ Column 'iraRef_mp10_waterHeating_private_npv_lessWTP' matches between implementations
 ✓ Column 'iraRef_mp10_waterHeating_private_npv_moreWTP' matches between implementations
 ✓ Column 'iraRef_mp10_waterHeating_total_capitalCost' matches between implementations
-✓ Column 'mp10_clothesDrying_installationCost' matches between implementations
+✓ Column 'mp10_clothesDrying_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp10_clothesDrying_rebate_amount' matches between implementations
-✓ Column 'mp10_clothesDrying_replacementCost' matches between implementations
-✓ Column 'mp10_cooking_installationCost' matches between implementations
+✓ Column 'mp10_clothesDrying_replacement_installed_cost' matches between implementations
+✓ Column 'mp10_cooking_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp10_cooking_rebate_amount' matches between implementations
-✓ Column 'mp10_cooking_replacementCost' matches between implementations
+✓ Column 'mp10_cooking_replacement_installed_cost' matches between implementations
 ✓ Column 'mp10_enclosure_upgradeCost' matches between implementations
-✓ Column 'mp10_heating_installationCost' matches between implementations
+✓ Column 'mp10_heating_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp10_heating_installation_premium' matches between implementations
 ✓ Column 'mp10_heating_rebate_amount' matches between implementations
-✓ Column 'mp10_heating_replacementCost' matches between implementations
-✓ Column 'mp10_waterHeating_installationCost' matches between implementations
+✓ Column 'mp10_heating_replacement_installed_cost' matches between implementations
+✓ Column 'mp10_waterHeating_upgrade_installed_cost' matches between implementations
 ✓ Column 'mp10_waterHeating_rebate_amount' matches between implementations
-✓ Column 'mp10_waterHeating_replacementCost' matches between implementations
+✓ Column 'mp10_waterHeating_replacement_installed_cost' matches between implementations
 ✓ Column 'weatherization_rebate_amount' matches between implementations
 
 Summary: 32/32 columns match exactly between implementations

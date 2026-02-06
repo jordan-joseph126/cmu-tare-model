@@ -35,7 +35,7 @@ import pandas as pd
 import numpy as np
 from typing import Tuple
 
-from cmu_tare_model.constants import VALID_MENU_MPS
+from cmu_tare_model.constants import VALID_MENU_MPS, EQUIPMENT_SPECS, VALID_CATEGORIES
 
 from cmu_tare_model.utils.validation_framework import (
     apply_new_columns_to_dataframe,
@@ -43,8 +43,6 @@ from cmu_tare_model.utils.validation_framework import (
     initialize_validation_tracking,
     create_retrofit_only_series
 )
-
-from cmu_tare_model.constants import EQUIPMENT_SPECS
 
 def calculate_upgrade_installed_cost(
     df: pd.DataFrame,
@@ -80,15 +78,13 @@ def calculate_upgrade_installed_cost(
     # This function is for retrofit upgrade installed costs
     replacement_or_upgrade = 'upgrade'
     
-    # Validate inputs
+    # Validate menu_mp 
     if menu_mp not in VALID_MENU_MPS:
-        raise ValueError(f"Invalid menu_mp: {menu_mp}")
+        raise ValueError(f"Please enter a valid measure package number for menu_mp. Should be one of {VALID_MENU_MPS}.")
     
     # Valid categories are defined in EQUIPMENT_SPECS
-    valid_categories = list(EQUIPMENT_SPECS.keys())
-
-    if end_use not in valid_categories:
-        raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of {valid_categories}")
+    if end_use not in VALID_CATEGORIES:
+        raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of {VALID_CATEGORIES}")
 
     if percentile not in ['low', 'mid', 'high']:
         raise ValueError(f"Invalid percentile: '{percentile}'")

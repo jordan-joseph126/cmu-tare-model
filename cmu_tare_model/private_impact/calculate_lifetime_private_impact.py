@@ -41,7 +41,7 @@ considering different cost assumptions and potential IRA rebates.
     1.Add defensive column validation in calculate_capital_costs().
     2. Add _validate_required_columns() helper function and early column existence
     checking in calculate_capital_costs() to prevent KeyError when required
-    installation cost columns are missing (e.g., mp10_heating_installationCost).
+    installation cost columns are missing (e.g., mp10_heating_upgrade_installed_cost).
 
     The fix:
     - Builds a list of required columns based on category and policy scenario
@@ -270,8 +270,8 @@ def calculate_capital_costs(
         print(f"\nCalculating costs for {category}... ")
 
     # Build list of required columns based on category and policy scenario
-    install_cost_col = f'mp{menu_mp}_{category}_installationCost'
-    replacement_cost_col = f'mp{menu_mp}_{category}_replacementCost'
+    install_cost_col = f'mp{menu_mp}_{category}_upgrade_installed_cost'
+    replacement_cost_col = f'mp{menu_mp}_{category}_replacement_installed_cost'
     required_cols = [install_cost_col, replacement_cost_col]
 
     if category == 'heating':
@@ -309,14 +309,14 @@ def calculate_capital_costs(
             else:
                 weatherization_cost = 0.0
             
-            total_capital_cost = (df_copy[f'mp{menu_mp}_{category}_installationCost'].fillna(0) + 
+            total_capital_cost = (df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0) + 
                                   weatherization_cost + 
                                   df_copy[f'mp{menu_mp}_heating_installation_premium'].fillna(0))
-            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacementCost'].fillna(0)
+            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacement_installed_cost'].fillna(0)
             
         else:
-            total_capital_cost = df_copy[f'mp{menu_mp}_{category}_installationCost'].fillna(0)
-            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacementCost'].fillna(0)
+            total_capital_cost = df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0)
+            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacement_installed_cost'].fillna(0)
     
     else:
         if category == 'heating':
@@ -329,19 +329,19 @@ def calculate_capital_costs(
             else:
                 weatherization_cost = 0.0       
             
-            installation_cost = (df_copy[f'mp{menu_mp}_{category}_installationCost'].fillna(0) + 
+            installation_cost = (df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0) + 
                                  weatherization_cost + 
                                  df_copy[f'mp{menu_mp}_{category}_installation_premium'].fillna(0))
             
             rebate_amount = df_copy[f'mp{menu_mp}_{category}_rebate_amount'].fillna(0)
             total_capital_cost = installation_cost - rebate_amount
-            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacementCost'].fillna(0)
+            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacement_installed_cost'].fillna(0)
         
         else:
-            installation_cost = df_copy[f'mp{menu_mp}_{category}_installationCost'].fillna(0)
+            installation_cost = df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0)
             rebate_amount = df_copy[f'mp{menu_mp}_{category}_rebate_amount'].fillna(0)
             total_capital_cost = installation_cost - rebate_amount
-            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacementCost'].fillna(0)
+            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacement_installed_cost'].fillna(0)
 
     # Apply masking to costs based on valid_mask. Valid homes keep their values, invalid homes get NaN
     total_capital_cost_masked = pd.Series(np.nan, index=df_copy.index)

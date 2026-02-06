@@ -263,7 +263,7 @@ def calculate_rebate(
         max_rebate_amount, max_weatherization_rebate_amount = get_max_rebate_amount(row, category)
         
         # Calculate equipment rebate
-        install_cost_col = f'mp{menu_mp}_{category}_installationCost'
+        install_cost_col = f'mp{menu_mp}_{category}_upgrade_installed_cost'
         rebate_col = f'mp{menu_mp}_{category}_rebate_amount'
         
         if install_cost_col in row and not pd.isna(row[install_cost_col]):

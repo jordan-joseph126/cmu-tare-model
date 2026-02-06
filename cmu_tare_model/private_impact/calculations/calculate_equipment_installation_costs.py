@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional
 
-from cmu_tare_model.constants import VERBOSE
+from cmu_tare_model.constants import VERBOSE, VALID_MENU_MPS, EQUIPMENT_SPECS, VALID_CATEGORIES
 
 from cmu_tare_model.utils.validation_framework import (
     apply_new_columns_to_dataframe,
@@ -31,7 +31,6 @@ progressive (10th percentile), reference (50th percentile), and conservative (90
 # ========================================================================================================================================================================
 # FUNCTIONS: HELPER FUNCTIONS FOR SPACE HEATING
 # ========================================================================================================================================================================
-
 
 def obtain_heating_system_specs(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -133,7 +132,6 @@ def calculate_heating_installation_premium(
 # FUNCTIONS: CALCULATE COST OF INSTALLING NEW EQUIPMENT (RETROFIT/UPGRADES)
 # ========================================================================================================================================================================
 
-
 def get_end_use_installation_parameters(
         df: pd.DataFrame,
         end_use: str,
@@ -155,8 +153,11 @@ def get_end_use_installation_parameters(
     Raises:
         ValueError: If an invalid end_use is specified
     """
-    parameters = {
-        'heating': {
+    # Only build parameters for categories in scope
+    parameters = {}
+    
+    if 'heating' in VALID_CATEGORIES:
+        parameters['heating'] = {
             'conditions': [
                 (df['hvac_has_ducts'] == 'Yes') & (menu_mp == 7),
                 (df['hvac_has_ducts'] == 'No') & (menu_mp == 7),
@@ -170,8 +171,10 @@ def get_end_use_installation_parameters(
                 ('Electric MSHP', 'SEER 29.3, 14 HSPF')
             ],
             'cost_components': ['unitCost', 'otherCost', 'cost_per_kBtuh']
-        },
-        'waterHeating': {
+        }
+
+    if 'waterHeating' in VALID_CATEGORIES:
+        parameters['waterHeating'] = {
             'conditions': [
                 (df['upgrade_water_heater_efficiency'] == 'Electric Heat Pump, 50 gal, 3.45 UEF'),
                 (df['upgrade_water_heater_efficiency'] == 'Electric Heat Pump, 66 gal, 3.35 UEF'),
@@ -183,8 +186,10 @@ def get_end_use_installation_parameters(
                 ('Electric Heat Pump Water Heater, 80 gal', 3.45),
             ],
             'cost_components': ['unitCost', 'cost_per_gallon']
-        },
-        'clothesDrying': {
+        }
+
+    if 'clothesDrying' in VALID_CATEGORIES:
+        parameters['clothesDrying'] = {
             'conditions': [
                 df['upgrade_clothes_dryer'].str.contains('Electric, Premium, Heat Pump, Ventless', na=False),
                 ~df['upgrade_clothes_dryer'].str.contains('Electric, Premium, Heat Pump, Ventless', na=False),
@@ -194,8 +199,10 @@ def get_end_use_installation_parameters(
                 ('Electric Clothes Dryer', 3.1),
             ],
             'cost_components': ['unitCost']
-        },
-        'cooking': {
+        }
+
+    if 'cooking' in VALID_CATEGORIES:
+        parameters['cooking'] = {
             'conditions': [
                 df['upgrade_cooking_range'].str.contains('Electric, Induction', na=False),
                 ~df['upgrade_cooking_range'].str.contains('Electric, Induction', na=False),
@@ -206,9 +213,8 @@ def get_end_use_installation_parameters(
             ],
             'cost_components': ['unitCost']
         }
-    }
-    if end_use not in parameters:
-        raise ValueError(f"Invalid end_use specified: {end_use}")
+    
+    # Already validated end_use at the start of the main function, so deleting the redundant check here.
     return parameters[end_use]
 
 
@@ -252,7 +258,7 @@ def calculate_installation_cost_per_row(
                 sampled_costs_dict['unitCost'] +
                 sampled_costs_dict['otherCost'] +
                 (df_valid['size_heating_system_primary_k_btu_h'] * sampled_costs_dict['cost_per_kBtuh']))
-            cost_column_name = f'mp{menu_mp}_heating_installationCost'
+            cost_column_name = f'mp{menu_mp}_heating_upgrade_installed_cost'
             
         elif end_use == 'waterHeating':
             # Validate required columns and cost components
@@ -268,7 +274,7 @@ def calculate_installation_cost_per_row(
             installation_cost = (
                 sampled_costs_dict['unitCost'] +
                 (sampled_costs_dict['cost_per_gallon'] * df_valid['size_water_heater_gal']))
-            cost_column_name = f'mp{menu_mp}_waterHeating_installationCost'
+            cost_column_name = f'mp{menu_mp}_waterHeating_upgrade_installed_cost'
             
         else:
             # Validate cost components for clothes drying and cooking
@@ -277,7 +283,7 @@ def calculate_installation_cost_per_row(
                 
             # For clothes drying and cooking: only base unit cost
             installation_cost = sampled_costs_dict['unitCost']
-            cost_column_name = f'mp{menu_mp}_{end_use}_installationCost'
+            cost_column_name = f'mp{menu_mp}_{end_use}_upgrade_installed_cost'
         
         return installation_cost, cost_column_name
     
@@ -320,6 +326,14 @@ def calculate_installation_cost(
         3. Calculates values only for valid homes with identifiable technology
         4. Applies final verification masking
     """
+    # Validate menu_mp 
+    if menu_mp not in VALID_MENU_MPS:
+        raise ValueError(f"Please enter a valid measure package number for menu_mp. Should be one of {VALID_MENU_MPS}.")
+    
+    # Check if end_use is in scope before building parameters
+    if end_use not in VALID_CATEGORIES:
+        raise ValueError(f"End use '{end_use}' is not in EQUIPMENT_SPECS. Valid categories: {VALID_CATEGORIES}")
+
     # Add logging for calculation start
     print(f"Starting {end_use} installation cost calculation with validation framework")
 
@@ -328,11 +342,6 @@ def calculate_installation_cost(
         df, end_use, menu_mp, verbose=verbose)
     
     print(f"Found {valid_mask.sum()} valid homes out of {len(df_copy)} for {end_use} installation")
-
-    # Validate menu_mp 
-    valid_menu_mps = [7, 8, 9, 10]
-    if menu_mp not in valid_menu_mps:
-        raise ValueError("Please enter a valid measure package number for menu_mp. Should be 7, 8, 9, or 10.")
     
     # Get conditions, technology-efficiency pairs, and cost components for the specified end_use
     params = get_end_use_installation_parameters(df_copy, end_use, menu_mp)
@@ -367,7 +376,7 @@ def calculate_installation_cost(
             # Calculate the installation cost for each row
             installation_cost, cost_column_name = calculate_installation_cost_per_row(df_valid, sampled_costs_dict, menu_mp, end_use)
         else:
-            cost_column_name = f'mp{menu_mp}_{end_use}_installationCost'
+            cost_column_name = f'mp{menu_mp}_{end_use}_upgrade_installed_cost'
         
         # Initialize the result series properly
         result_series = create_retrofit_only_series(df_copy, valid_mask)

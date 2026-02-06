@@ -231,7 +231,6 @@ def calculate_capital_costs(
                 weatherization_cost = 0.0
             
             total_capital_cost = (df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost_{percentile}'].fillna(0) + weatherization_cost)
-            repl
             net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacement_installed_cost_{percentile}'].fillna(0)
             
         else:

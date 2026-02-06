@@ -3,7 +3,7 @@ import numpy as np
 import re
 from typing import Any, Optional
 
-from cmu_tare_model.constants import EQUIPMENT_SPECS, VERBOSE
+from cmu_tare_model.constants import EQUIPMENT_SPECS, VALID_CATEGORIES, VERBOSE
 
 from cmu_tare_model.utils.validation_framework import get_valid_calculation_mask
 from cmu_tare_model.utils.calculation_utils import (
@@ -155,11 +155,11 @@ def df_enduse_refactored(
     Raises:
         ValueError: If required columns are missing from the input DataFrame.
     """
-    # Updated to handle different enduses based on EQUIPMENT_SPECS.
+    # Updated to handle different enduses based on EQUIPMENT_SPECS and VALID_CATEGORIES.
     # - Rest of codebase updated so only initial columns created for cooling and replacement cost calculations performed
     # - This allows for a scenario where only heating is replaced AND one where heating and cooling systems are both replace with HP
     # - Resolves the excessive data columns and double counting with $8000 rebate. No longer need CDD projections.
-    valid_categories = list(EQUIPMENT_SPECS.keys())
+    # valid_categories = list(EQUIPMENT_SPECS.keys())
     # valid_categories.append('cooling')
 
     # Initial check
@@ -202,7 +202,7 @@ def df_enduse_refactored(
     # ===== STEP 2: Conditionally add category-specific columns =====
     
     # HEATING - only if in scope
-    if 'heating' in valid_categories:
+    if 'heating' in VALID_CATEGORIES:
         df_enduse['base_heating_fuel'] = df_baseline['in.heating_fuel']
         df_enduse['heating_type'] = df_baseline['in.hvac_heating_type_and_fuel']
         df_enduse['base_heating_efficiency'] = df_baseline['in.hvac_heating_efficiency']
@@ -218,7 +218,7 @@ def df_enduse_refactored(
         df_enduse['base_electricity_cooling_consumption'] = df_baseline['out.electricity.cooling.energy_consumption.kwh']
     
     # WATER HEATING - only if in scope
-    if 'waterHeating' in valid_categories:
+    if 'waterHeating' in VALID_CATEGORIES:
         df_enduse['base_waterHeating_fuel'] = df_baseline['in.water_heater_fuel']
         df_enduse['waterHeating_type'] = df_baseline['in.water_heater_efficiency']
         df_enduse['base_electricity_waterHeating_consumption'] = df_baseline['out.electricity.hot_water.energy_consumption.kwh']
@@ -227,21 +227,21 @@ def df_enduse_refactored(
         df_enduse['base_propane_waterHeating_consumption'] = df_baseline['out.propane.hot_water.energy_consumption.kwh']
     
     # CLOTHES DRYING - only if in scope
-    if 'clothesDrying' in valid_categories:
+    if 'clothesDrying' in VALID_CATEGORIES:
         df_enduse['base_clothesDrying_fuel'] = df_baseline['in.clothes_dryer']
         df_enduse['base_electricity_clothesDrying_consumption'] = df_baseline['out.electricity.clothes_dryer.energy_consumption.kwh']
         df_enduse['base_naturalGas_clothesDrying_consumption'] = df_baseline['out.natural_gas.clothes_dryer.energy_consumption.kwh']
         df_enduse['base_propane_clothesDrying_consumption'] = df_baseline['out.propane.clothes_dryer.energy_consumption.kwh']
     
     # COOKING - only if in scope
-    if 'cooking' in valid_categories:
+    if 'cooking' in VALID_CATEGORIES:
         df_enduse['base_cooking_fuel'] = df_baseline['in.cooking_range']
         df_enduse['base_electricity_cooking_consumption'] = df_baseline['out.electricity.range_oven.energy_consumption.kwh']
         df_enduse['base_naturalGas_cooking_consumption'] = df_baseline['out.natural_gas.range_oven.energy_consumption.kwh']
         df_enduse['base_propane_cooking_consumption'] = df_baseline['out.propane.range_oven.energy_consumption.kwh']
    
     # ===== STEP 3: Calculate total consumption for each category in scope =====
-    for category in valid_categories:
+    for category in VALID_CATEGORIES:
         # Get consumption columns for this category
         consumption_columns = get_all_possible_fuel_columns(category)
         
@@ -258,7 +258,7 @@ def df_enduse_refactored(
     
     # ===== STEP 5: Apply validation =====
     print("\nApplying data validation (baseline only):")
-    for category in valid_categories:
+    for category in VALID_CATEGORIES:
         # Get validation mask (baseline, so menu_mp = 0)
         valid_mask = get_valid_calculation_mask(df_enduse, category, menu_mp=0, verbose=verbose)
         
@@ -312,8 +312,8 @@ def df_enduse_compare(
     # - Rest of codebase updated so only initial columns created for cooling and replacement cost calculations performed
     # - This allows for a scenario where only heating is replaced AND one where heating and cooling systems are both replace with HP
     # - Resolves the excessive data columns and double counting with $8000 rebate. No longer need CDD projections.
-    valid_categories = list(EQUIPMENT_SPECS.keys())
-    # valid_categories.append('cooling')
+    VALID_CATEGORIES = list(EQUIPMENT_SPECS.keys())
+    # VALID_CATEGORIES.append('cooling')
 
     # ===== STEP 1: Initialize with common columns (always present) =====
     df_compare = pd.DataFrame({
@@ -323,7 +323,7 @@ def df_enduse_compare(
     # ===== STEP 2: Conditionally add category-specific metadata columns =====
     
     # HEATING - only if in scope
-    if 'heating' in valid_categories:
+    if 'heating' in VALID_CATEGORIES:
         df_compare['hvac_heating_type_and_fuel'] = df_mp['in.hvac_heating_type_and_fuel']
         df_compare['hvac_heating_efficiency'] = df_mp['in.hvac_heating_efficiency']
         # df_compare['size_heat_pump_backup_k_btu_h'] = df_mp['out.params.size_heat_pump_backup_primary_k_btu_h']
@@ -338,7 +338,7 @@ def df_enduse_compare(
         df_compare['upgrade_hvac_cooling_efficiency'] = df_mp['upgrade.hvac_cooling_efficiency']
     
     # WATER HEATING - only if in scope
-    if 'waterHeating' in valid_categories:
+    if 'waterHeating' in VALID_CATEGORIES:
         df_compare['water_heater_efficiency'] = df_mp['in.water_heater_efficiency']
         df_compare['water_heater_fuel'] = df_mp['in.water_heater_fuel']
         df_compare['water_heater_in_unit'] = df_mp['in.water_heater_in_unit']
@@ -346,17 +346,17 @@ def df_enduse_compare(
         df_compare['upgrade_water_heater_efficiency'] = df_mp['upgrade.water_heater_efficiency']
     
     # CLOTHES DRYING - only if in scope
-    if 'clothesDrying' in valid_categories:
+    if 'clothesDrying' in VALID_CATEGORIES:
         df_compare['clothes_dryer_in_unit'] = df_mp['in.clothes_dryer']
         df_compare['upgrade_clothes_dryer'] = df_mp['upgrade.clothes_dryer']
     
     # COOKING - only if in scope
-    if 'cooking' in valid_categories:
+    if 'cooking' in VALID_CATEGORIES:
         df_compare['cooking_range_in_unit'] = df_cooking_range['in.cooking_range']
         df_compare['upgrade_cooking_range'] = df_cooking_range['upgrade.cooking_range']
 
     # ===== STEP 3: Add consumption columns for each category in scope =====
-    for category in valid_categories:
+    for category in VALID_CATEGORIES:
         if category == 'heating':
             # Special handling for measure packages 9 and 10 (MP9, MP10) with enclosure upgrades
             if input_mp == 'upgrade09':
@@ -413,9 +413,9 @@ def df_enduse_compare(
             else:
                 # Standard heating consumption (no enclosure upgrades)
                 df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp['out.electricity.heating.energy_consumption.kwh'].round(2)
-
-        elif category == 'cooling':
-            df_compare[f'mp{menu_mp}_cooling_consumption'] = df_mp['out.electricity.cooling.energy_consumption.kwh'].round(2)
+        
+        # Cooling category only used for initial columns and retrofit capital costs
+        # REMOVED consumption col because cooling emissions/health/fuel calculations are not calculated.
 
         elif category == 'waterHeating':
             df_compare[f'mp{menu_mp}_waterHeating_consumption'] = df_mp['out.electricity.hot_water.energy_consumption.kwh'].round(2)
@@ -439,7 +439,7 @@ def df_enduse_compare(
     
     # ===== STEP 6: Apply combined validation (data quality + retrofit status) =====
     print("\nApplying combined validation (data quality + retrofit status):")
-    for category in valid_categories:
+    for category in VALID_CATEGORIES:
         # Get combined validation mask
         valid_mask = get_valid_calculation_mask(df_compare, category, menu_mp, verbose=verbose)
         

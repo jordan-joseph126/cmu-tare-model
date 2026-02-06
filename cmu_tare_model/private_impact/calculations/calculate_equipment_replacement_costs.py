@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 
-from cmu_tare_model.constants import VERBOSE
+from cmu_tare_model.constants import VERBOSE, VALID_MENU_MPS, EQUIPMENT_SPECS, VALID_CATEGORIES
 
 from cmu_tare_model.utils.validation_framework import (
     create_retrofit_only_series,
@@ -51,8 +51,11 @@ def get_end_use_replacement_parameters(
     Raises:
         ValueError: If an invalid end_use is specified.
     """
-    parameters = {
-        'heating': {
+    # Only build parameters for categories in scope
+    parameters = {}
+    
+    if 'heating' in VALID_CATEGORIES:
+        parameters['heating'] = {
             'conditions': [
                 (df['base_heating_fuel'] == 'Propane'),
                 (df['base_heating_fuel'] == 'Fuel Oil'),
@@ -68,8 +71,10 @@ def get_end_use_replacement_parameters(
                 ('Electric Furnace', '100 AFUE')
             ],
             'cost_components': ['unitCost', 'otherCost', 'cost_per_kBtuh']
-        },
-        'waterHeating': {
+        }
+
+    if 'waterHeating' in VALID_CATEGORIES:
+        parameters['waterHeating'] = {
             'conditions': [
                 (df['base_waterHeating_fuel'] == 'Fuel Oil'),
                 (df['base_waterHeating_fuel'] == 'Natural Gas'),
@@ -85,8 +90,10 @@ def get_end_use_replacement_parameters(
                 ('Electric Heat Pump Water Heater, 80 gal', 2.35)
             ],
             'cost_components': ['unitCost', 'cost_per_gallon']
-        },
-        'clothesDrying': {
+        }
+
+    if 'clothesDrying' in VALID_CATEGORIES:
+        parameters['clothesDrying'] = {
             'conditions': [
                 (df['base_clothesDrying_fuel'] == 'Electricity'),
                 (df['base_clothesDrying_fuel'] == 'Natural Gas'),
@@ -98,8 +105,10 @@ def get_end_use_replacement_parameters(
                 ('Propane Clothes Dryer', 2.75)
             ],
             'cost_components': ['unitCost']
-        },
-        'cooking': {
+        }
+
+    if 'cooking' in VALID_CATEGORIES:
+        parameters['cooking'] = {
             'conditions': [
                 (df['base_cooking_fuel'] == 'Electricity'),
                 (df['base_cooking_fuel'] == 'Natural Gas'),
@@ -112,9 +121,8 @@ def get_end_use_replacement_parameters(
             ],
             'cost_components': ['unitCost']
         }
-    }
-    if end_use not in parameters:
-        raise ValueError(f"Invalid end_use specified: {end_use}")
+
+    # Already validated end_use at the start of the main function, so deleting the redundant check here.
     return parameters[end_use]
 
 
@@ -158,7 +166,7 @@ def calculate_replacement_cost_per_row(
                 sampled_costs_dict['otherCost'] +
                 (df_valid['size_heating_system_primary_k_btu_h'] * sampled_costs_dict['cost_per_kBtuh']))
             
-            cost_column_name = f'mp{menu_mp}_heating_replacementCost'
+            cost_column_name = f'mp{menu_mp}_heating_replacement_installed_cost'
 
         elif end_use == 'waterHeating':
             # Validate required columns and cost components
@@ -175,7 +183,7 @@ def calculate_replacement_cost_per_row(
                 sampled_costs_dict['unitCost'] +
                 (sampled_costs_dict['cost_per_gallon'] * df_valid['size_water_heater_gal']))
             
-            cost_column_name = f'mp{menu_mp}_waterHeating_replacementCost'
+            cost_column_name = f'mp{menu_mp}_waterHeating_replacement_installed_cost'
 
         else:
             # Validate cost components for clothes drying and cooking
@@ -184,7 +192,7 @@ def calculate_replacement_cost_per_row(
                 
             # For other end uses (cooking, clothes drying), only unit cost applies
             replacement_cost = sampled_costs_dict['unitCost'] 
-            cost_column_name = f'mp{menu_mp}_{end_use}_replacementCost'
+            cost_column_name = f'mp{menu_mp}_{end_use}_replacement_installed_cost'
         
         return replacement_cost, cost_column_name
         
@@ -227,6 +235,14 @@ def calculate_replacement_cost(
         3. Calculates values only for valid homes with identifiable technology
         4. Applies final verification masking
     """
+    # Validate menu_mp 
+    if menu_mp not in VALID_MENU_MPS:
+        raise ValueError(f"Please enter a valid measure package number for menu_mp. Should be one of {VALID_MENU_MPS}.")
+    
+    # Check if end_use is in scope before building parameters
+    if end_use not in VALID_CATEGORIES:
+        raise ValueError(f"End use '{end_use}' is not in EQUIPMENT_SPECS. Valid categories: {VALID_CATEGORIES}")
+
     # Add logging for calculation start
     print(f"Starting {end_use} replacement cost calculation with validation framework")
 
@@ -236,11 +252,6 @@ def calculate_replacement_cost(
     
     print(f"Found {valid_mask.sum()} valid homes out of {len(df_copy)} for {end_use} replacement")
 
-    # Validate menu_mp
-    valid_menu_mps = [7, 8, 9, 10]
-    if menu_mp not in valid_menu_mps:
-        raise ValueError("Please enter a valid measure package number for menu_mp. Should be 7, 8, 9, or 10.")
-    
     # Get conditions, technology-efficiency pairs, and cost components for the specified end_use
     params = get_end_use_replacement_parameters(df_copy, end_use)
     conditions = params['conditions']
@@ -274,7 +285,7 @@ def calculate_replacement_cost(
             # Calculate the replacement cost for each row
             replacement_cost, cost_column_name = calculate_replacement_cost_per_row(df_valid, sampled_costs_dict, menu_mp, end_use)
         else:
-            cost_column_name = f'mp{menu_mp}_{end_use}_replacementCost'
+            cost_column_name = f'mp{menu_mp}_{end_use}_replacement_installed_cost'
         
         # Initialize the result series properly
         result_series = create_retrofit_only_series(df_copy, valid_mask)
@@ -299,4 +310,3 @@ def calculate_replacement_cost(
     df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=verbose)
 
     return df_copy
-

@@ -27,35 +27,37 @@ ALLOWED_TECHNOLOGIES = {
         'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
         'Propane Fuel Boiler', 'Propane Fuel Furnace'
     ],
-    # # in.hvac_cooling_type exclude existing heat pump options
-    # 'cooling': [
-    #     'Central AC', 'Room AC'
-    # ],
+    # in.hvac_cooling_type exclude existing heat pump options
+    'cooling': [
+        'Central AC', 'Room AC'
+    ],
     # in.water_heater_efficiency exclude heat pump options, tankless, other fuel (e.g., solar), and indirect fuel oil
-    'waterHeating': [
-        'Electric Premium', 'Electric Standard',
-        'Fuel Oil Premium', 'Fuel Oil Standard', 
-        'Natural Gas Premium', 'Natural Gas Standard',
-        'Propane Premium', 'Propane Standard'
-    ],
-    # in.clothes_dryer also includes information on usage (%) exclude homes with no dryer or heat pump dryers
-    'clothesDrying': [
-        'Electric', 'Gas', 'Propane'
-    ],
-    # in.cooking_range exclude electric cooking (since resistance ranges are an upgrade option) and homes with no cooking range
-    'cooking': [
-        'Gas', 'Propane'
-    ]
+    # 'waterHeating': [
+    #     'Electric Premium', 'Electric Standard',
+    #     'Fuel Oil Premium', 'Fuel Oil Standard', 
+    #     'Natural Gas Premium', 'Natural Gas Standard',
+    #     'Propane Premium', 'Propane Standard'
+    # ],
+    # # in.clothes_dryer also includes information on usage (%) exclude homes with no dryer or heat pump dryers
+    # 'clothesDrying': [
+    #     'Electric', 'Gas', 'Propane'
+    # ],
+    # # in.cooking_range exclude electric cooking (since resistance ranges are an upgrade option) and homes with no cooking range
+    # 'cooking': [
+    #     'Gas', 'Propane'
+    # ]
 } 
 
 # POSSIBLY UPDATE THESE VALUES BASED ON NEW DATA FROM REMBD 2024
+# Cooling category is only used for initial columns and retrofit capital costs, not for emissions/health/fuel calculations
 EQUIPMENT_SPECS = {
     'heating': 15,
-    # 'cooling': 15,
-    'waterHeating': 12,
-    'clothesDrying': 13,
-    'cooking': 15
+    # 'waterHeating': 12,
+    # 'clothesDrying': 13,
+    # 'cooking': 15
     }
+
+VALID_CATEGORIES = list(EQUIPMENT_SPECS.keys())
 
 VALID_MENU_MPS = [0, 3, 4, 7, 8, 9, 10]
 
@@ -108,18 +110,57 @@ AMI_THRESHOLD = 150              # AMI percentage at which minimum rate applies
 # There is no separate cooling upgrade column since both receive the same tech upgrade
 UPGRADE_COLUMNS = {
     'heating': 'upgrade_hvac_heating_efficiency',
-    # 'cooling': 'upgrade_hvac_cooling_efficiency',
-    'waterHeating': 'upgrade_water_heater_efficiency',
-    'clothesDrying': 'upgrade_clothes_dryer',
-    'cooking': 'upgrade_cooking_range'
+    # 'waterHeating': 'upgrade_water_heater_efficiency',
+    # 'clothesDrying': 'upgrade_clothes_dryer',
+    # 'cooking': 'upgrade_cooking_range'
     }
 
 # Mapping for categories and their corresponding rebate amounts
 REBATE_MAPPING = {
-    # Be sure to update code logic so that the space conditioning rebate is only applied once (i.e., $8000 total, not $8000 per equipment if both heating and cooling are upgraded)
+    # There is no separate cooling rebate modeled since both receive the same tech upgrade
     'heating': ('upgrade_hvac_heating_efficiency', ['ASHP', 'MSHP'], 8000.00),
-    # 'cooling': ('upgrade_hvac_cooling_efficiency', ['Heat Pump'], 0.00),
-    'waterHeating': ('upgrade_water_heater_efficiency', ['Electric Heat Pump'], 1750.00),
-    'clothesDrying': ('upgrade_clothes_dryer', ['Electric, Premium, Heat Pump, Ventless'], 840.00),
-    'cooking': ('upgrade_cooking_range', ['Electric, '], 840.00)
+    # 'waterHeating': ('upgrade_water_heater_efficiency', ['Electric Heat Pump'], 1750.00),
+    # 'clothesDrying': ('upgrade_clothes_dryer', ['Electric, Premium, Heat Pump, Ventless'], 840.00),
+    # 'cooking': ('upgrade_cooking_range', ['Electric, '], 840.00)
 }
+
+# =============================================================
+# CONSTANTS: CAPITAL COST SCENARIOS (REMDB v3 + v4)
+# =============================================================
+
+COST_SCENARIO_KEYS = [
+    'remdb_v3',           # Existing method (Excel dictionaries)
+    'remdb_v4_low',       # REMDB v4: 25th percentile
+    'remdb_v4_mid',       # REMDB v4: 50th percentile (median)
+    'remdb_v4_high'       # REMDB v4: 75th percentile
+]
+
+
+def parse_cost_scenario(scenario_key: str) -> tuple[str, str | None]:
+    """Parse cost scenario key into method and percentile.
+
+    Args:
+        scenario_key: One of COST_SCENARIO_KEYS.
+
+    Returns:
+        Tuple of (method, percentile) where percentile is None for v3.
+
+    Raises:
+        ValueError: If scenario_key is not in COST_SCENARIO_KEYS.
+
+    Examples:
+        >>> parse_cost_scenario('remdb_v4_mid')
+        ('remdb_v4', 'mid')
+        >>> parse_cost_scenario('remdb_v3')
+        ('remdb_v3', None)
+    """
+    if scenario_key not in COST_SCENARIO_KEYS:
+        raise ValueError(
+            f"Invalid scenario_key '{scenario_key}'. "
+            f"Must be one of {COST_SCENARIO_KEYS}"
+        )
+    if scenario_key == 'remdb_v3':
+        return ('remdb_v3', None)
+    else:
+        method, percentile = scenario_key.rsplit('_', 1)
+        return (method, percentile)
