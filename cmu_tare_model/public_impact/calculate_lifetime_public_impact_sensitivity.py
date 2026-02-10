@@ -6,6 +6,11 @@ from typing import Dict, Tuple, List, Optional
 from cmu_tare_model.constants import EQUIPMENT_SPECS, CR_FUNCTIONS, RCM_MODELS, SCC_ASSUMPTIONS, VERBOSE
 from cmu_tare_model.utils.discounting import calculate_discount_factors, PUBLIC_DISCOUNTING_METHOD_SUFFIXES
 from cmu_tare_model.utils.modeling_params import define_scenario_params
+from cmu_tare_model.utils.column_names import (
+    create_climate_npv_col,
+    create_health_npv_col,
+    create_public_npv_col
+)
 from cmu_tare_model.utils.validation_framework import (
     calculate_avoided_values,
     create_retrofit_only_series,
@@ -95,7 +100,7 @@ def calculate_climate_npv(
         climate_npv_template = create_retrofit_only_series(df_copy, valid_mask)
         
         for scc in SCC_ASSUMPTIONS:
-            climate_npv_key = f'{scenario_prefix}{category}_climate_npv_{scc}'
+            climate_npv_key = create_climate_npv_col(scenario_prefix, category, scc)
             yearly_climate_avoided = []
             
             for year in range(1, lifetime + 1):
@@ -144,7 +149,7 @@ def calculate_health_npv(
     rcm_model: str,
     cr_function: str,
     base_year: int,
-    discount_rate_col: str,
+    discount_rate_col_name: str,
     all_columns_to_mask: Dict[str, List[str]],
     verbose: bool = VERBOSE
 ) -> Dict[str, pd.Series]:
@@ -163,7 +168,7 @@ def calculate_health_npv(
         rcm_model: RCM model name.
         cr_function: Concentration-response function name.
         base_year: Base year for discounting.
-        discount_rate_col: Discount rate column name.
+        discount_rate_col_name: Discount rate column name.
         all_columns_to_mask: Dictionary tracking columns for masking.
         verbose: Whether to print progress messages.
         
@@ -181,7 +186,7 @@ def calculate_health_npv(
             df=df_copy,
             base_year=base_year,
             target_year=year_label,
-            discount_rate_col=discount_rate_col
+            discount_rate_col_name=discount_rate_col_name
         )
     
     all_npvs: Dict[str, pd.Series] = {}
@@ -198,7 +203,7 @@ def calculate_health_npv(
         
         # # ===== STEP 2: Initialize result series for health NPV =====
         health_npv_template = create_retrofit_only_series(df_copy, valid_mask)
-        health_npv_key = f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
+        health_npv_key = create_health_npv_col(scenario_prefix, category, rcm_model, cr_function)
         yearly_health_avoided = []
         
         # ===== STEP 3 & 4: Valid-Only Calculation and Updates =====
@@ -249,7 +254,7 @@ def calculate_public_npv(
     menu_mp: int, 
     policy_scenario: str, 
     rcm_model: str,
-    discount_rate_col: str = 'public_discount_rate',
+    discount_rate_col_name: str = 'public_discount_rate',
     base_year: int = 2024,
     verbose: bool = VERBOSE
 ) -> pd.DataFrame:
@@ -271,7 +276,7 @@ def calculate_public_npv(
         menu_mp: Menu identifier for the measure package.
         policy_scenario: Policy scenario for grid projections.
         rcm_model: Reduced Complexity Model for health impact calculations.
-        discount_rate_col: Column name for discount rate. Default 'public_discount_rate'.
+        discount_rate_col_name: Column name for discount rate. Default 'public_discount_rate'.
         base_year: Base year for discounting. Default 2024.
         verbose: Whether to print progress messages.
 
@@ -357,7 +362,7 @@ def calculate_public_npv(
             rcm_model=rcm_model,
             cr_function=cr_function,
             base_year=base_year,
-            discount_rate_col=discount_rate_col,
+            discount_rate_col_name=discount_rate_col_name,
             all_columns_to_mask=all_columns_to_mask,
             verbose=verbose
         )
@@ -375,12 +380,12 @@ def calculate_public_npv(
         
         # Get the climate NPV key once (same for all CR functions)
         for scc in SCC_ASSUMPTIONS:
-            climate_npv_key = f'{scenario_prefix}{category}_climate_npv_{scc}'
+            climate_npv_key = create_climate_npv_col(scenario_prefix, category, scc)
 
             # Now loop over CR functions to create health npv key and combined public NPV key
             for cr_function in CR_FUNCTIONS:
-                health_npv_key = f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
-                public_npv_key = f'{scenario_prefix}{category}_public_npv_{scc}_{rcm_model}_{cr_function}'
+                health_npv_key = create_health_npv_col(scenario_prefix, category, rcm_model, cr_function)
+                public_npv_key = create_public_npv_col(scenario_prefix, category, scc, rcm_model, cr_function)
                 
                 # Check if both climate and health NPV columns exist, then calculate combined public NPV
                 if climate_npv_key in df_new_columns.columns and health_npv_key in df_new_columns.columns:

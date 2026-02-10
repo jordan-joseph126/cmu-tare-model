@@ -5,6 +5,12 @@ from typing import Dict, List, Optional, Tuple, Union, Callable
 
 from cmu_tare_model.constants import REBATE_MAPPING, VERBOSE
 from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2023_2022
+from cmu_tare_model.utils.column_names import (
+    create_cost_col,
+    create_rebate_col,
+    create_enclosure_cost_col,
+    create_weatherization_rebate_col
+)
 from cmu_tare_model.utils.validation_framework import (
     create_retrofit_only_series,
     initialize_validation_tracking,
@@ -263,24 +269,26 @@ def calculate_rebate(
         max_rebate_amount, max_weatherization_rebate_amount = get_max_rebate_amount(row, category)
         
         # Calculate equipment rebate
-        install_cost_col = f'mp{menu_mp}_{category}_upgrade_installed_cost'
-        rebate_col = f'mp{menu_mp}_{category}_rebate_amount'
+        install_cost_col_name = create_cost_col(menu_mp, category, 'upgrade')
+        rebate_col_name = create_rebate_col(menu_mp, category)
         
-        if install_cost_col in row and not pd.isna(row[install_cost_col]):
-            project_coverage = round(row[install_cost_col] * coverage_rate, 2)
-            df_results_IRA.at[row.name, rebate_col] = min(project_coverage, max_rebate_amount)
+        if install_cost_col_name in row and not pd.isna(row[install_cost_col_name]):
+            project_coverage = round(row[install_cost_col_name] * coverage_rate, 2)
+            df_results_IRA.at[row.name, rebate_col_name] = min(project_coverage, max_rebate_amount)
         else:
-            df_results_IRA.at[row.name, rebate_col] = 0.00
+            df_results_IRA.at[row.name, rebate_col_name] = 0.00
             if coverage_rate > 0 and max_rebate_amount > 0:
                 raise ValueError(f"Warning: Installation cost data missing for row {row.name}, category {category}. Setting rebate to 0.")
         
         # Calculate weatherization rebate if applicable
-        if f'mp{menu_mp}_enclosure_upgradeCost' in df_results_IRA.columns and menu_mp in [9, 10]:
-            if f'mp{menu_mp}_enclosure_upgradeCost' in row and not pd.isna(row[f'mp{menu_mp}_enclosure_upgradeCost']):
-                weatherization_project_coverage = round(row[f'mp{menu_mp}_enclosure_upgradeCost'] * coverage_rate, 2)
-                df_results_IRA.at[row.name, 'weatherization_rebate_amount'] = min(weatherization_project_coverage, max_weatherization_rebate_amount)
+        enclosure_cost_col_name = create_enclosure_cost_col(menu_mp)
+        weatherization_rebate_col_name = create_weatherization_rebate_col()
+        if enclosure_cost_col_name in df_results_IRA.columns and menu_mp in [9, 10]:
+            if enclosure_cost_col_name in row and not pd.isna(row[enclosure_cost_col_name]):
+                weatherization_project_coverage = round(row[enclosure_cost_col_name] * coverage_rate, 2)
+                df_results_IRA.at[row.name, weatherization_rebate_col_name] = min(weatherization_project_coverage, max_weatherization_rebate_amount)
             else:
-                df_results_IRA.at[row.name, 'weatherization_rebate_amount'] = 0.00
+                df_results_IRA.at[row.name, weatherization_rebate_col_name] = 0.00
                 if coverage_rate > 0 and menu_mp in [9, 10]:
                     raise ValueError(f"Warning: Enclosure cost data missing for row {row.name}. Setting weatherization rebate to 0.")
     
@@ -288,9 +296,10 @@ def calculate_rebate(
         print(f"Error calculating rebate for row {row.name}, category {category}: {str(e)}")
         
         # Set default values to prevent calculations from breaking
-        df_results_IRA.at[row.name, rebate_col] = 0.00
-        if menu_mp in [9, 10] and 'weatherization_rebate_amount' in df_results_IRA.columns:
-            df_results_IRA.at[row.name, 'weatherization_rebate_amount'] = 0.00
+        df_results_IRA.at[row.name, rebate_col_name] = 0.00
+        weatherization_rebate_col_name = create_weatherization_rebate_col()
+        if menu_mp in [9, 10] and weatherization_rebate_col_name in df_results_IRA.columns:
+            df_results_IRA.at[row.name, weatherization_rebate_col_name] = 0.00
 
 
 def calculate_rebateIRA(
@@ -331,20 +340,20 @@ def calculate_rebateIRA(
         df_results_IRA, category, menu_mp, verbose=verbose)
     
     # Create rebate columns
-    rebate_col = f'mp{menu_mp}_{category}_rebate_amount'
+    rebate_col_name = create_rebate_col(menu_mp, category)
 
-    df_copy[rebate_col] = create_retrofit_only_series(df_copy, valid_mask)
+    df_copy[rebate_col_name] = create_retrofit_only_series(df_copy, valid_mask)
     
     # Track the rebate column
-    category_columns_to_mask.append(rebate_col)
+    category_columns_to_mask.append(rebate_col_name)
     
     # Also track and create weatherization rebate column if relevant
     if menu_mp in [9, 10]:
-        weatherization_col = 'weatherization_rebate_amount'
-        df_copy[weatherization_col] = 0.0
+        weatherization_rebate_col_name = create_weatherization_rebate_col()
+        df_copy[weatherization_rebate_col_name] = 0.0
         
         # Track weatherization column under the category
-        category_columns_to_mask.append(weatherization_col)
+        category_columns_to_mask.append(weatherization_rebate_col_name)
     
     # Apply rebates based on income designation
     def apply_rebate(row):
@@ -358,9 +367,9 @@ def calculate_rebateIRA(
         elif income_designation == 'Moderate-Income':
             calculate_rebate(df_copy, row, category, menu_mp, 0.50)
         else:
-            df_copy.at[row.name, rebate_col] = 0.00
-            if menu_mp in [9, 10] and 'weatherization_rebate_amount' in df_copy.columns:
-                df_copy.at[row.name, 'weatherization_rebate_amount'] = 0.00
+            df_copy.at[row.name, rebate_col_name] = 0.00
+            if menu_mp in [9, 10] and weatherization_rebate_col_name in df_copy.columns:
+                df_copy.at[row.name, weatherization_rebate_col_name] = 0.00
 
     df_copy.apply(apply_rebate, axis=1)
     

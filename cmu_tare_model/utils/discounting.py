@@ -129,7 +129,7 @@ def calculate_discount_factors(
     df: pd.DataFrame,
     base_year: int,
     target_year: int,
-    discount_rate_col: str
+    discount_rate_col_name: str
 ) -> pd.Series:
     """
     Calculate discount factors for all households using pre-prepared rates.
@@ -140,22 +140,22 @@ def calculate_discount_factors(
         df: DataFrame with discount rate columns already prepared.
         base_year: Reference year to discount to (e.g., 2024).
         target_year: Future year to discount from (e.g., 2030).
-        discount_rate_col: Column name in df containing the discount rates to use.
+        discount_rate_col_name: Column name in df containing the discount rates to use.
         
     Returns:
         Series of discount factors (one per household).
         
     Raises:
-        ValueError: If discount_rate_col is missing in the DataFrame.
+        ValueError: If discount_rate_col_name is missing in the DataFrame.
     """
-    if discount_rate_col not in df.columns:
+    if discount_rate_col_name not in df.columns:
         raise ValueError(
-            f"DataFrame must contain '{discount_rate_col}' column. "
+            f"DataFrame must contain '{discount_rate_col_name}' column. "
             f"Call prepare_discount_rates(df) first to create it."
         )
     
     # Get discount rates (ALWAYS a Series)
-    discount_rate = df[discount_rate_col]
+    discount_rate = df[discount_rate_col_name]
     
     # Calculate time difference
     years_difference = max(0, target_year - base_year)

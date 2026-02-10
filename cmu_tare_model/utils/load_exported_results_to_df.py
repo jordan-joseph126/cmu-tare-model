@@ -29,7 +29,7 @@ def load_model_run_output(
     Args:
         results_category: Category of results being loaded. Valid options:
             - 'summary_baseline': Baseline summary results
-            - 'summary': Retrofit summary results (requires rcm_model and discount_rate_col)
+            - 'summary': Retrofit summary results (requires rcm_model and discount_rate_col_name)
             - 'damages_climate_IRA', 'damages_climate_noIRA': Climate damages
             - 'damages_health_IRA', 'damages_health_noIRA': Health damages
             - 'fuel_costs_IRA', 'fuel_costs_noIRA': Fuel costs

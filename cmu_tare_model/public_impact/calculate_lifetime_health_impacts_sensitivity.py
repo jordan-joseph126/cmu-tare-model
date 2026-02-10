@@ -7,6 +7,10 @@ from cmu_tare_model.constants import EQUIPMENT_SPECS, POLLUTANTS, TD_LOSSES_MULT
 
 # Imports for lookup dictionaries, functions, and calculations
 from cmu_tare_model.utils.modeling_params import define_scenario_params
+from cmu_tare_model.utils.column_names import (
+    create_lifetime_damages_col,
+    create_avoided_damages_col
+)
 
 from cmu_tare_model.utils.hdd_consumption_utils import (
     get_electricity_consumption_for_year,
@@ -245,23 +249,23 @@ def calculate_lifetime_health_impacts(
                 for rcm in RCM_MODELS:
                     for cr in CR_FUNCTIONS:
                         # Record overall lifetime damages
-                        overall_health_col = f'{scenario_prefix}{category}_lifetime_damages_health_{rcm}_{cr}'
+                        overall_health_col = create_lifetime_damages_col(scenario_prefix, category, 'health', rcm, cr)
                         lifetime_dict[overall_health_col] = lifetime_health_damages[(rcm, cr)]
                         category_columns_to_mask.append(overall_health_col)
                         
                         # Calculate avoided damages
-                        baseline_health_col = f'baseline_{category}_lifetime_damages_health_{rcm}_{cr}'
-                        avoided_health_damages_col = f'{scenario_prefix}{category}_avoided_damages_health_{rcm}_{cr}'
+                        baseline_health_col = create_lifetime_damages_col('baseline_', category, 'health', rcm, cr)
+                        avoided_health_damages_col_name = create_avoided_damages_col(scenario_prefix, category, 'health', rcm, cr)
                         
                         # In the fail-fast approach, we simply try to access the column
                         # If it doesn't exist, it will raise a KeyError (which is caught by the outer try/except)
                         try:
-                            lifetime_dict[avoided_health_damages_col] = calculate_avoided_values(
+                            lifetime_dict[avoided_health_damages_col_name] = calculate_avoided_values(
                                 baseline_values=df_baseline_damages[baseline_health_col],
                                 measure_values=lifetime_dict[overall_health_col],
                                 retrofit_mask=valid_mask
                             )
-                            category_columns_to_mask.append(avoided_health_damages_col)
+                            category_columns_to_mask.append(avoided_health_damages_col_name)
                         except KeyError:
                             if verbose:
                                 print(f"Warning: Missing baseline column '{baseline_health_col}'. Avoided health values skipped.")
@@ -270,7 +274,7 @@ def calculate_lifetime_health_impacts(
                 # If no baseline data or not a measure package, just record lifetime damages
                 for rcm in RCM_MODELS:
                     for cr in CR_FUNCTIONS:
-                        overall_health_col = f'{scenario_prefix}{category}_lifetime_damages_health_{rcm}_{cr}'
+                        overall_health_col = create_lifetime_damages_col(scenario_prefix, category, 'health', rcm, cr)
                         lifetime_dict[overall_health_col] = lifetime_health_damages[(rcm, cr)]
                         category_columns_to_mask.append(overall_health_col)
 

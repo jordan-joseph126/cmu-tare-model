@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple, Optional
 
 from cmu_tare_model.constants import VERBOSE, VALID_MENU_MPS, EQUIPMENT_SPECS, VALID_CATEGORIES
 
+from cmu_tare_model.utils.column_names import create_cost_col
 from cmu_tare_model.utils.validation_framework import (
     apply_new_columns_to_dataframe,
     apply_final_masking,
@@ -258,7 +259,7 @@ def calculate_installation_cost_per_row(
                 sampled_costs_dict['unitCost'] +
                 sampled_costs_dict['otherCost'] +
                 (df_valid['size_heating_system_primary_k_btu_h'] * sampled_costs_dict['cost_per_kBtuh']))
-            cost_column_name = f'mp{menu_mp}_heating_upgrade_installed_cost'
+            cost_column_name = create_cost_col(menu_mp, 'heating', 'upgrade')
             
         elif end_use == 'waterHeating':
             # Validate required columns and cost components
@@ -274,7 +275,7 @@ def calculate_installation_cost_per_row(
             installation_cost = (
                 sampled_costs_dict['unitCost'] +
                 (sampled_costs_dict['cost_per_gallon'] * df_valid['size_water_heater_gal']))
-            cost_column_name = f'mp{menu_mp}_waterHeating_upgrade_installed_cost'
+            cost_column_name = create_cost_col(menu_mp, 'waterHeating', 'upgrade')
             
         else:
             # Validate cost components for clothes drying and cooking
@@ -283,7 +284,7 @@ def calculate_installation_cost_per_row(
                 
             # For clothes drying and cooking: only base unit cost
             installation_cost = sampled_costs_dict['unitCost']
-            cost_column_name = f'mp{menu_mp}_{end_use}_upgrade_installed_cost'
+            cost_column_name = create_cost_col(menu_mp, end_use, 'upgrade')
         
         return installation_cost, cost_column_name
     
@@ -376,7 +377,7 @@ def calculate_installation_cost(
             # Calculate the installation cost for each row
             installation_cost, cost_column_name = calculate_installation_cost_per_row(df_valid, sampled_costs_dict, menu_mp, end_use)
         else:
-            cost_column_name = f'mp{menu_mp}_{end_use}_upgrade_installed_cost'
+            cost_column_name = create_cost_col(menu_mp, end_use, 'upgrade')
         
         # Initialize the result series properly
         result_series = create_retrofit_only_series(df_copy, valid_mask)

@@ -4,13 +4,15 @@ from typing import Optional, Tuple
 
 from cmu_tare_model.constants import EQUIPMENT_SPECS, TD_LOSSES_MULTIPLIER, MER_TYPES, SCC_ASSUMPTIONS, VERBOSE
 from cmu_tare_model.utils.modeling_params import define_scenario_params
-
+from cmu_tare_model.utils.column_names import (
+    create_lifetime_damages_col, 
+    create_avoided_damages_col
+)
 from cmu_tare_model.utils.hdd_consumption_utils import (
     get_electricity_consumption_for_year,
     get_hdd_adjusted_consumption,
     get_total_baseline_consumption
 )
-
 # Add imports for validation utility functions
 from cmu_tare_model.utils.validation_framework import (
     apply_final_masking,
@@ -241,22 +243,22 @@ def calculate_lifetime_climate_impacts(
                 category_columns_to_mask.append(emissions_col)
 
                 for scc_assumption in SCC_ASSUMPTIONS:
-                    damages_col = f'{scenario_prefix}{category}_lifetime_damages_climate_{mer_type}_{scc_assumption}'
+                    damages_col = create_lifetime_damages_col(scenario_prefix, category, 'climate', mer_type, scc_assumption)
                     lifetime_dict[damages_col] = lifetime_climate_damages[(mer_type, scc_assumption)]
                     category_columns_to_mask.append(damages_col)
 
                     # Calculate avoided damages if baseline data is provided
                     if menu_mp != 0 and df_baseline_damages is not None:
-                        baseline_damages_col = f'baseline_{category}_lifetime_damages_climate_{mer_type}_{scc_assumption}'
-                        avoided_damages_col = f'{scenario_prefix}{category}_avoided_damages_climate_{mer_type}_{scc_assumption}'
+                        baseline_damages_col = create_lifetime_damages_col('baseline_', category, 'climate', mer_type, scc_assumption)
+                        avoided_damages_col_name = create_avoided_damages_col(scenario_prefix, category, 'climate', mer_type, scc_assumption)
 
                         # Calculate avoided damages only for homes with retrofits
-                        lifetime_dict[avoided_damages_col] = calculate_avoided_values(
+                        lifetime_dict[avoided_damages_col_name] = calculate_avoided_values(
                             baseline_values=df_baseline_damages[baseline_damages_col],
                             measure_values=lifetime_dict[damages_col],
                             retrofit_mask=valid_mask
                         )
-                        category_columns_to_mask.extend([baseline_damages_col, avoided_damages_col])
+                        category_columns_to_mask.extend([baseline_damages_col, avoided_damages_col_name])
 
                 # Calculate avoided emissions if baseline data is provided
                 if menu_mp != 0 and df_baseline_damages is not None:

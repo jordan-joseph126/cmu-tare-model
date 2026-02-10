@@ -17,6 +17,16 @@ from cmu_tare_model.utils.calculation_utils import (
     validate_common_parameters,
     apply_temporary_validation_and_mask
 )
+from cmu_tare_model.utils.column_names import (
+    create_fuel_cost_col,
+    create_cost_col,
+    create_rebate_col,
+    create_capital_col,
+    create_npv_col,
+    create_enclosure_cost_col,
+    create_weatherization_rebate_col,
+    create_installation_premium_col
+)
 
 """
 ========================================================================================================================================================================
@@ -64,7 +74,7 @@ def calculate_private_npv(
         input_mp: str,
         menu_mp: int,
         policy_scenario: str,
-        discount_rate_col: str,
+        discount_rate_col_name: str,
         base_year: int = 2024,
         verbose: bool = True
 ) -> pd.DataFrame:
@@ -91,7 +101,7 @@ def calculate_private_npv(
         menu_mp: Measure package identifier.
         policy_scenario: Policy scenario that determines electricity grid projections. 
             Accepted values: 'No Inflation Reduction Act', 'AEO2023 Reference Case'.
-        discount_rate_col: Discount rate column name for private discounting.
+        discount_rate_col_name: Discount rate column name for private discounting.
         base_year: The base year for discounting calculations. Default is 2024.
         verbose: Whether to print detailed processing information. Default is True.
 
@@ -148,10 +158,10 @@ def calculate_private_npv(
             df=df_copy,
             base_year=base_year, 
             target_year=year_label,
-            discount_rate_col=discount_rate_col
+            discount_rate_col_name=discount_rate_col_name
         )
 
-    method_suffix = PRIVATE_DISCOUNTING_METHOD_SUFFIXES[discount_rate_col]
+    method_suffix = PRIVATE_DISCOUNTING_METHOD_SUFFIXES[discount_rate_col_name]
 
     # Process each equipment category
     for category, lifetime in EQUIPMENT_SPECS.items():
@@ -234,6 +244,7 @@ def calculate_capital_costs(
     input_mp: str,
     menu_mp: int,
     policy_scenario: str,
+    cost_scenario: str,
     valid_mask: pd.Series
 ) -> Tuple[pd.Series, pd.Series]:
     """
@@ -251,6 +262,7 @@ def calculate_capital_costs(
         policy_scenario: Policy scenario that determines if IRA rebates are applied.
                        'No Inflation Reduction Act' means no rebates are applied.
                        'AEO2023 Reference Case' means IRA rebates are applied.
+        cost_scenario: Cost scenario identifier used for column naming (e.g., 'mid').
         valid_mask: Series indicating which rows have valid data for the category.
 
     Returns:
@@ -270,24 +282,24 @@ def calculate_capital_costs(
         print(f"\nCalculating costs for {category}... ")
 
     # Build list of required columns based on category and policy scenario
-    install_cost_col = f'mp{menu_mp}_{category}_upgrade_installed_cost'
-    replacement_cost_col = f'mp{menu_mp}_{category}_replacement_installed_cost'
-    required_cols = [install_cost_col, replacement_cost_col]
+    upgrade_cost_col_name = create_cost_col(menu_mp, category, 'upgrade', cost_scenario )
+    replacement_cost_col_name = create_cost_col(menu_mp, category, 'replacement', cost_scenario)
+    required_cols = [upgrade_cost_col_name, replacement_cost_col_name]
 
     if category == 'heating':
-        required_cols.append(f'mp{menu_mp}_heating_installation_premium')
+        required_cols.append(create_installation_premium_col(menu_mp, category))
         if input_mp in ['upgrade09', 'upgrade10']:
-            required_cols.append(f'mp{menu_mp}_enclosure_upgradeCost')
+            required_cols.append(create_enclosure_cost_col(menu_mp))
 
             # Weatherization rebate only applies to MP9 and MP10 under IRA scenarios
             if policy_scenario != 'No Inflation Reduction Act':
-                required_cols.append('weatherization_rebate_amount')
+                required_cols.append(create_weatherization_rebate_col())
 
         if policy_scenario != 'No Inflation Reduction Act':
-            required_cols.append(f'mp{menu_mp}_{category}_rebate_amount')
+            required_cols.append(create_rebate_col(menu_mp, category))
 
     elif policy_scenario != 'No Inflation Reduction Act':
-        required_cols.append(f'mp{menu_mp}_{category}_rebate_amount')
+        required_cols.append(create_rebate_col(menu_mp, category))
 
     # Validate required columns exist
     missing_cols = _validate_required_columns(df_copy, required_cols,
@@ -303,45 +315,45 @@ def calculate_capital_costs(
     if policy_scenario == 'No Inflation Reduction Act':
         if category == 'heating':
             if input_mp == 'upgrade09':            
-                weatherization_cost = df_copy[f'mp{menu_mp}_enclosure_upgradeCost'].fillna(0)
+                weatherization_cost = df_copy[create_enclosure_cost_col(menu_mp)].fillna(0)
             elif input_mp == 'upgrade10':
-                weatherization_cost = df_copy[f'mp{menu_mp}_enclosure_upgradeCost'].fillna(0)
+                weatherization_cost = df_copy[create_enclosure_cost_col(menu_mp)].fillna(0)
             else:
                 weatherization_cost = 0.0
             
-            total_capital_cost = (df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0) + 
+            total_capital_cost = (df_copy[create_cost_col(menu_mp, category, 'upgrade', cost_scenario)].fillna(0) + 
                                   weatherization_cost + 
-                                  df_copy[f'mp{menu_mp}_heating_installation_premium'].fillna(0))
-            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacement_installed_cost'].fillna(0)
+                                  df_copy[create_installation_premium_col(menu_mp, 'heating')].fillna(0))
+            net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp, category, 'replacement', cost_scenario)].fillna(0)
             
         else:
-            total_capital_cost = df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0)
-            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacement_installed_cost'].fillna(0)
+            total_capital_cost = df_copy[create_cost_col(menu_mp, category, 'upgrade', cost_scenario)].fillna(0)
+            net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp, category, 'replacement', cost_scenario)].fillna(0)
     
     else:
         if category == 'heating':
             if input_mp == 'upgrade09':
                 # menu_mp should be 9            
-                weatherization_cost = df_copy[f'mp{menu_mp}_enclosure_upgradeCost'].fillna(0) - df_copy[f'weatherization_rebate_amount'].fillna(0)
+                weatherization_cost = df_copy[create_enclosure_cost_col(menu_mp)].fillna(0) - df_copy[create_weatherization_rebate_col()].fillna(0)
             elif input_mp == 'upgrade10':
                 # menu_mp should be 10
-                weatherization_cost = df_copy[f'mp{menu_mp}_enclosure_upgradeCost'].fillna(0) - df_copy[f'weatherization_rebate_amount'].fillna(0)
+                weatherization_cost = df_copy[create_enclosure_cost_col(menu_mp)].fillna(0) - df_copy[create_weatherization_rebate_col()].fillna(0)
             else:
                 weatherization_cost = 0.0       
             
-            installation_cost = (df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0) + 
+            installation_cost = (df_copy[create_cost_col(menu_mp, category, 'upgrade', cost_scenario)].fillna(0) + 
                                  weatherization_cost + 
-                                 df_copy[f'mp{menu_mp}_{category}_installation_premium'].fillna(0))
+                                 df_copy[create_installation_premium_col(menu_mp, category)].fillna(0))
             
-            rebate_amount = df_copy[f'mp{menu_mp}_{category}_rebate_amount'].fillna(0)
+            rebate_amount = df_copy[create_rebate_col(menu_mp, category)].fillna(0)
             total_capital_cost = installation_cost - rebate_amount
-            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacement_installed_cost'].fillna(0)
+            net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp, category, 'replacement', cost_scenario)].fillna(0)
         
         else:
-            installation_cost = df_copy[f'mp{menu_mp}_{category}_upgrade_installed_cost'].fillna(0)
-            rebate_amount = df_copy[f'mp{menu_mp}_{category}_rebate_amount'].fillna(0)
+            installation_cost = df_copy[create_cost_col(menu_mp, category, 'upgrade', cost_scenario)].fillna(0)
+            rebate_amount = df_copy[create_rebate_col(menu_mp, category)].fillna(0)
             total_capital_cost = installation_cost - rebate_amount
-            net_capital_cost = total_capital_cost - df_copy[f'mp{menu_mp}_{category}_replacement_installed_cost'].fillna(0)
+            net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp, category, 'replacement', cost_scenario)].fillna(0)
 
     # Apply masking to costs based on valid_mask. Valid homes keep their values, invalid homes get NaN
     total_capital_cost_masked = pd.Series(np.nan, index=df_copy.index)
@@ -418,18 +430,18 @@ def calculate_and_update_npv(
         discount_factor = discount_factors[year_label]
         
         # Get column names for baseline and measure package fuel costs
-        base_cost_col = f'baseline_{year_label}_{category}_fuel_cost'
-        measure_cost_col = f'{scenario_prefix}{year_label}_{category}_fuel_cost'
+        base_cost_col_name = create_fuel_cost_col('baseline_', year_label, category)
+        measure_cost_col_name = create_fuel_cost_col(scenario_prefix, year_label, category)
         
         # Check if columns exist before calculation
-        cols_exist = (base_cost_col in df_baseline_costs.columns and 
-                      measure_cost_col in df_measure_costs.columns)
+        cols_exist = (base_cost_col_name in df_baseline_costs.columns and 
+                      measure_cost_col_name in df_measure_costs.columns)
         
         if cols_exist:
             # Use calculate_avoided_values function for consistency
             avoided_costs = calculate_avoided_values(
-            baseline_values=df_baseline_costs[base_cost_col],
-            measure_values=df_measure_costs[measure_cost_col],
+            baseline_values=df_baseline_costs[base_cost_col_name],
+            measure_values=df_measure_costs[measure_cost_col_name],
             retrofit_mask=(valid_mask if menu_mp != 0 else None)
             ) * discount_factor
             
@@ -470,10 +482,10 @@ def calculate_and_update_npv(
     
     # Create a dictionary to hold the results
     result_columns = {
-        f'{scenario_prefix}{category}_total_capitalCost': total_capital_cost,
-        f'{scenario_prefix}{category}_net_capitalCost': net_capital_cost,
-        f'{scenario_prefix}{category}_private_npv_lessWTP{method_suffix}': npv_less_wtp,
-        f'{scenario_prefix}{category}_private_npv_moreWTP{method_suffix}': npv_more_wtp
+        create_capital_col(scenario_prefix, category, net=False): total_capital_cost,
+        create_capital_col(scenario_prefix, category, net=True): net_capital_cost,
+        create_npv_col(scenario_prefix, category, 'lessWTP', method_suffix=method_suffix): npv_less_wtp,
+        create_npv_col(scenario_prefix, category, 'moreWTP', method_suffix=method_suffix): npv_more_wtp
     }
 
     return result_columns

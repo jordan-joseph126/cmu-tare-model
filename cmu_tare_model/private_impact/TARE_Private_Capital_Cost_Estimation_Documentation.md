@@ -433,8 +433,8 @@ calculate_private_npv(df, df_fuel_costs, df_baseline_costs, input_mp, menu_mp,
     
     Returns:
         DataFrame with NPV columns for each category:
-        - {prefix}_{category}_total_capitalCost
-        - {prefix}_{category}_net_capitalCost
+        - {prefix}_{category}_total_capital_cost
+        - {prefix}_{category}_net_capital_cost
         - {prefix}_{category}_private_npv_lessWTP
         - {prefix}_{category}_private_npv_moreWTP
     """

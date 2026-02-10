@@ -61,7 +61,7 @@ Replace current code with loop structure (an example is shown below):
 from cmu_tare_model.constants import COST_SCENARIO_KEYS, IMPLEMENTED_ENDUSES, parse_cost_scenario
 
 # Import REMDB v4 functions (adjust import paths as needed after file moves)
-from cmu_tare_model.private_impact.remdb_v4_update.remdb_v4_installed_cost_utils import (
+from cmu_tare_model.utils.remdb_v4_installed_cost_utils import (
     load_remdb_v4_data,
     add_remdb_replacement_metrics,
     add_remdb_upgrade_metrics
