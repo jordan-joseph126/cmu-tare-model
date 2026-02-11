@@ -31,124 +31,124 @@ from cmu_tare_model.utils.column_names import (
 class TestCostCol:
     """Test create_cost_col() function."""
     
-    def test_remdb_v3_upgrade(self):
-        """Test REMDB v3 upgrade cost column."""
-        result = create_cost_col(3, 'heating', 'upgrade')
-        assert result == 'mp3_heating_upgrade_installed_cost'
+    def test_v3_upgrade(self):
+        """Test v3 upgrade cost column."""
+        result = create_cost_col(menu_mp=3, category='heating', cost_type='upgrade', cost_scenario='v3')
+        assert result == 'mp3_heating_upgrade_installed_cost_v3'
     
-    def test_remdb_v3_replacement(self):
-        """Test REMDB v3 replacement cost column."""
-        result = create_cost_col(8, 'waterHeating', 'replacement')
-        assert result == 'mp8_waterHeating_replacement_installed_cost'
+    def test_v3_replacement(self):
+        """Test v3 replacement cost column."""
+        result = create_cost_col(menu_mp=8, category='waterHeating', cost_type='replacement', cost_scenario='v3')
+        assert result == 'mp8_waterHeating_replacement_installed_cost_v3'
     
-    def test_remdb_v4_low(self):
-        """Test REMDB v4 low percentile."""
-        result = create_cost_col(3, 'heating', 'upgrade', cost_scenario='remdb_v4_low')
-        assert result == 'mp3_heating_upgrade_installed_cost_low'
+    def test_v4LOW(self):
+        """Test v4LOW cost scenario."""
+        result = create_cost_col(menu_mp=3, category='heating', cost_type='upgrade', cost_scenario='v4LOW')
+        assert result == 'mp3_heating_upgrade_installed_cost_v4LOW'
     
-    def test_remdb_v4_mid(self):
-        """Test REMDB v4 mid percentile."""
-        result = create_cost_col(4, 'cooling', 'replacement', cost_scenario='remdb_v4_mid')
-        assert result == 'mp4_cooling_replacement_installed_cost_mid'
+    def test_v4MID(self):
+        """Test v4MID cost scenario."""
+        result = create_cost_col(menu_mp=4, category='cooling', cost_type='replacement', cost_scenario='v4MID')
+        assert result == 'mp4_cooling_replacement_installed_cost_v4MID'
     
-    def test_remdb_v4_high(self):
-        """Test REMDB v4 high percentile."""
-        result = create_cost_col(7, 'clothesDrying', 'upgrade', cost_scenario='remdb_v4_high')
-        assert result == 'mp7_clothesDrying_upgrade_installed_cost_high'
+    def test_v4HIGH(self):
+        """Test v4HIGH cost scenario."""
+        result = create_cost_col(menu_mp=7, category='clothesDrying', cost_type='upgrade', cost_scenario='v4HIGH')
+        assert result == 'mp7_clothesDrying_upgrade_installed_cost_v4HIGH'
     
     def test_all_categories(self):
         """Test all equipment categories."""
         categories = ['heating', 'waterHeating', 'clothesDrying', 'cooking', 'cooling']
         for cat in categories:
-            result = create_cost_col(3, cat, 'upgrade')
+            result = create_cost_col(menu_mp=3, category=cat, cost_type='upgrade', cost_scenario='v3')
             assert cat in result
 
 
 class TestRebateCol:
     """Test create_rebate_col() function."""
     
-    def test_remdb_v3(self):
-        """Test REMDB v3 rebate column."""
-        result = create_rebate_col(3, 'heating')
-        assert result == 'mp3_heating_rebate_amount'
+    def test_v3(self):
+        """Test v3 rebate column."""
+        result = create_rebate_col(menu_mp=3, category='heating', cost_scenario='v3')
+        assert result == 'mp3_heating_rebate_amount_v3'
     
-    def test_remdb_v4_low(self):
-        """Test REMDB v4 low percentile rebate."""
-        result = create_rebate_col(8, 'waterHeating', cost_scenario='remdb_v4_low')
-        assert result == 'mp8_waterHeating_rebate_amount_low'
+    def test_v4LOW(self):
+        """Test v4LOW rebate."""
+        result = create_rebate_col(menu_mp=8, category='waterHeating', cost_scenario='v4LOW')
+        assert result == 'mp8_waterHeating_rebate_amount_v4LOW'
     
-    def test_remdb_v4_mid(self):
-        """Test REMDB v4 mid percentile rebate."""
-        result = create_rebate_col(9, 'heating', cost_scenario='remdb_v4_mid')
-        assert result == 'mp9_heating_rebate_amount_mid'
+    def test_v4MID(self):
+        """Test v4MID rebate."""
+        result = create_rebate_col(menu_mp=9, category='heating', cost_scenario='v4MID')
+        assert result == 'mp9_heating_rebate_amount_v4MID'
     
-    def test_remdb_v4_high(self):
-        """Test REMDB v4 high percentile rebate."""
-        result = create_rebate_col(10, 'cooking', cost_scenario='remdb_v4_high')
-        assert result == 'mp10_cooking_rebate_amount_high'
+    def test_v4HIGH(self):
+        """Test v4HIGH rebate."""
+        result = create_rebate_col(menu_mp=10, category='cooking', cost_scenario='v4HIGH')
+        assert result == 'mp10_cooking_rebate_amount_v4HIGH'
 
 
 class TestCapitalCol:
     """Test create_capital_col() function."""
     
-    def test_remdb_v3_total(self):
-        """Test REMDB v3 total capital cost."""
-        result = create_capital_col('iraRef_mp3_', 'heating', net=False)
-        assert result == 'iraRef_mp3_heating_total_capital_cost'
+    def test_v3_total(self):
+        """Test v3 total capital cost."""
+        result = create_capital_col(scenario_prefix='iraRef_mp3_', category='heating', net=False, cost_scenario='v3')
+        assert result == 'iraRef_mp3_heating_total_capital_cost_v3'
     
-    def test_remdb_v3_net(self):
-        """Test REMDB v3 net capital cost."""
-        result = create_capital_col('preIRA_mp8_', 'waterHeating', net=True)
-        assert result == 'preIRA_mp8_waterHeating_net_capital_cost'
+    def test_v3_net(self):
+        """Test v3 net capital cost."""
+        result = create_capital_col(scenario_prefix='preIRA_mp8_', category='waterHeating', net=True, cost_scenario='v3')
+        assert result == 'preIRA_mp8_waterHeating_net_capital_cost_v3'
     
-    def test_remdb_v4_total_mid(self):
-        """Test REMDB v4 total capital cost with mid percentile."""
-        result = create_capital_col('iraRef_mp3_', 'heating', net=False, cost_scenario='remdb_v4_mid')
-        assert result == 'iraRef_mp3_heating_total_capital_cost_mid'
+    def test_v4MID_total(self):
+        """Test v4MID total capital cost."""
+        result = create_capital_col(scenario_prefix='iraRef_mp3_', category='heating', net=False, cost_scenario='v4MID')
+        assert result == 'iraRef_mp3_heating_total_capital_cost_v4MID'
     
-    def test_remdb_v4_net_high(self):
-        """Test REMDB v4 net capital cost with high percentile."""
-        result = create_capital_col('baseline_', 'cooling', net=True, cost_scenario='remdb_v4_high')
-        assert result == 'baseline_cooling_net_capital_cost_high'
+    def test_v4HIGH_net(self):
+        """Test v4HIGH net capital cost."""
+        result = create_capital_col(scenario_prefix='baseline_', category='cooling', net=True, cost_scenario='v4HIGH')
+        assert result == 'baseline_cooling_net_capital_cost_v4HIGH'
     
-    def test_remdb_v4_low(self):
-        """Test REMDB v4 low percentile."""
-        result = create_capital_col('iraRef_mp9_', 'heating', net=False, cost_scenario='remdb_v4_low')
-        assert result == 'iraRef_mp9_heating_total_capital_cost_low'
+    def test_v4LOW(self):
+        """Test v4LOW."""
+        result = create_capital_col(scenario_prefix='iraRef_mp9_', category='heating', net=False, cost_scenario='v4LOW')
+        assert result == 'iraRef_mp9_heating_total_capital_cost_v4LOW'
 
 
 class TestNpvCol:
     """Test create_npv_col() function."""
     
-    def test_remdb_v3_less_wtp_no_suffix(self):
-        """Test REMDB v3 lessWTP without method suffix."""
-        result = create_npv_col('iraRef_mp3_', 'heating', 'lessWTP')
-        assert result == 'iraRef_mp3_heating_private_npv_lessWTP'
+    def test_v3_less_wtp_no_suffix(self):
+        """Test v3 lessWTP without method suffix."""
+        result = create_npv_col(scenario_prefix='iraRef_mp3_', category='heating', wtp='lessWTP', cost_scenario='v3', method_suffix='')
+        assert result == 'iraRef_mp3_heating_private_npv_lessWTP_v3'
     
-    def test_remdb_v3_more_wtp_fixed_low(self):
-        """Test REMDB v3 moreWTP with fixed_low suffix."""
-        result = create_npv_col('preIRA_mp8_', 'waterHeating', 'moreWTP', method_suffix='_fixed_low')
-        assert result == 'preIRA_mp8_waterHeating_private_npv_moreWTP_fixed_low'
+    def test_v3_more_wtp_fixed_low(self):
+        """Test v3 moreWTP with fixed_low suffix."""
+        result = create_npv_col(scenario_prefix='preIRA_mp8_', category='waterHeating', wtp='moreWTP', cost_scenario='v3', method_suffix='_fixed_low')
+        assert result == 'preIRA_mp8_waterHeating_private_npv_moreWTP_v3_fixed_low'
     
-    def test_remdb_v3_fixed_high(self):
-        """Test REMDB v3 with fixed_high suffix."""
-        result = create_npv_col('iraRef_mp9_', 'heating', 'lessWTP', method_suffix='_fixed_high')
-        assert result == 'iraRef_mp9_heating_private_npv_lessWTP_fixed_high'
+    def test_v3_fixed_high(self):
+        """Test v3 with fixed_high suffix."""
+        result = create_npv_col(scenario_prefix='iraRef_mp9_', category='heating', wtp='lessWTP', cost_scenario='v3', method_suffix='_fixed_high')
+        assert result == 'iraRef_mp9_heating_private_npv_lessWTP_v3_fixed_high'
     
-    def test_remdb_v4_mid_percentile(self):
-        """Test REMDB v4 with mid percentile."""
-        result = create_npv_col('iraRef_mp3_', 'heating', 'lessWTP', percentile='mid')
-        assert result == 'iraRef_mp3_heating_private_npv_lessWTP_mid'
+    def test_v4MID(self):
+        """Test v4MID cost scenario."""
+        result = create_npv_col(scenario_prefix='iraRef_mp3_', category='heating', wtp='lessWTP', cost_scenario='v4MID', method_suffix='')
+        assert result == 'iraRef_mp3_heating_private_npv_lessWTP_v4MID'
     
-    def test_remdb_v4_low_percentile(self):
-        """Test REMDB v4 with low percentile."""
-        result = create_npv_col('iraRef_mp4_', 'cooling', 'moreWTP', percentile='low')
-        assert result == 'iraRef_mp4_cooling_private_npv_moreWTP_low'
+    def test_v4LOW(self):
+        """Test v4LOW cost scenario."""
+        result = create_npv_col(scenario_prefix='iraRef_mp4_', category='cooling', wtp='moreWTP', cost_scenario='v4LOW', method_suffix='')
+        assert result == 'iraRef_mp4_cooling_private_npv_moreWTP_v4LOW'
     
-    def test_remdb_v4_high_percentile(self):
-        """Test REMDB v4 with high percentile."""
-        result = create_npv_col('preIRA_mp10_', 'heating', 'lessWTP', percentile='high')
-        assert result == 'preIRA_mp10_heating_private_npv_lessWTP_high'
+    def test_v4HIGH(self):
+        """Test v4HIGH cost scenario."""
+        result = create_npv_col(scenario_prefix='preIRA_mp10_', category='heating', wtp='lessWTP', cost_scenario='v4HIGH', method_suffix='')
+        assert result == 'preIRA_mp10_heating_private_npv_lessWTP_v4HIGH'
 
 
 # =============================================================================
@@ -158,54 +158,54 @@ class TestNpvCol:
 class TestEnclosureCostCol:
     """Test create_enclosure_cost_col() function."""
     
-    def test_remdb_v3_mp9(self):
-        """Test REMDB v3 MP9 enclosure cost."""
-        result = create_enclosure_cost_col(9)
-        assert result == 'mp9_enclosure_upgradeCost'
+    def test_v3_mp9(self):
+        """Test v3 MP9 enclosure cost."""
+        result = create_enclosure_cost_col(menu_mp=9, cost_scenario='v3')
+        assert result == 'mp9_enclosure_upgrade_installed_cost_v3'
     
-    def test_remdb_v3_mp10(self):
-        """Test REMDB v3 MP10 enclosure cost."""
-        result = create_enclosure_cost_col(10)
-        assert result == 'mp10_enclosure_upgradeCost'
+    def test_v3_mp10(self):
+        """Test v3 MP10 enclosure cost."""
+        result = create_enclosure_cost_col(menu_mp=10, cost_scenario='v3')
+        assert result == 'mp10_enclosure_upgrade_installed_cost_v3'
     
-    def test_remdb_v4_mid_mp9(self):
-        """Test REMDB v4 mid percentile MP9."""
-        result = create_enclosure_cost_col(9, cost_scenario='remdb_v4_mid')
-        assert result == 'mp9_enclosure_upgrade_installed_cost_mid'
+    def test_v4MID_mp9(self):
+        """Test v4MID MP9."""
+        result = create_enclosure_cost_col(menu_mp=9, cost_scenario='v4MID')
+        assert result == 'mp9_enclosure_upgrade_installed_cost_v4MID'
     
-    def test_remdb_v4_low_mp10(self):
-        """Test REMDB v4 low percentile MP10."""
-        result = create_enclosure_cost_col(10, cost_scenario='remdb_v4_low')
-        assert result == 'mp10_enclosure_upgrade_installed_cost_low'
+    def test_v4LOW_mp10(self):
+        """Test v4LOW MP10."""
+        result = create_enclosure_cost_col(menu_mp=10, cost_scenario='v4LOW')
+        assert result == 'mp10_enclosure_upgrade_installed_cost_v4LOW'
     
-    def test_remdb_v4_high_mp9(self):
-        """Test REMDB v4 high percentile MP9."""
-        result = create_enclosure_cost_col(9, cost_scenario='remdb_v4_high')
-        assert result == 'mp9_enclosure_upgrade_installed_cost_high'
+    def test_v4HIGH_mp9(self):
+        """Test v4HIGH MP9."""
+        result = create_enclosure_cost_col(menu_mp=9, cost_scenario='v4HIGH')
+        assert result == 'mp9_enclosure_upgrade_installed_cost_v4HIGH'
 
 
 class TestWeatherizationRebateCol:
     """Test create_weatherization_rebate_col() function."""
     
-    def test_remdb_v3(self):
-        """Test REMDB v3 weatherization rebate."""
-        result = create_weatherization_rebate_col()
-        assert result == 'weatherization_rebate_amount'
+    def test_v3(self):
+        """Test v3 weatherization rebate."""
+        result = create_weatherization_rebate_col(cost_scenario='v3')
+        assert result == 'weatherization_rebate_amount_v3'
     
-    def test_remdb_v4_low(self):
-        """Test REMDB v4 low percentile."""
-        result = create_weatherization_rebate_col(cost_scenario='remdb_v4_low')
-        assert result == 'weatherization_rebate_amount_low'
+    def test_v4LOW(self):
+        """Test v4LOW."""
+        result = create_weatherization_rebate_col(cost_scenario='v4LOW')
+        assert result == 'weatherization_rebate_amount_v4LOW'
     
-    def test_remdb_v4_mid(self):
-        """Test REMDB v4 mid percentile."""
-        result = create_weatherization_rebate_col(cost_scenario='remdb_v4_mid')
-        assert result == 'weatherization_rebate_amount_mid'
+    def test_v4MID(self):
+        """Test v4MID."""
+        result = create_weatherization_rebate_col(cost_scenario='v4MID')
+        assert result == 'weatherization_rebate_amount_v4MID'
     
-    def test_remdb_v4_high(self):
-        """Test REMDB v4 high percentile."""
-        result = create_weatherization_rebate_col(cost_scenario='remdb_v4_high')
-        assert result == 'weatherization_rebate_amount_high'
+    def test_v4HIGH(self):
+        """Test v4HIGH."""
+        result = create_weatherization_rebate_col(cost_scenario='v4HIGH')
+        assert result == 'weatherization_rebate_amount_v4HIGH'
 
 
 class TestInstallationPremiumCol:
@@ -231,27 +231,27 @@ class TestInstallationPremiumCol:
 class TestCombinedHeatingCoolingCol:
     """Test create_combined_heating_cooling_col() function."""
     
-    def test_remdb_v3_replacement(self):
-        """Test REMDB v3 combined replacement cost."""
-        result = create_combined_heating_cooling_col(3, 'replacement_installed_cost')
-        assert result == 'mp3_heating_and_cooling_replacement_installed_cost'
+    def test_v3_replacement(self):
+        """Test v3 combined replacement cost."""
+        result = create_combined_heating_cooling_col(menu_mp=3, cost_type='replacement_installed_cost', cost_scenario='v3')
+        assert result == 'mp3_heating_and_cooling_replacement_installed_cost_v3'
     
-    def test_remdb_v3_net_capital(self):
-        """Test REMDB v3 combined net capital cost."""
-        result = create_combined_heating_cooling_col(4, 'net_capital_cost')
-        assert result == 'mp4_heating_and_cooling_net_capital_cost'
+    def test_v3_net_capital(self):
+        """Test v3 combined net capital cost."""
+        result = create_combined_heating_cooling_col(menu_mp=4, cost_type='net_capital_cost', cost_scenario='v3')
+        assert result == 'mp4_heating_and_cooling_net_capital_cost_v3'
     
-    def test_remdb_v4_mid(self):
-        """Test REMDB v4 mid percentile."""
-        result = create_combined_heating_cooling_col(7, 'replacement_installed_cost', 
-                                              cost_scenario='remdb_v4_mid')
-        assert result == 'mp7_heating_and_cooling_replacement_installed_cost_mid'
+    def test_v4MID(self):
+        """Test v4MID."""
+        result = create_combined_heating_cooling_col(menu_mp=7, cost_type='replacement_installed_cost', 
+                                              cost_scenario='v4MID')
+        assert result == 'mp7_heating_and_cooling_replacement_installed_cost_v4MID'
     
-    def test_remdb_v4_high(self):
-        """Test REMDB v4 high percentile."""
-        result = create_combined_heating_cooling_col(3, 'net_capital_cost',
-                                              cost_scenario='remdb_v4_high')
-        assert result == 'mp3_heating_and_cooling_net_capital_cost_high'
+    def test_v4HIGH(self):
+        """Test v4HIGH."""
+        result = create_combined_heating_cooling_col(menu_mp=3, cost_type='net_capital_cost',
+                                              cost_scenario='v4HIGH')
+        assert result == 'mp3_heating_and_cooling_net_capital_cost_v4HIGH'
 
 
 # =============================================================================
@@ -372,37 +372,38 @@ class TestAdoptionCol:
     
     def test_health_sensitivity(self):
         """Test health sensitivity column."""
-        result = create_adoption_col('iraRef_mp3_', 'heating', 'health_sensitivity')
+        result = create_adoption_col(scenario_prefix='iraRef_mp3_', category='heating', column_type='health_sensitivity', cost_scenario='v3', method_suffix='_fixed_low')
         assert result == 'iraRef_mp3_heating_health_sensitivity'
     
     def test_benefit(self):
         """Test benefit column."""
-        result = create_adoption_col('iraRef_mp3_', 'heating', 'benefit', 
-                            'central', 'inmap', 'acs')
-        assert result == 'iraRef_mp3_heating_benefit_central_inmap_acs'
+        result = create_adoption_col(scenario_prefix='iraRef_mp3_', category='heating', column_type='benefit', cost_scenario='v3', method_suffix='_fixed_low', scc_assumption='central', rcm_model='inmap', cr_function='acs')
+        assert result == 'iraRef_mp3_heating_benefit_central_inmap_acs_v3'
     
     def test_adoption_no_suffix(self):
         """Test adoption column without method suffix."""
-        result = create_adoption_col('preIRA_mp8_', 'waterHeating', 'adoption',
-                            'upper', 'ap2', 'h6c')
-        assert result == 'preIRA_mp8_waterHeating_adoption_upper_ap2_h6c'
+        result = create_adoption_col(scenario_prefix='preIRA_mp8_', category='waterHeating', column_type='adoption', cost_scenario='v3', method_suffix='', scc_assumption='upper', rcm_model='ap2', cr_function='h6c')
+        assert result == 'preIRA_mp8_waterHeating_adoption_upper_ap2_h6c_v3'
     
     def test_adoption_with_suffix(self):
         """Test adoption column with method suffix."""
-        result = create_adoption_col('iraRef_mp3_', 'heating', 'adoption',
-                            'central', 'inmap', 'acs', method_suffix='_fixed_low')
-        assert result == 'iraRef_mp3_heating_adoption_central_inmap_acs_fixed_low'
+        result = create_adoption_col(scenario_prefix='iraRef_mp3_', category='heating', column_type='adoption', cost_scenario='v3', method_suffix='_fixed_low', scc_assumption='central', rcm_model='inmap', cr_function='acs')
+        assert result == 'iraRef_mp3_heating_adoption_central_inmap_acs_v3_fixed_low'
     
     def test_impact(self):
         """Test impact column."""
-        result = create_adoption_col('iraRef_mp9_', 'heating', 'impact',
-                            'lower', 'easiur', 'acs')
-        assert result == 'iraRef_mp9_heating_impact_lower_easiur_acs'
+        result = create_adoption_col(scenario_prefix='iraRef_mp9_', category='heating', column_type='impact', cost_scenario='v3', method_suffix='_fixed_low', scc_assumption='lower', rcm_model='easiur', cr_function='acs')
+        assert result == 'iraRef_mp9_heating_impact_lower_easiur_acs_v3'
+    
+    def test_adoption_v4MID(self):
+        """Test adoption column with v4MID."""
+        result = create_adoption_col(scenario_prefix='iraRef_mp3_', category='heating', column_type='adoption', cost_scenario='v4MID', method_suffix='_fixed_low', scc_assumption='central', rcm_model='inmap', cr_function='acs')
+        assert result == 'iraRef_mp3_heating_adoption_central_inmap_acs_v4MID_fixed_low'
     
     def test_invalid_column_type(self):
         """Test invalid column type raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
-            create_adoption_col('iraRef_mp3_', 'heating', 'invalid_type')
+            create_adoption_col(scenario_prefix='iraRef_mp3_', category='heating', column_type='invalid_type', cost_scenario='v3', method_suffix='')
         assert 'Invalid column_type' in str(exc_info.value)
 
 
@@ -411,26 +412,38 @@ class TestTotalNpvCol:
     
     def test_combined_no_suffix(self):
         """Test combined total NPV without method suffix."""
-        result = create_total_npv_col('iraRef_mp3_', 'heating', 'central', 'inmap', 'acs')
-        assert result == 'iraRef_mp3_heating_total_npv_central_inmap_acs'
+        result = create_total_npv_col(scenario_prefix='iraRef_mp3_', category='heating', cost_scenario='v3', method_suffix='', scc_assumption='central', rcm_model='inmap', cr_function='acs')
+        assert result == 'iraRef_mp3_heating_total_npv_central_inmap_acs_v3'
     
     def test_combined_with_suffix(self):
         """Test combined total NPV with method suffix."""
-        result = create_total_npv_col('preIRA_mp8_', 'waterHeating', 'upper', 'ap2', 'h6c',
-                              method_suffix='_fixed_low')
-        assert result == 'preIRA_mp8_waterHeating_total_npv_upper_ap2_h6c_fixed_low'
+        result = create_total_npv_col(scenario_prefix='preIRA_mp8_', category='waterHeating', cost_scenario='v3', method_suffix='_fixed_low', scc_assumption='upper', rcm_model='ap2', cr_function='h6c')
+        assert result == 'preIRA_mp8_waterHeating_total_npv_upper_ap2_h6c_v3_fixed_low'
+    
+    def test_combined_with_v4MID(self):
+        """Test combined total NPV with v4MID cost scenario."""
+        result = create_total_npv_col(scenario_prefix='iraRef_mp3_', category='heating', cost_scenario='v4MID', method_suffix='_fixed_low', scc_assumption='central', rcm_model='inmap', cr_function='acs')
+        assert result == 'iraRef_mp3_heating_total_npv_central_inmap_acs_v4MID_fixed_low'
     
     def test_climate_only_central(self):
         """Test climate-only total NPV with central assumption."""
-        result = create_total_npv_col('iraRef_mp3_', 'heating', 'central',
-                              climate_only=True, discount_rate='fixed_3pct')
-        assert result == 'iraRef_mp3_heating_total_npv_climateOnly_central_fixed_3pct'
+        result = create_total_npv_col(scenario_prefix='iraRef_mp3_', category='heating', cost_scenario='v3', method_suffix='_fixed_base', scc_assumption='central', climate_only=True)
+        assert result == 'iraRef_mp3_heating_total_npv_climateOnly_central_v3_fixed_base'
     
     def test_climate_only_lower(self):
         """Test climate-only total NPV with lower assumption."""
-        result = create_total_npv_col('baseline_', 'waterHeating', 'lower',
-                              climate_only=True, discount_rate='fixed_2pct')
-        assert result == 'baseline_waterHeating_total_npv_climateOnly_lower_fixed_2pct'
+        result = create_total_npv_col(scenario_prefix='baseline_', category='waterHeating', cost_scenario='v3', method_suffix='_fixed_2pct', scc_assumption='lower', climate_only=True)
+        assert result == 'baseline_waterHeating_total_npv_climateOnly_lower_v3_fixed_2pct'
+    
+    def test_health_only(self):
+        """Test health-only total NPV."""
+        result = create_total_npv_col(scenario_prefix='iraRef_mp3_', category='heating', cost_scenario='v3', method_suffix='_fixed_low', rcm_model='inmap', cr_function='acs', health_only=True)
+        assert result == 'iraRef_mp3_heating_total_npv_healthOnly_inmap_acs_v3_fixed_low'
+    
+    def test_health_only_v4HIGH(self):
+        """Test health-only total NPV with v4HIGH."""
+        result = create_total_npv_col(scenario_prefix='preIRA_mp8_', category='cooking', cost_scenario='v4HIGH', method_suffix='_fixed_high', rcm_model='ap2', cr_function='h6c', health_only=True)
+        assert result == 'preIRA_mp8_cooking_total_npv_healthOnly_ap2_h6c_v4HIGH_fixed_high'
 
 
 # =============================================================================
@@ -442,13 +455,14 @@ class TestParametricCombinations:
     
     @pytest.mark.parametrize("menu_mp", [0, 3, 4, 7, 8, 9, 10])
     @pytest.mark.parametrize("category", ['heating', 'waterHeating', 'clothesDrying', 'cooking', 'cooling'])
-    @pytest.mark.parametrize("cost_scenario", ['remdb_v3', 'remdb_v4_low', 'remdb_v4_mid', 'remdb_v4_high'])
+    @pytest.mark.parametrize("cost_scenario", ['v3', 'v4LOW', 'v4MID', 'v4HIGH'])
     def test_cost_col_all_combinations(self, menu_mp, category, cost_scenario):
         """Test cost_col with all valid combinations."""
-        result = create_cost_col(menu_mp, category, 'upgrade', cost_scenario)
+        result = create_cost_col(menu_mp=menu_mp, category=category, cost_type='upgrade', cost_scenario=cost_scenario)
         assert f'mp{menu_mp}' in result
         assert category in result
         assert 'upgrade_installed_cost' in result
+        assert result.endswith(f'_{cost_scenario}')
     
     @pytest.mark.parametrize("scc", ['lower', 'central', 'upper'])
     @pytest.mark.parametrize("rcm", ['ap2', 'easiur', 'inmap'])
@@ -462,14 +476,13 @@ class TestParametricCombinations:
         assert 'public_npv' in result
     
     @pytest.mark.parametrize("wtp", ['lessWTP', 'moreWTP'])
-    @pytest.mark.parametrize("percentile", [None, 'low', 'mid', 'high'])
-    def test_npv_col_wtp_percentile_combinations(self, wtp, percentile):
-        """Test npv_col with all WTP and percentile combinations."""
-        result = create_npv_col('iraRef_mp3_', 'heating', wtp, percentile=percentile)
+    @pytest.mark.parametrize("cost_scenario", ['v3', 'v4LOW', 'v4MID', 'v4HIGH'])
+    def test_npv_col_wtp_cost_scenario_combinations(self, wtp, cost_scenario):
+        """Test npv_col with all WTP and cost_scenario combinations."""
+        result = create_npv_col(scenario_prefix='iraRef_mp3_', category='heating', wtp=wtp, cost_scenario=cost_scenario, method_suffix='')
         assert wtp in result
         assert 'private_npv' in result
-        if percentile:
-            assert percentile in result
+        assert result.endswith(f'_{cost_scenario}')
 
 
 # =============================================================================
@@ -484,96 +497,89 @@ class TestIntegration:
         mp = 3
         category = 'heating'
         scenario = 'iraRef_mp3_'
+        cs = 'v3'
         
         # Cost columns
-        upgrade_cost = create_cost_col(mp, category, 'upgrade')
-        replacement_cost = create_cost_col(mp, category, 'replacement')
-        rebate = create_rebate_col(mp, category)
+        upgrade_cost = create_cost_col(menu_mp=mp, category=category, cost_type='upgrade', cost_scenario=cs)
+        replacement_cost = create_cost_col(menu_mp=mp, category=category, cost_type='replacement', cost_scenario=cs)
+        rebate = create_rebate_col(menu_mp=mp, category=category, cost_scenario=cs)
         
         # Capital columns
-        total_capital = create_capital_col(scenario, category, net=False)
-        net_capital = create_capital_col(scenario, category, net=True)
+        total_capital = create_capital_col(scenario_prefix=scenario, category=category, net=False, cost_scenario=cs)
+        net_capital = create_capital_col(scenario_prefix=scenario, category=category, net=True, cost_scenario=cs)
         
         # NPV columns
-        private_npv_less = create_npv_col(scenario, category, 'lessWTP')
-        private_npv_more = create_npv_col(scenario, category, 'moreWTP')
+        private_npv_less = create_npv_col(scenario_prefix=scenario, category=category, wtp='lessWTP', cost_scenario=cs, method_suffix='')
+        private_npv_more = create_npv_col(scenario_prefix=scenario, category=category, wtp='moreWTP', cost_scenario=cs, method_suffix='')
         
-        # Public columns
+        # Public columns (no cost_scenario dependency)
         climate_npv = create_climate_npv_col(scenario, category, 'central')
         health_npv = create_health_npv_col(scenario, category, 'inmap', 'acs')
         public_npv = create_public_npv_col(scenario, category, 'central', 'inmap', 'acs')
         
-        # All should be valid strings without percentile suffixes
-        for col in [upgrade_cost, replacement_cost, rebate, total_capital, 
-                   net_capital, private_npv_less, private_npv_more,
-                   climate_npv, health_npv, public_npv]:
-            assert isinstance(col, str)
-            assert len(col) > 0
-            assert '_low' not in col
-            assert '_mid' not in col
-            assert '_high' not in col
+        # All cost-scenario-dependent columns should contain _v3
+        for col in [upgrade_cost, replacement_cost, rebate, total_capital, net_capital, private_npv_less, private_npv_more]:
+            assert '_v3' in col
     
     def test_v4_complete_workflow(self):
         """Test complete v4 workflow for a single MP."""
         mp = 3
         category = 'heating'
         scenario = 'iraRef_mp3_'
-        cost_scenario = 'remdb_v4_mid'
+        cs = 'v4MID'
         
         # Cost columns
-        upgrade_cost = create_cost_col(mp, category, 'upgrade', cost_scenario)
-        replacement_cost = create_cost_col(mp, category, 'replacement', cost_scenario)
-        rebate = create_rebate_col(mp, category, cost_scenario)
+        upgrade_cost = create_cost_col(menu_mp=mp, category=category, cost_type='upgrade', cost_scenario=cs)
+        replacement_cost = create_cost_col(menu_mp=mp, category=category, cost_type='replacement', cost_scenario=cs)
+        rebate = create_rebate_col(menu_mp=mp, category=category, cost_scenario=cs)
         
         # Capital columns
-        total_capital = create_capital_col(scenario, category, net=False, cost_scenario=cost_scenario)
-        net_capital = create_capital_col(scenario, category, net=True, cost_scenario=cost_scenario)
+        total_capital = create_capital_col(scenario_prefix=scenario, category=category, net=False, cost_scenario=cs)
+        net_capital = create_capital_col(scenario_prefix=scenario, category=category, net=True, cost_scenario=cs)
         
-        # NPV columns (v4 uses percentile instead of method_suffix)
-        private_npv_less = create_npv_col(scenario, category, 'lessWTP', percentile='mid')
-        private_npv_more = create_npv_col(scenario, category, 'moreWTP', percentile='mid')
+        # NPV columns
+        private_npv_less = create_npv_col(scenario_prefix=scenario, category=category, wtp='lessWTP', cost_scenario=cs, method_suffix='')
+        private_npv_more = create_npv_col(scenario_prefix=scenario, category=category, wtp='moreWTP', cost_scenario=cs, method_suffix='')
         
-        # All cost-related columns should have '_mid' suffix
-        for col in [upgrade_cost, replacement_cost, rebate, total_capital, 
-                   net_capital, private_npv_less, private_npv_more]:
-            assert isinstance(col, str)
-            assert '_mid' in col
+        # All cost-scenario-dependent columns should contain _v4MID
+        for col in [upgrade_cost, replacement_cost, rebate, total_capital, net_capital, private_npv_less, private_npv_more]:
+            assert '_v4MID' in col
     
     def test_mp9_mp10_special_cases(self):
         """Test special cases for MP9 and MP10 with enclosure costs."""
         for mp in [9, 10]:
             # Enclosure costs
-            enclosure_v3 = create_enclosure_cost_col(mp)
-            enclosure_v4 = create_enclosure_cost_col(mp, 'remdb_v4_mid')
+            enclosure_v3 = create_enclosure_cost_col(menu_mp=mp, cost_scenario='v3')
+            enclosure_v4 = create_enclosure_cost_col(menu_mp=mp, cost_scenario='v4MID')
             
             assert 'enclosure' in enclosure_v3
             assert 'enclosure' in enclosure_v4
             assert f'mp{mp}' in enclosure_v3
             assert f'mp{mp}' in enclosure_v4
-            assert '_mid' not in enclosure_v3
-            assert '_mid' in enclosure_v4
+            assert '_v3' in enclosure_v3
+            assert '_v4MID' in enclosure_v4
             
             # Weatherization rebates
-            weather_rebate_v3 = create_weatherization_rebate_col()
-            weather_rebate_v4 = create_weatherization_rebate_col('remdb_v4_mid')
+            weather_rebate_v3 = create_weatherization_rebate_col(cost_scenario='v3')
+            weather_rebate_v4 = create_weatherization_rebate_col(cost_scenario='v4MID')
             
             assert 'weatherization' in weather_rebate_v3
             assert 'weatherization' in weather_rebate_v4
-            assert '_mid' not in weather_rebate_v3
-            assert '_mid' in weather_rebate_v4
+            assert '_v3' in weather_rebate_v3
+            assert '_v4MID' in weather_rebate_v4
     
     def test_combined_heating_cooling_mps(self):
         """Test MPs with combined heating and cooling upgrades (3, 4, 7)."""
         for mp in [3, 4, 7]:
-            combined_v3 = create_combined_heating_cooling_col(mp, 'replacement_installed_cost')
-            combined_v4 = create_combined_heating_cooling_col(mp, 'replacement_installed_cost', 
-                                                       'remdb_v4_mid')
+            combined_v3 = create_combined_heating_cooling_col(menu_mp=mp, cost_type='replacement_installed_cost', cost_scenario='v3')
+            combined_v4 = create_combined_heating_cooling_col(menu_mp=mp, cost_type='replacement_installed_cost', 
+                                                       cost_scenario='v4MID')
             
             assert 'heating_and_cooling' in combined_v3
             assert 'heating_and_cooling' in combined_v4
             assert f'mp{mp}' in combined_v3
-            assert '_mid' not in combined_v3
-            assert '_mid' in combined_v4
+            assert '_v3' in combined_v3
+            assert '_v4MID' in combined_v4
 
 
 if __name__ == '__main__':

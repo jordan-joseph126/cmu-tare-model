@@ -7,7 +7,7 @@
 #### Added
 - Google-style docstrings to all functions:
   - `get_enclosure_parameters()`
-  - `calculate_enclosure_retrofit_upgradeCosts()`
+  - `calculate_enclosure_retrofit_upgrade_costs()`
 - Inline comments for normal distribution sampling calculations
 
 ### calculate_equipment_installation_costs.py

@@ -10,9 +10,9 @@
 # CONSTANTS: TARE MODEL
 # =============================================================
 # Configuration
-VERBOSE = True
-PRINT_DEBUG = True
-PRINT_VERBOSE_DATAFRAMES = True
+VERBOSE = False
+PRINT_DEBUG = False
+PRINT_VERBOSE_DATAFRAMES = False
 
 # ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached', 'Mobile Home', 'Multi-Family with 2 - 4 Units']
 ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached']
@@ -128,39 +128,9 @@ REBATE_MAPPING = {
 # CONSTANTS: CAPITAL COST SCENARIOS (REMDB v3 + v4)
 # =============================================================
 
-COST_SCENARIO_KEYS = [
-    'remdb_v3',           # Existing method (Excel dictionaries)
-    'remdb_v4_low',       # REMDB v4: 25th percentile
-    'remdb_v4_mid',       # REMDB v4: 50th percentile (median)
-    'remdb_v4_high'       # REMDB v4: 75th percentile
+REMDB_COST_SCENARIO_KEYS = [
+    'v3',          # Existing method (Excel dictionaries for REMDB v3)
+    'v4LOW',       # REMDB v4: 10th percentile
+    'v4MID',       # REMDB v4: 50th percentile (median)
+    'v4HIGH'       # REMDB v4: 90th percentile
 ]
-
-
-def parse_cost_scenario(scenario_key: str) -> tuple[str, str | None]:
-    """Parse cost scenario key into method and percentile.
-
-    Args:
-        scenario_key: One of COST_SCENARIO_KEYS.
-
-    Returns:
-        Tuple of (method, percentile) where percentile is None for v3.
-
-    Raises:
-        ValueError: If scenario_key is not in COST_SCENARIO_KEYS.
-
-    Examples:
-        >>> parse_cost_scenario('remdb_v4_mid')
-        ('remdb_v4', 'mid')
-        >>> parse_cost_scenario('remdb_v3')
-        ('remdb_v3', None)
-    """
-    if scenario_key not in COST_SCENARIO_KEYS:
-        raise ValueError(
-            f"Invalid scenario_key '{scenario_key}'. "
-            f"Must be one of {COST_SCENARIO_KEYS}"
-        )
-    if scenario_key == 'remdb_v3':
-        return ('remdb_v3', None)
-    else:
-        method, percentile = scenario_key.rsplit('_', 1)
-        return (method, percentile)

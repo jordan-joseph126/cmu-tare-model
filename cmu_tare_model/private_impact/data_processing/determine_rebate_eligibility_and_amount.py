@@ -250,7 +250,8 @@ def calculate_rebate(
         row: pd.Series,
         category: str, 
         menu_mp: int, 
-        coverage_rate: float) -> None:
+        coverage_rate: float,
+        cost_scenario: str) -> None:
     """
     Calculate and assign the rebate amounts for a specific row.
     
@@ -260,6 +261,7 @@ def calculate_rebate(
         category: Equipment category
         menu_mp: Measure package identifier
         coverage_rate: Rebate coverage rate (1.0 for low-income, 0.5 for moderate-income)
+        cost_scenario: Cost methodology key ('v3' or 'v4LOW/MID/HIGH').
         
     Raises:
         ValueError: If an invalid category is provided
@@ -269,8 +271,8 @@ def calculate_rebate(
         max_rebate_amount, max_weatherization_rebate_amount = get_max_rebate_amount(row, category)
         
         # Calculate equipment rebate
-        install_cost_col_name = create_cost_col(menu_mp, category, 'upgrade')
-        rebate_col_name = create_rebate_col(menu_mp, category)
+        install_cost_col_name = create_cost_col(menu_mp=menu_mp, category=category, cost_type='upgrade', cost_scenario=cost_scenario)
+        rebate_col_name = create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)
         
         if install_cost_col_name in row and not pd.isna(row[install_cost_col_name]):
             project_coverage = round(row[install_cost_col_name] * coverage_rate, 2)
@@ -281,8 +283,8 @@ def calculate_rebate(
                 raise ValueError(f"Warning: Installation cost data missing for row {row.name}, category {category}. Setting rebate to 0.")
         
         # Calculate weatherization rebate if applicable
-        enclosure_cost_col_name = create_enclosure_cost_col(menu_mp)
-        weatherization_rebate_col_name = create_weatherization_rebate_col()
+        enclosure_cost_col_name = create_enclosure_cost_col(menu_mp=menu_mp, cost_scenario=cost_scenario)
+        weatherization_rebate_col_name = create_weatherization_rebate_col(cost_scenario=cost_scenario)
         if enclosure_cost_col_name in df_results_IRA.columns and menu_mp in [9, 10]:
             if enclosure_cost_col_name in row and not pd.isna(row[enclosure_cost_col_name]):
                 weatherization_project_coverage = round(row[enclosure_cost_col_name] * coverage_rate, 2)
@@ -297,7 +299,7 @@ def calculate_rebate(
         
         # Set default values to prevent calculations from breaking
         df_results_IRA.at[row.name, rebate_col_name] = 0.00
-        weatherization_rebate_col_name = create_weatherization_rebate_col()
+        weatherization_rebate_col_name = create_weatherization_rebate_col(cost_scenario=cost_scenario)
         if menu_mp in [9, 10] and weatherization_rebate_col_name in df_results_IRA.columns:
             df_results_IRA.at[row.name, weatherization_rebate_col_name] = 0.00
 
@@ -306,6 +308,7 @@ def calculate_rebateIRA(
     df_results_IRA: pd.DataFrame, 
     category: str, 
     menu_mp: int,
+    cost_scenario: str,
     verbose: bool = VERBOSE
 ) -> pd.DataFrame:
     """
@@ -322,6 +325,7 @@ def calculate_rebateIRA(
         df_results_IRA: DataFrame containing income designations and cost data
         category: Equipment category (e.g., 'heating', 'waterHeating')
         menu_mp: Measure package identifier
+        cost_scenario: Cost methodology key ('v3' or 'v4LOW/MID/HIGH').
         verbose: Flag to enable verbose logging
         
     Returns:
@@ -335,12 +339,20 @@ def calculate_rebateIRA(
         4. Applies final verification masking
     """
 
+    # Validate category has rebate mapping
+    if category not in REBATE_MAPPING:
+        raise ValueError(
+            f"Category '{category}' is not supported for rebate calculations. " 
+            f"Valid categories with rebates: {list(REBATE_MAPPING.keys())}. "
+            f"Note: Cooling rebates are not modeled separately - heat pump rebates cover both heating and cooling."
+        )
+
     # Initialize validation tracking
     df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
         df_results_IRA, category, menu_mp, verbose=verbose)
     
     # Create rebate columns
-    rebate_col_name = create_rebate_col(menu_mp, category)
+    rebate_col_name = create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)
 
     df_copy[rebate_col_name] = create_retrofit_only_series(df_copy, valid_mask)
     
@@ -349,7 +361,7 @@ def calculate_rebateIRA(
     
     # Also track and create weatherization rebate column if relevant
     if menu_mp in [9, 10]:
-        weatherization_rebate_col_name = create_weatherization_rebate_col()
+        weatherization_rebate_col_name = create_weatherization_rebate_col(cost_scenario=cost_scenario)
         df_copy[weatherization_rebate_col_name] = 0.0
         
         # Track weatherization column under the category
@@ -363,9 +375,9 @@ def calculate_rebateIRA(
             
         income_designation = row['income_level']
         if income_designation == 'Low-Income':
-            calculate_rebate(df_copy, row, category, menu_mp, 1.00)
+            calculate_rebate(df_copy, row, category, menu_mp, 1.00, cost_scenario=cost_scenario)
         elif income_designation == 'Moderate-Income':
-            calculate_rebate(df_copy, row, category, menu_mp, 0.50)
+            calculate_rebate(df_copy, row, category, menu_mp, 0.50, cost_scenario=cost_scenario)
         else:
             df_copy.at[row.name, rebate_col_name] = 0.00
             if menu_mp in [9, 10] and weatherization_rebate_col_name in df_copy.columns:

@@ -223,8 +223,9 @@ def get_retrofit_homes_mask(
         retrofit_mask = pd.Series(True, index=df.index)
         
         if verbose:
-            raise ValueError(f"WARNING: No upgrade column found for '{category}'. \
-                             Assuming all homes receive retrofits for this category.")
+            if category != 'cooling':  # Suppress for cooling as per discussion
+                raise ValueError(f"WARNING: No upgrade column found for '{category}'. \
+                                Assuming all homes receive retrofits for this category.")
     return retrofit_mask
 
 # ====================================================================================================

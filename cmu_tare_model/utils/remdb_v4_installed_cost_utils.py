@@ -38,6 +38,8 @@ import pandas as pd
 import numpy as np
 from typing import Optional, Tuple, Literal
 
+from config import PROJECT_ROOT
+
 from cmu_tare_model.constants import EQUIPMENT_SPECS
 
 
@@ -67,8 +69,7 @@ def load_remdb_v4_data(
     """
     if data_dir is None:
         data_dir = os.path.join(
-            os.path.dirname(__file__), 
-            '..', '..', 'data', 'retrofit_costs'
+            PROJECT_ROOT, 'cmu_tare_model', 'data', 'retrofit_costs'
         )
     
     file_path = os.path.join(data_dir, filename)

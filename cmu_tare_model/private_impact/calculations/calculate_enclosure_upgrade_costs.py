@@ -142,7 +142,7 @@ def get_enclosure_parameters(
     return {'conditions': conditions, 'tech_eff_pairs': tech_eff_pairs}
 
 
-def calculate_enclosure_retrofit_upgradeCosts(
+def calculate_enclosure_retrofit_upgrade_costs(
     df: pd.DataFrame,
     menu_mp: int,
     cost_dict: dict,

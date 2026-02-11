@@ -38,9 +38,9 @@ Add these constants:
 # ============================================================================
 
 # Cost calculation methods and percentiles to loop over
-COST_SCENARIO_KEYS = [
-    'remdb_v3',
-    'remdb_v4_low',
+REMDB_COST_SCENARIO_KEYS = [
+    'v3',
+    'v4LOW',
     'remdb_v4_mid', 
     'remdb_v4_high'
 ]
@@ -58,7 +58,7 @@ Replace current code with loop structure (an example is shown below):
 # PRIVATE IMPACTS: CAPITAL COSTS
 # ============================================================================
 
-from cmu_tare_model.constants import COST_SCENARIO_KEYS, IMPLEMENTED_ENDUSES, parse_cost_scenario
+from cmu_tare_model.constants import REMDB_COST_SCENARIO_KEYS, IMPLEMENTED_ENDUSES, parse_cost_scenario
 
 # Import REMDB v4 functions (adjust import paths as needed after file moves)
 from cmu_tare_model.utils.remdb_v4_installed_cost_utils import (
@@ -91,11 +91,11 @@ CAPITAL_COSTS_MPX = {
 print("="*80)
 print(f"CALCULATING CAPITAL COSTS - MEASURE PACKAGE {menu_mp}")
 print("="*80)
-print(f"Cost scenarios: {COST_SCENARIO_KEYS}")
+print(f"Cost scenarios: {REMDB_COST_SCENARIO_KEYS}")
 print(f"End-uses: {IMPLEMENTED_ENDUSES}\n")
 
 # Loop over cost scenarios
-for scenario_key in COST_SCENARIO_KEYS:
+for scenario_key in REMDB_COST_SCENARIO_KEYS:
     method, percentile = parse_cost_scenario(scenario_key)
     
     print(f"\n{'─'*80}")
@@ -141,8 +141,8 @@ for scenario_key in COST_SCENARIO_KEYS:
             
             print("✓", end=" ")
         
-        elif method == 'remdb_v3':
-            # TODO: Add remdb_v3 cost calculation method
+        elif method == 'v3':
+            # TODO: Add v3 cost calculation method
             print("⊘ (not implemented)", end=" ")
     
     # Store complete DataFrame for this cost scenario
@@ -156,9 +156,9 @@ for scenario_key in COST_SCENARIO_KEYS:
 print("\n" + "="*80)
 print("CAPITAL COST CALCULATION COMPLETE")
 print("="*80)
-print(f"Scenarios calculated: {len(COST_SCENARIO_KEYS)}")
+print(f"Scenarios calculated: {len(REMDB_COST_SCENARIO_KEYS)}")
 print(f"End-uses: {len(IMPLEMENTED_ENDUSES)}")
-print(f"Total DataFrames stored: {len(COST_SCENARIO_KEYS) * len(IMPLEMENTED_ENDUSES) * 2}")
+print(f"Total DataFrames stored: {len(REMDB_COST_SCENARIO_KEYS) * len(IMPLEMENTED_ENDUSES) * 2}")
 print("="*80 + "\n")
 ```
 
@@ -232,7 +232,7 @@ Update from DATAFRAMES_MPX_RCM_DISCOUNT_RATE to DATAFRAMES_MPX_SCENARIOS and add
 SUCCESS CRITERIA
 
 ✓ REMDB v4 files in proper locations
-✓ Constants defined (COST_SCENARIO_KEYS, IMPLEMENTED_ENDUSES)
+✓ Constants defined (REMDB_COST_SCENARIO_KEYS, IMPLEMENTED_ENDUSES)
 ✓ Capital costs loop implemented in scenario notebook
 ✓ Results stored in nested dictionary: CAPITAL_COSTS_MPX[end_use][cost_type][scenario_key]
 ✓ Heating + cooling costs combined correctly
@@ -247,14 +247,14 @@ The dataframes in this dictionary should contain all relevant columns for someon
 CAPITAL_COSTS_MPX = {
     'heating': {
         'replacement': {
-            'remdb_v3': df_heating_replacement_v3,
-            'remdb_v4_low': df_heating_replacement_v4_low,
+            'v3': df_heating_replacement_v3,
+            'v4LOW': df_heating_replacement_v4_low,
             'remdb_v4_mid': df_heating_replacement_v4_mid,
             'remdb_v4_high': df_heating_replacement_v4_high
         },
         'upgrade': {
-            'remdb_v3': df_heating_upgrade_v3,
-            'remdb_v4_low': df_heating_upgrade_v4_low,
+            'v3': df_heating_upgrade_v3,
+            'v4LOW': df_heating_upgrade_v4_low,
             'remdb_v4_mid': df_heating_upgrade_v4_mid,
             'remdb_v4_high': df_heating_upgrade_v4_high
         }

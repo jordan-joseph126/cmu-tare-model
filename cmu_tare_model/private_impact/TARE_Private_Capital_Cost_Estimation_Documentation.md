@@ -245,7 +245,7 @@ The system treats progressive/reference/conservative as the 10th/50th/90th perce
 
 ### Phase 4: Enclosure Upgrade Costs
 **Script:** `calculate_enclosure_upgrade_costs.py`  
-**Function:** `calculate_enclosure_retrofit_upgradeCosts(df, menu_mp, cost_dict, retrofit_col, params_col)`
+**Function:** `calculate_enclosure_retrofit_upgrade_costs(df, menu_mp, cost_dict, retrofit_col, params_col)`
 
 **Purpose:** Calculate the cost of building envelope improvements (only for Menu Packages 9 and 10)
 
@@ -388,7 +388,7 @@ calculate_replacement_cost(df, cost_dict, menu_mp, end_use)
 **Main Functions:**
 
 ```python
-calculate_enclosure_retrofit_upgradeCosts(df, menu_mp, cost_dict, retrofit_col, params_col)
+calculate_enclosure_retrofit_upgrade_costs(df, menu_mp, cost_dict, retrofit_col, params_col)
     """Calculate enclosure upgrade costs.
     
     Args:

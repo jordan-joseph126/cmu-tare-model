@@ -162,6 +162,7 @@ def adoption_decision(
     rcm_model: str,
     cr_function: str,
     discount_rate_col_name: str,
+    cost_scenario: str = 'v3',
     verbose: bool = VERBOSE,
 ) -> pd.DataFrame:
     """
@@ -177,6 +178,9 @@ def adoption_decision(
         rcm_model: RCM model for health impact analysis ('ap2', 'easiur', 'inmap').
         cr_function: Concentration response function ('acs', 'h6c').
         discount_rate_col_name: Discount rate column name for private discounting.
+        cost_scenario: Cost methodology key ('v3' or 'v4LOW/MID/HIGH').
+            Determines the REMDB suffix on output column names
+            (e.g., '_v3', '_v4MID').
         verbose: Enable detailed output for debugging (default: False).
         
     Returns:
@@ -208,8 +212,8 @@ def adoption_decision(
     required_columns = []
     for category in UPGRADE_COLUMNS.keys():
         for scc in SCC_ASSUMPTIONS:
-            lessWTP_private_npv_col_name = create_npv_col(scenario_prefix, category, 'lessWTP', method_suffix=method_suffix)
-            moreWTP_private_npv_col_name = create_npv_col(scenario_prefix, category, 'moreWTP', method_suffix=method_suffix)
+            lessWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='lessWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
+            moreWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
             public_npv_col_name = create_public_npv_col(scenario_prefix, category, scc, rcm_model, cr_function)
             required_columns.extend([
                 lessWTP_private_npv_col_name,
@@ -217,7 +221,7 @@ def adoption_decision(
                 public_npv_col_name])
         
         if policy_scenario == 'AEO2023 Reference Case':
-            rebate_col_name = create_rebate_col(menu_mp, category)
+            rebate_col_name = create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)
             required_columns.append(rebate_col_name)
     
     # Validate all required columns exist
@@ -248,17 +252,17 @@ def adoption_decision(
         scc_processed = 0
         for scc in SCC_ASSUMPTIONS:
             # Define column names (validation guarantees these exist)
-            lessWTP_private_npv_col_name = create_npv_col(scenario_prefix, category, 'lessWTP', method_suffix=method_suffix)
-            moreWTP_private_npv_col_name = create_npv_col(scenario_prefix, category, 'moreWTP', method_suffix=method_suffix)
+            lessWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='lessWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
+            moreWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
             public_npv_col_name = create_public_npv_col(scenario_prefix, category, scc, rcm_model, cr_function)
-            rebate_col_name = create_rebate_col(menu_mp, category)
+            rebate_col_name = create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)
             
             new_col_names = {
-                'health_sensitivity': create_adoption_col(scenario_prefix, category, 'health_sensitivity'),
-                'benefit': create_adoption_col(scenario_prefix, category, 'benefit', scc, rcm_model, cr_function),
-                'total_npv': create_total_npv_col(scenario_prefix, category, scc, rcm_model, cr_function, method_suffix=method_suffix),
-                'adoption': create_adoption_col(scenario_prefix, category, 'adoption', scc, rcm_model, cr_function, method_suffix=method_suffix),
-                'impact': create_adoption_col(scenario_prefix, category, 'impact', scc, rcm_model, cr_function)
+                'health_sensitivity': create_adoption_col(scenario_prefix=scenario_prefix, category=category, column_type='health_sensitivity', cost_scenario=cost_scenario, method_suffix=method_suffix),
+                'benefit': create_adoption_col(scenario_prefix=scenario_prefix, category=category, column_type='benefit', cost_scenario=cost_scenario, method_suffix=method_suffix, scc_assumption=scc, rcm_model=rcm_model, cr_function=cr_function),
+                'total_npv': create_total_npv_col(scenario_prefix=scenario_prefix, category=category, cost_scenario=cost_scenario, method_suffix=method_suffix, scc_assumption=scc, rcm_model=rcm_model, cr_function=cr_function),
+                'adoption': create_adoption_col(scenario_prefix=scenario_prefix, category=category, column_type='adoption', cost_scenario=cost_scenario, method_suffix=method_suffix, scc_assumption=scc, rcm_model=rcm_model, cr_function=cr_function),
+                'impact': create_adoption_col(scenario_prefix=scenario_prefix, category=category, column_type='impact', cost_scenario=cost_scenario, method_suffix=method_suffix, scc_assumption=scc, rcm_model=rcm_model, cr_function=cr_function)
             }
             
             category_columns_to_mask.extend(new_col_names.values())
@@ -374,6 +378,7 @@ def calculate_climate_only_adoption_robust(
     menu_mp: int,
     policy_scenario: str,
     discount_rate_col_name: str,
+    cost_scenario: str = 'v3',
     scc_assumptions: List[str] = None,
     verbose: bool = VERBOSE
 ) -> pd.DataFrame:
@@ -385,6 +390,9 @@ def calculate_climate_only_adoption_robust(
         menu_mp: Measure package identifier.
         policy_scenario: Policy scenario name.
         discount_rate_col_name: Discount rate column name for private discounting.
+        cost_scenario: Cost methodology key ('v3' or 'v4LOW/MID/HIGH').
+            Determines the REMDB suffix on output column names
+            (e.g., '_v3', '_v4MID').
         scc_assumptions: List of SCC assumptions to process.
         verbose: Enable detailed output.
         
@@ -422,7 +430,7 @@ def calculate_climate_only_adoption_robust(
     for category in UPGRADE_COLUMNS.keys():
         for scc in scc_assumptions:
             required_columns.extend([
-                create_npv_col(scenario_prefix, category, 'moreWTP', method_suffix=method_suffix),
+                create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix),
                 create_climate_npv_col(scenario_prefix, category, scc)
             ])
     
@@ -447,7 +455,7 @@ def calculate_climate_only_adoption_robust(
 
         for scc in scc_assumptions:
             # Define column names (validation guarantees these exist)
-            moreWTP_private_npv_col_name = create_npv_col(scenario_prefix, category, 'moreWTP', method_suffix=method_suffix)
+            moreWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
             climate_npv_col_name = create_climate_npv_col(scenario_prefix, category, scc)
             
             # Convert to numeric
@@ -455,7 +463,14 @@ def calculate_climate_only_adoption_robust(
             df_copy[climate_npv_col_name] = pd.to_numeric(df_copy[climate_npv_col_name], errors='coerce')
             
             # Calculate total NPV (moreWTP + climate)
-            output_col_name = create_adoption_col(scenario_prefix, category, 'total_npv_climateOnly', scc, method_suffix=method_suffix)
+            output_col_name = create_total_npv_col(
+                scenario_prefix=scenario_prefix, 
+                category=category,
+                cost_scenario=cost_scenario,
+                method_suffix=method_suffix,
+                scc_assumption=scc, 
+                climate_only=True)
+            
             df_new_columns = _calculate_total_npv(
                 df_copy, valid_mask, moreWTP_private_npv_col_name, climate_npv_col_name, output_col_name
             )
@@ -483,6 +498,7 @@ def calculate_health_only_adoption_robust(
     rcm_model: str,
     cr_function: str,
     discount_rate_col_name: str,
+    cost_scenario: str = 'v3',
     verbose: bool = VERBOSE
 ) -> pd.DataFrame:
     """
@@ -495,6 +511,9 @@ def calculate_health_only_adoption_robust(
         rcm_model: RCM model name.
         cr_function: Concentration response function.
         discount_rate_col_name: Discount rate column name for private discounting.
+        cost_scenario: Cost methodology key ('v3' or 'v4LOW/MID/HIGH').
+            Determines the REMDB suffix on output column names
+            (e.g., '_v3', '_v4MID').
         verbose: Enable detailed output.
         
     Returns:
@@ -519,7 +538,7 @@ def calculate_health_only_adoption_robust(
     required_columns = []
     for category in UPGRADE_COLUMNS.keys():
         required_columns.extend([
-            create_npv_col(scenario_prefix, category, 'moreWTP', method_suffix=method_suffix),
+            create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix),
             create_health_npv_col(scenario_prefix, category, rcm_model, cr_function)
         ])
     
@@ -543,7 +562,7 @@ def calculate_health_only_adoption_robust(
             df_copy, category, menu_mp, verbose=verbose, copy=False)
 
         # Define column names (validation guarantees these exist)
-        moreWTP_private_npv_col_name = create_npv_col(scenario_prefix, category, 'moreWTP', method_suffix=method_suffix)
+        moreWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
         health_npv_col_name = create_health_npv_col(scenario_prefix, category, rcm_model, cr_function)
         
         # Convert to numeric
@@ -551,7 +570,17 @@ def calculate_health_only_adoption_robust(
         df_copy[health_npv_col_name] = pd.to_numeric(df_copy[health_npv_col_name], errors='coerce')
         
         # Calculate total NPV (moreWTP + health)
-        output_col_name = create_adoption_col(scenario_prefix, category, 'total_npv_healthOnly', rcm_model, cr_function, method_suffix=method_suffix)
+        # output_col_name = create_adoption_col(scenario_prefix, category, 'total_npv_healthOnly', rcm_model=rcm_model, cr_function=cr_function, method_suffix=method_suffix, cost_scenario=cost_scenario)
+        output_col_name = create_total_npv_col(
+            scenario_prefix=scenario_prefix,
+            category=category,
+            cost_scenario=cost_scenario,
+            method_suffix=method_suffix,
+            rcm_model=rcm_model,
+            cr_function=cr_function, 
+            health_only=True)
+
+
         df_new_columns = _calculate_total_npv(
             df_copy, valid_mask, moreWTP_private_npv_col_name, health_npv_col_name, output_col_name
         )
