@@ -29,7 +29,8 @@ ALLOWED_TECHNOLOGIES = {
     ],
     # in.hvac_cooling_type exclude existing heat pump options
     'cooling': [
-        'Central AC', 'Room AC'
+        'Central AC',
+        # 'Room AC'
     ],
     # in.water_heater_efficiency exclude heat pump options, tankless, other fuel (e.g., solar), and indirect fuel oil
     # 'waterHeating': [
@@ -130,7 +131,7 @@ REBATE_MAPPING = {
 
 REMDB_COST_SCENARIO_KEYS = [
     'v3',          # Existing method (Excel dictionaries for REMDB v3)
-    'v4LOW',       # REMDB v4: 10th percentile
+    # 'v4LOW',       # REMDB v4: 10th percentile
     'v4MID',       # REMDB v4: 50th percentile (median)
-    'v4HIGH'       # REMDB v4: 90th percentile
+    # 'v4HIGH'       # REMDB v4: 90th percentile
 ]
