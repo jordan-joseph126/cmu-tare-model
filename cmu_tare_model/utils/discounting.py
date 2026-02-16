@@ -11,36 +11,8 @@ import pandas as pd
 
 from cmu_tare_model.constants import (
     PUBLIC_DISCOUNT_RATE, PRIVATE_FIXED_RATE_LOW, PRIVATE_FIXED_RATE_BASE, PRIVATE_FIXED_RATE_HIGH,
-    VARIABLE_RATE_MIN, VARIABLE_RATE_MAX, AMI_THRESHOLD, VERBOSE
+    VARIABLE_RATE_MIN, VARIABLE_RATE_MAX, AMI_THRESHOLD, VERBOSE,
 )
-
-# Short key identifiers for discount rates (used in dictionaries and user-facing code)
-PRIVATE_DISCOUNT_RATE_SHORT_KEYS = [
-    'fixed_low',
-    'fixed_base',
-    'fixed_high',
-    'variable'
-]
-
-# Full column names for discount rates (used in DataFrames)
-PRIVATE_DISCOUNT_RATE_COLS = [
-    'private_discount_rate_fixed_low',
-    'private_discount_rate_fixed_base',
-    'private_discount_rate_fixed_high',
-    'private_discount_rate_variable'
-]
-
-# Legacy - Method suffixes for file naming
-PRIVATE_DISCOUNTING_METHOD_SUFFIXES = {
-    'private_discount_rate_fixed_low': '_fixed_low',
-    'private_discount_rate_fixed_base': '_fixed_base',
-    'private_discount_rate_fixed_high': '_fixed_high',
-    'private_discount_rate_variable': '_variable'
-}
-
-PUBLIC_DISCOUNTING_METHOD_SUFFIXES = {
-    'public_discount_rate': ''
-}
 
 def prepare_discount_rates(
     df: pd.DataFrame,

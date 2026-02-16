@@ -4,8 +4,8 @@ import pandas as pd
 import gc
 from typing import Optional, Dict, Union
 
-from cmu_tare_model.constants import RCM_MODELS, VERBOSE
-from cmu_tare_model.utils.discounting import PRIVATE_DISCOUNT_RATE_SHORT_KEYS
+from cmu_tare_model.constants import RCM_MODELS, VERBOSE, VALID_MENU_MPS
+from cmu_tare_model.constants import PRIVATE_DISCOUNT_RATE_SHORT_KEYS
 
 def load_model_run_output(
     results_category: str,
@@ -15,7 +15,6 @@ def load_model_run_output(
     results_export_formatted_date: str,
     rcm_model: Optional[str] = None,
     discount_rate: Optional[str] = None,
-    columns_to_string: Optional[Dict[Union[str, int], str]] = None,
     use_chunked_loading: bool = True,
     chunk_size: int = 50000,
     verbose: bool = VERBOSE
@@ -33,7 +32,7 @@ def load_model_run_output(
             - 'damages_climate_IRA', 'damages_climate_noIRA': Climate damages
             - 'damages_health_IRA', 'damages_health_noIRA': Health damages
             - 'fuel_costs_IRA', 'fuel_costs_noIRA': Fuel costs
-        menu_mp: Measure package identifier (0 for baseline, 8/9/10 for retrofits).
+        menu_mp: Measure package identifier (0 for baseline, VALID_MENU_MPS for retrofits).
         output_folder_path: Base directory where results are stored.
         location_id: Location identifier in the filename (e.g., 'national', 'NYC').
         results_export_formatted_date: Date string in the filename (e.g., '2024-01-24_10-30').
@@ -41,7 +40,6 @@ def load_model_run_output(
             'inmap'). Required when results_category='summary' and menu_mp != 0.
         discount_rate: Short key for discount rate method (e.g., 'fixed_base', 'variable').
             Required when results_category='summary' and menu_mp != 0.
-        columns_to_string: Dictionary mapping column indices/names to string dtype.
         use_chunked_loading: Whether to load the file in chunks to reduce memory usage.
         chunk_size: Number of rows to read per chunk when using chunked loading.
             
@@ -82,8 +80,9 @@ def load_model_run_output(
     if results_export_formatted_date is None:
         raise ValueError("results_export_formatted_date is required")
 
-    # Standardize menu_mp to string
-    menu_mp = str(menu_mp)
+    # Standardize menu_mp to int for validation, then to string for file paths
+    menu_mp_int = int(menu_mp)
+    menu_mp_str = str(menu_mp)
 
     # Build directory path and filename based on results_category
     if results_category == 'summary_baseline':
@@ -100,8 +99,8 @@ def load_model_run_output(
             raise ValueError("discount_rate is required for retrofit summary results (results_category='summary')")
         
         # Validate measure package (only for summary results)
-        if menu_mp not in ['8', '9', '10']:
-            raise ValueError(f"menu_mp must be 8, 9, or 10 (Basic, Moderate, or Advanced), got {menu_mp}")
+        if menu_mp_int not in VALID_MENU_MPS:
+            raise ValueError(f"menu_mp must be one of {VALID_MENU_MPS}, got {menu_mp_int}")
         
         # Validate RCM model is valid
         if rcm_model not in RCM_MODELS:
@@ -116,20 +115,20 @@ def load_model_run_output(
                 
         # Build directory path using sensitivity parameters
         directory_path = os.path.join(
-            f"retrofit_mp{menu_mp}_results",
-            f"summary_mp{menu_mp}_{rcm_model}_{discount_rate}"
+            f"retrofit_mp{menu_mp_str}_results",
+            f"summary_mp{menu_mp_str}_{rcm_model}_{discount_rate}"
         )
-        filename = f"mp{menu_mp}_results_{location_id}_{results_export_formatted_date}.csv"
+        filename = f"mp{menu_mp_str}_results_{location_id}_{results_export_formatted_date}.csv"
         
     elif results_category.startswith('damages_'):
         # Damages results (climate or health, IRA or noIRA)
         directory_path = os.path.join("supplemental_data_damages", results_category)
-        filename = f"mp{menu_mp}_{results_category}_{location_id}_{results_export_formatted_date}.csv"
+        filename = f"mp{menu_mp_str}_{results_category}_{location_id}_{results_export_formatted_date}.csv"
         
     elif results_category.startswith('fuel_costs_'):
         # Fuel costs results (IRA or noIRA)
         directory_path = os.path.join("supplemental_data_fuelCosts", results_category)
-        filename = f"mp{menu_mp}_{results_category}_{location_id}_{results_export_formatted_date}.csv"
+        filename = f"mp{menu_mp_str}_{results_category}_{location_id}_{results_export_formatted_date}.csv"
         
     else:
         raise ValueError(
@@ -156,7 +155,7 @@ def load_model_run_output(
             print(f"Loading {filename} in chunks of {chunk_size:,} rows...")
         
         # Read file in chunks using pandas built-in chunksize parameter
-        chunk_reader = pd.read_csv(full_filepath, index_col=0, dtype=columns_to_string, chunksize=chunk_size)
+        chunk_reader = pd.read_csv(full_filepath, index_col=0, low_memory=False, chunksize=chunk_size)
         
         # Collect all chunks in a list for concatenation
         chunk_list = []
@@ -183,7 +182,7 @@ def load_model_run_output(
         
     else:
         # Use standard loading method
-        df_model_run_output = pd.read_csv(full_filepath, index_col=0, dtype=columns_to_string)
+        df_model_run_output = pd.read_csv(full_filepath, index_col=0, low_memory=False)
         
     if verbose:
         print(f"Loaded: {filename}")
@@ -203,7 +202,6 @@ def load_measure_package_data(
     output_folder_path: str,
     location_id: str,
     model_run_date_time: str,
-    columns_to_string: Optional[Dict[int, type]] = None
 ) -> Dict[str, Dict[str, pd.DataFrame]]:
     """Load all discount rate × RCM combinations for a measure package.
     
@@ -211,18 +209,14 @@ def load_measure_package_data(
     {discount_rate: {rcm_model: DataFrame}}
     
     Args:
-        menu_mp: Measure package identifier (8, 9, or 10).
+        menu_mp: Measure package identifier (VALID_MENU_MPS).
         output_folder_path: Base directory containing exported results.
         location_id: Geographic identifier used in filenames.
         model_run_date_time: Timestamp string from the model run.
-        columns_to_string: Optional dict mapping column indices to str type.
     
     Returns:
         Nested dictionary: {discount_rate: {rcm_model: DataFrame}}
     """
-    if columns_to_string is None:
-        columns_to_string = {16: str, 19: str, 20: str, 21: str}
-    
     # Initialize nested dictionary with SHORT KEYS and proper level ordering
     dataframes = {
         discount_rate: {rcm: None for rcm in RCM_MODELS}
@@ -244,7 +238,6 @@ def load_measure_package_data(
                 results_export_formatted_date=model_run_date_time,
                 rcm_model=rcm_model,
                 discount_rate=discount_rate,  # Use short key
-                columns_to_string=columns_to_string,
                 use_chunked_loading=True,
                 chunk_size=10000
             )

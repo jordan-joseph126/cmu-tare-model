@@ -15,22 +15,25 @@ def create_multiIndex_adoption_df(
         scc: str,
         rcm_model: str,
         cr_function: str,
+        cost_scenario: str,
         discount_rate: str
 ) -> pd.DataFrame:
     """
     Creates a multi-index DataFrame showing adoption percentages by LMI/MUI classification and fuel type.
     
-    This function processes adoption decision data that has been exported with v2.2 naming conventions,
-    which include all sensitivity parameters (RCM model, discount rate) as suffixes to column names.
+    This function processes adoption decision data that has been exported with v2.3 naming conventions,
+    which include all sensitivity parameters (RCM model, cost scenario, discount rate) as suffixes 
+    to column names.
     
     Args:
         df: DataFrame with adoption data. Expected to have columns matching the pattern:
-            {policy}_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}_{discount_rate}
+            {policy}_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}_{cost_scenario}_{discount_rate}
         menu_mp: Measure package identifier (8=Basic, 9=Moderate, 10=Advanced)
         category: Equipment category ('heating', 'waterHeating', 'clothesDrying', 'cooking')
         scc: Social cost of carbon assumption ('lower', 'central', 'upper')
         rcm_model: Reduced complexity model ('ap2', 'easiur', 'inmap')
         cr_function: Concentration-response function ('acs', 'h6c')
+        cost_scenario: Capital cost estimation method ('v3', 'v4LOW', 'v4MID', 'v4HIGH')
         discount_rate: Discount rate method ('fixed_low', 'fixed_base', 'fixed_high', 'variable')
         
     Returns:
@@ -56,10 +59,11 @@ def create_multiIndex_adoption_df(
         ordered=True
     )
     
-    # Define column names with ALL sensitivity dimensions (v2.2 naming convention)
+    # Define column names with ALL sensitivity dimensions (v2.3 naming convention)
+    # Pattern: {policy}_mp{mp}_{category}_adoption_{scc}_{rcm}_{crf}_{cost_scenario}_{discount_rate}
     adoption_cols = [
-        f'preIRA_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}_{discount_rate}',
-        f'iraRef_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}_{discount_rate}'
+        f'preIRA_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}_{cost_scenario}_{discount_rate}',
+        f'iraRef_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}_{cost_scenario}_{discount_rate}'
     ]
     
     try:
@@ -757,6 +761,7 @@ scc = 'central'
 rcm_model = 'inmap'
 cr_function = 'acs'
 discount_rate = 'fixed_base'
+cost_scenario = 'v3'
 
 print_adoption_decision_percentages(
     dataframes=[
@@ -764,8 +769,8 @@ print_adoption_decision_percentages(
         df_mi_mp8_heating_adoption_inmap_acs_FIXED_BASE,
     ],
     scenario_names=[
-        f'preIRA_mp8_heating_adoption_{scc}_{rcm_model}_{cr_function}_{discount_rate}',
-        f'iraRef_mp8_heating_adoption_{scc}_{rcm_model}_{cr_function}_{discount_rate}',
+        f'preIRA_mp8_heating_adoption_{scc}_{rcm_model}_{cr_function}_{cost_scenario}_{discount_rate}',
+        f'iraRef_mp8_heating_adoption_{scc}_{rcm_model}_{cr_function}_{cost_scenario}_{discount_rate}',
     ],
     source_dataframes=[
         df_outputs_mp8_inmap_fixed_base,

@@ -5,6 +5,7 @@ REMDB v3 and v4 scenarios, preventing naming mismatch bugs.
 """
 
 import pytest
+from cmu_tare_model.constants import VALID_MENU_MPS
 from cmu_tare_model.utils.column_names import (
     create_cost_col,
     create_rebate_col,
@@ -22,7 +23,6 @@ from cmu_tare_model.utils.column_names import (
     create_adoption_col,
     create_total_npv_col,
 )
-
 
 # =============================================================================
 # TESTS: COST COLUMNS
@@ -218,7 +218,7 @@ class TestInstallationPremiumCol:
     
     def test_different_mps(self):
         """Test different measure packages."""
-        for mp in [3, 4, 7, 8, 9, 10]:
+        for mp in VALID_MENU_MPS:
             result = create_installation_premium_col(mp, 'heating')
             assert result == f'mp{mp}_heating_installation_premium'
     
@@ -453,7 +453,7 @@ class TestTotalNpvCol:
 class TestParametricCombinations:
     """Parametric tests covering many valid parameter combinations."""
     
-    @pytest.mark.parametrize("menu_mp", [0, 3, 4, 7, 8, 9, 10])
+    @pytest.mark.parametrize("menu_mp", VALID_MENU_MPS)
     @pytest.mark.parametrize("category", ['heating', 'waterHeating', 'clothesDrying', 'cooking', 'cooling'])
     @pytest.mark.parametrize("cost_scenario", ['v3', 'v4LOW', 'v4MID', 'v4HIGH'])
     def test_cost_col_all_combinations(self, menu_mp, category, cost_scenario):

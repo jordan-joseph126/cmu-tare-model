@@ -2,7 +2,14 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional
 
-from cmu_tare_model.constants import SCC_ASSUMPTIONS, RCM_MODELS, CR_FUNCTIONS, UPGRADE_COLUMNS, VERBOSE
+from cmu_tare_model.constants import (
+    SCC_ASSUMPTIONS,
+    RCM_MODELS,
+    CR_FUNCTIONS,
+    UPGRADE_COLUMNS,
+    VERBOSE,
+    PRIVATE_DISCOUNTING_METHOD_SUFFIXES
+)
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.column_names import (
     create_npv_col,
@@ -19,7 +26,6 @@ from cmu_tare_model.utils.validation_framework import (
     apply_new_columns_to_dataframe,
     apply_final_masking
 )
-from cmu_tare_model.utils.discounting import PRIVATE_DISCOUNTING_METHOD_SUFFIXES
 
 # =============================================================
 # HELPER FUNCTIONS

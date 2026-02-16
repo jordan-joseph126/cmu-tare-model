@@ -7,7 +7,7 @@
 # - Resolves the excessive data columns and double counting with $8000 rebate. No longer need CDD projections.
 
 # =============================================================
-# CONSTANTS: TARE MODEL
+# TARE MODEL RUN CONFIGURATION
 # =============================================================
 # Configuration
 VERBOSE = False
@@ -19,18 +19,19 @@ ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached']
 
 # Excludes HP Tech for Space/Water Heating and Clothes Drying. Also excludes electric resistance cooking and induction cooking.
 # enumeration_dictionary.tsv provides additional details on the allowed technologies for each equipment category.
+# Trane GC focuses on heating and cooling. Cooling category is used for initial replacement cost estimates.
 ALLOWED_TECHNOLOGIES = {
     # in.hvac_heating_type_and_fuel exclude existing heat pump options
     'heating': [
-        'Electricity Baseboard', 'Electricity Electric Boiler', 
-        'Electricity Electric Furnace', 'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace', 
+        'Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace', 'Electricity ASHP',
+        'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace', 
         'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
         'Propane Fuel Boiler', 'Propane Fuel Furnace'
     ],
     # in.hvac_cooling_type exclude existing heat pump options
     'cooling': [
         'Central AC',
-        # 'Room AC'
+        'Room AC'
     ],
     # in.water_heater_efficiency exclude heat pump options, tankless, other fuel (e.g., solar), and indirect fuel oil
     # 'waterHeating': [
@@ -49,20 +50,74 @@ ALLOWED_TECHNOLOGIES = {
     # ]
 } 
 
-# POSSIBLY UPDATE THESE VALUES BASED ON NEW DATA FROM REMBD 2024
-# Cooling category is only used for initial columns and retrofit capital costs, not for emissions/health/fuel calculations
+# Trane GC focuses on heating and cooling. Cooling category is used for initial replacement cost estimates.
+# Cooling is excluded from EQUIPMENT_SPECS and VALID_CATEGORIES because other calculations are not performed.
 EQUIPMENT_SPECS = {
     'heating': 15,
     # 'waterHeating': 12,
     # 'clothesDrying': 13,
     # 'cooking': 15
     }
-
 VALID_CATEGORIES = list(EQUIPMENT_SPECS.keys())
 
-VALID_MENU_MPS = [0, 3, 4, 7, 8, 9, 10]
+# Run the model for all measure packages (MPs) or a specific MP
+# Enclosure upgrades (MP9 and MP10) are excluded for now since they are not yet included in the REMDB v4 code.
+VALID_MENU_MPS = [
+    0,
+    3,
+    4,
+    8,
+    # 9,
+    # 10
+    ]
 
-TD_LOSSES = 0.05 # Updated to 5% based on the latest estimates from EIA, formerly 6%
+# InMAP-ACS is considered our base case
+CR_FUNCTIONS = [
+    'acs',
+    'h6c'
+    ]
+
+# InMAP-ACS sensitivity is considered our base case.
+RCM_MODELS = [
+    'ap2',
+    'easiur',
+    'inmap'
+    ]
+
+# Short key identifiers for discount rates (used in dictionaries and user-facing code)
+PRIVATE_DISCOUNT_RATE_SHORT_KEYS = [
+    'fixed_low',
+    'fixed_base',
+    'fixed_high',
+    'variable'
+]
+
+# Full column names for discount rates (used in DataFrames)
+PRIVATE_DISCOUNT_RATE_COLS = [
+    'private_discount_rate_fixed_low',
+    'private_discount_rate_fixed_base',
+    'private_discount_rate_fixed_high',
+    'private_discount_rate_variable'
+]
+
+# Legacy - Method suffixes for file naming
+PRIVATE_DISCOUNTING_METHOD_SUFFIXES = {
+    'private_discount_rate_fixed_low': '_fixed_low',
+    'private_discount_rate_fixed_base': '_fixed_base',
+    'private_discount_rate_fixed_high': '_fixed_high',
+    'private_discount_rate_variable': '_variable'
+}
+
+PUBLIC_DISCOUNTING_METHOD_SUFFIXES = {
+    'public_discount_rate': ''
+}
+
+# =============================================================
+# CONSTANTS: TARE MODEL - GENERAL
+# =============================================================
+
+# Updated to 5% based on the latest estimates from EIA, formerly 6%
+TD_LOSSES = 0.05 
 TD_LOSSES_MULTIPLIER = 1 / (1 - TD_LOSSES)
 
 # Fuel type mapping for column name conventions
@@ -82,10 +137,15 @@ COLOR_MAP_FUEL = {
 # =============================================================
 POLLUTANTS = ['so2', 'nox', 'pm25', 'co2e']
 MER_TYPES = ['lrmer', 'srmer']
-CR_FUNCTIONS = ['acs', 'h6c']
-RCM_MODELS = ['ap2', 'easiur', 'inmap']
-SCC_ASSUMPTIONS = ['lower', 'central', 'upper']
 
+# Central SCC assumption is considered our base case
+# However, we include the lower and upper bounds for sensitivity analysis and to capture the range of estimates in the literature.
+# Running all three sensitivity cases is not very computationally intensive.
+SCC_ASSUMPTIONS = [
+    'lower',
+    'central',
+    'upper'
+    ]
 
 # =============================================================
 # CONSTANTS: TARE MODEL - PRIVATE PERSPECTIVE CALCULATIONS
@@ -129,6 +189,7 @@ REBATE_MAPPING = {
 # CONSTANTS: CAPITAL COST SCENARIOS (REMDB v3 + v4)
 # =============================================================
 
+# REMDB v4 MID is considered our base case
 REMDB_COST_SCENARIO_KEYS = [
     'v3',          # Existing method (Excel dictionaries for REMDB v3)
     # 'v4LOW',       # REMDB v4: 10th percentile

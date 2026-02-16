@@ -3,8 +3,8 @@ import numpy as np
 from typing import Dict, Tuple, List, Optional
 
 # Constants
-from cmu_tare_model.constants import EQUIPMENT_SPECS, CR_FUNCTIONS, RCM_MODELS, SCC_ASSUMPTIONS, VERBOSE
-from cmu_tare_model.utils.discounting import calculate_discount_factors, PUBLIC_DISCOUNTING_METHOD_SUFFIXES
+from cmu_tare_model.constants import EQUIPMENT_SPECS, CR_FUNCTIONS, RCM_MODELS, SCC_ASSUMPTIONS, VERBOSE, PUBLIC_DISCOUNTING_METHOD_SUFFIXES
+from cmu_tare_model.utils.discounting import calculate_discount_factors
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.column_names import (
     create_climate_npv_col,
@@ -295,11 +295,16 @@ def calculate_public_npv(
     if verbose:
         print("\nValidating input data structure...")
     
-    is_valid, messages = validate_damage_dataframes(
-        df_baseline_climate, df_baseline_health,
-        df_mp_climate, df_mp_health,
-        menu_mp, policy_scenario, base_year, EQUIPMENT_SPECS
-    )
+    for cr_function in CR_FUNCTIONS:
+        if verbose:
+            print(f"  Validating for CR function: {cr_function}")
+
+        is_valid, messages = validate_damage_dataframes(
+            df_baseline_climate, df_baseline_health,
+            df_mp_climate, df_mp_health,
+            menu_mp, policy_scenario, base_year, EQUIPMENT_SPECS,
+            rcm_model=rcm_model, cr_function=cr_function
+        )
     
     if verbose and messages:
         for message in messages:

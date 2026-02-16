@@ -4,9 +4,9 @@ import pandas as pd
 import numpy as np
 from typing import Tuple, Dict, List, Optional, Union
 
-from cmu_tare_model.constants import EQUIPMENT_SPECS
+from cmu_tare_model.constants import EQUIPMENT_SPECS, PRIVATE_DISCOUNTING_METHOD_SUFFIXES
 from cmu_tare_model.utils.modeling_params import define_scenario_params
-from cmu_tare_model.utils.discounting import calculate_discount_factors, PRIVATE_DISCOUNTING_METHOD_SUFFIXES
+from cmu_tare_model.utils.discounting import calculate_discount_factors
 from cmu_tare_model.utils.validation_framework import (
     create_retrofit_only_series,
     calculate_avoided_values,

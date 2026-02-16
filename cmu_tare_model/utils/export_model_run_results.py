@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from typing import Union, Optional
 import pathlib
-from cmu_tare_model.utils.discounting import PRIVATE_DISCOUNT_RATE_SHORT_KEYS
+from cmu_tare_model.constants import PRIVATE_DISCOUNT_RATE_SHORT_KEYS
 
 def export_model_run_output(
     df_results_export: pd.DataFrame,

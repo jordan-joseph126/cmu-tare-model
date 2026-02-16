@@ -345,7 +345,7 @@ calculate_installation_cost(df, cost_dict, menu_mp, end_use)
     Args:
         df: DataFrame with home characteristics
         cost_dict: Dictionary of (tech, efficiency) -> cost components
-        menu_mp: Measure package ID (7, 8, 9, 10)
+        menu_mp: Measure package ID (VALID_MENU_MPS)
         end_use: Category ('heating', 'waterHeating', etc.)
     
     Returns:

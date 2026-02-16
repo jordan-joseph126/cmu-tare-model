@@ -413,8 +413,8 @@ def calculate_climate_emissions_and_damages(
         climate_results[emissions_col] = total_annual_climate_emissions
         annual_climate_emissions[mer_type] = total_annual_climate_emissions
         
-        # Now calculate damages using lower, central, and upper SCC assumptions
-        for scc_assumption in ["lower", "central", "upper"]:
+        # Now calculate damages using SCC assumptions from constants
+        for scc_assumption in SCC_ASSUMPTIONS:
             # Multiply total annual CO2e by the year-specific SCC value
             scc_value = get_scc_value(year_label, scc_assumption, lookup_climate_impact_scc)                        
             total_annual_climate_damages = annual_climate_emissions[mer_type] * scc_value
