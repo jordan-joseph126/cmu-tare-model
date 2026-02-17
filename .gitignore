@@ -15,6 +15,7 @@ data/
 data_backup/
 study_validation/
 reference_material/
+cmu_tare_model/docs/
 
 # Python cache files
 __pycache__/

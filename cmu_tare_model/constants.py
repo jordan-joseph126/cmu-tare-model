@@ -196,3 +196,55 @@ REMDB_COST_SCENARIO_KEYS = [
     'v4MID',       # REMDB v4: 50th percentile (median)
     # 'v4HIGH'       # REMDB v4: 90th percentile
 ]
+
+# =============================================================
+# CONSTANTS: EFFICIENCY FLOORS FOR REPLACEMENT COST ESTIMATION
+# =============================================================
+# Applied to pm2 (efficiency) values BEFORE the REMDB v4 regression,
+# only for replacement costs.
+#
+# Rationale: The EUSS housing stock (~2018 vintage) contains systems
+# with efficiencies far below what is available or legal today
+# (e.g., SEER 8 central ACs, 60% AFUE furnaces). Since replacement
+# costs represent what a homeowner would buy TODAY, we clamp ALL
+# below-floor pm2 values up to the floor — the minimum efficiency
+# equipment a homeowner can legally purchase.
+#
+# Values are in REMDB pm2 units (SEER1 for cooling/heat-pumps,
+# decimal AFUE for furnaces).
+#
+# Sources:
+#   - DOE 2023 final rule: SEER2 14.3 (South) / 13.4 (North) for CAC
+#     ≈ SEER1 ~15 (South), ~14 (North). We use 15.0 nationally because
+#     the majority of cooling load is in the South region and for
+#     consistency with the ASHP floor.
+#   - NAECA federal minimum for gas furnaces: 80% AFUE
+# =============================================================
+EFFICIENCY_FLOORS_PM2 = {
+    'air_source_heat_pump_centrally_ducted':       15.0,   # SEER1
+    'air_source_heat_pump_non_ducted_multi_zone':  15.0,   # SEER1
+    'air_conditioner_centrally_ducted':            15.0,   # SEER1
+    'furnaces_gas_furnace':                        0.80,   # AFUE (decimal)
+    # 'electric_baseboard_default' has pm2_coef=0, no floor needed
+}
+
+# =============================================================
+# CONSTANTS: CAPACITY BOUND CLAMPING FOR REPLACEMENT COSTS
+# =============================================================
+# Applied to pm1 (capacity) values BEFORE the REMDB v4 regression,
+# only for replacement costs.
+#
+# Approach: Use the REMDB v4 training-data lower/upper bounds and
+# only clamp values that are within TOLERANCE of a bound.
+#
+#   - Values slightly below the lower bound (within TOLERANCE) are
+#     clamped UP to the lower bound.
+#   - Values slightly above the upper bound (within TOLERANCE) are
+#     clamped DOWN to the upper bound.
+#   - Values far outside the bounds (> TOLERANCE) are left unchanged.
+#
+# Example (lower bound = 1.5 tons, tolerance = 0.10):
+#   1.4 tons → clamp to 1.5  (6.7% below, within 10%)
+#   1.0 tons → leave as 1.0  (33% below, beyond 10%)
+# =============================================================
+CAPACITY_BOUND_CLAMPING_TOLERANCE = 0.10  # 10%

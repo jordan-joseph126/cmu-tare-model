@@ -40,8 +40,11 @@ from typing import Optional, Tuple, Literal
 
 from config import PROJECT_ROOT
 
-from cmu_tare_model.constants import EQUIPMENT_SPECS
-
+from cmu_tare_model.constants import (
+    EQUIPMENT_SPECS,
+    EFFICIENCY_FLOORS_PM2,
+    CAPACITY_BOUND_CLAMPING_TOLERANCE,
+)
 
 # =============================================================================
 # TYPE DEFINITIONS
@@ -351,6 +354,197 @@ def _convert_pm2(
         result.loc[mask_no_metric] = 0.0
 
     return result
+
+
+def _apply_efficiency_floor(
+    df: pd.DataFrame,
+    row_id_col: str,
+    pm2_col: str,
+    efficiency_floors: dict,
+    verbose: bool = False
+) -> pd.DataFrame:
+    """Clamp pm2 (efficiency) upward to a hard minimum floor per equipment type.
+
+    For replacement cost estimation, the EUSS housing stock may contain
+    legacy equipment with efficiencies far below what is available or legal
+    today (e.g., SEER 8, AFUE 60%).  Since the replacement cost represents
+    buying TODAY's minimum-efficiency equipment, we clamp ALL below-floor
+    pm2 values up to the floor.
+
+    The original (pre-clamping) pm2 values are preserved in a new column
+    named ``{pm2_col}_original`` so that downstream reporting can show both
+    the raw EUSS efficiency and the floored replacement efficiency.
+
+    Only modifies rows whose row_id appears in *efficiency_floors*.
+    Rows with NaN pm2 are left untouched.
+
+    Args:
+        df: DataFrame with pm2 values already converted by _convert_pm2().
+        row_id_col: Column containing the REMDB row_id.
+        pm2_col: Column containing the converted pm2 values.
+        efficiency_floors: Dict mapping row_id -> minimum pm2 value.
+        verbose: If True, print diagnostic info about clamped homes.
+
+    Returns:
+        DataFrame with:
+          - ``pm2_col`` clamped upward where applicable (used by cost regression)
+          - ``{pm2_col}_original`` preserving pre-clamping values (used by validation)
+    """
+    df_out = df.copy()
+    
+    # Preserve the raw EUSS efficiency before any modification
+    original_col = f'{pm2_col}_original'
+    df_out[original_col] = df_out[pm2_col].copy()
+    
+    total_clamped = 0
+
+    for row_id, floor in efficiency_floors.items():
+        mask = (df_out[row_id_col] == row_id) & df_out[pm2_col].notna()
+        if not mask.any():
+            continue
+
+        below_floor = mask & (df_out[pm2_col] < floor)
+        n_below = below_floor.sum()
+
+        if n_below > 0:
+            original_values = df_out.loc[below_floor, pm2_col]
+            df_out.loc[below_floor, pm2_col] = floor
+            total_clamped += n_below
+
+            if verbose:
+                n_total = mask.sum()
+                print(f"    {row_id}: clamped {n_below:,}/{n_total:,} homes "
+                      f"from [{original_values.min():.2f}\u2013{original_values.max():.2f}] "
+                      f"\u2192 floor {floor}")
+
+    if verbose:
+        if total_clamped == 0:
+            print(f"    No homes required efficiency floor clamping.")
+        else:
+            print(f"    Total clamped: {total_clamped:,} homes")
+            print(f"    Original values preserved in: {original_col}")
+
+    return df_out
+
+
+def _log_capacity_clamp(
+    mask: pd.Series,
+    df: pd.DataFrame,
+    row_id_col: str,
+    pm1: pd.Series,
+    bound: pd.Series,
+    was_clamped: bool,
+    direction: str,
+    tolerance: float,
+) -> None:
+    """Print per-row_id diagnostics for capacity clamping.
+
+    Args:
+        mask: Boolean mask of affected homes.
+        df: DataFrame for row_id lookup.
+        row_id_col: Column with REMDB row_id.
+        pm1: Original pm1 values (before clamping).
+        bound: Bound values aligned to pm1.
+        was_clamped: True if homes were clamped, False if left unchanged.
+        direction: 'below' or 'above' (relative to bound).
+        tolerance: Tolerance fraction for context in message.
+    """
+    for rid in df.loc[mask, row_id_col].unique():
+        m = mask & (df[row_id_col] == rid)
+        n = int(m.sum())
+        vals = pm1[m]
+        bnd = bound[m].iloc[0]
+        pcts = ((vals - bnd).abs() / bnd * 100)
+
+        if was_clamped:
+            clamp_dir = "UP" if direction == "below" else "DOWN"
+            print(f"    {rid}: clamped {n:,} homes {clamp_dir} to bound "
+                  f"{bnd:.2f} (from [{vals.min():.2f}\u2013{vals.max():.2f}])")
+        else:
+            print(f"    {rid}: {n:,} homes NOT clamped "
+                  f"(>{tolerance*100:.0f}% {direction} bound {bnd:.2f}; "
+                  f"range [{vals.min():.2f}\u2013{vals.max():.2f}], "
+                  f"{pcts.min():.0f}%\u2013{pcts.max():.0f}% away)")
+
+
+def _apply_capacity_clamping(
+    df: pd.DataFrame,
+    row_id_col: str,
+    pm1_col: str,
+    pm1_lower_bound_col: str,
+    pm1_upper_bound_col: str,
+    tolerance: float = CAPACITY_BOUND_CLAMPING_TOLERANCE,
+    verbose: bool = False
+) -> pd.DataFrame:
+    """Clamp pm1 (capacity) to REMDB training bounds where within tolerance.
+
+    For replacement cost estimation, some EUSS capacity values fall slightly
+    outside the REMDB v4 regression's training range.  This function clamps
+    pm1 values to the nearest training bound, but ONLY when the value is
+    within *tolerance* (fractional) of that bound.
+
+    Values far outside the bounds (> tolerance) are left unchanged so they
+    can be handled separately (e.g., sq-ft-based NaN-masking per protocol).
+
+    Args:
+        df: DataFrame with pm1 values already converted by _convert_pm1().
+        row_id_col: Column containing the REMDB row_id.
+        pm1_col: Column containing the converted pm1 values.
+        pm1_lower_bound_col: Column with REMDB lower training bound.
+        pm1_upper_bound_col: Column with REMDB upper training bound.
+        tolerance: Maximum fractional distance from bound for clamping.
+        verbose: If True, print diagnostic info about clamped homes.
+
+    Returns:
+        DataFrame with pm1 values clamped where applicable.
+    """
+    df_out = df.copy()
+
+    pm1 = pd.to_numeric(df_out[pm1_col], errors='coerce')
+    lower = pd.to_numeric(df_out[pm1_lower_bound_col], errors='coerce')
+    upper = pd.to_numeric(df_out[pm1_upper_bound_col], errors='coerce')
+
+    valid = pm1.notna()
+    total_clamped = 0
+
+    # --- Lower-bound clamping ---
+    below_lower = valid & lower.notna() & (pm1 < lower)
+    if below_lower.any():
+        frac_below = (lower - pm1) / lower
+        within_tol = below_lower & (frac_below <= tolerance)
+        beyond_tol = below_lower & (frac_below > tolerance)
+
+        if within_tol.any():
+            df_out.loc[within_tol, pm1_col] = lower[within_tol]
+            total_clamped += int(within_tol.sum())
+            if verbose:
+                _log_capacity_clamp(within_tol, df_out, row_id_col, pm1, lower,
+                                    was_clamped=True, direction="below", tolerance=tolerance)
+        if verbose and beyond_tol.any():
+            _log_capacity_clamp(beyond_tol, df_out, row_id_col, pm1, lower,
+                                was_clamped=False, direction="below", tolerance=tolerance)
+
+    # --- Upper-bound clamping ---
+    above_upper = valid & upper.notna() & (pm1 > upper)
+    if above_upper.any():
+        frac_above = (pm1 - upper) / upper
+        within_tol = above_upper & (frac_above <= tolerance)
+        beyond_tol = above_upper & (frac_above > tolerance)
+
+        if within_tol.any():
+            df_out.loc[within_tol, pm1_col] = upper[within_tol]
+            total_clamped += int(within_tol.sum())
+            if verbose:
+                _log_capacity_clamp(within_tol, df_out, row_id_col, pm1, upper,
+                                    was_clamped=True, direction="above", tolerance=tolerance)
+        if verbose and beyond_tol.any():
+            _log_capacity_clamp(beyond_tol, df_out, row_id_col, pm1, upper,
+                                was_clamped=False, direction="above", tolerance=tolerance)
+
+    if verbose and total_clamped == 0:
+        print(f"    No homes required capacity bound clamping.")
+
+    return df_out
 
 
 def _report_bounds_comparison(
@@ -673,11 +867,21 @@ def add_remdb_metrics(
         pm2_nan_from_unknown = pm2_nan_mask & (df_copy[row_id_col] == 'unknown')
         pm2_nan_from_no_metric = pm2_nan_mask & df_copy[pm2_metric_col].isna()
         pm2_nan_from_source = pm2_nan_mask & df_copy[efficiency_col].isna()
+        pm2_nan_other = (pm2_nan_mask
+                         & ~pm2_nan_from_unknown
+                         & ~pm2_nan_from_no_metric
+                         & ~pm2_nan_from_source)
         
         print(f"    pm2 NaN breakdown ({pm2_nan_mask.sum():,} total):")
         print(f"      - Unknown row_id: {pm2_nan_from_unknown.sum():,}")
         print(f"      - No pm2_metric defined (e.g., electric baseboard): {(pm2_nan_from_no_metric & ~pm2_nan_from_unknown).sum():,}")
         print(f"      - Missing source data ({efficiency_col}): {pm2_nan_from_source.sum():,}")
+        if pm2_nan_other.sum() > 0:
+            print(f"      - Extraction failure (has metric + source, but numeric parse failed): {pm2_nan_other.sum():,}")
+            # Show sample values to aid debugging
+            sample_vals = df_copy.loc[pm2_nan_other, efficiency_col].value_counts().head(5)
+            for val, cnt in sample_vals.items():
+                print(f"          '{val}': {cnt:,} homes")
         
         # Show pm2_metric distribution to explain why some have no metric
         print(f"\n  pm2_metric Distribution ({pm2_metric_col}):")
@@ -686,6 +890,47 @@ def add_remdb_metrics(
             metric_display = metric if pd.notna(metric) else "(NaN - no efficiency metric)"
             print(f"    {metric_display}: {count:,}")
     
+    # =========================================================================
+    # STEP 4.5a: Apply efficiency floors (replacement only)
+    # =========================================================================
+    # For replacement costs only: clamp ALL pm2 values below the floor UP
+    # to the minimum efficiency equipment available today.
+    #   SEER 8 → SEER 15, AFUE 60% → AFUE 80%, etc.
+    # Upgrade efficiencies are set by the measure package definition, so
+    # no clamping is needed for upgrades.
+    if metric_type == 'replacement':
+        if verbose:
+            print(f"\n  Step 4.5a: Applying efficiency floors (replacement only)")
+        df_copy = _apply_efficiency_floor(
+            df=df_copy,
+            row_id_col=row_id_col,
+            pm2_col=pm2_col,
+            efficiency_floors=EFFICIENCY_FLOORS_PM2,
+            verbose=verbose
+        )
+
+    # =========================================================================
+    # STEP 4.5b: Clamp capacity to REMDB training bounds (replacement only)
+    # =========================================================================
+    # For replacement costs only: clamp pm1 toward the REMDB training-data
+    # bounds when the value is within TOLERANCE (default 10%) of a bound.
+    #   - Slightly below lower bound  → clamp UP   to the lower bound
+    #   - Slightly above upper bound  → clamp DOWN to the upper bound
+    #   - Far outside bounds           → leave unchanged
+    if metric_type == 'replacement':
+        if verbose:
+            print(f"\n  Step 4.5b: Clamping pm1 (capacity) to REMDB bounds "
+                  f"(±{CAPACITY_BOUND_CLAMPING_TOLERANCE*100:.0f}% tolerance, replacement only)")
+        df_copy = _apply_capacity_clamping(
+            df=df_copy,
+            row_id_col=row_id_col,
+            pm1_col=pm1_col,
+            pm1_lower_bound_col=f'{prefix}pm1_lower_bound',
+            pm1_upper_bound_col=f'{prefix}pm1_upper_bound',
+            tolerance=CAPACITY_BOUND_CLAMPING_TOLERANCE,
+            verbose=verbose
+        )
+
     # =========================================================================
     # STEP 5: Report bounds comparison (diagnostic only - no data modification)
     # =========================================================================
@@ -723,12 +968,17 @@ def add_remdb_metrics(
     # =========================================================================
     # STEP 7: Prepare output columns
     # =========================================================================
-    # At the end, always return both (remove the if/else logic)
+    # Original (pre-clamping) pm2 column, created by _apply_efficiency_floor()
+    pm2_original_col = f'{pm2_col}_original'
+
     summary_cols = [
         row_id_col,
         pm1_col,
         pm2_col,
     ]
+    # Include original pm2 in summary if it exists (replacement metrics only)
+    if pm2_original_col in df_copy.columns:
+        summary_cols.append(pm2_original_col)
     
     detailed_cols = summary_cols + [
         f'{prefix}pm1_metric', f'{prefix}pm1_unit', f'{prefix}pm1_coef_{percentile}',
@@ -738,7 +988,7 @@ def add_remdb_metrics(
         f'{prefix}intercept_{percentile}',
         f'{prefix}multiplier_retrofit', f'{prefix}adder_retrofit',
     ]
-    
+
     # Build both outputs
     existing_cols = [c for c in summary_cols if c in df_copy.columns]
     df_original_aligned = df.loc[df_copy.index].copy()

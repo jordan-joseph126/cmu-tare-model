@@ -47,23 +47,15 @@ from cmu_tare_model.utils.column_names import create_cost_col
 
 # Capacity bins (tons) — 2 through 10, using floor rounding (1.5–2.4 → 2, etc.)
 CAPACITY_BINS_TONS = list(range(2, 11))       # [2, 3, 4, 5, 6, 7, 8, 9, 10]
-CAPACITY_TONS_LOW = 1.5                        # below this = outlier
-CAPACITY_TONS_HIGH = 10.5                      # at or above this = outlier
 
 # Capacity bins (kBTU/h) — 40 through 200 in steps of 10
 CAPACITY_BINS_KBTUH = list(range(40, 201, 10))
-CAPACITY_KBTUH_LOW = 35.0
-CAPACITY_KBTUH_HIGH = 205.0
 
 # SEER bins — 13 through 25
 SEER_BINS = list(range(13, 26))
-SEER_LOW = 12.5
-SEER_HIGH = 25.5
 
 # AFUE bins — 78 through 98
 AFUE_BINS = list(range(78, 99))
-AFUE_LOW = 77.5
-AFUE_HIGH = 98.5
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -76,30 +68,15 @@ def _capacity_tons(kbtuh: pd.Series) -> pd.Series:
 
 
 def _round_to_bin(values: pd.Series, bins: List[int],
-                  lo: float, hi: float) -> pd.Series:
-    """
-    Assign each value to the nearest integer bin using rounding.
+                  step: int = 1) -> pd.Series:
+    """Assign each value to the nearest bin with a given step size.
 
-    Values in [bin - 0.5, bin + 0.5) map to that bin.
-    Values < lo or >= hi are set to NaN (outliers).
-    """
-    result = values.round(0)
-    # Mark outliers as NaN
-    result = result.where(result.between(bins[0], bins[-1]), other=np.nan)
-    return result
-
-
-def _round_to_bin_step(values: pd.Series, bins: List[int],
-                       step: int, lo: float, hi: float) -> pd.Series:
-    """
-    Assign each value to the nearest bin with a given step size.
-
-    For step=10:  [bin-5, bin+5) maps to that bin.
-    Values < lo or >= hi are set to NaN (outliers).
+    For step=1: values round to nearest integer bin.
+    For step=10: values in [bin-5, bin+5) map to that bin.
+    Values outside [bins[0], bins[-1]] are set to NaN (outliers).
     """
     result = (values / step).round(0) * step
-    result = result.where(result.between(bins[0], bins[-1]), other=np.nan)
-    return result
+    return result.where(result.between(bins[0], bins[-1]), other=np.nan)
 
 
 def _count_outliers(values: pd.Series, lo: float, hi: float) -> Tuple[int, int]:
@@ -125,19 +102,6 @@ def _extract_afue(efficiency_str: pd.Series) -> pd.Series:
     return afue
 
 
-def _compute_percentiles(series: pd.Series) -> Dict:
-    """Compute 10th, 50th, 90th percentiles and count for a cost series."""
-    s = series.dropna()
-    if len(s) == 0:
-        return {'N': 0, 'P10': np.nan, 'P50': np.nan, 'P90': np.nan}
-    return {
-        'N': len(s),
-        'P10': s.quantile(0.10),
-        'P50': s.quantile(0.50),
-        'P90': s.quantile(0.90),
-    }
-
-
 def _format_dollar(val) -> str:
     """Format a numeric value as a dollar string."""
     if pd.isna(val):
@@ -149,328 +113,369 @@ def _print_outlier_counts(outliers: Dict,
                           cap_unit: str = 'tons',
                           eff_label: str = 'SEER') -> None:
     """Print outlier counts for capacity and efficiency from outliers dict."""
-    cap_below = outliers.get('cap_below', 0)
-    cap_above = outliers.get('cap_above', 0)
-    eff_below = outliers.get('eff_below', 0)
-    eff_above = outliers.get('eff_above', 0)
-
-    if cap_unit == 'tons':
-        cap_lo_label = f'{CAPACITY_TONS_LOW} {cap_unit}'
-        cap_hi_label = f'{CAPACITY_TONS_HIGH} {cap_unit}'
-    else:
-        cap_lo_label = f'{CAPACITY_KBTUH_LOW} {cap_unit}'
-        cap_hi_label = f'{CAPACITY_KBTUH_HIGH} {cap_unit}'
-
-    if eff_label == 'SEER':
-        eff_lo_label = f'SEER {SEER_LOW}'
-        eff_hi_label = f'SEER {SEER_HIGH}'
-    else:
-        eff_lo_label = f'{AFUE_LOW}% AFUE'
-        eff_hi_label = f'{AFUE_HIGH}% AFUE'
+    cap_lo = outliers.get('cap_lo', '?')
+    cap_hi = outliers.get('cap_hi', '?')
+    eff_lo = outliers.get('eff_lo', '?')
+    eff_hi = outliers.get('eff_hi', '?')
 
     print(f"  Outliers excluded from bins:")
-    print(f"    Capacity  < {cap_lo_label}: {cap_below:,} homes")
-    print(f"    Capacity >= {cap_hi_label}: {cap_above:,} homes")
-    print(f"    {eff_label}  < {eff_lo_label}: {eff_below:,} homes")
-    print(f"    {eff_label} >= {eff_hi_label}: {eff_above:,} homes")
+    print(f"    Capacity  < {cap_lo} {cap_unit}: {outliers.get('cap_below', 0):,} homes")
+    print(f"    Capacity >= {cap_hi} {cap_unit}: {outliers.get('cap_above', 0):,} homes")
+    print(f"    {eff_label}  < {eff_lo}: {outliers.get('eff_below', 0):,} homes")
+    print(f"    {eff_label} >= {eff_hi}: {outliers.get('eff_above', 0):,} homes")
+    cap_nan = outliers.get('cap_nan', 0)
+    eff_nan = outliers.get('eff_nan', 0)
+    if cap_nan > 0 or eff_nan > 0:
+        print(f"    Capacity NaN (missing data): {cap_nan:,} homes")
+        print(f"    {eff_label} NaN (missing/unparseable): {eff_nan:,} homes")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Analysis functions for each equipment type
-# ─────────────────────────────────────────────────────────────────────────────
+def _build_clamping_summary(
+    df_f: pd.DataFrame,
+    pm2_col: str,
+    pm2_original_col: str,
+    eff_label: str,
+    display_scale: float = 1.0,
+) -> Optional[List[str]]:
+    """Build efficiency floor clamping impact summary.
 
-def _analyze_ashp(df: pd.DataFrame,
-                  menu_mp: int,
-                  cost_scenarios: List[str]) -> Tuple[pd.DataFrame, Dict]:
-    """
-    Analyze ASHP (heating replacement) installed costs by SEER × capacity.
-
-    Filters to homes with Electricity ASHP heating type (centrally ducted),
-    then groups by baseline SEER and heating capacity in tons.
-
-    Returns:
-        Tuple of (results DataFrame, outlier info dict).
-    """
-    outliers = {}
-
-    # Filter: homes currently using ASHP heating
-    mask = pd.Series(True, index=df.index)
-
-    if 'heating_type' in df.columns:
-        mask &= (df['heating_type'] == 'Electricity ASHP')
-    elif 'hvac_heating_type_and_fuel' in df.columns:
-        mask &= (df['hvac_heating_type_and_fuel'] == 'Electricity ASHP')
-    else:
-        return pd.DataFrame(), outliers
-
-    # Require ducts (centrally ducted ASHP)
-    if 'hvac_has_ducts' in df.columns:
-        mask &= (df['hvac_has_ducts'] == 'Yes')
-
-    df_filtered = df.loc[mask].copy()
-    outliers['total_filtered'] = len(df_filtered)
-    if len(df_filtered) == 0:
-        return pd.DataFrame(), outliers
-
-    # Extract baseline SEER (the SEER of the existing ASHP being replaced)
-    if 'baseline_SEER' in df_filtered.columns:
-        df_filtered['_seer'] = df_filtered['baseline_SEER']
-    elif 'hvac_heating_efficiency' in df_filtered.columns:
-        df_filtered['_seer'] = _extract_seer(df_filtered['hvac_heating_efficiency'])
-    else:
-        return pd.DataFrame(), outliers
-
-    # Capacity in tons (heating system, converted from kBTU/h)
-    if 'size_heating_system_primary_k_btu_h' not in df_filtered.columns:
-        return pd.DataFrame(), outliers
-    df_filtered['_cap_tons'] = _capacity_tons(df_filtered['size_heating_system_primary_k_btu_h'])
-
-    # Count outliers before binning
-    cap_below, cap_above = _count_outliers(df_filtered['_cap_tons'],
-                                           CAPACITY_TONS_LOW, CAPACITY_TONS_HIGH)
-    seer_below, seer_above = _count_outliers(df_filtered['_seer'],
-                                              SEER_LOW, SEER_HIGH)
-    outliers.update({
-        'cap_below': cap_below, 'cap_above': cap_above,
-        'eff_below': seer_below, 'eff_above': seer_above,
-    })
-
-    # Assign bins using rounding
-    df_filtered['_seer_bin'] = _round_to_bin(df_filtered['_seer'], SEER_BINS,
-                                              SEER_LOW, SEER_HIGH)
-    df_filtered['_cap_bin'] = _round_to_bin(df_filtered['_cap_tons'], CAPACITY_BINS_TONS,
-                                             CAPACITY_TONS_LOW, CAPACITY_TONS_HIGH)
-
-    # Drop rows that don't match any bin
-    df_filtered = df_filtered.dropna(subset=['_seer_bin', '_cap_bin'])
-    if len(df_filtered) == 0:
-        return pd.DataFrame(), outliers
-
-    # Determine which SEER and capacity bins actually have data
-    active_seer = sorted(df_filtered['_seer_bin'].dropna().unique())
-    active_caps = sorted(df_filtered['_cap_bin'].dropna().unique())
-
-    # Build results
-    rows = []
-    for cap in active_caps:
-        for seer in active_seer:
-            bin_mask = (df_filtered['_cap_bin'] == cap) & (df_filtered['_seer_bin'] == seer)
-            row = {
-                'Capacity (tons)': int(cap),
-                'SEER': int(seer),
-            }
-            for scenario in cost_scenarios:
-                col = create_cost_col(menu_mp=menu_mp, category='heating',
-                                      cost_type='replacement', cost_scenario=scenario)
-                if col in df_filtered.columns:
-                    stats = _compute_percentiles(df_filtered.loc[bin_mask, col])
-                else:
-                    stats = {'N': 0, 'P10': np.nan, 'P50': np.nan, 'P90': np.nan}
-
-                row[f'{scenario} N'] = stats['N']
-                row[f'{scenario} P10'] = stats['P10']
-                row[f'{scenario} P50'] = stats['P50']
-                row[f'{scenario} P90'] = stats['P90']
-            rows.append(row)
-
-    return pd.DataFrame(rows), outliers
-
-
-def _analyze_central_ac(df: pd.DataFrame,
-                         menu_mp: int,
-                         cost_scenarios: List[str]) -> Tuple[pd.DataFrame, Dict]:
-    """
-    Analyze Central AC (cooling replacement) installed costs by SEER × capacity.
-
-    Filters to homes with Central AC cooling type, then groups by
-    cooling SEER and cooling capacity in tons.
-
-    Returns:
-        Tuple of (results DataFrame, outlier info dict).
-    """
-    outliers = {}
-
-    # Filter: Central AC homes
-    mask = pd.Series(True, index=df.index)
-    if 'hvac_cooling_type' in df.columns:
-        mask &= (df['hvac_cooling_type'] == 'Central AC')
-    else:
-        return pd.DataFrame(), outliers
-
-    df_filtered = df.loc[mask].copy()
-    outliers['total_filtered'] = len(df_filtered)
-    if len(df_filtered) == 0:
-        return pd.DataFrame(), outliers
-
-    # Extract cooling SEER
-    if 'hvac_cooling_efficiency' in df_filtered.columns:
-        df_filtered['_seer'] = _extract_seer(df_filtered['hvac_cooling_efficiency'])
-    else:
-        return pd.DataFrame(), outliers
-
-    # Capacity in tons
-    if 'size_cooling_system_primary_k_btu_h' not in df_filtered.columns:
-        return pd.DataFrame(), outliers
-    df_filtered['_cap_tons'] = _capacity_tons(df_filtered['size_cooling_system_primary_k_btu_h'])
-
-    # Count outliers before binning
-    cap_below, cap_above = _count_outliers(df_filtered['_cap_tons'],
-                                           CAPACITY_TONS_LOW, CAPACITY_TONS_HIGH)
-    seer_below, seer_above = _count_outliers(df_filtered['_seer'],
-                                              SEER_LOW, SEER_HIGH)
-    outliers.update({
-        'cap_below': cap_below, 'cap_above': cap_above,
-        'eff_below': seer_below, 'eff_above': seer_above,
-    })
-
-    # Assign bins using rounding
-    df_filtered['_seer_bin'] = _round_to_bin(df_filtered['_seer'], SEER_BINS,
-                                              SEER_LOW, SEER_HIGH)
-    df_filtered['_cap_bin'] = _round_to_bin(df_filtered['_cap_tons'], CAPACITY_BINS_TONS,
-                                             CAPACITY_TONS_LOW, CAPACITY_TONS_HIGH)
-
-    # Drop rows that don't match any bin
-    df_filtered = df_filtered.dropna(subset=['_seer_bin', '_cap_bin'])
-    if len(df_filtered) == 0:
-        return pd.DataFrame(), outliers
-
-    # Central AC has no v3 data — filter to v4 scenarios only
-    cool_scenarios = [s for s in cost_scenarios if s != 'v3']
-
-    # Determine which bins actually have data
-    active_seer = sorted(df_filtered['_seer_bin'].dropna().unique())
-    active_caps = sorted(df_filtered['_cap_bin'].dropna().unique())
-
-    rows = []
-    for cap in active_caps:
-        for seer in active_seer:
-            bin_mask = (df_filtered['_cap_bin'] == cap) & (df_filtered['_seer_bin'] == seer)
-            row = {
-                'Capacity (tons)': int(cap),
-                'SEER': int(seer),
-            }
-
-            # v3 = N/A for cooling
-            if 'v3' in cost_scenarios:
-                row['v3 N'] = 0
-                row['v3 P10'] = np.nan
-                row['v3 P50'] = np.nan
-                row['v3 P90'] = np.nan
-
-            for scenario in cool_scenarios:
-                col = create_cost_col(menu_mp=menu_mp, category='cooling',
-                                      cost_type='replacement', cost_scenario=scenario)
-                if col in df_filtered.columns:
-                    stats = _compute_percentiles(df_filtered.loc[bin_mask, col])
-                else:
-                    stats = {'N': 0, 'P10': np.nan, 'P50': np.nan, 'P90': np.nan}
-
-                row[f'{scenario} N'] = stats['N']
-                row[f'{scenario} P10'] = stats['P10']
-                row[f'{scenario} P50'] = stats['P50']
-                row[f'{scenario} P90'] = stats['P90']
-            rows.append(row)
-
-    return pd.DataFrame(rows), outliers
-
-
-def _analyze_furnace(df: pd.DataFrame,
-                      menu_mp: int,
-                      cost_scenarios: List[str],
-                      fuel_type: str = 'Natural Gas') -> Tuple[pd.DataFrame, Dict]:
-    """
-    Analyze Furnace (heating replacement) installed costs by AFUE × capacity.
-
-    Filters to homes with the specified fuel type and furnace heating type,
-    then groups by baseline AFUE and heating capacity in kBTU/h.
+    Compares floored and original efficiency values to show how homes
+    migrated from each sub-floor efficiency level into the floor bin.
+    Only produces output for replacement metrics where clamping occurred.
 
     Args:
-        fuel_type: 'Natural Gas' or 'Propane'
+        df_f: Filtered DataFrame for this equipment type.
+        pm2_col: Column with floored efficiency (used by cost regression).
+        pm2_original_col: Column with original pre-floor EUSS efficiency.
+        eff_label: Display label ('SEER' or 'AFUE').
+        display_scale: Multiplier for display (1.0 for SEER, 100.0 for
+            AFUE decimal→percentage).
+
+    Returns:
+        List of formatted summary strings, or None if no clamping occurred.
+    """
+    if pm2_original_col not in df_f.columns or pm2_col not in df_f.columns:
+        return None
+
+    floored = df_f[pm2_col]
+    original = df_f[pm2_original_col]
+
+    # Identify homes where the floor changed the efficiency value
+    clamped_mask = (floored != original) & floored.notna() & original.notna()
+    if not clamped_mask.any():
+        return None
+
+    total_filtered = len(df_f)
+    floor_value = floored[clamped_mask].mode().iloc[0]
+    floor_display = floor_value * display_scale
+
+    # Total homes now in the floor bin (originally at floor + clamped up)
+    in_floor_bin = int((floored == floor_value).sum())
+
+    lines = [
+        f"  Efficiency floor impact on {eff_label} {floor_display:.0f} bin composition "
+        f"({in_floor_bin:,} homes in bin):"
+    ]
+
+    # Group clamped homes by their original efficiency for the migration summary
+    orig_display = (original[clamped_mask] * display_scale).round(1)
+    for orig_val, count in orig_display.value_counts().sort_index().items():
+        pct_of_total = count / total_filtered * 100
+        pct_of_bin = count / in_floor_bin * 100
+        lines.append(
+            f"    {orig_val:.0f} {eff_label} ({count:,} / {total_filtered:,} homes, "
+            f"{pct_of_total:.1f}%) ──→ {floor_display:.0f} {eff_label} "
+            f"({count:,} / {in_floor_bin:,} in bin, {pct_of_bin:.1f}%)"
+        )
+
+    # Show homes that were already at the floor (completes the bin composition)
+    originally_at_floor = int(
+        ((original * display_scale).round(1) == round(floor_display, 1)).sum()
+    )
+    if originally_at_floor > 0:
+        pct_of_bin = originally_at_floor / in_floor_bin * 100
+        lines.append(
+            f"    {floor_display:.0f} {eff_label} (original) "
+            f"({originally_at_floor:,} / {in_floor_bin:,} in bin, {pct_of_bin:.1f}%)"
+        )
+
+    return lines
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Shared analysis engine
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _bin_group_summarize(
+    df_filtered: pd.DataFrame,
+    eff_values: pd.Series,
+    cap_values: pd.Series,
+    eff_bins: List[int],
+    cap_bins: List[int],
+    eff_label: str,
+    cap_label: str,
+    menu_mp: int,
+    cost_category: str,
+    cost_type: str,
+    cost_scenarios: List[str],
+    cap_bin_step: int = 1,
+    exclude_v3: bool = False,
+) -> Tuple[pd.DataFrame, Dict]:
+    """Bin by efficiency × capacity and compute cost percentiles per bin.
+
+    Shared engine for all equipment-type analyses: counts outliers, assigns
+    bins, groups by (capacity, efficiency), and computes P10/P50/P90 for
+    each cost scenario.
+
+    Args:
+        df_filtered: Pre-filtered DataFrame (only matching homes).
+        eff_values: Efficiency values (SEER or AFUE %) aligned to df_filtered.
+        cap_values: Capacity values in bin units, aligned to df_filtered.
+        eff_bins: Efficiency bin centers (e.g. SEER_BINS).
+        cap_bins: Capacity bin centers (e.g. CAPACITY_BINS_TONS).
+        eff_label: Display label — 'SEER' or 'AFUE'.
+        cap_label: Display label — 'Capacity (tons)' or 'Capacity (kBTU/h)'.
+        menu_mp: Measure package number.
+        cost_category: 'heating' or 'cooling' (for cost column name).
+        cost_type: 'replacement' or 'upgrade'.
+        cost_scenarios: List of cost scenario keys.
+        cap_bin_step: Bin step size (1 for tons/SEER, 10 for kBTU/h).
+        exclude_v3: If True, set v3 columns to N/A (for cooling).
 
     Returns:
         Tuple of (results DataFrame, outlier info dict).
     """
-    outliers = {}
+    # Derive outlier thresholds from bin range ± half-step
+    cap_lo = cap_bins[0] - cap_bin_step / 2
+    cap_hi = cap_bins[-1] + cap_bin_step / 2
+    eff_lo = eff_bins[0] - 0.5
+    eff_hi = eff_bins[-1] + 0.5
 
-    # Filter: Furnace homes of the specified fuel type
-    mask = pd.Series(True, index=df.index)
-
-    if 'base_heating_fuel' in df.columns:
-        mask &= (df['base_heating_fuel'] == fuel_type)
-
-    # Filter to furnace-type heating systems
-    if 'heating_type' in df.columns:
-        mask &= df['heating_type'].str.contains('Furnace', case=False, na=False)
-    elif 'hvac_heating_type_and_fuel' in df.columns:
-        mask &= df['hvac_heating_type_and_fuel'].str.contains('Furnace', case=False, na=False)
-
-    df_filtered = df.loc[mask].copy()
-    outliers['total_filtered'] = len(df_filtered)
-    if len(df_filtered) == 0:
-        return pd.DataFrame(), outliers
-
-    # Extract AFUE from heating efficiency
-    if 'hvac_heating_efficiency' in df_filtered.columns:
-        df_filtered['_afue'] = _extract_afue(df_filtered['hvac_heating_efficiency'])
-    elif 'baseline_AFUE' in df_filtered.columns:
-        df_filtered['_afue'] = df_filtered['baseline_AFUE']
-    else:
-        return pd.DataFrame(), outliers
-
-    # Capacity in kBTU/h
-    if 'size_heating_system_primary_k_btu_h' not in df_filtered.columns:
-        return pd.DataFrame(), outliers
-    df_filtered['_cap_kbtuh'] = df_filtered['size_heating_system_primary_k_btu_h']
-
-    # Count outliers before binning
-    cap_below, cap_above = _count_outliers(df_filtered['_cap_kbtuh'],
-                                           CAPACITY_KBTUH_LOW, CAPACITY_KBTUH_HIGH)
-    afue_below, afue_above = _count_outliers(df_filtered['_afue'],
-                                              AFUE_LOW, AFUE_HIGH)
-    outliers.update({
+    cap_below, cap_above = _count_outliers(cap_values, cap_lo, cap_hi)
+    eff_below, eff_above = _count_outliers(eff_values, eff_lo, eff_hi)
+    cap_nan = int(cap_values.isna().sum())
+    eff_nan = int(eff_values.isna().sum())
+    outliers = {
+        'total_filtered': len(df_filtered),
         'cap_below': cap_below, 'cap_above': cap_above,
-        'eff_below': afue_below, 'eff_above': afue_above,
-    })
+        'eff_below': eff_below, 'eff_above': eff_above,
+        'cap_nan': cap_nan, 'eff_nan': eff_nan,
+        'cap_lo': cap_lo, 'cap_hi': cap_hi,
+        'eff_lo': eff_lo, 'eff_hi': eff_hi,
+    }
 
-    # Assign bins using rounding
-    df_filtered['_afue_bin'] = _round_to_bin(df_filtered['_afue'], AFUE_BINS,
-                                              AFUE_LOW, AFUE_HIGH)
-    df_filtered['_cap_bin'] = _round_to_bin_step(df_filtered['_cap_kbtuh'],
-                                                  CAPACITY_BINS_KBTUH, 10,
-                                                  CAPACITY_KBTUH_LOW, CAPACITY_KBTUH_HIGH)
-
-    # Drop rows that don't match any bin
-    df_filtered = df_filtered.dropna(subset=['_afue_bin', '_cap_bin'])
-    if len(df_filtered) == 0:
+    # Bin values
+    df_work = df_filtered.copy()
+    df_work['_eff_bin'] = _round_to_bin(eff_values, eff_bins)
+    df_work['_cap_bin'] = _round_to_bin(cap_values, cap_bins, step=cap_bin_step)
+    df_work = df_work.dropna(subset=['_eff_bin', '_cap_bin'])
+    if len(df_work) == 0:
         return pd.DataFrame(), outliers
 
-    # Determine which bins actually have data
-    active_afue = sorted(df_filtered['_afue_bin'].dropna().unique())
-    active_caps = sorted(df_filtered['_cap_bin'].dropna().unique())
+    # Determine which scenarios to compute
+    compute_scenarios = [s for s in cost_scenarios if not (exclude_v3 and s == 'v3')]
 
-    rows = []
-    for cap in active_caps:
-        for afue in active_afue:
-            bin_mask = (df_filtered['_cap_bin'] == cap) & (df_filtered['_afue_bin'] == afue)
-            row = {
-                'Capacity (kBTU/h)': int(cap),
-                'AFUE': int(afue),
-            }
-            for scenario in cost_scenarios:
-                col = create_cost_col(menu_mp=menu_mp, category='heating',
-                                      cost_type='replacement', cost_scenario=scenario)
-                if col in df_filtered.columns:
-                    stats = _compute_percentiles(df_filtered.loc[bin_mask, col])
-                else:
-                    stats = {'N': 0, 'P10': np.nan, 'P50': np.nan, 'P90': np.nan}
+    # Build results via groupby — replaces manual cap × eff nested loop
+    grouped = df_work.groupby(['_cap_bin', '_eff_bin'])
+    stats_parts: Dict[str, pd.Series] = {}
+    for scenario in compute_scenarios:
+        col = create_cost_col(menu_mp=menu_mp, category=cost_category,
+                              cost_type=cost_type, cost_scenario=scenario)
+        if col in df_work.columns:
+            g = grouped[col]
+            stats_parts[f'{scenario} N'] = g.count()
+            stats_parts[f'{scenario} P10'] = g.quantile(0.10)
+            stats_parts[f'{scenario} P50'] = g.quantile(0.50)
+            stats_parts[f'{scenario} P90'] = g.quantile(0.90)
+        else:
+            stats_parts[f'{scenario} N'] = 0
+            for stat in ['P10', 'P50', 'P90']:
+                stats_parts[f'{scenario} {stat}'] = np.nan
 
-                row[f'{scenario} N'] = stats['N']
-                row[f'{scenario} P10'] = stats['P10']
-                row[f'{scenario} P50'] = stats['P50']
-                row[f'{scenario} P90'] = stats['P90']
-            rows.append(row)
+    results = pd.DataFrame(stats_parts).reset_index()
+    results = results.rename(columns={'_cap_bin': cap_label, '_eff_bin': eff_label})
+    results[cap_label] = results[cap_label].astype(int)
+    results[eff_label] = results[eff_label].astype(int)
 
-    return pd.DataFrame(rows), outliers
+    # v3 = N/A for cooling
+    if exclude_v3 and 'v3' in cost_scenarios:
+        results['v3 N'] = 0
+        for stat in ['P10', 'P50', 'P90']:
+            results[f'v3 {stat}'] = np.nan
+
+    return results, outliers
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Equipment-specific filter + extraction (thin wrappers)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _analyze_ashp(df: pd.DataFrame, menu_mp: int, cost_scenarios: List[str],
+                  cost_type: str = 'replacement') -> Tuple[pd.DataFrame, Dict]:
+    """Analyze ASHP heating costs by SEER × capacity (tons)."""
+    mask = pd.Series(True, index=df.index)
+    if cost_type == 'replacement':
+        if 'heating_type' in df.columns:
+            mask &= (df['heating_type'] == 'Electricity ASHP')
+        elif 'hvac_heating_type_and_fuel' in df.columns:
+            mask &= (df['hvac_heating_type_and_fuel'] == 'Electricity ASHP')
+        else:
+            return pd.DataFrame(), {}
+        if 'hvac_has_ducts' in df.columns:
+            mask &= (df['hvac_has_ducts'] == 'Yes')
+    else:
+        pm2_col = f'heating_{cost_type}_pm2_euss'
+        if pm2_col in df.columns:
+            mask &= df[pm2_col].notna() & (df[pm2_col] > 0)
+        else:
+            return pd.DataFrame(), {}
+
+    df_f = df.loc[mask]
+    if len(df_f) == 0:
+        return pd.DataFrame(), {'total_filtered': 0}
+
+    # Efficiency for binning: use FLOORED pm2 so bins reflect what the cost
+    # regression actually computed.  Clamping summary (below) shows where
+    # homes in the floor bin came from.
+    pm2_col = f'heating_{cost_type}_pm2_euss'
+    pm2_original_col = f'heating_{cost_type}_pm2_euss_original'
+
+    if pm2_col in df_f.columns:
+        eff = df_f[pm2_col]
+    elif 'hvac_heating_efficiency' in df_f.columns:
+        eff = _extract_seer(df_f['hvac_heating_efficiency'])
+    else:
+        return pd.DataFrame(), {}
+        
+    if 'size_heating_system_primary_k_btu_h' not in df_f.columns:
+        return pd.DataFrame(), {}
+    cap = _capacity_tons(df_f['size_heating_system_primary_k_btu_h'])
+
+    results, outliers = _bin_group_summarize(
+        df_f, eff, cap,
+        eff_bins=SEER_BINS, cap_bins=CAPACITY_BINS_TONS,
+        eff_label='SEER', cap_label='Capacity (tons)',
+        menu_mp=menu_mp, cost_category='heating',
+        cost_type=cost_type, cost_scenarios=cost_scenarios,
+    )
+
+    # Attach clamping summary for replacement metrics
+    outliers['clamping_lines'] = _build_clamping_summary(
+        df_f, pm2_col, pm2_original_col, eff_label='SEER', display_scale=1.0
+    )
+
+    return results, outliers
+
+
+def _analyze_central_ac(df: pd.DataFrame, menu_mp: int, cost_scenarios: List[str],
+                         cost_type: str = 'replacement') -> Tuple[pd.DataFrame, Dict]:
+    """Analyze Central AC cooling costs by SEER × capacity (tons)."""
+    mask = pd.Series(True, index=df.index)
+    if cost_type == 'replacement':
+        if 'hvac_cooling_type' in df.columns:
+            mask &= (df['hvac_cooling_type'] == 'Central AC')
+        else:
+            return pd.DataFrame(), {}
+    else:
+        pm2_col = f'cooling_{cost_type}_pm2_euss'
+        if pm2_col in df.columns:
+            mask &= df[pm2_col].notna() & (df[pm2_col] > 0)
+        else:
+            return pd.DataFrame(), {}
+
+    df_f = df.loc[mask]
+    if len(df_f) == 0:
+        return pd.DataFrame(), {'total_filtered': 0}
+
+    # Efficiency for binning: use FLOORED pm2 so bins reflect what the cost
+    # regression actually computed.
+    pm2_col = f'cooling_{cost_type}_pm2_euss'
+    pm2_original_col = f'cooling_{cost_type}_pm2_euss_original'
+
+    if pm2_col in df_f.columns:
+        eff = df_f[pm2_col]
+    elif 'hvac_cooling_efficiency' in df_f.columns:
+        eff = _extract_seer(df_f['hvac_cooling_efficiency'])
+    else:
+        return pd.DataFrame(), {}
+
+    if 'size_cooling_system_primary_k_btu_h' not in df_f.columns:
+        return pd.DataFrame(), {}
+    cap = _capacity_tons(df_f['size_cooling_system_primary_k_btu_h'])
+
+    results, outliers = _bin_group_summarize(
+        df_f, eff, cap,
+        eff_bins=SEER_BINS, cap_bins=CAPACITY_BINS_TONS,
+        eff_label='SEER', cap_label='Capacity (tons)',
+        menu_mp=menu_mp, cost_category='cooling',
+        cost_type=cost_type, cost_scenarios=cost_scenarios,
+        exclude_v3=True,
+    )
+
+    outliers['clamping_lines'] = _build_clamping_summary(
+        df_f, pm2_col, pm2_original_col, eff_label='SEER', display_scale=1.0
+    )
+
+    return results, outliers
+
+
+def _analyze_furnace(df: pd.DataFrame, menu_mp: int, cost_scenarios: List[str],
+                      fuel_type: str = 'Natural Gas',
+                      cost_type: str = 'replacement') -> Tuple[pd.DataFrame, Dict]:
+    """Analyze Furnace heating costs by AFUE × capacity (kBTU/h)."""
+    mask = pd.Series(True, index=df.index)
+    if cost_type == 'replacement':
+        if 'base_heating_fuel' in df.columns:
+            mask &= (df['base_heating_fuel'] == fuel_type)
+        if 'heating_type' in df.columns:
+            mask &= df['heating_type'].str.contains('Furnace', case=False, na=False)
+        elif 'hvac_heating_type_and_fuel' in df.columns:
+            mask &= df['hvac_heating_type_and_fuel'].str.contains('Furnace', case=False, na=False)
+    else:
+        pm2_col = f'heating_{cost_type}_pm2_euss'
+        if pm2_col in df.columns:
+            mask &= df[pm2_col].notna() & (df[pm2_col] > 0)
+        else:
+            return pd.DataFrame(), {}
+
+    df_f = df.loc[mask]
+    if len(df_f) == 0:
+        return pd.DataFrame(), {'total_filtered': 0}
+
+    # AFUE: pm2 stores as decimal (0.80) → multiply by 100 for % binning.
+    # _extract_afue() already returns percentage-scale values, so only
+    # the pm2 column paths need the ×100 conversion.
+    # Efficiency for binning: use FLOORED pm2 so bins reflect what the
+    # cost regression actually computed.
+    pm2_col = f'heating_{cost_type}_pm2_euss'
+    pm2_original_col = f'heating_{cost_type}_pm2_euss_original'
+
+    if pm2_col in df_f.columns:
+        eff = df_f[pm2_col] * 100
+    elif 'hvac_heating_efficiency' in df_f.columns:
+        eff = _extract_afue(df_f['hvac_heating_efficiency'])
+    else:
+        return pd.DataFrame(), {}
+
+    if 'size_heating_system_primary_k_btu_h' not in df_f.columns:
+        return pd.DataFrame(), {}
+    cap = df_f['size_heating_system_primary_k_btu_h']
+
+    results, outliers = _bin_group_summarize(
+        df_f, eff, cap,
+        eff_bins=AFUE_BINS, cap_bins=CAPACITY_BINS_KBTUH,
+        eff_label='AFUE', cap_label='Capacity (kBTU/h)',
+        menu_mp=menu_mp, cost_category='heating',
+        cost_type=cost_type, cost_scenarios=cost_scenarios,
+        cap_bin_step=10,
+    )
+
+    # display_scale=100 converts decimal AFUE (0.60) to percentage (60) for summary
+    outliers['clamping_lines'] = _build_clamping_summary(
+        df_f, pm2_col, pm2_original_col, eff_label='AFUE', display_scale=100.0
+    )
+
+    return results, outliers
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -500,6 +505,14 @@ def _print_table(title: str,
         total = outliers.get('total_filtered', 0)
         print(f"  Total homes matching filter: {total:,}")
         _print_outlier_counts(outliers, cap_unit=cap_unit, eff_label=eff_label)
+
+        # Print clamping impact summary (replacement metrics only)
+        clamping_lines = outliers.get('clamping_lines')
+        if clamping_lines:
+            print()
+            for line in clamping_lines:
+                print(line)
+
         print()
 
     if df_result.empty:
@@ -518,28 +531,22 @@ def _print_table(title: str,
         print(f"{'=' * 110}")
         return
 
-    # Build display DataFrame
-    display_rows = []
-    for _, row in df_result.iterrows():
-        disp = {}
-        for c in id_cols:
-            disp[c] = row[c]
-
-        for scenario in cost_scenarios:
-            n = row.get(f'{scenario} N', 0)
-            if n == 0:
-                disp[f'{scenario} N'] = '—'
-                disp[f'{scenario} P10'] = 'N/A'
-                disp[f'{scenario} P50'] = 'N/A'
-                disp[f'{scenario} P90'] = 'N/A'
-            else:
-                disp[f'{scenario} N'] = f'{n:,}'
-                disp[f'{scenario} P10'] = _format_dollar(row[f'{scenario} P10'])
-                disp[f'{scenario} P50'] = _format_dollar(row[f'{scenario} P50'])
-                disp[f'{scenario} P90'] = _format_dollar(row[f'{scenario} P90'])
-        display_rows.append(disp)
-
-    df_display = pd.DataFrame(display_rows)
+    # Build display DataFrame — vectorized formatting replaces iterrows()
+    df_display = df_result[id_cols].copy()
+    for scenario in cost_scenarios:
+        n_col = f'{scenario} N'
+        if n_col not in df_result.columns:
+            continue
+        n_vals = df_result[n_col].fillna(0).astype(int)
+        has_data = n_vals > 0
+        df_display[n_col] = np.where(
+            has_data, n_vals.apply(lambda x: f'{x:,}'), '—'
+        )
+        for stat in ['P10', 'P50', 'P90']:
+            stat_col = f'{scenario} {stat}'
+            df_display[stat_col] = np.where(
+                has_data, df_result[stat_col].apply(_format_dollar), 'N/A'
+            )
     print(df_display.to_string(index=False))
     print(f"{'=' * 110}")
 
@@ -594,117 +601,170 @@ def run_capital_cost_validation(
                     continue  # v3 already in df
                 scenario_df = capital_costs_mpx.get('heating', {}).get(cost_type, {}).get(scenario_key)
                 if scenario_df is not None:
-                    col = create_cost_col(menu_mp=menu_mp, category='heating',
-                                          cost_type=cost_type, cost_scenario=scenario_key)
-                    if col not in df_work.columns and col in scenario_df.columns:
-                        df_work[col] = scenario_df[col].values
+                    # Pull heating/cooling cost + pm2 columns
+                    cols_to_pull = [
+                        create_cost_col(menu_mp=menu_mp, category='heating',
+                                        cost_type=cost_type, cost_scenario=scenario_key),
+                        create_cost_col(menu_mp=menu_mp, category='cooling',
+                                        cost_type=cost_type, cost_scenario=scenario_key),
+                        f'heating_{cost_type}_pm2_euss',
+                        f'heating_{cost_type}_pm2_euss_original',
+                        f'cooling_{cost_type}_pm2_euss',
+                        f'cooling_{cost_type}_pm2_euss_original',
+                    ]
 
-                # Also pull cooling replacement from the scenario DF
-                if cost_type == 'replacement':
-                    cool_scenario_df = scenario_df  # cooling cols are on the same DF
-                    if cool_scenario_df is not None:
-                        cool_col = create_cost_col(menu_mp=menu_mp, category='cooling',
-                                                    cost_type='replacement', cost_scenario=scenario_key)
-                        if cool_col not in df_work.columns and cool_col in cool_scenario_df.columns:
-                            df_work[cool_col] = cool_scenario_df[cool_col].values
+                    for col in cols_to_pull:
+                        if col not in df_work.columns and col in scenario_df.columns:
+                            df_work[col] = scenario_df[col].values
 
+    total_homes = len(df_work)
     results = {}
+    outlier_info = {}
 
-    # ── 1. ASHP (Heating Replacement) ──
-    df_ashp, ashp_outliers = _analyze_ashp(df_work, menu_mp, cost_scenarios)
-    results['ASHP (Heating Replacement)'] = df_ashp
-    _print_table(
-        title='ASHP — Air Source Heat Pump (Heating Replacement, Centrally Ducted)',
-        df_result=df_ashp,
-        cost_scenarios=cost_scenarios,
-        id_cols=['Capacity (tons)', 'SEER'],
-        notes=[
-            'Cost type: heating replacement (like-for-like ASHP)',
-            'Filter: heating_type = Electricity ASHP, hvac_has_ducts = Yes',
-            f'Capacity bins: {CAPACITY_BINS_TONS[0]}–{CAPACITY_BINS_TONS[-1]} tons (floor rounding, e.g. 1.5–2.4 → 2)',
-            f'SEER bins: {SEER_BINS[0]}–{SEER_BINS[-1]} (floor rounding, e.g. 12.5–13.4 → 13)',
-            'v3 note: v3 uses a fixed efficiency key — same cost across SEER bins for a given capacity',
-        ],
-        outliers=ashp_outliers,
-        cap_unit='tons',
-        eff_label='SEER',
-    )
+    # ── Analysis specifications ──
+    # Each entry defines one equipment-type analysis to run.
+    analyses = [
+        {
+            'label': 'ASHP (Heating Replacement)',
+            'title': 'ASHP — Air Source Heat Pump (Heating Replacement, Centrally Ducted)',
+            'fn': _analyze_ashp,
+            'fn_kwargs': {'cost_type': 'replacement'},
+            'id_cols': ['Capacity (tons)', 'SEER'],
+            'cap_unit': 'tons', 'eff_label': 'SEER',
+            'notes': [
+                'Cost type: heating replacement (like-for-like ASHP)',
+                'Filter: heating_type = Electricity ASHP, hvac_has_ducts = Yes',
+                'SEER bins: heating_replacement_pm2_euss (floored efficiency, see clamping summary)',
+                'Costs: computed using floored efficiency (see Section 5 of protocol)',
+            ],
+        },
+        {
+            'label': 'Central AC (Cooling Replacement)',
+            'title': 'Central AC — Centrally Ducted (Cooling Replacement)',
+            'fn': _analyze_central_ac,
+            'fn_kwargs': {'cost_type': 'replacement'},
+            'id_cols': ['Capacity (tons)', 'SEER'],
+            'cap_unit': 'tons', 'eff_label': 'SEER',
+            'notes': [
+                'Cost type: cooling replacement (like-for-like Central AC)',
+                'Filter: hvac_cooling_type = Central AC',
+                'SEER bins: cooling_replacement_pm2_euss (floored efficiency, see clamping summary)',
+                'Costs: computed using floored efficiency (see Section 5 of protocol)',
+                'v3 note: No v3 data exists for cooling replacement — v3 columns show N/A',
+            ],
+        },
+        {
+            'label': 'Gas Furnace (Heating Replacement)',
+            'title': 'Gas Furnace — Natural Gas (Heating Replacement)',
+            'fn': _analyze_furnace,
+            'fn_kwargs': {'fuel_type': 'Natural Gas', 'cost_type': 'replacement'},
+            'id_cols': ['Capacity (kBTU/h)', 'AFUE'],
+            'cap_unit': 'kBTU/h', 'eff_label': 'AFUE',
+            'notes': [
+                'Cost type: heating replacement (like-for-like furnace)',
+                'Filter: base_heating_fuel = Natural Gas, heating_type contains Furnace',
+                'AFUE bins: heating_replacement_pm2_euss (floored efficiency, see clamping summary)',
+                'Costs: computed using floored efficiency (see Section 5 of protocol)',
+            ],
+        },
+        {
+            'label': 'Propane Furnace (Heating Replacement)',
+            'title': 'Propane Furnace (Heating Replacement)',
+            'fn': _analyze_furnace,
+            'fn_kwargs': {'fuel_type': 'Propane', 'cost_type': 'replacement'},
+            'id_cols': ['Capacity (kBTU/h)', 'AFUE'],
+            'cap_unit': 'kBTU/h', 'eff_label': 'AFUE',
+            'notes': [
+                'Cost type: heating replacement (like-for-like furnace)',
+                'Filter: base_heating_fuel = Propane, heating_type contains Furnace',
+                'AFUE bins: heating_replacement_pm2_euss (floored efficiency, see clamping summary)',
+                'Costs: computed using floored efficiency (see Section 5 of protocol)',
+            ],
+        },
+        {
+            'label': 'ASHP (Heating Upgrade)',
+            'title': 'ASHP — Air Source Heat Pump (Heating Upgrade)',
+            'fn': _analyze_ashp,
+            'fn_kwargs': {'cost_type': 'upgrade'},
+            'id_cols': ['Capacity (tons)', 'SEER'],
+            'cap_unit': 'tons', 'eff_label': 'SEER',
+            'notes': [
+                'Cost type: heating upgrade (new ASHP installation)',
+                'Filter: all homes with valid heating_upgrade_pm2_euss',
+                'SEER source: heating_upgrade_pm2_euss (MP-defined upgrade efficiency)',
+                'Costs: computed using floored efficiency (see Section 5 of protocol)',
+            ],
+        },
+        {
+            'label': 'Central AC (Cooling Upgrade)',
+            'title': 'Central AC (Cooling Upgrade)',
+            'fn': _analyze_central_ac,
+            'fn_kwargs': {'cost_type': 'upgrade'},
+            'id_cols': ['Capacity (tons)', 'SEER'],
+            'cap_unit': 'tons', 'eff_label': 'SEER',
+            'notes': [
+                'Cost type: cooling upgrade',
+                'Filter: all homes with valid cooling_upgrade_pm2_euss',
+                'SEER source: cooling_upgrade_pm2_euss (MP-defined upgrade efficiency)',
+                'Costs: computed using floored efficiency (see Section 5 of protocol)',
+                'v3 note: No v3 data exists for cooling upgrade — v3 columns show N/A',
+            ],
+        },
+    ]
 
-    # ── 2. Central AC (Cooling Replacement) ──
-    df_cac, cac_outliers = _analyze_central_ac(df_work, menu_mp, cost_scenarios)
-    results['Central AC (Cooling Replacement)'] = df_cac
-    _print_table(
-        title='Central AC — Centrally Ducted (Cooling Replacement)',
-        df_result=df_cac,
-        cost_scenarios=cost_scenarios,
-        id_cols=['Capacity (tons)', 'SEER'],
-        notes=[
-            'Cost type: cooling replacement (like-for-like Central AC)',
-            'Filter: hvac_cooling_type = Central AC',
-            f'Capacity bins: {CAPACITY_BINS_TONS[0]}–{CAPACITY_BINS_TONS[-1]} tons (floor rounding)',
-            f'SEER bins: {SEER_BINS[0]}–{SEER_BINS[-1]} (floor rounding)',
-            'v3 note: No v3 data exists for cooling replacement — v3 columns show N/A',
-        ],
-        outliers=cac_outliers,
-        cap_unit='tons',
-        eff_label='SEER',
-    )
-
-    # ── 3. Gas Furnace (Heating Replacement) ──
-    df_gas, gas_outliers = _analyze_furnace(df_work, menu_mp, cost_scenarios, fuel_type='Natural Gas')
-    results['Gas Furnace (Heating Replacement)'] = df_gas
-    _print_table(
-        title='Gas Furnace — Natural Gas (Heating Replacement)',
-        df_result=df_gas,
-        cost_scenarios=cost_scenarios,
-        id_cols=['Capacity (kBTU/h)', 'AFUE'],
-        notes=[
-            'Cost type: heating replacement (like-for-like furnace)',
-            'Filter: base_heating_fuel = Natural Gas, heating_type contains Furnace',
-            f'Capacity bins: {CAPACITY_BINS_KBTUH[0]}–{CAPACITY_BINS_KBTUH[-1]} kBTU/h (step=10, floor rounding)',
-            f'AFUE bins: {AFUE_BINS[0]}–{AFUE_BINS[-1]}% (floor rounding)',
-            'v3 note: v3 uses a fixed efficiency key — same cost across AFUE bins for a given capacity',
-        ],
-        outliers=gas_outliers,
-        cap_unit='kBTU/h',
-        eff_label='AFUE',
-    )
-
-    # ── 4. Propane Furnace (Heating Replacement) ──
-    df_propane, propane_outliers = _analyze_furnace(df_work, menu_mp, cost_scenarios, fuel_type='Propane')
-    results['Propane Furnace (Heating Replacement)'] = df_propane
-    _print_table(
-        title='Propane Furnace (Heating Replacement)',
-        df_result=df_propane,
-        cost_scenarios=cost_scenarios,
-        id_cols=['Capacity (kBTU/h)', 'AFUE'],
-        notes=[
-            'Cost type: heating replacement (like-for-like furnace)',
-            'Filter: base_heating_fuel = Propane, heating_type contains Furnace',
-            f'Capacity bins: {CAPACITY_BINS_KBTUH[0]}–{CAPACITY_BINS_KBTUH[-1]} kBTU/h (step=10, floor rounding)',
-            f'AFUE bins: {AFUE_BINS[0]}–{AFUE_BINS[-1]}% (floor rounding)',
-            'v3 note: v3 uses a fixed efficiency key — same cost across AFUE bins for a given capacity',
-        ],
-        outliers=propane_outliers,
-        cap_unit='kBTU/h',
-        eff_label='AFUE',
-    )
+    # ── Run all analyses ──
+    for spec in analyses:
+        df_result, oi = spec['fn'](
+            df_work, menu_mp, cost_scenarios, **spec['fn_kwargs']
+        )
+        results[spec['label']] = df_result
+        outlier_info[spec['label']] = oi
+        _print_table(
+            title=spec['title'],
+            df_result=df_result,
+            cost_scenarios=cost_scenarios,
+            id_cols=spec['id_cols'],
+            notes=spec['notes'],
+            outliers=oi,
+            cap_unit=spec['cap_unit'],
+            eff_label=spec['eff_label'],
+        )
 
     # ── Summary ──
     print(f"\n{'#' * 110}")
     print(f"#  VALIDATION SUMMARY")
+    print(f"#  Total homes in DataFrame: {total_homes:,}")
     print(f"{'#' * 110}")
     for label, df_r in results.items():
         if df_r.empty:
             print(f"  {label:<45}  No matching homes")
         else:
-            # Count total homes across all bins
-            n_col = f'{cost_scenarios[0]} N' if cost_scenarios else None
-            total_n = df_r[n_col].sum() if n_col and n_col in df_r.columns else 0
-            n_bins_with_data = (df_r[n_col] > 0).sum() if n_col and n_col in df_r.columns else 0
+            # Use the max N across ALL scenarios (not just the first) to avoid
+            # the v3 issue where Central AC has no v3 data.
+            n_cols = [f'{s} N' for s in cost_scenarios if f'{s} N' in df_r.columns]
+            if n_cols:
+                # For each row, take the max N across scenarios
+                max_n_per_row = df_r[n_cols].max(axis=1)
+                total_n = int(max_n_per_row.sum())
+                n_bins_with_data = int((max_n_per_row > 0).sum())
+            else:
+                total_n = 0
+                n_bins_with_data = 0
+
             total_bins = len(df_r)
+
+            # Percentage of total homes in DataFrame
+            pct_of_total = (total_n / total_homes * 100) if total_homes > 0 else 0.0
+
+            # Percentage of appliance-filtered homes (from outlier info)
+            oi = outlier_info.get(label, {})
+            appliance_filtered = oi.get('total_filtered', total_n)
+            pct_of_appliance = (total_n / appliance_filtered * 100) if appliance_filtered > 0 else 0.0
+
             print(f"  {label:<45}  {n_bins_with_data}/{total_bins} bins with data  |  "
-                  f"{int(total_n):,} total homes matched")
+                  f"{total_n:,} homes matched  |  "
+                  f"{pct_of_total:.1f}% of all homes  |  "
+                  f"{pct_of_appliance:.1f}% of {appliance_filtered:,} filtered")
 
     print(f"{'#' * 110}\n")
 
