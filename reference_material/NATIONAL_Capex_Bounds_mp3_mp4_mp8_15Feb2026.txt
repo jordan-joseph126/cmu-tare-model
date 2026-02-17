@@ -1,0 +1,353 @@
+================================================================================
+LOADING CAPITAL COST DATABASES
+================================================================================
+
+REMDB v3 (Excel):
+  Retrieved data for filename: tare_retrofit_costs_cpi.xlsx
+  Located at filepath: c:\users\jorda\desktop\projects\cmu-tare-model\cmu_tare_model\data\retrofit_costs\tare_retrofit_costs_cpi.xlsx
+  Loaded 5 end-use categories from tare_retrofit_costs_cpi.xlsx
+
+REMDB v4 (Regression):
+  Loaded 32 equipment types from REMDB v4
+
+================================================================================
+
+
+    ================ Capital Costs: Space Heating ==========================
+
+    Obtaining Capital Cost Data from Retrofit Cost Spreadsheet ...
+    
+Obtaining heating system specs ...
+
+Calculating Cost of Retrofit Upgrade: Heat Pump for Space Heating (No Enclosure Upgrade) ...
+
+Calculating Cost of Replacing Existing Equipment with Similar Model/Efficiency ...
+
+Calculating Space Heating Specific Premiums (Ex: Removing Hydronic Boiler) ...
+         square_footage census_region     census_division  \
+bldg_id                                                     
+1                1690.0         South      South Atlantic   
+2                1690.0          West            Mountain   
+5                2176.0       Midwest  West North Central   
+6                1690.0         South      South Atlantic   
+8                1220.0       Midwest  West North Central   
+...                 ...           ...                 ...   
+549993           3301.0          West             Pacific   
+549994           1675.0         South      South Atlantic   
+549995           1220.0         South  West South Central   
+549998           1690.0          West             Pacific   
+549999           2176.0         South  East South Central   
+
+        census_division_recs building_america_climate_zone  \
+bldg_id                                                      
+1             South Atlantic                   Mixed-Humid   
+2             Mountain North                          Cold   
+5         West North Central                   Mixed-Humid   
+6             South Atlantic                     Hot-Humid   
+8         West North Central                          Cold   
+...                      ...                           ...   
+549993               Pacific                        Marine   
+549994        South Atlantic                   Mixed-Humid   
+549995    West South Central                     Hot-Humid   
+549998               Pacific                       Hot-Dry   
+549999    East South Central                     Hot-Humid   
+
+         reeds_balancing_area gea_region state                     city  \
+bldg_id                                                                   
+1                          99      SRVCc    VA  In another census Place   
+2                          24      RMPAc    WY    Not in a census Place   
+5                          73      SRMWc    MO    Not in a census Place   
+6                         102      FRCCc    FL  In another census Place   
+8                          41      MROWc    NE  In another census Place   
+...                       ...        ...   ...                      ...   
+549993                      9      CAMXc    CA               Pleasanton   
+549994                    123      RFCEc    DC               Washington   
+549995                     65      ERCTc    TX  In another census Place   
+549998                     10      CAMXc    CA                Inglewood   
+549999                     89      SRSOc    AL  In another census Place   
+
+        urbanicity  ... iraRef_mp8_heating_lifetime_fuel_cost  \
+bldg_id             ...                                         
+1            Rural  ...                               4524.06   
+2            Rural  ...                              10818.97   
+5            Rural  ...                               5962.59   
+6         Suburban  ...                                   NaN   
+8            Rural  ...                               6051.66   
+...            ...  ...                                   ...   
+549993    Suburban  ...                                   NaN   
+549994       Urban  ...                               1461.22   
+549995       Rural  ...                                301.07   
+549998    Suburban  ...                                  0.00   
+549999       Rural  ...                                629.10   
+
+        iraRef_mp8_heating_lifetime_savings_fuel_cost  \
+bldg_id                                                 
+1                                            25771.44   
+2                                            16862.43   
+5                                            19644.14   
+6                                                 NaN   
+8                                             7445.62   
+...                                               ...   
+549993                                            NaN   
+549994                                        3053.36   
+549995                                         513.56   
+549998                                           0.00   
+549999                                        -629.10   
+
+        baseline_heating_lifetime_fuel_cost baseline_AFUE baseline_SEER  \
+bldg_id                                                                   
+1                                  30295.50          76.0           NaN   
+2                                  27681.40          80.0           NaN   
+5                                  25606.73         100.0           NaN   
+6                                       NaN           NaN           NaN   
+8                                  13497.28          76.0           NaN   
+...                                     ...           ...           ...   
+549993                                  NaN          68.0           NaN   
+549994                              4514.58          76.0           NaN   
+549995                               814.63         100.0           NaN   
+549998                                 0.00         100.0           NaN   
+549999                                 0.00          76.0           NaN   
+
+         baseline_HSPF  ugrade_newInstall_HSPF  \
+bldg_id                                          
+1                  NaN                    13.0   
+2                  NaN                    13.0   
+5                  NaN                    13.0   
+6                  NaN                    14.0   
+8                  NaN                    13.0   
+...                ...                     ...   
+549993             NaN                    14.0   
+549994             NaN                    13.0   
+549995             NaN                    13.0   
+549998             NaN                    13.0   
+549999             NaN                    13.0   
+
+        mp8_heating_upgrade_installed_cost_v3  \
+bldg_id                                         
+1                                    19046.86   
+2                                    12429.77   
+5                                    16962.71   
+6                                         NaN   
+8                                    18996.49   
+...                                       ...   
+549993                                    NaN   
+549994                               12000.87   
+549995                               13791.70   
+549998                               14661.28   
+549999                               15365.43   
+
+        mp8_heating_replacement_installed_cost_v3  \
+bldg_id                                             
+1                                         5246.42   
+2                                         3435.49   
+5                                         4889.26   
+6                                             NaN   
+8                                         3500.10   
+...                                           ...   
+549993                                        NaN   
+549994                                    3358.37   
+549995                                    3689.83   
+549998                                    4282.35   
+549999                                    5187.32   
+
+        mp8_heating_installation_premium  
+bldg_id                                   
+1                                    0.0  
+2                                    0.0  
+5                                    0.0  
+6                                    0.0  
+8                                    0.0  
+...                                  ...  
+549993                               0.0  
+549994                               0.0  
+549995                               0.0  
+549998                               0.0  
+549999                               0.0  
+
+[331531 rows x 134 columns]
+================================================================================
+CALCULATING CAPITAL COSTS - MEASURE PACKAGE 8
+================================================================================
+
+Scenario: v3 | Method: v3 | Percentile: ref
+  Stored existing v3 results from df_euss_am_mpX_home
+
+Scenario: v4MID | Method: remdb_v4 | Percentile: mid
+
+============================================================
+Preparing heating REPLACEMENT metrics (REMDB v4)
+============================================================
+  10,174 homes with unknown row_id (will have NaN costs)
+
+  Row ID Distribution (row_id_heating_replacement):
+    furnaces_gas_furnace: 215,565
+    electric_baseboard_default: 74,445
+    air_source_heat_pump_centrally_ducted: 31,347
+    unknown: 10,174
+
+  NaN Diagnostics:
+    pm1 NaN breakdown (0 total):
+      - Unknown row_id: 0
+      - Missing source data (size_heating_system_primary_k_btu_h): 0
+    pm2 NaN breakdown (787 total):
+      - Unknown row_id: 0
+      - No pm2_metric defined (e.g., electric baseboard): 0
+      - Missing source data (hvac_heating_efficiency): 0
+
+  pm2_metric Distribution (heating_replacement_pm2_metric):
+    AFUE: 215,565
+    (NaN - no efficiency metric): 84,619
+    SEER1: 31,347
+
+  INFO: 88,862 homes have capacity outside REMDB bounds
+
+    furnaces_gas_furnace: 80,452 values
+    REMDB Bounds: 30000.00 - 156250.00
+    EUSS Bounds:
+        - BELOW (78,688): 3480.00 - 29990.00
+        - ABOVE (1,764): 156260.00 - 747790.00
+
+    air_source_heat_pump_centrally_ducted: 8,402 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (2,214): 0.41 - 1.50
+        - ABOVE (6,188): 5.00 - 37.17
+
+    electric_baseboard_default: 8 values
+    REMDB Bounds: 1194.20 - 416000.00
+    EUSS Bounds:
+        - ABOVE (8): 417410.00 - 701380.00
+
+  INFO: 71,560 homes have efficiency outside REMDB bounds
+
+    furnaces_gas_furnace: 46,089 values
+    REMDB Bounds: 0.80 - 0.97
+    EUSS Bounds:
+        - BELOW (46,089): 0.60 - 0.76
+
+    air_source_heat_pump_centrally_ducted: 25,471 values
+    REMDB Bounds: 13.80 - 24.00
+    EUSS Bounds:
+        - BELOW (25,471): 10.00 - 13.00
+
+  Valid metrics: 331,531 pm1, 330,744 pm2
+  NaN metrics: 0 pm1, 787 pm2 (per validation framework)
+
+============================================================
+Preparing heating UPGRADE metrics (REMDB v4)
+============================================================
+
+  Row ID Distribution (row_id_heating_upgrade):
+    air_source_heat_pump_centrally_ducted: 266,368
+    air_source_heat_pump_non_ducted_multi_zone: 65,163
+
+  NaN Diagnostics:
+    pm1 NaN breakdown (0 total):
+      - Unknown row_id: 0
+      - Missing source data (size_heating_system_primary_k_btu_h): 0
+    pm2 NaN breakdown (8 total):
+      - Unknown row_id: 0
+      - No pm2_metric defined (e.g., electric baseboard): 0
+      - Missing source data (upgrade_hvac_heating_efficiency): 8
+
+  pm2_metric Distribution (heating_upgrade_pm2_metric):
+    SEER1: 331,531
+
+  INFO: 100,690 homes have capacity outside REMDB bounds
+
+    air_source_heat_pump_centrally_ducted: 71,279 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (29,366): 0.00 - 1.50
+        - ABOVE (41,913): 5.00 - 62.32
+
+    air_source_heat_pump_non_ducted_multi_zone: 29,411 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (2,603): 0.34 - 1.50
+        - ABOVE (26,808): 5.00 - 36.26
+
+  INFO: 65,162 homes have efficiency outside REMDB bounds
+
+    air_source_heat_pump_non_ducted_multi_zone: 65,162 values
+    REMDB Bounds: 16.00 - 23.00
+    EUSS Bounds:
+        - ABOVE (65,162): 29.30 - 29.30
+
+  Valid metrics: 331,531 pm1, 331,523 pm2
+  NaN metrics: 0 pm1, 8 pm2 (per validation framework)
+
+============================================================
+Preparing cooling REPLACEMENT metrics (REMDB v4)
+============================================================
+  49,587 homes with unknown row_id (will have NaN costs)
+
+  Row ID Distribution (row_id_cooling_replacement):
+    air_conditioner_centrally_ducted: 190,165
+    air_conditioner_room_ac_window_or_through_wall: 60,411
+    unknown: 49,587
+    air_source_heat_pump_centrally_ducted: 31,368
+
+  NaN Diagnostics:
+    pm1 NaN breakdown (0 total):
+      - Unknown row_id: 0
+      - Missing source data (size_cooling_system_primary_k_btu_h): 0
+    pm2 NaN breakdown (31,637 total):
+      - Unknown row_id: 0
+      - No pm2_metric defined (e.g., electric baseboard): 0
+      - Missing source data (hvac_cooling_efficiency): 0
+
+  pm2_metric Distribution (cooling_replacement_pm2_metric):
+    SEER1: 221,533
+    CEER: 60,411
+    (NaN - no efficiency metric): 49,587
+
+  INFO: 108,396 homes have capacity outside REMDB bounds
+
+    air_conditioner_centrally_ducted: 51,653 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (20,512): 0.29 - 1.50
+        - ABOVE (31,141): 5.00 - 61.60
+
+    air_conditioner_room_ac_window_or_through_wall: 48,331 values
+    REMDB Bounds: 0.42 - 2.33
+    EUSS Bounds:
+        - BELOW (5): 0.36 - 0.41
+        - ABOVE (48,326): 2.33 - 36.26
+
+    air_source_heat_pump_centrally_ducted: 8,412 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (2,224): 0.00 - 1.50
+        - ABOVE (6,188): 5.00 - 37.17
+
+  INFO: 45,729 homes have efficiency outside REMDB bounds
+
+    air_conditioner_centrally_ducted: 41,915 values
+    REMDB Bounds: 13.00 - 24.00
+    EUSS Bounds:
+        - BELOW (41,915): 8.00 - 10.00
+
+    air_conditioner_room_ac_window_or_through_wall: 3,814 values
+    REMDB Bounds: 9.40 - 15.00
+    EUSS Bounds:
+        - BELOW (3,814): 8.50 - 8.50
+
+  Valid metrics: 331,531 pm1, 299,894 pm2
+  NaN metrics: 0 pm1, 31,637 pm2 (per validation framework)
+  Replacement: 291,556 valid homes, mean=$4,516.06
+  Upgrade: 291,556 valid homes, mean=$22,927.57
+
+Calculated 2 scenarios: ['v3', 'v4MID']
+================================================================================
+
+================================================================================
+MERGED v4 COST COLUMNS INTO df_euss_am_mpX_home (3 columns)
+================================================================================
+  mp8_cooling_replacement_installed_cost_v4MID
+  mp8_heating_replacement_installed_cost_v4MID
+  mp8_heating_upgrade_installed_cost_v4MID
+
+df_euss_am_mpX_home shape: (331531, 137)
+================================================================================
