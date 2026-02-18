@@ -8,7 +8,8 @@ from cmu_tare_model.constants import (
     CR_FUNCTIONS,
     UPGRADE_COLUMNS,
     VERBOSE,
-    PRIVATE_DISCOUNTING_METHOD_SUFFIXES
+    PRIVATE_DISCOUNTING_METHOD_SUFFIXES,
+    REBATE_ELIGIBLE_HEATING_MPS
 )
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.column_names import (
@@ -227,8 +228,10 @@ def adoption_decision(
                 public_npv_col_name])
         
         if policy_scenario == 'AEO2023 Reference Case':
-            rebate_col_name = create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)
-            required_columns.append(rebate_col_name)
+            # Only require rebate column for MPs eligible for rebates
+            if category != 'heating' or menu_mp in REBATE_ELIGIBLE_HEATING_MPS:
+                rebate_col_name = create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)
+                required_columns.append(rebate_col_name)
     
     # Validate all required columns exist
     _validate_required_columns(

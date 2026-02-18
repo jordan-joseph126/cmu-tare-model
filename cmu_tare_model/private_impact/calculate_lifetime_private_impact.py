@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from typing import Tuple, Dict, List, Optional, Union
 
-from cmu_tare_model.constants import EQUIPMENT_SPECS, PRIVATE_DISCOUNTING_METHOD_SUFFIXES
+from cmu_tare_model.constants import EQUIPMENT_SPECS, PRIVATE_DISCOUNTING_METHOD_SUFFIXES, REBATE_ELIGIBLE_HEATING_MPS
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.discounting import calculate_discount_factors
 from cmu_tare_model.utils.validation_framework import (
@@ -300,7 +300,8 @@ def calculate_capital_costs(
             if policy_scenario != 'No Inflation Reduction Act':
                 required_cols.append(create_weatherization_rebate_col(cost_scenario=cost_scenario))
 
-        if policy_scenario != 'No Inflation Reduction Act':
+        # Only high-efficiency MPs are eligible for heating rebates
+        if policy_scenario != 'No Inflation Reduction Act' and menu_mp in REBATE_ELIGIBLE_HEATING_MPS:
             required_cols.append(create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario))
 
     elif policy_scenario != 'No Inflation Reduction Act':
@@ -350,7 +351,11 @@ def calculate_capital_costs(
                                  weatherization_cost + 
                                  df_copy[create_installation_premium_col(menu_mp=menu_mp, category=category)].fillna(0))
             
-            rebate_amount = df_copy[create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)].fillna(0)
+            # Only high-efficiency MPs are eligible for heating rebates
+            if menu_mp in REBATE_ELIGIBLE_HEATING_MPS:
+                rebate_amount = df_copy[create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)].fillna(0)
+            else:
+                rebate_amount = 0.0
             total_capital_cost = installation_cost - rebate_amount
             net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='replacement', cost_scenario=cost_scenario)].fillna(0)
         

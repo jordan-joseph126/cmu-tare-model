@@ -3,7 +3,7 @@ import pandas as pd
 from scipy.stats import norm
 from typing import Dict, List, Optional, Tuple, Union, Callable
 
-from cmu_tare_model.constants import REBATE_MAPPING, VERBOSE
+from cmu_tare_model.constants import REBATE_MAPPING, REBATE_ELIGIBLE_HEATING_MPS, VERBOSE
 from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2023_2022
 from cmu_tare_model.utils.column_names import (
     create_cost_col,
@@ -103,7 +103,7 @@ def fill_na_with_hierarchy(
     return df
 
 
-def calculate_percent_AMI(df_results_IRA: pd.DataFrame) -> pd.DataFrame:
+def calculate_percent_AMI(df_results_IRA: pd.DataFrame, random_seed: int = 42) -> pd.DataFrame:
     """
     Calculates the percentage of Area Median Income (AMI) and assigns income level designations.
 
@@ -116,6 +116,9 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame) -> pd.DataFrame:
         df_results_IRA: Input DataFrame containing income information with columns:
                        - 'income': Income data (ranges or values)
                        - Other demographic/geographic columns for median income lookup
+        random_seed: Random seed for reproducible income sampling. Ensures consistent
+                    income classifications across different measure package runs (e.g.,
+                    MP4 and MP8 produce identical rebate eligibility). Default: 42.
 
     Returns:
         DataFrame: Modified DataFrame with additional columns:
@@ -162,6 +165,12 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame) -> pd.DataFrame:
     income_ranges = df_results_IRA['income'].apply(split_income_range)
     df_results_IRA['income_low'], df_results_IRA['income_high'] = zip(*income_ranges)
     df_results_IRA['income'] = (df_results_IRA['income_low'] + df_results_IRA['income_high']) / 2
+    
+    # Set random seed for reproducible income sampling across MP runs.
+    # This ensures identical income classifications (and thus identical rebate
+    # eligibility) for the same homes regardless of which measure package is
+    # being processed — critical for MP4 vs MP8 result consistency.
+    np.random.seed(random_seed)
     
     # Apply the generate_household_medianIncome_2023 function
     df_results_IRA['household_income'] = df_results_IRA.apply(generate_household_medianIncome_2023, axis=1)
@@ -366,6 +375,21 @@ def calculate_rebateIRA(
         
         # Track weatherization column under the category
         category_columns_to_mask.append(weatherization_rebate_col_name)
+    
+    # ===== REBATE ELIGIBILITY CHECK =====
+    # Only high-efficiency MPs qualify for IRA rebates.
+    # Standard-efficiency MPs (e.g., MP3) get zero rebates.
+    if category == 'heating' and menu_mp not in REBATE_ELIGIBLE_HEATING_MPS:
+        if verbose:
+            print(f"  MP{menu_mp} is NOT eligible for heating rebates (standard efficiency). "
+                  f"Setting all rebate amounts to 0.")
+        df_copy[rebate_col_name] = 0.0
+        # Apply valid_mask: NaN for invalid homes, 0 for valid homes
+        df_copy.loc[~valid_mask, rebate_col_name] = np.nan
+        
+        # Apply final verification masking for consistency
+        df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=verbose)
+        return df_copy
     
     # Apply rebates based on income designation
     def apply_rebate(row):

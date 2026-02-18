@@ -186,6 +186,15 @@ REBATE_MAPPING = {
 }
 
 # =============================================================
+# CONSTANTS: IRA REBATE ELIGIBILITY BY MEASURE PACKAGE
+# =============================================================
+# Only high-efficiency equipment qualifies for IRA HOMES rebates.
+# MP3 uses standard-efficiency ASHP (SEER 15) which does NOT meet
+# Energy Star certification requirements for rebate eligibility.
+# MP4/MP8/MP9/MP10 use high-efficiency ASHP (SEER 24+) and qualify.
+REBATE_ELIGIBLE_HEATING_MPS = [4, 8, 9, 10]
+
+# =============================================================
 # CONSTANTS: CAPITAL COST SCENARIOS (REMDB v3 + v4)
 # =============================================================
 

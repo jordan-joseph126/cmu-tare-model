@@ -184,7 +184,7 @@ def _build_clamping_summary(
         pct_of_bin = count / in_floor_bin * 100
         lines.append(
             f"    {orig_val:.0f} {eff_label} ({count:,} / {total_filtered:,} homes, "
-            f"{pct_of_total:.1f}%) ──→ {floor_display:.0f} {eff_label} "
+            f"{pct_of_total:.1f}%) --> {floor_display:.0f} {eff_label} "
             f"({count:,} / {in_floor_bin:,} in bin, {pct_of_bin:.1f}%)"
         )
 
@@ -264,16 +264,23 @@ def _bin_group_summarize(
         'eff_lo': eff_lo, 'eff_hi': eff_hi,
     }
 
-    # Bin values
-    df_work = df_filtered.copy()
+    # Bin values — build a slim DataFrame with only the columns we need
+    # to avoid copying the entire wide source DataFrame (memory-intensive).
+    compute_scenarios = [s for s in cost_scenarios if not (exclude_v3 and s == 'v3')]
+
+    cost_cols = []
+    for scenario in compute_scenarios:
+        col = create_cost_col(menu_mp=menu_mp, category=cost_category,
+                              cost_type=cost_type, cost_scenario=scenario)
+        if col in df_filtered.columns:
+            cost_cols.append(col)
+
+    df_work = df_filtered[cost_cols].copy()
     df_work['_eff_bin'] = _round_to_bin(eff_values, eff_bins)
     df_work['_cap_bin'] = _round_to_bin(cap_values, cap_bins, step=cap_bin_step)
     df_work = df_work.dropna(subset=['_eff_bin', '_cap_bin'])
     if len(df_work) == 0:
         return pd.DataFrame(), outliers
-
-    # Determine which scenarios to compute
-    compute_scenarios = [s for s in cost_scenarios if not (exclude_v3 and s == 'v3')]
 
     # Build results via groupby — replaces manual cap × eff nested loop
     grouped = df_work.groupby(['_cap_bin', '_eff_bin'])
@@ -577,7 +584,12 @@ def run_capital_cost_validation(
         cost_scenarios: List of cost scenario keys (default: REMDB_COST_SCENARIO_KEYS).
 
     Returns:
-        Dict mapping equipment type label to its results DataFrame.
+        Dict structured as results[category][technology][cost_type] = DataFrame:
+          - category: 'heating', 'cooling'
+          - technology: 'ashp', 'central_ac', 'gas_furnace', 'propane_furnace'
+          - cost_type: 'replacement', 'upgrade'
+        Each DataFrame contains numeric columns: Capacity, Efficiency rating,
+        and per-scenario N/P10/P50/P90 values (e.g. 'v4MID N', 'v4MID P50').
     """
     if cost_scenarios is None:
         cost_scenarios = list(REMDB_COST_SCENARIO_KEYS)
@@ -590,9 +602,9 @@ def run_capital_cost_validation(
 
     # ── Determine which DataFrame to use for each scenario ──
     # If CAPITAL_COSTS_MPX is provided, v4 scenario columns may only exist
-    # in those DataFrames (not yet merged into the main df). Build a merged
-    # view that includes all cost columns.
-    df_work = df.copy()
+    # in those DataFrames (not yet merged into the main df). Merge only the
+    # missing columns to avoid copying the entire wide DataFrame.
+    extra_cols = {}
 
     if capital_costs_mpx is not None:
         for cost_type in ['replacement', 'upgrade']:
@@ -614,8 +626,14 @@ def run_capital_cost_validation(
                     ]
 
                     for col in cols_to_pull:
-                        if col not in df_work.columns and col in scenario_df.columns:
-                            df_work[col] = scenario_df[col].values
+                        if col not in df.columns and col in scenario_df.columns:
+                            extra_cols[col] = scenario_df[col].values
+
+    # Build a lightweight view: original df + any extra columns from capital_costs_mpx
+    if extra_cols:
+        df_work = df.assign(**extra_cols)
+    else:
+        df_work = df
 
     total_homes = len(df_work)
     results = {}
@@ -623,9 +641,14 @@ def run_capital_cost_validation(
 
     # ── Analysis specifications ──
     # Each entry defines one equipment-type analysis to run.
+    # 'category', 'technology', and 'cost_type' define the structured return dict keys:
+    #   results_structured[category][technology][cost_type] = DataFrame
     analyses = [
         {
             'label': 'ASHP (Heating Replacement)',
+            'category': 'heating',
+            'technology': 'ashp',
+            'cost_type': 'replacement',
             'title': 'ASHP — Air Source Heat Pump (Heating Replacement, Centrally Ducted)',
             'fn': _analyze_ashp,
             'fn_kwargs': {'cost_type': 'replacement'},
@@ -640,6 +663,9 @@ def run_capital_cost_validation(
         },
         {
             'label': 'Central AC (Cooling Replacement)',
+            'category': 'cooling',
+            'technology': 'central_ac',
+            'cost_type': 'replacement',
             'title': 'Central AC — Centrally Ducted (Cooling Replacement)',
             'fn': _analyze_central_ac,
             'fn_kwargs': {'cost_type': 'replacement'},
@@ -655,6 +681,9 @@ def run_capital_cost_validation(
         },
         {
             'label': 'Gas Furnace (Heating Replacement)',
+            'category': 'heating',
+            'technology': 'gas_furnace',
+            'cost_type': 'replacement',
             'title': 'Gas Furnace — Natural Gas (Heating Replacement)',
             'fn': _analyze_furnace,
             'fn_kwargs': {'fuel_type': 'Natural Gas', 'cost_type': 'replacement'},
@@ -669,6 +698,9 @@ def run_capital_cost_validation(
         },
         {
             'label': 'Propane Furnace (Heating Replacement)',
+            'category': 'heating',
+            'technology': 'propane_furnace',
+            'cost_type': 'replacement',
             'title': 'Propane Furnace (Heating Replacement)',
             'fn': _analyze_furnace,
             'fn_kwargs': {'fuel_type': 'Propane', 'cost_type': 'replacement'},
@@ -683,6 +715,9 @@ def run_capital_cost_validation(
         },
         {
             'label': 'ASHP (Heating Upgrade)',
+            'category': 'heating',
+            'technology': 'ashp',
+            'cost_type': 'upgrade',
             'title': 'ASHP — Air Source Heat Pump (Heating Upgrade)',
             'fn': _analyze_ashp,
             'fn_kwargs': {'cost_type': 'upgrade'},
@@ -697,6 +732,9 @@ def run_capital_cost_validation(
         },
         {
             'label': 'Central AC (Cooling Upgrade)',
+            'category': 'cooling',
+            'technology': 'central_ac',
+            'cost_type': 'upgrade',
             'title': 'Central AC (Cooling Upgrade)',
             'fn': _analyze_central_ac,
             'fn_kwargs': {'cost_type': 'upgrade'},
@@ -712,6 +750,9 @@ def run_capital_cost_validation(
         },
     ]
 
+    # Structured results dict: results_structured[category][technology][cost_type] = DataFrame
+    results_structured = {}
+
     # ── Run all analyses ──
     for spec in analyses:
         df_result, oi = spec['fn'](
@@ -719,6 +760,13 @@ def run_capital_cost_validation(
         )
         results[spec['label']] = df_result
         outlier_info[spec['label']] = oi
+
+        # Populate structured dict
+        cat = spec['category']
+        tech = spec['technology']
+        ct = spec['cost_type']
+        results_structured.setdefault(cat, {}).setdefault(tech, {})[ct] = df_result
+
         _print_table(
             title=spec['title'],
             df_result=df_result,
@@ -768,4 +816,4 @@ def run_capital_cost_validation(
 
     print(f"{'#' * 110}\n")
 
-    return results
+    return results_structured
