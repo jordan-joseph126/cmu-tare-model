@@ -15,21 +15,23 @@ if print_verbose:
     print(f"Project root directory: {PROJECT_ROOT}")
 
     print("""
-    ==============================================================================================================================================================================
-    HEALTH RELATED EMISSIONS: 
-        Calculated using the Schmitt et al. (2024) Long Run Marginal Emissions Rates (LRMER) for the MidCase Scenario
-        Formerly used to validate CEDM Marginal Emissions/Damages Rates but we decided not to use those.
-    ==============================================================================================================================================================================
+==============================================================================================================================================================================
+HEALTH RELATED EMISSIONS: 
+    Calculated using the Schmitt et al. (2024) Long Run Marginal Emissions Rates (LRMER) for the MidCase Scenario
+    Formerly used to validate CEDM Marginal Emissions/Damages Rates but we decided not to use those.
+==============================================================================================================================================================================
+ASSUMPTIONS AND METHODOLOGY:
     - Assumes GEA Region and EPA eGRID subregions are the same. They are similar but not the same.
     - Multiply emissions factors (pollutant / kWh) for the grid mix fuel sources (ef_pollutants_egrid: Coal, NG, Renewables) by the generation fraction (grid_mix_reg_full_delta: Fuel Source Generation / Total Generation)
     - This creates a regional emissions factor. The delta scenario approximates long run marginal emissions rates by subtracting the MidCase generation from the High Electrification scenario generation
     - The regional emissions factor (eGRID subregion/Cambium GEA Region) can then be multiplied by the EASIUR marginal social costs (Latitude/Longitude specific)
-    """)
+""")
 
 # LAST UPDATED MARCH 26, 2025 @ 6:45 PM
 def process_Schmitt_emissions_data(
     df_grid_mix: pd.DataFrame = None, 
-    df_grid_emis_factors: pd.DataFrame = None
+    df_grid_emis_factors: pd.DataFrame = None,
+    verbose: bool = False
 ) -> pd.DataFrame:
     """
     Merges grid mix data with emissions factors to compute total emissions contribution by region and pollutant.
@@ -53,6 +55,9 @@ def process_Schmitt_emissions_data(
             - 'pollutant'
             - 'emis_rate'
             Defaults to an empty DataFrame if None is provided.
+
+        verbose (bool, optional):
+            If True, prints additional debug information. Defaults to False.
 
     Returns:
         pd.DataFrame: 
@@ -78,8 +83,10 @@ def process_Schmitt_emissions_data(
     # Identify unique fuel sources in each dataset
     fuel_sources_mix = set(df_grid_mix['fuel_source'].unique())
     fuel_sources_emis = set(df_grid_emis_factors['fuel_source'].unique())
-    print("Fuel sources in df_grid_mix:", fuel_sources_mix)
-    print("Fuel sources in df_grid_emis_factors:", fuel_sources_emis)
+
+    if verbose:
+        print("Fuel sources in df_grid_mix:", fuel_sources_mix)
+        print("Fuel sources in df_grid_emis_factors:", fuel_sources_emis)
 
     # Merge on region and fuel source to align generation fractions with emission rates
     df_combined = pd.merge(
@@ -137,15 +144,15 @@ df_grid_mix = pd.DataFrame({
 
 if print_verbose:
     print(f"""
-    ===================================================================================================================================================================================
-    Loading the data for electricity grid mix fuel sources and generation fractions ...
-    For example: Region ___ uses ___% Coal, ___% NG, ___% Renewables
-    ===================================================================================================================================================================================
+===================================================================================================================================================================================
+Loading the data for electricity grid mix fuel sources and generation fractions ...
+For example: Region ___ uses ___% Coal, ___% NG, ___% Renewables
+===================================================================================================================================================================================
 
-    DATAFRAME: df_grid_mix
+DATAFRAME: df_grid_mix
 
-    {df_grid_mix}
-    """)
+{df_grid_mix}
+""")
 
 filename = "ef_pollutants_egrid.csv"
 relative_path = os.path.join("cmu_tare_model", "data", "projections", "schmitt_ev_study", filename)
@@ -218,19 +225,19 @@ lookup_emissions_electricity_health = df_emis_factors_epa_egrid.set_index(
 
 if print_verbose:
     print(f"""
-    ===================================================================================================================================================================================
-    Load the data for grid mix fuel sources and emissions factors
-    For example: Using Fuel Source X in Region Y results in ___ mt/kWh of Pollutant Z
-    ===================================================================================================================================================================================
-    DATAFRAME: df_grid_emis_factors
+===================================================================================================================================================================================
+Load the data for grid mix fuel sources and emissions factors
+For example: Using Fuel Source X in Region Y results in ___ mt/kWh of Pollutant Z
+===================================================================================================================================================================================
+DATAFRAME: df_grid_emis_factors
 
-    {df_grid_emis_factors}
+{df_grid_emis_factors}
 
-    DATAFRAME: df_emis_factors_epa_egrid
+DATAFRAME: df_emis_factors_epa_egrid
 
-    {df_emis_factors_epa_egrid}
+{df_emis_factors_epa_egrid}
 
-    LOOKUP DICTIONARY: lookup_emissions_electricity_health
+LOOKUP DICTIONARY: lookup_emissions_electricity_health
 
-    {lookup_emissions_electricity_health}
-    """)
+{lookup_emissions_electricity_health}
+""")

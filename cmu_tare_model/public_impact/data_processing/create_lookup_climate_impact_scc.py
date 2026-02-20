@@ -58,13 +58,14 @@ def create_scc_lookup(df: pd.DataFrame) -> Dict[str, Dict[int, float]]:
 
 if print_verbose:
     print("""
-    -------------------------------------------------------------------------------------------------------
-    CLIMATE CHANGE IMPACT SENSITIVITY: SCC LOOKUP
-    -------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------
+CLIMATE CHANGE IMPACT SENSITIVITY: SCC LOOKUP
+-------------------------------------------------------------------------------------------------------
     LOWER BOUND: IWG 2021, 5% Discount Rate (Trump Previously Used 3-7% Discount Rate)
     CENTRAL ESTIMATE: IWG 2021, 3% Discount Rate (Obama Administration, Pre-2017)
     UPPER BOUND: Recent EPA Central Estimate (Biden Administration), Commonly Cited
-    """)
+-------------------------------------------------------------------------------------------------------
+""")
 
 filename = 'scc_climate_impact_sensitivity.xlsx'
 relative_path = os.path.join("cmu_tare_model", "data", "marginal_social_costs", filename)
@@ -78,8 +79,8 @@ if print_verbose:
 
     Loading dataframe ...
     Creating lookup dictionary for SCC Lower Bound, Central Estimate, and Upper Bound (2020-2050) ...
-    -------------------------------------------------------------------------------------------------------
-    """)
+-------------------------------------------------------------------------------------------------------
+""")
 
 # Create the lookup dictionary
 lookup_climate_impact_scc = create_scc_lookup(df_climate_impact_scc)

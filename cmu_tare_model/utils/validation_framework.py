@@ -18,50 +18,56 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Union, Set, Any
 
-from cmu_tare_model.constants import EQUIPMENT_SPECS, UPGRADE_COLUMNS
+from cmu_tare_model.constants import EQUIPMENT_SPECS, UPGRADE_COLUMNS, VERBOSE
 
 # ====================================================================================================
 # STEP 1: MASK INITIALIZATION
 # ====================================================================================================
 
 def initialize_validation_tracking(
-    df: pd.DataFrame, 
-    category: str, 
-    menu_mp: Union[int, str], 
-    verbose: bool = True
+    df: pd.DataFrame,
+    category: str,
+    menu_mp: Union[int, str],
+    verbose: bool = VERBOSE,
+    copy: bool = False
 ) -> Tuple[pd.DataFrame, pd.Series, Dict[str, List[str]], List[str]]:
     """
     Initialize validation tracking for cost calculations.
-    
+
     Sets up common validation elements needed for all calculation functions:
-    - Creates a copy of the input DataFrame
+    - Optionally creates a copy of the input DataFrame (disabled by default for memory efficiency)
     - Determines which homes have valid data
     - Initializes column tracking dictionaries
-    
+
+    MEMORY OPTIMIZATION: By default, this function no longer creates a copy of the DataFrame.
+    The caller is responsible for creating a copy if needed before calling this function.
+    Set copy=True only when you need to modify the DataFrame and want to preserve the original.
+
     Args:
         df: DataFrame containing the data to validate
         category: Equipment category (e.g., 'heating', 'waterHeating')
         menu_mp: Measure package identifier (0 for baseline, nonzero for measure packages)
         verbose: Whether to print validation information
-        
+        copy: Whether to create a copy of the DataFrame (default: False for memory efficiency)
+
     Returns:
         Tuple containing:
-        - df_copy: Copy of input DataFrame
+        - df_ref: Reference to input DataFrame (or copy if copy=True)
         - valid_mask: Boolean Series indicating valid homes
         - all_columns_to_mask: Dictionary to track columns by category
         - category_columns_to_mask: List to track columns for this category
     """
-    # Create a copy of the original DataFrame to avoid modifying it directly
-    df_copy = df.copy()
-    
+    # Only create a copy if explicitly requested (memory optimization)
+    df_ref = df.copy() if copy else df
+
     # Initialize dictionary to track columns for masking verification
     all_columns_to_mask = {cat: [] for cat in EQUIPMENT_SPECS}
     category_columns_to_mask = []
-    
+
     # Determine which homes have valid data for this category
-    valid_mask = get_valid_calculation_mask(df_copy, category, menu_mp, verbose=verbose)
-    
-    return df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask
+    valid_mask = get_valid_calculation_mask(df_ref, category, menu_mp, verbose=verbose)
+
+    return df_ref, valid_mask, all_columns_to_mask, category_columns_to_mask
 
 
 def get_valid_fuel_types(category: str) -> List[str]:
@@ -91,6 +97,10 @@ def get_valid_fuel_types(category: str) -> List[str]:
     elif category == 'cooking':
         return ['Natural Gas', 'Propane']
     
+    # UPDATED (Expanded to include cooling): Include electricity for cooling
+    elif category == 'cooling':
+        return ['Electricity']
+
     else:
         raise ValueError(f"Invalid category. Must be one of the following: {EQUIPMENT_SPECS.keys()}")
 
@@ -99,7 +109,7 @@ def get_valid_calculation_mask(
     df: pd.DataFrame, 
     category: str, 
     menu_mp: Union[int, str] = 0,
-    verbose: bool = True
+    verbose: bool = VERBOSE
 ) -> pd.Series:
     """
     Combines data validation and retrofit status for comprehensive masking.
@@ -147,7 +157,7 @@ def get_valid_calculation_mask(
     
     # For measure packages, combine with retrofit status
     else:
-        retrofit_mask = get_retrofit_homes_mask(df, category, menu_mp, verbose=False)
+        retrofit_mask = get_retrofit_homes_mask(df, category, menu_mp, verbose=verbose)
         combined_mask = data_valid_mask & retrofit_mask
         
         if verbose:
@@ -161,9 +171,9 @@ def get_valid_calculation_mask(
             print(f"  - {final_count} homes have both valid data AND will receive retrofits")
             print(f"  - {len(df) - final_count} homes excluded (values will be NaN)")
         
-        # Check if all homes are excluded
+        # Check if all homes are excluded. Keep this one - critical information
         if combined_mask.sum() == 0:
-            print(f"WARNING: All homes excluded for {category}. Check data quality and retrofit criteria.")
+            raise ValueError(f"WARNING: All homes excluded for {category}. Check data quality and retrofit criteria.")
         
         return combined_mask
     
@@ -172,7 +182,7 @@ def get_retrofit_homes_mask(
     df: pd.DataFrame, 
     category: str, 
     menu_mp: Union[int, str], 
-    verbose: bool = True
+    verbose: bool = VERBOSE
 ) -> pd.Series:
     """
     Determine which homes will receive retrofits for a given category.
@@ -213,9 +223,9 @@ def get_retrofit_homes_mask(
         retrofit_mask = pd.Series(True, index=df.index)
         
         if verbose:
-            print(f"  WARNING: No upgrade column found for '{category}'.")
-            print(f"  Assuming all homes receive retrofits for this category.")
-            
+            if category != 'cooling':  # Suppress for cooling as per discussion
+                raise ValueError(f"WARNING: No upgrade column found for '{category}'. \
+                                Assuming all homes receive retrofits for this category.")
     return retrofit_mask
 
 # ====================================================================================================
@@ -227,7 +237,7 @@ def create_retrofit_only_series(
     retrofit_mask: Optional[pd.Series] = None,
     category: Optional[str] = None,
     menu_mp: Optional[Union[int, str]] = None,
-    verbose: bool = False
+    verbose: bool = VERBOSE
 ) -> pd.Series:
     """
     Initialize a Series with zeros for homes getting retrofits, NaN for others.
@@ -255,12 +265,18 @@ def create_retrofit_only_series(
             raise ValueError("Either retrofit_mask must be provided or both category and menu_mp")
         retrofit_mask = get_retrofit_homes_mask(df, category, menu_mp, verbose)
     
-    # Initialize series with NaN for all homes
-    result = pd.Series(np.nan, index=df.index)
+    # # Initialize series with NaN for all homes
+    # result = pd.Series(np.nan, index=df.index)
     
-    # Set 0.0 for homes that will be retrofitted
-    result.loc[retrofit_mask] = 0.0
-    
+    # # Set 0.0 for homes that will be retrofitted
+    # result.loc[retrofit_mask] = 0.0
+
+    # OPTIMIZED: Use np.where for fully vectorized initialization
+    result = pd.Series(
+        np.where(retrofit_mask, 0.0, np.nan),
+        index=df.index
+    )
+
     return result
 
 # ====================================================================================================
@@ -270,7 +286,7 @@ def create_retrofit_only_series(
 def apply_final_masking(
     df: pd.DataFrame, 
     all_columns_to_mask: Dict[str, List[str]], 
-    verbose: bool = True
+    verbose: bool = VERBOSE
 ) -> pd.DataFrame:
     """
     Apply final verification masking for all tracked columns.
@@ -286,7 +302,9 @@ def apply_final_masking(
     Returns:
         DataFrame with masking applied to invalid data
     """
-    print("\nVerifying masking for all calculated columns:")
+    if verbose:
+        print("\nVerifying masking for all calculated columns:")
+
     for category, cols_to_mask in all_columns_to_mask.items():
         # Filter out columns that don't exist in df
         cols_to_mask = [col for col in cols_to_mask if col in df.columns]
@@ -298,58 +316,68 @@ def apply_final_masking(
 
 
 def mask_category_specific_data(
-        df: pd.DataFrame, 
-        columns: List[str], 
+        df: pd.DataFrame,
+        columns: List[str],
         category: str,
-        verbose: bool = False) -> pd.DataFrame:
+        verbose: bool = VERBOSE,
+        inplace: bool = True) -> pd.DataFrame:
     """
     Applies NaN masking to specified columns based on a category's inclusion flag.
-    
-    This utility function applies NaN masking to all provided columns based 
+
+    This utility function applies NaN masking to all provided columns based
     on the inclusion flag for the specified category. It can be used anywhere
     in the codebase after calculations to ensure data quality.
-    
+
+    MEMORY OPTIMIZATION: By default, this function modifies the DataFrame in-place
+    to avoid creating unnecessary copies of large DataFrames.
+
     Args:
         df: DataFrame with inclusion flags already created.
         columns: List of column names to apply masking to.
         category: The equipment category that determines which inclusion flag to use.
         verbose: Whether to print details about masking operations.
-        
+        inplace: Whether to modify the DataFrame in-place (default: True for memory efficiency).
+                 Set to False only when you need to preserve the original DataFrame.
+
     Returns:
         DataFrame with specified columns masked based on the category's inclusion flag.
-        
+
     Raises:
         ValueError: If the category's inclusion flag is not found in the DataFrame.
     """
     include_col = f'include_{category}'
-    
+
     if include_col not in df.columns:
         raise ValueError(f"Inclusion flag '{include_col}' not found in DataFrame")
-        
+
     # Filter out columns that don't exist in the DataFrame
     valid_columns = [col for col in columns if col in df.columns]
-    
+
     if not valid_columns:
         if verbose:
             print(f"No valid columns to mask for category '{category}'")
         return df
-        
+
     if verbose:
         print(f"Masking {len(valid_columns)} columns for category '{category}'")
-        
+
     masked_count = 0
-    df_copy = df.copy()
-    
+    # Only create a copy if not operating in-place (memory optimization)
+    df_result = df if inplace else df.copy()
+
+    # Pre-compute the mask once for efficiency
+    invalid_mask = ~df_result[include_col]
+
     for col in valid_columns:
         # Count non-NaN values before masking
-        non_nan_before = df_copy[col].notna().sum()
-        
-        # Apply masking
-        df_copy.loc[~df_copy[include_col], col] = np.nan
-        
+        non_nan_before = df_result[col].notna().sum()
+
+        # Apply masking using vectorized operation
+        df_result.loc[invalid_mask, col] = np.nan
+
         # Count non-NaN values after masking
-        non_nan_after = df_copy[col].notna().sum()
-        
+        non_nan_after = df_result[col].notna().sum()
+
         # Handle different types safely
         try:
             # Try direct conversion for scalar values
@@ -361,16 +389,16 @@ def mask_category_specific_data(
             else:
                 # For other types, try a more robust approach
                 masked_this_col = int(float(non_nan_before - non_nan_after))
-        
+
         # Now masked_this_col is guaranteed to be a scalar
         if masked_this_col > 0 and verbose:
             print(f"    {col}: Masked {masked_this_col} values")
             masked_count += masked_this_col
-            
+
     if verbose and masked_count > 0:
         print(f"  Total: Masked {masked_count} values across {len(valid_columns)} columns")
-        
-    return df_copy
+
+    return df_result
 
 # ====================================================================================================
 # HELPER FUNCTIONS
@@ -452,44 +480,7 @@ def replace_small_values_with_nan(
         raise TypeError("Input must be a pandas Series, DataFrame, or dictionary of Series")
 
 
-# =====================================================================================================
 # UPDATED: NOW HANDLES NONE VALUES FOR RETROFIT_MASK
-# ====================================================================================================
-# def calculate_avoided_values(
-#     baseline_values: pd.Series,
-#     measure_values: pd.Series,
-#     retrofit_mask: Optional[pd.Series] = None
-# ) -> pd.Series:
-#     """
-#     Calculate avoided values (baseline - measure) only for retrofitted homes.
-
-#     Args:
-#         baseline_values: Series of baseline values.
-#         measure_values: Series of measure package values.
-#         retrofit_mask: Boolean Series indicating which homes get retrofits.
-#                       If None, calculates for all homes.
-
-#     Returns:
-#         Series with avoided values for retrofitted homes and NaN for others.
-#     """
-#     # Initialize with NaN
-#     avoided_values = pd.Series(np.nan, index=baseline_values.index)
-
-#     # For baseline scenarios (when retrofit_mask is None), calculate for all homes
-#     if retrofit_mask is None:
-#         return baseline_values - measure_values
-        
-#     # For measure package scenarios, calculate only for homes with retrofits
-#     if retrofit_mask.any():
-#         avoided_values.loc[retrofit_mask] = (
-#             baseline_values.loc[retrofit_mask] - measure_values.loc[retrofit_mask]
-#         )
-    
-#     return avoided_values
-
-# =====================================================================================================
-# UPDATED: NOW HANDLES NONE VALUES FOR RETROFIT_MASK
-# ====================================================================================================
 def calculate_avoided_values(
     baseline_values: pd.Series,
     measure_values: pd.Series,
@@ -497,6 +488,9 @@ def calculate_avoided_values(
 ) -> pd.Series:
     """
     Calculate avoided values (baseline - measure) only for retrofitted homes.
+    
+    OPTIMIZED: Uses np.where() for fully vectorized operations instead of 
+    .loc[] assignment which is slower due to index alignment overhead.
 
     Args:
         baseline_values: Series of baseline values.
@@ -511,52 +505,69 @@ def calculate_avoided_values(
     # This handles cases where baseline data and current data have different indices
     if not baseline_values.index.equals(measure_values.index):
         baseline_values = baseline_values.reindex(measure_values.index)
-    
-    # Initialize with NaN using measure_values index
-    avoided_values = pd.Series(np.nan, index=measure_values.index)
 
     # For baseline scenarios (when retrofit_mask is None), calculate for all homes
     if retrofit_mask is None:
         return baseline_values - measure_values
         
     # Align retrofit_mask to measure_values index if needed
-    if retrofit_mask is not None and not retrofit_mask.index.equals(measure_values.index):
+    if not retrofit_mask.index.equals(measure_values.index):
         retrofit_mask = retrofit_mask.reindex(measure_values.index, fill_value=False)
-        
-    # For measure package scenarios, calculate only for homes with retrofits
-    if retrofit_mask is not None and retrofit_mask.any():
-        # Use boolean indexing with aligned indices
-        mask_aligned = retrofit_mask & baseline_values.notna() & measure_values.notna()
-        avoided_values.loc[mask_aligned] = (
-            baseline_values.loc[mask_aligned] - measure_values.loc[mask_aligned]
-        )
+    
+    # OPTIMIZED: Use np.where for fully vectorized calculation
+    # This is faster than creating a NaN series and using .loc[] assignment
+    # np.where operates on the underlying numpy arrays directly
+    
+    # Create combined mask: retrofit homes with valid data in both baseline and measure
+    valid_data_mask = baseline_values.notna() & measure_values.notna()
+    combined_mask = retrofit_mask & valid_data_mask
+    
+    # Calculate avoided values using np.where (fully vectorized)
+    avoided_values = pd.Series(
+        np.where(
+            combined_mask,
+            baseline_values.values - measure_values.values,
+            np.nan
+        ),
+        index=measure_values.index
+    )
     
     return avoided_values
 
-
-# def calculate_avoided_values(
-#     baseline_values: pd.Series,
-#     measure_values: pd.Series,
-#     retrofit_mask: pd.Series
-# ) -> pd.Series:
-#     """
-#     Calculate avoided values (baseline - measure) only for retrofitted homes.
+# =====================================================================================================
+# OPTIMIZED HELPER: Apply validation mask using np.where (fully vectorized)
+# ====================================================================================================
+def apply_validation_mask_vectorized(
+    values: pd.Series,
+    valid_mask: pd.Series,
+    menu_mp: int
+) -> pd.Series:
+    """
+    Apply validation mask to a Series using fully vectorized operations.
     
-#     Args:
-#         baseline_values: Series of baseline values.
-#         measure_values: Series of measure package values.
-#         retrofit_mask: Boolean Series indicating which homes get retrofits.
-        
-#     Returns:
-#         Series with avoided values for retrofitted homes and NaN for others.
-#     """
-#     # Initialize with NaN
-#     avoided_values = pd.Series(np.nan, index=baseline_values.index)
+    This helper function replaces the common pattern of:
+        values_copy = values.copy()
+        if menu_mp != 0:
+            values_copy.loc[~valid_mask] = np.nan
     
-#     # Calculate only for homes with retrofits
-#     if retrofit_mask.any():
-#         avoided_values.loc[retrofit_mask] = (
-#             baseline_values.loc[retrofit_mask] - measure_values.loc[retrofit_mask]
-#         )
+    With a faster vectorized approach using np.where().
+    
+    Args:
+        values: Series of values to mask.
+        valid_mask: Boolean Series indicating valid homes.
+        menu_mp: Measure package ID (0=baseline, >0=retrofit).
         
-#     return avoided_values
+    Returns:
+        New Series with NaN for invalid homes (if menu_mp != 0), 
+        otherwise a copy of the original values.
+    """
+    if menu_mp == 0:
+        # For baseline, return a copy (matches original .copy() behavior)
+        return values.copy()
+    
+    # For measure packages, apply mask using np.where (fully vectorized)
+    # np.where creates a new array, so no explicit copy needed
+    return pd.Series(
+        np.where(valid_mask, values.values, np.nan),
+        index=values.index
+    )

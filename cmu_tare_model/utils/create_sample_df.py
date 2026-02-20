@@ -125,11 +125,11 @@ def generate_column_patterns(
                             f"{prefix}{category}_avoided_damages_health_{model}_{cr}")
             
             # Cost patterns - various capital, installation, and operational costs
-            patterns['costs'].append(f"{prefix}{category}_total_capitalCost")
-            patterns['costs'].append(f"{prefix}{category}_net_capitalCost")
+            patterns['costs'].append(f"{prefix}{category}_total_capital_cost")
+            patterns['costs'].append(f"{prefix}{category}_net_capital_cost")
             patterns['costs'].append(f"{prefix}{category}_lifetime_fuelCost")
-            patterns['costs'].append(f"mp{mp_number}_{category}_installationCost")
-            patterns['costs'].append(f"mp{mp_number}_{category}_replacementCost")
+            patterns['costs'].append(f"mp{mp_number}_{category}_upgrade_installed_cost")
+            patterns['costs'].append(f"mp{mp_number}_{category}_replacement_installed_cost")
             patterns['costs'].append(f"mp{mp_number}_{category}_installation_premium")
             patterns['costs'].append(f"mp{mp_number}_{category}_rebate_amount")
             

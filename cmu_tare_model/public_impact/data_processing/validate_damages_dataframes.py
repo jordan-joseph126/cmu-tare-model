@@ -11,6 +11,8 @@ def validate_damage_dataframes(
     policy_scenario: str,
     base_year: int,
     equipment_specs: Dict[str, int],
+    rcm_model: str,
+    cr_function: str,
     verbose: bool = False
 ) -> Tuple[bool, List[str]]:
     """
@@ -26,6 +28,8 @@ def validate_damage_dataframes(
         policy_scenario: Specifies the grid scenario.
         base_year: The base year for calculations.
         equipment_specs: Dictionary mapping equipment categories to their lifetimes.
+        rcm_model: Reduced Complexity Model name (e.g., 'inmap', 'ap2', 'easiur').
+        cr_function: Concentration-response function name (e.g., 'acs', 'h6c').
         verbose: Whether to print detailed validation messages. Defaults to False.
 
     Returns:
@@ -61,7 +65,7 @@ def validate_damage_dataframes(
                 example_baseline_climate = base_climate_col
             
             # Check health damage columns (baseline)
-            base_health_col = f'baseline_{year_label}_{category}_damages_health_ap2_acs'
+            base_health_col = f'baseline_{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
             if base_health_col in df_baseline_health.columns:
                 found_baseline_health = True
             elif not example_baseline_health:
@@ -75,7 +79,7 @@ def validate_damage_dataframes(
                 example_retrofit_climate = retrofit_climate_col
             
             # Check health damage columns (retrofit)
-            retrofit_health_col = f'{scenario_prefix}{year_label}_{category}_damages_health_ap2_acs'
+            retrofit_health_col = f'{scenario_prefix}{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
             if retrofit_health_col in df_mp_health.columns:
                 found_retrofit_health = True
             elif not example_retrofit_health:

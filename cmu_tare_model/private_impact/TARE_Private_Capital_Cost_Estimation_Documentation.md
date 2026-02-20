@@ -245,7 +245,7 @@ The system treats progressive/reference/conservative as the 10th/50th/90th perce
 
 ### Phase 4: Enclosure Upgrade Costs
 **Script:** `calculate_enclosure_upgrade_costs.py`  
-**Function:** `calculate_enclosure_retrofit_upgradeCosts(df, menu_mp, cost_dict, retrofit_col, params_col)`
+**Function:** `calculate_enclosure_retrofit_upgrade_costs(df, menu_mp, cost_dict, retrofit_col, params_col)`
 
 **Purpose:** Calculate the cost of building envelope improvements (only for Menu Packages 9 and 10)
 
@@ -345,11 +345,11 @@ calculate_installation_cost(df, cost_dict, menu_mp, end_use)
     Args:
         df: DataFrame with home characteristics
         cost_dict: Dictionary of (tech, efficiency) -> cost components
-        menu_mp: Measure package ID (7, 8, 9, 10)
+        menu_mp: Measure package ID (VALID_MENU_MPS)
         end_use: Category ('heating', 'waterHeating', etc.)
     
     Returns:
-        DataFrame with new cost column: mp{X}_{end_use}_installationCost
+        DataFrame with new cost column: mp{X}_{end_use}_upgrade_installed_cost
     """
 ```
 
@@ -373,7 +373,7 @@ calculate_replacement_cost(df, cost_dict, menu_mp, end_use)
     but matches to baseline/existing technologies instead of upgrades.
     
     Returns:
-        DataFrame with new cost column: mp{X}_{end_use}_replacementCost
+        DataFrame with new cost column: mp{X}_{end_use}_replacement_installed_cost
     """
 ```
 
@@ -388,7 +388,7 @@ calculate_replacement_cost(df, cost_dict, menu_mp, end_use)
 **Main Functions:**
 
 ```python
-calculate_enclosure_retrofit_upgradeCosts(df, menu_mp, cost_dict, retrofit_col, params_col)
+calculate_enclosure_retrofit_upgrade_costs(df, menu_mp, cost_dict, retrofit_col, params_col)
     """Calculate enclosure upgrade costs.
     
     Args:
@@ -433,8 +433,8 @@ calculate_private_npv(df, df_fuel_costs, df_baseline_costs, input_mp, menu_mp,
     
     Returns:
         DataFrame with NPV columns for each category:
-        - {prefix}_{category}_total_capitalCost
-        - {prefix}_{category}_net_capitalCost
+        - {prefix}_{category}_total_capital_cost
+        - {prefix}_{category}_net_capital_cost
         - {prefix}_{category}_private_npv_lessWTP
         - {prefix}_{category}_private_npv_moreWTP
     """

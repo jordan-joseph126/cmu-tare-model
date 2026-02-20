@@ -3,10 +3,14 @@ import numpy as np
 from typing import Optional, Tuple, Dict, List
 
 # Constants
-from cmu_tare_model.constants import EQUIPMENT_SPECS, POLLUTANTS, TD_LOSSES_MULTIPLIER, CR_FUNCTIONS, RCM_MODELS
+from cmu_tare_model.constants import EQUIPMENT_SPECS, POLLUTANTS, TD_LOSSES_MULTIPLIER, CR_FUNCTIONS, RCM_MODELS, VERBOSE
 
 # Imports for lookup dictionaries, functions, and calculations
 from cmu_tare_model.utils.modeling_params import define_scenario_params
+from cmu_tare_model.utils.column_names import (
+    create_lifetime_damages_col,
+    create_avoided_damages_col
+)
 
 from cmu_tare_model.utils.hdd_consumption_utils import (
     get_electricity_consumption_for_year,
@@ -42,7 +46,7 @@ def calculate_lifetime_health_impacts(
     base_year: int = 2024,
     df_baseline_damages: Optional[pd.DataFrame] = None,
     debug: bool = False,
-    verbose: bool = False
+    verbose: bool = VERBOSE
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Calculate lifetime health impacts for each equipment category over all (rcm, cr) combinations.
@@ -111,7 +115,7 @@ def calculate_lifetime_health_impacts(
             lookup_health_electricity_h6c=lookup_health_electricity_h6c,
             rcm_models=RCM_MODELS,
             cr_functions=CR_FUNCTIONS,
-            verbose=True
+            verbose=verbose
         )
     
     # Dictionary to hold lifetime health impacts columns for each category
@@ -131,8 +135,9 @@ def calculate_lifetime_health_impacts(
                 print(f"Calculating Health Emissions and Damages from {base_year} to {base_year + lifetime - 1} for {category}")
             
             # ===== STEP 1: Initialize validation tracking =====
-            df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-                df_copy, category, menu_mp, verbose=verbose)
+            # MEMORY OPTIMIZATION: copy=False since df_copy was already copied at the start
+            _, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
+                df_copy, category, menu_mp, verbose=verbose, copy=False)
             
             # ===== STEP 2: Initialize result series for damages =====
             # Create templates for health damages (for initialization only)
@@ -188,13 +193,17 @@ def calculate_lifetime_health_impacts(
 
                             #===== STEP 4: Valid-Only Updates =====
                             # Store annual health damages in lists instead of updating incrementally
+                            # MEMORY OPTIMIZATION: Use vectorized masking instead of .copy() + .loc[]
                             overall_col = f'{scenario_prefix}{year_label}_{category}_damages_health_{rcm}_{cr}'
                             if overall_col in health_results_pair:
-                                health_values = health_results_pair[overall_col].copy()
+                                health_values = health_results_pair[overall_col]
 
-                                # Apply validation mask for measure packages
+                                # Apply validation mask for measure packages using vectorized np.where
                                 if menu_mp != 0:
-                                    health_values.loc[~valid_mask] = np.nan
+                                    health_values = pd.Series(
+                                        np.where(valid_mask, health_values, np.nan),
+                                        index=health_values.index
+                                    )
                                 yearly_health_damages_lists[(rcm, cr)].append(health_values)
 
                             # CHANGED LINE 2: Collect ALL results in year-level dictionary
@@ -240,23 +249,23 @@ def calculate_lifetime_health_impacts(
                 for rcm in RCM_MODELS:
                     for cr in CR_FUNCTIONS:
                         # Record overall lifetime damages
-                        overall_health_col = f'{scenario_prefix}{category}_lifetime_damages_health_{rcm}_{cr}'
+                        overall_health_col = create_lifetime_damages_col(scenario_prefix, category, 'health', rcm, cr)
                         lifetime_dict[overall_health_col] = lifetime_health_damages[(rcm, cr)]
                         category_columns_to_mask.append(overall_health_col)
                         
                         # Calculate avoided damages
-                        baseline_health_col = f'baseline_{category}_lifetime_damages_health_{rcm}_{cr}'
-                        avoided_health_damages_col = f'{scenario_prefix}{category}_avoided_damages_health_{rcm}_{cr}'
+                        baseline_health_col = create_lifetime_damages_col('baseline_', category, 'health', rcm, cr)
+                        avoided_health_damages_col_name = create_avoided_damages_col(scenario_prefix, category, 'health', rcm, cr)
                         
                         # In the fail-fast approach, we simply try to access the column
                         # If it doesn't exist, it will raise a KeyError (which is caught by the outer try/except)
                         try:
-                            lifetime_dict[avoided_health_damages_col] = calculate_avoided_values(
+                            lifetime_dict[avoided_health_damages_col_name] = calculate_avoided_values(
                                 baseline_values=df_baseline_damages[baseline_health_col],
                                 measure_values=lifetime_dict[overall_health_col],
                                 retrofit_mask=valid_mask
                             )
-                            category_columns_to_mask.append(avoided_health_damages_col)
+                            category_columns_to_mask.append(avoided_health_damages_col_name)
                         except KeyError:
                             if verbose:
                                 print(f"Warning: Missing baseline column '{baseline_health_col}'. Avoided health values skipped.")
@@ -265,7 +274,7 @@ def calculate_lifetime_health_impacts(
                 # If no baseline data or not a measure package, just record lifetime damages
                 for rcm in RCM_MODELS:
                     for cr in CR_FUNCTIONS:
-                        overall_health_col = f'{scenario_prefix}{category}_lifetime_damages_health_{rcm}_{cr}'
+                        overall_health_col = create_lifetime_damages_col(scenario_prefix, category, 'health', rcm, cr)
                         lifetime_dict[overall_health_col] = lifetime_health_damages[(rcm, cr)]
                         category_columns_to_mask.append(overall_health_col)
 

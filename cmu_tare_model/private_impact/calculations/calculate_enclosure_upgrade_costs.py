@@ -3,6 +3,8 @@ import numpy as np
 from scipy.stats import norm
 from typing import List, Dict, Tuple
 
+from cmu_tare_model.constants import VERBOSE
+
 from cmu_tare_model.utils.validation_framework import (
     create_retrofit_only_series,
     initialize_validation_tracking,
@@ -140,12 +142,13 @@ def get_enclosure_parameters(
     return {'conditions': conditions, 'tech_eff_pairs': tech_eff_pairs}
 
 
-def calculate_enclosure_retrofit_upgradeCosts(
-        df: pd.DataFrame,
-        menu_mp: int,
-        cost_dict: dict,
-        retrofit_col: str,
-        params_col: str
+def calculate_enclosure_retrofit_upgrade_costs(
+    df: pd.DataFrame,
+    menu_mp: int,
+    cost_dict: dict,
+    retrofit_col: str,
+    params_col: str,
+    verbose: bool = VERBOSE
 ) -> pd.DataFrame:
     """
     Calculate the enclosure retrofit upgrade costs based on given parameters and conditions.
@@ -183,7 +186,7 @@ def calculate_enclosure_retrofit_upgradeCosts(
 
     # Initialize validation tracking
     df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-        df, category, menu_mp, verbose=True)
+        df, category, menu_mp, verbose=verbose)
 
     print(f"Found {valid_mask.sum()} valid homes out of {len(df_copy)} for {retrofit_col}")
 
@@ -204,7 +207,7 @@ def calculate_enclosure_retrofit_upgradeCosts(
         print(f"After tech filtering: {len(valid_calculation_indices)} homes remain valid for {retrofit_col}")
 
         if df_valid.empty:
-            print(f"Warning: No valid homes found for {category} retrofit calculation.")
+            raise ValueError(f"Warning: No valid homes found for {category} retrofit calculation.")
             
         # Define cost components for enclosure upgrades
         cost_components = ['normalized_cost']
@@ -236,6 +239,6 @@ def calculate_enclosure_retrofit_upgradeCosts(
         df_copy, df_new_columns, category, category_columns_to_mask, all_columns_to_mask)
     
     # Apply final verification masking for consistency
-    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=True)
+    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=verbose)
 
     return df_copy
