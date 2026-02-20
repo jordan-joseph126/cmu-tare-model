@@ -51,8 +51,8 @@ CAPACITY_BINS_TONS = list(range(2, 11))       # [2, 3, 4, 5, 6, 7, 8, 9, 10]
 # Capacity bins (kBTU/h) — 40 through 200 in steps of 10
 CAPACITY_BINS_KBTUH = list(range(40, 201, 10))
 
-# SEER bins — 13 through 25
-SEER_BINS = list(range(13, 26))
+# SEER bins — 13 through 30
+SEER_BINS = list(range(13, 31))
 
 # AFUE bins — 78 through 98
 AFUE_BINS = list(range(78, 99))
