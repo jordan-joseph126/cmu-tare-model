@@ -12,7 +12,7 @@ See README_adoption_kpis.md for methodology notes and design decisions.
 """
 
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -25,7 +25,7 @@ from cmu_tare_model.constants import ALLOWED_HOUSING_TYPES
 # CONVERSION CONSTANTS (Source: EIA)
 # ============================================================================
 
-BTU_PER_CF_NATURAL_GAS = 1039   # BTU per cubic foot of natural gas
+BTU_PER_CF_NATURAL_GAS = 1038   # BTU per cubic foot of natural gas (EIA average)
 BTU_PER_KWH = 3412              # BTU per kilowatt-hour (by definition)
 
 # Derived: natural gas $/1000cf to $/kWh
@@ -63,7 +63,7 @@ EUSS_DATA_DIR = os.path.join(
 )
 
 FUEL_PRICES_PATH = os.path.join(
-    PROJECT_ROOT, "cmu_tare_model", "data", "fuel_prices", "fuel_prices_nominal.csv"
+    PROJECT_ROOT, "cmu_tare_model", "data", "fuel_prices", "fuel_prices_nominal_2015_2024.csv"
 )
 
 SHAPEFILE_PATH = os.path.join(
@@ -83,11 +83,17 @@ HEATING_LOAD_COL = 'out.load.heating.energy_delivered.kbtu'
 HP_BACKUP_ELEC_COL = 'out.electricity.heating_hp_bkup.energy_consumption.kwh'
 HP_FANS_PUMPS_COL = 'out.electricity.heating_fans_pumps.energy_consumption.kwh'
 
+# ASSUMPTION: Column names match EUSS ResStock output schema.
+CLIMATE_ZONE_COL = 'in.ashrae_iecc_climate_zone_2004'
+COUNTY_COL = 'in.county'
+
 BASELINE_USECOLS = [
     'bldg_id', 'in.state', 'in.vacancy_status',
     'in.geometry_building_type_recs',
     'in.heating_fuel', 'in.hvac_heating_type_and_fuel',
-    'in.hvac_heating_efficiency', 'weight',
+    'in.hvac_heating_efficiency',
+    CLIMATE_ZONE_COL, COUNTY_COL,
+    'weight',
 ] + HEATING_FUEL_COLS + [HEATING_LOAD_COL, HP_BACKUP_ELEC_COL, HP_FANS_PUMPS_COL]
 
 UPGRADE_USECOLS = BASELINE_USECOLS + ['applicability']
@@ -100,6 +106,43 @@ UPGRADE_USECOLS = BASELINE_USECOLS + ['applicability']
 def mp_to_upgrade(mp_num: int) -> str:
     """Convert MP number to EUSS upgrade string (e.g., 4 -> 'upgrade04')."""
     return f"upgrade{mp_num:02d}"
+
+
+# ASSUMPTION: Benchmark ranges are literature-derived estimates for validation.
+# mp3 = ASHP (SEER 15 / HSPF 9), mp4 = ASHP (SEER 24 / HSPF 13).
+COP_BENCHMARK_RANGES: dict[str, dict] = {
+    '1-3': {'mp3': (2.4, 3.2), 'mp4': (3.0, 4.2), 'label': 'Warm (CZ 1-3)'},
+    '4-5': {'mp3': (2.0, 2.8), 'mp4': (2.5, 3.5), 'label': 'Mixed (CZ 4-5)'},
+    '6-7': {'mp3': (1.6, 2.4), 'mp4': (2.0, 3.0), 'label': 'Cold (CZ 6-7)'},
+}
+
+
+def iecc_to_cz_group(iecc_zone: str) -> str:
+    """Map IECC climate zone string to benchmark group.
+
+    Args:
+        iecc_zone: IECC zone string like '4A', '5B', '7A'.
+
+    Returns:
+        Benchmark group string: '1-3', '4-5', or '6-7'.
+
+    Raises:
+        ValueError: If the numeric prefix is outside 1-7.
+    """
+    if iecc_zone is None or (isinstance(iecc_zone, float) and np.isnan(iecc_zone)):
+        return 'unknown'
+    try:
+        zone_num = int(str(iecc_zone)[0])
+    except (ValueError, IndexError):
+        return 'unknown'
+    if 1 <= zone_num <= 3:
+        return '1-3'
+    elif 4 <= zone_num <= 5:
+        return '4-5'
+    elif 6 <= zone_num <= 7:
+        return '6-7'
+    else:
+        raise ValueError(f"IECC zone numeric prefix {zone_num} outside 1-7: '{iecc_zone}'")
 
 
 # ============================================================================
@@ -164,7 +207,7 @@ def load_euss_upgrade(upgrade_name: str) -> pd.DataFrame:
 
 def calculate_price_ratios(
     filepath: str,
-    year: int = 2022,
+    year: Union[int, List[int]] = 2024,
 ) -> pd.DataFrame:
     """Load fuel price data and calculate electricity-to-gas price ratios by state.
 
@@ -173,26 +216,32 @@ def calculate_price_ratios(
 
     Args:
         filepath: Path to fuel_prices_nominal.csv file.
-        year: Year for price comparison (default: 2022).
+        year: Single year or list of years to average (default: 2024).
 
     Returns:
         DataFrame with state-level price comparisons, $/MMBTU values, and spark gap.
     """
     df = pd.read_csv(filepath)
-    price_col = f'{year}_nominal_unit_price'
 
-    if price_col not in df.columns:
+    years = [year] if isinstance(year, int) else list(year)
+    price_cols = [f'{y}_nominal_unit_price' for y in years]
+    missing = [c for c in price_cols if c not in df.columns]
+    if missing:
+        available = [c for c in df.columns if 'nominal_unit_price' in c]
         raise KeyError(
-            f"Column '{price_col}' not found. "
-            f"Available year columns: {[c for c in df.columns if 'nominal_unit_price' in c]}"
+            f"Column(s) {missing} not found. "
+            f"Available year columns: {available}"
         )
+
+    # Average across years if multiple
+    df['_avg_price'] = df[price_cols].mean(axis=1)
 
     # Extract natural gas prices (state-level only)
     df_ng = df[
         (df['fuel_type'] == 'naturalGas') &
         (df['state_region'].str.len() == 2) &
         (df['state_region'] != 'National')
-    ][['state_region', price_col]].copy()
+    ][['state_region', '_avg_price']].copy()
     df_ng.columns = ['state', 'ng_price_per_1000cf']
 
     # Extract electricity prices (state-level only)
@@ -200,7 +249,7 @@ def calculate_price_ratios(
         (df['fuel_type'] == 'electricity') &
         (df['state_region'].str.len() == 2) &
         (df['state_region'] != 'National')
-    ][['state_region', price_col]].copy()
+    ][['state_region', '_avg_price']].copy()
     df_elec.columns = ['state', 'elec_price_cents_kwh']
 
     df_merged = df_elec.merge(df_ng, on='state', how='inner')
@@ -232,16 +281,18 @@ def calculate_price_ratios(
 # STEP 3: THERMAL COP AND BASELINE AFUE
 # ============================================================================
 
-def compute_thermal_cop_by_state(
+def compute_thermal_cop(
     df_baseline: pd.DataFrame,
     df_upgrade: pd.DataFrame,
+    group_cols: list[str] = ['state'],
     fuel_filter: str = 'Natural Gas',
+    require_baseline_heating: bool = True,
     verbose: bool = False,
 ) -> pd.DataFrame:
-    """Compute state-level thermal COP and baseline furnace AFUE from EUSS data.
+    """Compute grouped thermal COP and baseline furnace AFUE from EUSS data.
 
-    COP = Σ(Q_delivered) / Σ(E_hp + E_backup + E_fans_pumps) per state.
-    AFUE = Σ(Q_delivered) / Σ(F_gas) per state.
+    COP = Σ(Q_delivered) / Σ(E_hp + E_backup + E_fans_pumps) per group.
+    AFUE = Σ(Q_delivered) / Σ(F_gas) per group.
 
     The denominator includes fan/pump electricity because the numerator
     (heating load) includes fan motor heat delivered to the space.
@@ -250,13 +301,19 @@ def compute_thermal_cop_by_state(
         df_baseline: EUSS baseline DataFrame (indexed by bldg_id).
         df_upgrade: EUSS upgrade DataFrame (indexed by bldg_id,
             already filtered to applicability == True).
+        group_cols: Columns to aggregate by. Accepts any combination of
+            'state', 'cz_group', 'county'. Defaults to ['state'].
         fuel_filter: Value of 'in.heating_fuel' to filter to.
             Set to None to include all fuel types.
+        require_baseline_heating: If True (default), exclude homes with
+            zero baseline heating load before aggregation. Set to False
+            to reproduce the old (unfixed) behavior.
         verbose: Print diagnostic info.
 
     Returns:
-        DataFrame with columns: state, thermal_cop, baseline_afue,
-        Q_upgrade_total_kbtu, hp_total_elec_kbtu, Q_baseline_total_kbtu,
+        DataFrame with ``group_cols`` as leading columns followed by:
+        thermal_cop, baseline_afue, Q_upgrade_total_kbtu,
+        hp_total_elec_kbtu, Q_baseline_total_kbtu,
         gas_consumed_total_kbtu, fans_pumps_pct, home_count.
     """
     elec_col = 'out.electricity.heating.energy_consumption.kwh'
@@ -274,13 +331,20 @@ def compute_thermal_cop_by_state(
         if col not in df_upgrade.columns:
             raise KeyError(f"Missing column '{col}' in {name} DataFrame")
 
-    # Inner join baseline and upgrade on bldg_id
-    df_merged = pd.DataFrame({
+    # Build merged frame with all potential grouping columns
+    merge_dict: dict[str, pd.Series] = {
         'state': df_baseline['in.state'],
         'heating_fuel': df_baseline['in.heating_fuel'],
         'Q_baseline_kbtu': df_baseline[load_col].fillna(0),
         'gas_consumed_kwh': df_baseline[gas_col].fillna(0),
-    }).join(
+    }
+    # ASSUMPTION: Column names match EUSS ResStock output schema.
+    if COUNTY_COL in df_baseline.columns:
+        merge_dict['county'] = df_baseline[COUNTY_COL]
+    if CLIMATE_ZONE_COL in df_baseline.columns:
+        merge_dict['cz_group'] = df_baseline[CLIMATE_ZONE_COL].map(iecc_to_cz_group)
+
+    df_merged = pd.DataFrame(merge_dict).join(
         pd.DataFrame({
             'Q_upgrade_kbtu': df_upgrade[load_col].fillna(0),
             'hp_elec_kwh': df_upgrade[elec_col].fillna(0),
@@ -303,12 +367,13 @@ def compute_thermal_cop_by_state(
     # Exclude homes with zero or missing baseline heating load.
     # These are homes without an active heating system (e.g., no prior furnace),
     # which inflate COP when included in the aggregation.
-    n_before_heating = len(df_merged)
-    df_merged = df_merged[df_merged['Q_baseline_kbtu'] > 0]
-    n_excluded = n_before_heating - len(df_merged)
-    if verbose and n_excluded > 0:
-        print(f"Excluded {n_excluded:,} homes with zero baseline heating "
-              f"({len(df_merged):,} remaining)")
+    if require_baseline_heating:
+        n_before_heating = len(df_merged)
+        df_merged = df_merged[df_merged['Q_baseline_kbtu'] > 0]
+        n_excluded = n_before_heating - len(df_merged)
+        if verbose and n_excluded > 0:
+            print(f"Excluded {n_excluded:,} homes with zero baseline heating "
+                  f"({len(df_merged):,} remaining)")
 
     # Total retrofit heating electricity
     df_merged['hp_total_elec_kwh'] = (
@@ -322,13 +387,13 @@ def compute_thermal_cop_by_state(
     df_merged['hp_fans_pumps_kbtu'] = df_merged['hp_fans_pumps_kwh'] * KBTU_PER_KWH
     df_merged['gas_consumed_kbtu'] = df_merged['gas_consumed_kwh'] * KBTU_PER_KWH
 
-    grouped = df_merged.groupby('state').agg(
+    grouped = df_merged.groupby(group_cols).agg(
         Q_upgrade_total_kbtu=('Q_upgrade_kbtu', 'sum'),
         hp_total_elec_kbtu=('hp_total_elec_kbtu', 'sum'),
         hp_fans_pumps_total_kbtu=('hp_fans_pumps_kbtu', 'sum'),
         Q_baseline_total_kbtu=('Q_baseline_kbtu', 'sum'),
         gas_consumed_total_kbtu=('gas_consumed_kbtu', 'sum'),
-        home_count=('state', 'size'),
+        home_count=('Q_baseline_kbtu', 'size'),
     ).reset_index()
 
     grouped['thermal_cop'] = np.where(
@@ -351,8 +416,9 @@ def compute_thermal_cop_by_state(
 
     if verbose:
         fuel_label = fuel_filter if fuel_filter else 'all fuels'
-        print(f"\n--- Thermal COP Summary ({fuel_label}) ---")
-        print(f"States: {len(grouped)}")
+        group_label = ' × '.join(group_cols)
+        print(f"\n--- Thermal COP Summary ({fuel_label}, by {group_label}) ---")
+        print(f"Groups: {len(grouped)}")
         print(f"Mean:   {grouped['thermal_cop'].mean():.2f}")
         print(f"Median: {grouped['thermal_cop'].median():.2f}")
         print(f"Range:  {grouped['thermal_cop'].min():.2f} - {grouped['thermal_cop'].max():.2f}")
@@ -361,11 +427,12 @@ def compute_thermal_cop_by_state(
             (grouped['thermal_cop'] < 1.5) | (grouped['thermal_cop'] > 5.0)
         ]
         if len(suspect_cop) > 0:
-            print(f"⚠ {len(suspect_cop)} states with suspicious COP (<1.5 or >5.0):")
+            print(f"⚠ {len(suspect_cop)} groups with suspicious COP (<1.5 or >5.0):")
             for _, row in suspect_cop.iterrows():
-                print(f"    {row['state']}: {row['thermal_cop']:.2f}")
+                label = ', '.join(str(row[c]) for c in group_cols)
+                print(f"    {label}: {row['thermal_cop']:.2f}")
         else:
-            print("✓ All states within expected COP range (1.5–5.0)")
+            print("✓ All groups within expected COP range (1.5–5.0)")
 
         print(f"\n--- Baseline AFUE Summary ({fuel_label}) ---")
         print(f"Mean:   {grouped['baseline_afue'].mean():.2f}")
@@ -376,15 +443,31 @@ def compute_thermal_cop_by_state(
             (grouped['baseline_afue'] < 0.50) | (grouped['baseline_afue'] > 1.0)
         ]
         if len(suspect_afue) > 0:
-            print(f"⚠ {len(suspect_afue)} states with suspicious AFUE (<0.50 or >1.0):")
+            print(f"⚠ {len(suspect_afue)} groups with suspicious AFUE (<0.50 or >1.0):")
             for _, row in suspect_afue.iterrows():
-                print(f"    {row['state']}: {row['baseline_afue']:.2f}")
+                label = ', '.join(str(row[c]) for c in group_cols)
+                print(f"    {label}: {row['baseline_afue']:.2f}")
 
         print(f"\n--- Fan/Pump Energy as % of Total HP Electricity ---")
         print(f"Mean:   {grouped['fans_pumps_pct'].mean():.1f}%")
         print(f"Range:  {grouped['fans_pumps_pct'].min():.1f}% - {grouped['fans_pumps_pct'].max():.1f}%")
 
-    return grouped
+    return grouped.sort_values(group_cols[0]).reset_index(drop=True)
+
+
+def compute_thermal_cop_by_state(
+    df_baseline: pd.DataFrame,
+    df_upgrade: pd.DataFrame,
+    fuel_filter: str = 'Natural Gas',
+    verbose: bool = False,
+) -> pd.DataFrame:
+    """Backward-compatible wrapper. Use compute_thermal_cop() for new code."""
+    return compute_thermal_cop(
+        df_baseline, df_upgrade,
+        group_cols=['state'],
+        fuel_filter=fuel_filter,
+        verbose=verbose,
+    )
 
 
 # ============================================================================
