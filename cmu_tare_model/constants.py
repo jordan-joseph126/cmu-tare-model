@@ -66,7 +66,7 @@ VALID_MENU_MPS = [
     0,
     3,
     4,
-    8,
+    # 8,
     # 9,
     # 10
     ]
@@ -74,38 +74,38 @@ VALID_MENU_MPS = [
 # InMAP-ACS is considered our base case
 CR_FUNCTIONS = [
     'acs',
-    'h6c'
+    # 'h6c'
     ]
 
 # InMAP-ACS sensitivity is considered our base case.
 RCM_MODELS = [
-    'ap2',
-    'easiur',
+    # 'ap2',
+    # 'easiur',
     'inmap'
     ]
 
 # Short key identifiers for discount rates (used in dictionaries and user-facing code)
 PRIVATE_DISCOUNT_RATE_SHORT_KEYS = [
-    'fixed_low',
+    # 'fixed_low',
     'fixed_base',
-    'fixed_high',
-    'variable'
+    # 'fixed_high',
+    # 'variable'
 ]
 
 # Full column names for discount rates (used in DataFrames)
 PRIVATE_DISCOUNT_RATE_COLS = [
-    'private_discount_rate_fixed_low',
+    # 'private_discount_rate_fixed_low',
     'private_discount_rate_fixed_base',
-    'private_discount_rate_fixed_high',
-    'private_discount_rate_variable'
+    # 'private_discount_rate_fixed_high',
+    # 'private_discount_rate_variable'
 ]
 
 # Legacy - Method suffixes for file naming
 PRIVATE_DISCOUNTING_METHOD_SUFFIXES = {
-    'private_discount_rate_fixed_low': '_fixed_low',
+    # 'private_discount_rate_fixed_low': '_fixed_low',
     'private_discount_rate_fixed_base': '_fixed_base',
-    'private_discount_rate_fixed_high': '_fixed_high',
-    'private_discount_rate_variable': '_variable'
+    # 'private_discount_rate_fixed_high': '_fixed_high',
+    # 'private_discount_rate_variable': '_variable'
 }
 
 PUBLIC_DISCOUNTING_METHOD_SUFFIXES = {
@@ -158,9 +158,9 @@ SCC_ASSUMPTIONS = [
 PUBLIC_DISCOUNT_RATE = 0.02      # 2% social discount rate, converted to decimal
 
 # Fixed Private Discount Rate Constants
-PRIVATE_FIXED_RATE_LOW = 0.02
+# PRIVATE_FIXED_RATE_LOW = 0.02
 PRIVATE_FIXED_RATE_BASE = 0.07
-PRIVATE_FIXED_RATE_HIGH = 0.12
+# PRIVATE_FIXED_RATE_HIGH = 0.12
 
 # Variable Private Discount Rate Parameters
 VARIABLE_RATE_MIN = 0.07         # Minimum rate for high-AMI households (>=150% AMI)
