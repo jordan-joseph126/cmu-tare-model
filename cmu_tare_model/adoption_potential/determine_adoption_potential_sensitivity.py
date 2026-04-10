@@ -9,7 +9,8 @@ from cmu_tare_model.constants import (
     UPGRADE_COLUMNS,
     VERBOSE,
     PRIVATE_DISCOUNTING_METHOD_SUFFIXES,
-    REBATE_ELIGIBLE_HEATING_MPS
+    REBATE_ELIGIBLE_HEATING_MPS,
+    VALID_HVAC_REPLACEMENT_SCENARIOS
 )
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.column_names import (
@@ -171,6 +172,7 @@ def adoption_decision(
     discount_rate_col_name: str,
     cost_scenario: str = 'v3',
     verbose: bool = VERBOSE,
+    hvac_replacement_scenario: str = 'heating',
 ) -> pd.DataFrame:
     """
     Updates DataFrame with adoption decisions and public impacts based on NPV analysis.
@@ -189,7 +191,13 @@ def adoption_decision(
             Determines the REMDB suffix on output column names
             (e.g., '_v3', '_v4MID').
         verbose: Enable detailed output for debugging (default: False).
+        hvac_replacement_scenario: Controls which incumbent equipment costs are credited
+            in the net capital cost calculation. 'heating' (default, Case A) or
+            'heating_and_cooling' (Case B). The upstream NPV columns use
+            hvac_replacement_scenario as their category segment in column names.
         
+    NOTE: Current logic is hardcoded for HVAC only. Will need to be updated for other equipment categories. 
+
     Returns:
         DataFrame with adoption tier and public impact classifications.
         
@@ -199,6 +207,15 @@ def adoption_decision(
     """
     # Validate inputs (fail fast on invalid parameters)
     validate_input_parameters(menu_mp, policy_scenario, rcm_model, cr_function)
+
+    if hvac_replacement_scenario not in VALID_HVAC_REPLACEMENT_SCENARIOS:
+        raise ValueError(
+            f"Invalid hvac_replacement_scenario: '{hvac_replacement_scenario}'. "
+            f"Must be one of {VALID_HVAC_REPLACEMENT_SCENARIOS}")
+
+    # Build output category for column naming: uses hvac_replacement_scenario
+    # so Case B columns use 'heating_and_cooling' as category segment
+    output_category = hvac_replacement_scenario
     
     # Check required upgrade columns exist
     missing_upgrades = [col for col in UPGRADE_COLUMNS.values() if col not in df.columns]
@@ -216,11 +233,13 @@ def adoption_decision(
 
     # ===== Check ALL required columns exist before processing =====
     # Build list of all required columns
+    # NPV columns use output_category (e.g., 'heating_and_cooling' for Case B)
+    # Rebate columns use raw cost_scenario (input data, not scenario-dependent)
     required_columns = []
     for category in UPGRADE_COLUMNS.keys():
         for scc in SCC_ASSUMPTIONS:
-            lessWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='lessWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
-            moreWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
+            lessWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=output_category, wtp='lessWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
+            moreWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=output_category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
             public_npv_col_name = create_public_npv_col(scenario_prefix, category, scc, rcm_model, cr_function)
             required_columns.extend([
                 lessWTP_private_npv_col_name,
@@ -261,17 +280,18 @@ def adoption_decision(
         scc_processed = 0
         for scc in SCC_ASSUMPTIONS:
             # Define column names (validation guarantees these exist)
-            lessWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='lessWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
-            moreWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
+            # NPV columns use output_category for the category segment
+            lessWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=output_category, wtp='lessWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
+            moreWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=output_category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
             public_npv_col_name = create_public_npv_col(scenario_prefix, category, scc, rcm_model, cr_function)
             rebate_col_name = create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)
             
             new_col_names = {
-                'health_sensitivity': create_adoption_col(scenario_prefix=scenario_prefix, category=category, column_type='health_sensitivity', cost_scenario=cost_scenario, method_suffix=method_suffix),
-                'benefit': create_adoption_col(scenario_prefix=scenario_prefix, category=category, column_type='benefit', cost_scenario=cost_scenario, method_suffix=method_suffix, scc_assumption=scc, rcm_model=rcm_model, cr_function=cr_function),
-                'total_npv': create_total_npv_col(scenario_prefix=scenario_prefix, category=category, cost_scenario=cost_scenario, method_suffix=method_suffix, scc_assumption=scc, rcm_model=rcm_model, cr_function=cr_function),
-                'adoption': create_adoption_col(scenario_prefix=scenario_prefix, category=category, column_type='adoption', cost_scenario=cost_scenario, method_suffix=method_suffix, scc_assumption=scc, rcm_model=rcm_model, cr_function=cr_function),
-                'impact': create_adoption_col(scenario_prefix=scenario_prefix, category=category, column_type='impact', cost_scenario=cost_scenario, method_suffix=method_suffix, scc_assumption=scc, rcm_model=rcm_model, cr_function=cr_function)
+                'health_sensitivity': create_adoption_col(scenario_prefix=scenario_prefix, category=output_category, column_type='health_sensitivity', cost_scenario=cost_scenario, method_suffix=method_suffix),
+                'benefit': create_adoption_col(scenario_prefix=scenario_prefix, category=output_category, column_type='benefit', cost_scenario=cost_scenario, method_suffix=method_suffix, scc_assumption=scc, rcm_model=rcm_model, cr_function=cr_function),
+                'total_npv': create_total_npv_col(scenario_prefix=scenario_prefix, category=output_category, cost_scenario=cost_scenario, method_suffix=method_suffix, scc_assumption=scc, rcm_model=rcm_model, cr_function=cr_function),
+                'adoption': create_adoption_col(scenario_prefix=scenario_prefix, category=output_category, column_type='adoption', cost_scenario=cost_scenario, method_suffix=method_suffix, scc_assumption=scc, rcm_model=rcm_model, cr_function=cr_function),
+                'impact': create_adoption_col(scenario_prefix=scenario_prefix, category=output_category, column_type='impact', cost_scenario=cost_scenario, method_suffix=method_suffix, scc_assumption=scc, rcm_model=rcm_model, cr_function=cr_function)
             }
             
             category_columns_to_mask.extend(new_col_names.values())
@@ -325,7 +345,7 @@ def adoption_decision(
             df_new_columns.loc[valid_homes_with_npv, new_col_names['adoption']] = 'Tier 4: Averse'
             
             no_upgrade_mask = valid_mask & df_copy[upgrade_column].isna()
-            df_new_columns.loc[no_upgrade_mask, new_col_names['adoption']] = 'N/A: Already Upgraded!'
+            df_new_columns.loc[no_upgrade_mask, new_col_names['adoption']] = 'Upgraded Equipment Already Present'
             
             tier1_mask = valid_mask & df_copy[lessWTP_private_npv_col_name].notna() & (df_copy[lessWTP_private_npv_col_name] > 0)
             df_new_columns.loc[tier1_mask, new_col_names['adoption']] = 'Tier 1: Feasible'
@@ -347,7 +367,7 @@ def adoption_decision(
             df_new_columns.loc[tier3_mask, new_col_names['adoption']] = 'Tier 3: Subsidy-Dependent Feasibility'
             
             # Public impact classification
-            df_new_columns.loc[valid_mask, new_col_names['impact']] = 'N/A: Already Upgraded!'
+            df_new_columns.loc[valid_mask, new_col_names['impact']] = 'Upgraded Equipment Already Present'
             
             zero_impact_mask = valid_mask & df_copy[public_npv_col_name].notna() & (df_copy[public_npv_col_name] == 0)
             df_new_columns.loc[zero_impact_mask, new_col_names['impact']] = 'Public NPV is Zero'
@@ -389,7 +409,8 @@ def calculate_climate_only_adoption_robust(
     discount_rate_col_name: str,
     cost_scenario: str = 'v3',
     scc_assumptions: List[str] = None,
-    verbose: bool = VERBOSE
+    verbose: bool = VERBOSE,
+    hvac_replacement_scenario: str = 'heating',
 ) -> pd.DataFrame:
     """
     Climate-only adoption analysis with simplified output.
@@ -404,6 +425,8 @@ def calculate_climate_only_adoption_robust(
             (e.g., '_v3', '_v4MID').
         scc_assumptions: List of SCC assumptions to process.
         verbose: Enable detailed output.
+        hvac_replacement_scenario: 'heating' (Case A) or 'heating_and_cooling' (Case B).
+            Controls the category segment used in NPV column lookups and output names.
         
     Returns:
         DataFrame with climate-only adoption analysis columns.
@@ -434,12 +457,15 @@ def calculate_climate_only_adoption_robust(
     
     method_suffix = PRIVATE_DISCOUNTING_METHOD_SUFFIXES[discount_rate_col_name]
 
+    # Build output category for column naming
+    output_category = hvac_replacement_scenario
+
     # Build list of all required columns
     required_columns = []
     for category in UPGRADE_COLUMNS.keys():
         for scc in scc_assumptions:
             required_columns.extend([
-                create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix),
+                create_npv_col(scenario_prefix=scenario_prefix, category=output_category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix),
                 create_climate_npv_col(scenario_prefix, category, scc)
             ])
     
@@ -464,7 +490,7 @@ def calculate_climate_only_adoption_robust(
 
         for scc in scc_assumptions:
             # Define column names (validation guarantees these exist)
-            moreWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
+            moreWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=output_category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
             climate_npv_col_name = create_climate_npv_col(scenario_prefix, category, scc)
             
             # Convert to numeric
@@ -474,7 +500,7 @@ def calculate_climate_only_adoption_robust(
             # Calculate total NPV (moreWTP + climate)
             output_col_name = create_total_npv_col(
                 scenario_prefix=scenario_prefix, 
-                category=category,
+                category=output_category,
                 cost_scenario=cost_scenario,
                 method_suffix=method_suffix,
                 scc_assumption=scc, 
@@ -508,7 +534,8 @@ def calculate_health_only_adoption_robust(
     cr_function: str,
     discount_rate_col_name: str,
     cost_scenario: str = 'v3',
-    verbose: bool = VERBOSE
+    verbose: bool = VERBOSE,
+    hvac_replacement_scenario: str = 'heating',
 ) -> pd.DataFrame:
     """
     Health-only adoption analysis with simplified output.
@@ -524,6 +551,8 @@ def calculate_health_only_adoption_robust(
             Determines the REMDB suffix on output column names
             (e.g., '_v3', '_v4MID').
         verbose: Enable detailed output.
+        hvac_replacement_scenario: 'heating' (Case A) or 'heating_and_cooling' (Case B).
+            Controls the category segment used in NPV column lookups and output names.
         
     Returns:
         DataFrame with health-only adoption analysis columns.
@@ -543,11 +572,14 @@ def calculate_health_only_adoption_robust(
 
     method_suffix = PRIVATE_DISCOUNTING_METHOD_SUFFIXES[discount_rate_col_name]
 
+    # Build output category for column naming
+    output_category = hvac_replacement_scenario
+
     # Build list of all required columns
     required_columns = []
     for category in UPGRADE_COLUMNS.keys():
         required_columns.extend([
-            create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix),
+            create_npv_col(scenario_prefix=scenario_prefix, category=output_category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix),
             create_health_npv_col(scenario_prefix, category, rcm_model, cr_function)
         ])
     
@@ -571,7 +603,7 @@ def calculate_health_only_adoption_robust(
             df_copy, category, menu_mp, verbose=verbose, copy=False)
 
         # Define column names (validation guarantees these exist)
-        moreWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
+        moreWTP_private_npv_col_name = create_npv_col(scenario_prefix=scenario_prefix, category=output_category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix)
         health_npv_col_name = create_health_npv_col(scenario_prefix, category, rcm_model, cr_function)
         
         # Convert to numeric
@@ -582,7 +614,7 @@ def calculate_health_only_adoption_robust(
         # output_col_name = create_adoption_col(scenario_prefix, category, 'total_npv_healthOnly', rcm_model=rcm_model, cr_function=cr_function, method_suffix=method_suffix, cost_scenario=cost_scenario)
         output_col_name = create_total_npv_col(
             scenario_prefix=scenario_prefix,
-            category=category,
+            category=output_category,
             cost_scenario=cost_scenario,
             method_suffix=method_suffix,
             rcm_model=rcm_model,

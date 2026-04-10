@@ -207,6 +207,22 @@ REMDB_COST_SCENARIO_KEYS = [
 ]
 
 # =============================================================
+# CONSTANTS: HVAC REPLACEMENT SCENARIO (Case A / Case B)
+# =============================================================
+# Controls which incumbent equipment costs are credited when
+# computing net capital cost for the adoption NPV calculation.
+#
+# Case A ('heating'):
+#   Net capital cost = ASHP upgrade − heating replacement cost
+#   Assumes the household replaces only the heating system.
+#
+# Case B ('heating_and_cooling'):
+#   Net capital cost = ASHP upgrade − (heating + cooling replacement cost)
+#   Assumes the household replaces both heating AND cooling systems
+#   with a single heat pump that serves both loads.
+VALID_HVAC_REPLACEMENT_SCENARIOS = ['heating', 'heating_and_cooling']
+
+# =============================================================
 # CONSTANTS: EFFICIENCY FLOORS FOR REPLACEMENT COST ESTIMATION
 # =============================================================
 # Applied to pm2 (efficiency) values BEFORE the REMDB v4 regression,

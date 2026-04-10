@@ -9,10 +9,21 @@ Supports three discounting methods:
 import numpy as np
 import pandas as pd
 
-from cmu_tare_model.constants import (
-    PUBLIC_DISCOUNT_RATE, PRIVATE_FIXED_RATE_LOW, PRIVATE_FIXED_RATE_BASE, PRIVATE_FIXED_RATE_HIGH,
-    VARIABLE_RATE_MIN, VARIABLE_RATE_MAX, AMI_THRESHOLD, VERBOSE,
-)
+import cmu_tare_model.constants as constants
+
+# Always-required constants
+PUBLIC_DISCOUNT_RATE = constants.PUBLIC_DISCOUNT_RATE
+VERBOSE = constants.VERBOSE
+
+# Optional fixed-rate constants (may be commented out in constants.py)
+PRIVATE_FIXED_RATE_LOW = getattr(constants, 'PRIVATE_FIXED_RATE_LOW', None)
+PRIVATE_FIXED_RATE_BASE = getattr(constants, 'PRIVATE_FIXED_RATE_BASE', None)
+PRIVATE_FIXED_RATE_HIGH = getattr(constants, 'PRIVATE_FIXED_RATE_HIGH', None)
+
+# Optional variable-rate constants (may be commented out in constants.py)
+VARIABLE_RATE_MIN = getattr(constants, 'VARIABLE_RATE_MIN', None)
+VARIABLE_RATE_MAX = getattr(constants, 'VARIABLE_RATE_MAX', None)
+AMI_THRESHOLD = getattr(constants, 'AMI_THRESHOLD', None)
 
 def prepare_discount_rates(
     df: pd.DataFrame,
@@ -21,12 +32,13 @@ def prepare_discount_rates(
     """
     Prepare all discount rate columns in a single operation.
     
-    Creates five columns:
+    Note that the percentages listed below may be different in constants.py, and some may be commented out. Only creates columns for rates that are defined in constants.py.
+    Creates up to five columns:
     - 'public_discount_rate': 2% constant (for social/public NPV)
     - 'private_discount_rate_fixed_low': 2% constant (for private NPV)
     - 'private_discount_rate_fixed_base': 7% constant (for private NPV)
     - 'private_discount_rate_fixed_high': 12% constant (for private NPV)
-    - 'private_discount_rate_variable': AMI-based 2%-12% (for equity-adjusted private NPV)
+    - 'private_discount_rate_variable': AMI-based 7%-45% (for equity-adjusted private NPV)
     
     Args:
         df: DataFrame containing 'percent_AMI' column for variable rate calculation.
@@ -46,24 +58,29 @@ def prepare_discount_rates(
 
     df_copy = df.copy()
     
-    # Fixed rates: simple broadcasting
+    # Fixed rates: only create columns for rates that are defined in constants.py
     df_copy['public_discount_rate'] = PUBLIC_DISCOUNT_RATE  # 0.02 (2%)
-    df_copy['private_discount_rate_fixed_low'] = PRIVATE_FIXED_RATE_LOW  # 0.02 (2%)
-    df_copy['private_discount_rate_fixed_base'] = PRIVATE_FIXED_RATE_BASE  # 0.07 (7%)
-    df_copy['private_discount_rate_fixed_high'] = PRIVATE_FIXED_RATE_HIGH  # 0.12 (12%)
 
-    # Variable rate: AMI-based calculation
-    percent_ami = df_copy['percent_AMI']
+    if PRIVATE_FIXED_RATE_LOW is not None:
+        df_copy['private_discount_rate_fixed_low'] = PRIVATE_FIXED_RATE_LOW
+    if PRIVATE_FIXED_RATE_BASE is not None:
+        df_copy['private_discount_rate_fixed_base'] = PRIVATE_FIXED_RATE_BASE
+    if PRIVATE_FIXED_RATE_HIGH is not None:
+        df_copy['private_discount_rate_fixed_high'] = PRIVATE_FIXED_RATE_HIGH
 
-    # Define the interpolation bounds
-    ami_x_bounds = [0, AMI_THRESHOLD]                       # x-coordinates: 0% to 150% AMI
-    rate_y_bounds = [VARIABLE_RATE_MAX, VARIABLE_RATE_MIN]  # y-coordinates: 12% down to 2%
+    # Variable rate: AMI-based calculation (only if variable-rate constants are defined)
+    if VARIABLE_RATE_MIN is not None and VARIABLE_RATE_MAX is not None and AMI_THRESHOLD is not None:
+        percent_ami = df_copy['percent_AMI']
 
-    # LINEAR INTERPOLATION: AMI → Discount Rate (INVERSE relationship)
-    # Values below 0% AMI get 12%, above 150% AMI get 2%.
-    # Clamping behavior is built into np.interp
-    variable_rate = np.interp(x=percent_ami, xp=ami_x_bounds, fp=rate_y_bounds)
-    df_copy['private_discount_rate_variable'] = variable_rate
+        # Define the interpolation bounds
+        ami_x_bounds = [0, AMI_THRESHOLD]                       # x-coordinates: 0% to 150% AMI
+        rate_y_bounds = [VARIABLE_RATE_MAX, VARIABLE_RATE_MIN]  # y-coordinates: X% down to X%
+
+        # LINEAR INTERPOLATION: AMI → Discount Rate (INVERSE relationship)
+        # Values below 0% AMI get X%, above 150% AMI get X%.
+        # Clamping behavior is built into np.interp
+        variable_rate = np.interp(x=percent_ami, xp=ami_x_bounds, fp=rate_y_bounds)
+        df_copy['private_discount_rate_variable'] = variable_rate
     
     # Verbose diagnostic output. Only prints once per scenario run.
     print(f"\n{'='*80}")
@@ -76,21 +93,25 @@ def prepare_discount_rates(
 
     # ===== PRIVATE Discount Rate Diagnostic =====
     # Private fixed rate diagnostic
-    private_rate_fixed_low = df_copy['private_discount_rate_fixed_low'].iloc[0]
-    print(f"Private Fixed Rate (Low): {private_rate_fixed_low:.1%} (constant across all households)")
+    if 'private_discount_rate_fixed_low' in df_copy.columns:
+        private_rate_fixed_low = df_copy['private_discount_rate_fixed_low'].iloc[0]
+        print(f"Private Fixed Rate (Low): {private_rate_fixed_low:.1%} (constant across all households)")
         
-    private_rate_fixed_base = df_copy['private_discount_rate_fixed_base'].iloc[0]
-    print(f"Private Fixed Rate (Base): {private_rate_fixed_base:.1%} (constant across all households)")
+    if 'private_discount_rate_fixed_base' in df_copy.columns:
+        private_rate_fixed_base = df_copy['private_discount_rate_fixed_base'].iloc[0]
+        print(f"Private Fixed Rate (Base): {private_rate_fixed_base:.1%} (constant across all households)")
 
-    private_rate_fixed_high = df_copy['private_discount_rate_fixed_high'].iloc[0]
-    print(f"Private Fixed Rate (High): {private_rate_fixed_high:.1%} (constant across all households)")
+    if 'private_discount_rate_fixed_high' in df_copy.columns:
+        private_rate_fixed_high = df_copy['private_discount_rate_fixed_high'].iloc[0]
+        print(f"Private Fixed Rate (High): {private_rate_fixed_high:.1%} (constant across all households)")
         
     # Private variable rate diagnostic  
-    private_rate_variable = df_copy['private_discount_rate_variable']
-    print(f"Private Variable Rate (AMI-based):")
-    print(f"  Minimum: {private_rate_variable.min():.1%} (highest AMI)")
-    print(f"  Median:  {private_rate_variable.median():.1%}")
-    print(f"  Maximum: {private_rate_variable.max():.1%} (lowest AMI)")
+    if 'private_discount_rate_variable' in df_copy.columns:
+        private_rate_variable = df_copy['private_discount_rate_variable']
+        print(f"Private Variable Rate (AMI-based):")
+        print(f"  Minimum: {private_rate_variable.min():.1%} (highest AMI)")
+        print(f"  Median:  {private_rate_variable.median():.1%}")
+        print(f"  Maximum: {private_rate_variable.max():.1%} (lowest AMI)")
         
     print(f"{'='*80}\n")
 

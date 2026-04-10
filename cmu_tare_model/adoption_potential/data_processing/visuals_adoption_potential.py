@@ -16,7 +16,8 @@ def create_multiIndex_adoption_df(
         rcm_model: str,
         cr_function: str,
         cost_scenario: str,
-        discount_rate: str
+        discount_rate: str,
+        hvac_replacement_scenario: str = 'heating',
 ) -> pd.DataFrame:
     """
     Creates a multi-index DataFrame showing adoption percentages by LMI/MUI classification and fuel type.
@@ -35,6 +36,8 @@ def create_multiIndex_adoption_df(
         cr_function: Concentration-response function ('acs', 'h6c')
         cost_scenario: Capital cost estimation method ('v3', 'v4LOW', 'v4MID', 'v4HIGH')
         discount_rate: Discount rate method ('fixed_low', 'fixed_base', 'fixed_high', 'variable')
+        hvac_replacement_scenario: 'heating' (Case A) or 'heating_and_cooling' (Case B).
+            Used as the category segment in column name lookups.
         
     Returns:
         Multi-index DataFrame with adoption percentages by fuel type and income level.
@@ -44,6 +47,11 @@ def create_multiIndex_adoption_df(
         ValueError: If required columns are not found in the DataFrame or if the DataFrame
                    structure doesn't match expected format
     """
+    if category == 'heating':
+        output_category = hvac_replacement_scenario
+    else:
+        output_category = category
+
     # Define LMI/MUI categories for sorting
     lmi_mui_categories = ['LMI', 'MUI']
     
@@ -62,8 +70,8 @@ def create_multiIndex_adoption_df(
     # Define column names with ALL sensitivity dimensions (v2.3 naming convention)
     # Pattern: {policy}_mp{mp}_{category}_adoption_{scc}_{rcm}_{crf}_{cost_scenario}_{discount_rate}
     adoption_cols = [
-        f'preIRA_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}_{cost_scenario}_{discount_rate}',
-        f'iraRef_mp{menu_mp}_{category}_adoption_{scc}_{rcm_model}_{cr_function}_{cost_scenario}_{discount_rate}'
+        f'preIRA_mp{menu_mp}_{output_category}_adoption_{scc}_{rcm_model}_{cr_function}_{cost_scenario}_{discount_rate}',
+        f'iraRef_mp{menu_mp}_{output_category}_adoption_{scc}_{rcm_model}_{cr_function}_{cost_scenario}_{discount_rate}'
     ]
     
     try:
@@ -167,7 +175,8 @@ def plot_adoption_rate_bar(
     color_mapping = {
         'Tier 1: Feasible': 'steelblue',
         'Tier 2: Feasible vs. Alternative': 'lightblue',
-        'Tier 3: Subsidy-Dependent Feasibility': 'lightsalmon'
+        'Tier 3: Subsidy-Dependent Feasibility': 'lightsalmon',
+        'Upgraded Equipment Already Present': 'gray'
     }
     
     # Ensure the DataFrame is properly formatted
@@ -363,7 +372,8 @@ def subplot_grid_adoption_vBar(
     color_mapping = {
         'Tier 1: Feasible': 'steelblue',
         'Tier 2: Feasible vs. Alternative': 'lightblue',
-        'Tier 3: Subsidy-Dependent Feasibility': 'lightsalmon'
+        'Tier 3: Subsidy-Dependent Feasibility': 'lightsalmon',
+        'Upgraded Equipment Already Present': 'gray'
     }
 
     # Validate input lengths
