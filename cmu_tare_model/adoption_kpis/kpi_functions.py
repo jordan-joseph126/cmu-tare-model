@@ -162,7 +162,8 @@ def load_euss_baseline(
     """
     filepath = os.path.join(EUSS_DATA_DIR, filename)
     print(f"Loading baseline from: {filepath}")
-    df = pd.read_csv(filepath, usecols=BASELINE_USECOLS, index_col='bldg_id')
+    # df = pd.read_csv(filepath, usecols=BASELINE_USECOLS, index_col='bldg_id')
+    df = pd.read_csv(filepath, index_col='bldg_id')
 
     n_total = len(df)
     df = df[df['in.vacancy_status'] == 'Occupied']
@@ -186,7 +187,8 @@ def load_euss_upgrade(upgrade_name: str) -> pd.DataFrame:
     filename = f'{upgrade_name}_metadata_and_annual_results.csv'
     filepath = os.path.join(EUSS_DATA_DIR, filename)
     print(f"Loading {upgrade_name} from: {filepath}")
-    df = pd.read_csv(filepath, usecols=UPGRADE_USECOLS, index_col='bldg_id')
+    # df = pd.read_csv(filepath, usecols=UPGRADE_USECOLS, index_col='bldg_id')
+    df = pd.read_csv(filepath, index_col='bldg_id')
 
     n_total = len(df)
     df = df[df['in.vacancy_status'] == 'Occupied']
