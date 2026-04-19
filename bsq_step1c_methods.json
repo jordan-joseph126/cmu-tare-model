@@ -1,0 +1,15 @@
+{
+  "agg_attrs": [
+    "aggregate_annual",
+    "aggregate_timeseries",
+    "get_building_average_kws_at",
+    "validate_partition_by"
+  ],
+  "get_building_ids_sig": "(restrict: collections.abc.Sequence[tuple[sqlalchemy.sql.elements.Label | sqlalchemy.sql.schema.Column | sqlalchemy.sql.elements.ColumnElement | str | buildstock_query.schema.utilities.MappedColumn, typing.Union[str, int, collections.abc.Sequence[typing.Union[int, str]]]]] = FieldInfo(annotation=NoneType, required=False, default_factory=list), get_query_only: bool = False) -> Union[str, pandas.core.frame.DataFrame]",
+  "get_buildings_by_locations_sig": "(location_col: str, locations: list[str], get_query_only: bool = False) -> Union[str, pandas.core.frame.DataFrame]",
+  "get_buildstock_df_sig": "() -> pandas.core.frame.DataFrame",
+  "agg.aggregate_annual_sig": "(*, params: buildstock_query.schema.query_params.BaseQuery)",
+  "agg.aggregate_timeseries_sig": "(params: buildstock_query.schema.query_params.TSQuery)",
+  "agg.get_building_average_kws_at_sig": "(*, at_hour: Union[list[float], float], at_days: list[float], enduses: list[str], get_query_only: bool = False)",
+  "agg.validate_partition_by_sig": "(partition_by: collections.abc.Sequence[str])"
+}
