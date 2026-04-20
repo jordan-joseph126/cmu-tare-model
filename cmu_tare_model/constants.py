@@ -273,3 +273,32 @@ EFFICIENCY_FLOORS_PM2 = {
 #   1.0 tons → leave as 1.0  (33% below, beyond 10%)
 # =============================================================
 CAPACITY_BOUND_CLAMPING_TOLERANCE = 0.10  # 10%
+
+# =============================================================
+# CONSTANTS: BSQ / EUSS TIMESERIES COLUMN NAMES
+# =============================================================
+# Column names for BuildStockQuery timeseries queries against
+# ResStock EUSS 2022.1.1 (AMY2018). Used by the peak load
+# analysis notebook and peak_load_functions.py.
+#
+# Weight handling: BSQ reads per-row weights from the metadata
+# table and applies them via SUM(enduse × baseline.weight) in
+# generated SQL. No hardcoded weight constants are used.
+
+# Timeseries table columns
+BLDG_ID_COL: str = "bldg_id"
+TIMESTAMP_COL: str = "timestamp"
+ELEC_TOTAL_COL: str = "out.electricity.total.energy_consumption"
+
+# BSQ returns enduse columns WITHOUT the 'out.' prefix
+BSQ_ELEC_COL: str = "electricity.total.energy_consumption"
+
+# Metadata table columns
+METADATA_TABLE: str = "resstock_amy2018_release_1_1_metadata"
+COUNTY_COL: str = "in.county"     # GISJOIN format
+STATE_COL: str = "in.state"       # 2-char state code
+WEIGHT_COL: str = "weight"        # BSQ reads per-row from metadata
+
+# Reference values for Allegheny County validation
+TEST_FIPS: str = "42003"
+TEST_GISJOIN: str = "G4200030"

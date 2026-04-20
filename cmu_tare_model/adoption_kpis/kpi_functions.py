@@ -34,8 +34,6 @@ NG_CONVERSION_FACTOR = BTU_PER_KWH / (1000 * BTU_PER_CF_NATURAL_GAS)
 KWH_PER_MMBTU = 293.07107      # 1 MMBTU = 293.07107 kWh
 KBTU_PER_KWH = 3.412           # 1 kWh = 3.412 kBtu
 
-DWELLING_UNIT_WEIGHT = 242      # EUSS sampling weight per surveyed home
-
 STATE_NAMES = {
     'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas',
     'CA': 'California', 'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware',

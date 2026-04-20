@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cmu_tare_model.adoption_kpis.peak_load_functions import (
+from cmu_tare_model.grid_impact.peak_load_functions import (
     BLDG_ID_COL,
     BSQ_ELEC_COL,
     compute_county_scenario_profile,

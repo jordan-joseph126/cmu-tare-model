@@ -11,10 +11,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-
-# Column name constants (must match BSQ output + notebook conventions)
-BLDG_ID_COL: str = "bldg_id"
-BSQ_ELEC_COL: str = "electricity.total.energy_consumption"
+from cmu_tare_model.constants import BLDG_ID_COL, BSQ_ELEC_COL
 
 
 def gisjoin_to_fips(gisjoin: str) -> str:
