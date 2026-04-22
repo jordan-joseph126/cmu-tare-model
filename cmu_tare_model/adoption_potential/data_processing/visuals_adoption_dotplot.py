@@ -8,7 +8,7 @@ Layout: 2x2 grid — MP rows x Case A / Case B columns.
 """
 
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
@@ -43,14 +43,12 @@ FUEL_COLORS: Dict[str, str] = {
 
 # Marker for each tier (left-to-right on the dot plot)
 TIER_MARKERS: Dict[str, str] = {
-    'Already Upgraded': 's',                                     # square
     'Tier 1: Feasible': 'o',                                     # circle
     'Total Adoption Potential': '^',                              # triangle
     'Total Adoption Potential (Additional Subsidy)': 'D',         # diamond
 }
 
 TIER_LABELS_SHORT: Dict[str, str] = {
-    'Already Upgraded': 'Already Upgraded',
     'Tier 1: Feasible': 'T1: Feasible',
     'Total Adoption Potential': 'T1+T2: Adoption Potential',
     'Total Adoption Potential (Additional Subsidy)': 'T1+T2+T3: With Subsidy',
@@ -63,16 +61,12 @@ MI_TIER_NAMES: List[str] = [
     'Total Adoption Potential (Additional Subsidy)',
 ]
 
-# All tiers including Already Upgraded (plot order: left -> right)
+# All tiers (plot order: left -> right)
 ALL_TIER_NAMES: List[str] = [
-    'Already Upgraded',
     'Tier 1: Feasible',
     'Total Adoption Potential',
     'Total Adoption Potential (Additional Subsidy)',
 ]
-
-# The string used in the source adoption column for already-upgraded homes
-ALREADY_UPGRADED_LABEL = 'Upgraded Equipment Already Present'
 
 # ===========================================================================
 # Y-AXIS GROUPING ORDER  (top -> bottom)
@@ -145,24 +139,6 @@ def prepare_plot_data(
     total_homes = int(group_counts.sum())
     fuel_counts = source_df.groupby(fuel_col, observed=True).size()
 
-    # --- Compute "Already Upgraded" % per (fuel, income) from source_df ---
-    # "Already Upgraded" is scenario-independent (equipment already present),
-    # so use whichever adoption column exists in source_df.
-    already_upgraded_pct: Dict[Tuple[str, str], float] = {}
-    adoption_col = None
-    for col_candidate in [iraref_col, preira_col]:
-        if col_candidate in source_df.columns:
-            adoption_col = col_candidate
-            break
-
-    if adoption_col is not None:
-        for (fuel, income), grp in source_df.groupby([fuel_col, income_col], observed=True):
-            n_total = len(grp)
-            n_upgraded = (grp[adoption_col] == ALREADY_UPGRADED_LABEL).sum()
-            already_upgraded_pct[(fuel, income)] = (
-                100.0 * n_upgraded / n_total if n_total else 0.0
-            )
-
     fuels_in_data = list(dict.fromkeys(f for f, _ in mi_df.index))
 
     rows: List[Dict] = []
@@ -192,11 +168,6 @@ def prepare_plot_data(
         grouping = f'{fuel} \u2014 {income}'
         n = int(group_counts.get((fuel, income), 0))
 
-        # Already Upgraded (same for both scenarios)
-        au_pct = already_upgraded_pct.get((fuel, income), 0.0)
-        rows.append(_make_row(grouping, fuel, income, 'Already Upgraded',
-                              au_pct, au_pct, n))
-
         # MI tiers
         for tier in MI_TIER_NAMES:
             iraref_val = float(mi_df.loc[(fuel, income), (iraref_col, tier)])
@@ -210,16 +181,6 @@ def prepare_plot_data(
     for fuel in fuels_in_data:
         fuel_n = int(fuel_counts.get(fuel, 0))
         income_levels = [inc for f, inc in mi_df.index if f == fuel]
-
-        # Already Upgraded - weighted
-        au_weighted = 0.0
-        for income in income_levels:
-            ni = int(group_counts.get((fuel, income), 0))
-            w = ni / fuel_n if fuel_n else 0.0
-            au_weighted += w * already_upgraded_pct.get((fuel, income), 0.0)
-        rows.append(_make_row(f'{fuel} \u2014 Overall', fuel, 'Overall',
-                              'Already Upgraded', au_weighted, au_weighted,
-                              fuel_n))
 
         # MI tiers - weighted
         for tier in MI_TIER_NAMES:
@@ -236,15 +197,6 @@ def prepare_plot_data(
     # ------------------------------------------------------------------
     # National - Overall
     # ------------------------------------------------------------------
-    au_national = 0.0
-    for fuel, income in mi_df.index:
-        ni = int(group_counts.get((fuel, income), 0))
-        w = ni / total_homes if total_homes else 0.0
-        au_national += w * already_upgraded_pct.get((fuel, income), 0.0)
-    rows.append(_make_row('National \u2014 Overall', 'National', 'Overall',
-                          'Already Upgraded', au_national, au_national,
-                          total_homes))
-
     for tier in MI_TIER_NAMES:
         ira_w = 0.0
         pre_w = 0.0
@@ -303,6 +255,7 @@ def plot_adoption_panel(
     separator_alpha: float = 0.5,
     annotation_fontsize: int = 7,
     annotation_y_offset_pts: float = 8.0,
+    fuel_counts_millions: Optional[Dict[str, float]] = None,
 ) -> plt.Axes:
     """Draw a horizontal dot plot showing IRA-Reference adoption with deltas.
 
@@ -365,14 +318,12 @@ def plot_adoption_panel(
             )
             all_x.append(float(x_val))
 
-            # Annotation: "X (+Y)" or just "X" for Already Upgraded
+            # Annotation above: "X% (+Y%)"
             ira_val = row['iraref_pct']
             delta = row['delta_pct']
-            if tier == 'Already Upgraded':
-                ann_text = f'{ira_val:.0f}'
-            else:
-                sign = '+' if delta >= 0 else ''
-                ann_text = f'{ira_val:.0f} ({sign}{delta:.0f})'
+            homes_m = row['weighted_homes_millions']
+            sign = '+' if delta >= 0 else ''
+            ann_text = f'{ira_val:.0f}% ({sign}{delta:.0f}%)'
 
             ax.annotate(
                 ann_text,
@@ -382,6 +333,24 @@ def plot_adoption_panel(
                 fontsize=annotation_fontsize,
                 ha='center',
                 va='bottom',
+                color=color,
+                clip_on=True,
+            )
+
+            # Annotation below: "X.XM (+Y.YM)" absolute homes count
+            ira_homes = ira_val / 100.0 * homes_m
+            delta_homes = delta / 100.0 * homes_m
+            sign_h = '+' if delta_homes >= 0 else ''
+            ann_homes = f'{ira_homes:.1f}M ({sign_h}{delta_homes:.1f}M)'
+
+            ax.annotate(
+                ann_homes,
+                xy=(x_val, y),
+                xytext=(0, -annotation_y_offset_pts),
+                textcoords='offset points',
+                fontsize=annotation_fontsize,
+                ha='center',
+                va='top',
                 color=color,
                 clip_on=True,
             )
@@ -408,11 +377,27 @@ def plot_adoption_panel(
         sub = plot_df[plot_df['grouping'] == grouping]
         if not sub.empty:
             r = sub.iloc[0]
-            label = (
-                f"{grouping}\n"
-                f"{r['pct_of_sample']:.1f}% of sample\n"
-                f"{r['weighted_homes_millions']:.1f}M homes"
-            )
+            fuel = r['fuel_type']
+            income_level = r['income_level']
+            homes_m = r['weighted_homes_millions']
+            if fuel_counts_millions:
+                national_total = sum(fuel_counts_millions.values())
+                fuel_total_m = fuel_counts_millions.get(fuel, 0.0)
+            else:
+                national_total = 0.0
+                fuel_total_m = 0.0
+
+            if fuel == 'National':
+                # National — Overall: just show total homes
+                label = f'National \u2014 Overall\n{national_total:.1f} M Homes (100%)'
+            elif income_level == 'Overall':
+                # e.g. "Electricity (25.6/80.0M, 32.0% Total)"
+                pct_total = (fuel_total_m / national_total * 100) if national_total else 0.0
+                label = f'{fuel} \u2014 Overall\n{fuel_total_m:.1f}/{national_total:.1f} M Homes ({pct_total:.1f}% Total)'
+            else:
+                # LMI row — e.g. "Electricity \u2014 LMI (12.5/25.6M, 48.8% Fuel)"
+                pct_fuel = (homes_m / fuel_total_m * 100) if fuel_total_m else 0.0
+                label = f'{fuel} \u2014 LMI\n{homes_m:.1f}/{fuel_total_m:.1f} M Homes ({pct_fuel:.1f}% Fuel)'
         else:
             label = grouping
         y_labels.append(label)
@@ -425,10 +410,10 @@ def plot_adoption_panel(
     )
     ax.set_ylim(-0.5, len(y_order) - 0.5)
 
-    # --- X-axis: ticks every 10% ---
+    # --- X-axis: ticks every 20% ---
     ax.set_xlim(0, 100)
-    ax.set_xticks(range(0, 101, 10))
-    ax.set_xlabel('Adoption Potential (%)')
+    ax.set_xticks(range(0, 101, 20))
+    ax.set_xlabel('Adoption Potential (%)', fontsize=ytick_fontsize)
 
     # --- Grid and separator ---
     ax.set_axisbelow(True)

@@ -302,3 +302,25 @@ WEIGHT_COL: str = "weight"        # BSQ reads per-row from metadata
 # Reference values for Allegheny County validation
 TEST_FIPS: str = "42003"
 TEST_GISJOIN: str = "G4200030"
+
+# =============================================================
+# CONSTANTS: PRE-TARE KPI VALIDATION
+# =============================================================
+# Jenkins et al. break-even COP at 90% AFUE reference values.
+# Used in Task D cross-validation in the preTARE KPI notebook.
+# ASSUMPTION: Jenkins assumes 1020 BTU/cf gas heat content;
+# we use 1038 BTU/cf (current EIA average). This ~1.8% difference
+# propagates into spark gap and break-even COP.
+JENKINS_BREAKEVEN_REF_90: dict = {
+    'FL': 1.50, 'PA': 3.51, 'MN': 3.90,
+    'AK': 5.69, 'CA': 4.49, 'MA': 3.60,
+}
+
+# PA climate zone spot-check ranges for COP benchmark validation.
+# PA is primarily CZ 4-5 (Pittsburgh, Philadelphia).
+# Source: Literature estimates for ASHP performance in mixed-humid climate.
+# TODO: follow-up (P0.2) — PA CZ 6-7 spot check currently fails.
+PA_COP_RANGES: dict = {
+    'mp3': (1.8, 2.4),
+    'mp4': (2.5, 3.4),
+}

@@ -138,3 +138,82 @@ def create_choropleth_map(
     return output_path if output_path else None
 
 
+# ============================================================================
+# Load County Boundaries and Merge with Analysis Data
+# ============================================================================
+
+# Territory STATEFP codes to exclude (US Census TIGER/Line).
+_TERRITORY_FIPS = {'60', '66', '69', '72', '78'}  # AS, GU, MP, PR, VI
+_ALASKA_FIPS = '02'
+
+
+def prepare_county_geodataframe(
+    gdf_counties: gpd.GeoDataFrame,
+    df_analysis: pd.DataFrame,
+    county_gisjoin_col: str = 'county',
+    exclude_territories: Optional[list] = None,
+) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    """
+    Merge county-level analysis results with TIGER county geometries.
+
+    Converts GISJOIN codes (e.g. 'G4200030') to 5-digit FIPS (e.g. '42003')
+    and merges with the TIGER/Line county shapefile on the GEOID column.
+    Reprojects to US Albers Equal Area (ESRI:102003) and splits into
+    CONUS and Alaska GeoDataFrames for inset plotting.
+
+    Args:
+        gdf_counties: GeoDataFrame of US county boundaries loaded from
+            tl_2025_us_county.shp (any CRS). Must contain GEOID and STATEFP columns.
+        df_analysis: DataFrame with a county GISJOIN column and analysis columns.
+        county_gisjoin_col: Column in df_analysis with GISJOIN county codes
+            (e.g. 'G4200030' → FIPS '42003'). Default: 'county'.
+        exclude_territories: STATEFP codes to exclude. Defaults to AS/GU/MP/PR/VI.
+
+    Returns:
+        Tuple of (gdf_all, gdf_conus, gdf_alaska) — all in ESRI:102003.
+    """
+    if exclude_territories is None:
+        excl_fips = _TERRITORY_FIPS
+    else:
+        excl_fips = set(exclude_territories)
+
+    if county_gisjoin_col not in df_analysis.columns:
+        raise ValueError(
+            f"Column '{county_gisjoin_col}' not found in df_analysis. "
+            f"Available columns: {list(df_analysis.columns)}"
+        )
+    if 'GEOID' not in gdf_counties.columns:
+        raise ValueError(
+            f"'GEOID' column not found in county shapefile. "
+            f"Available columns: {list(gdf_counties.columns)}"
+        )
+
+    # Convert GISJOIN (e.g. 'G4200030') → 5-digit FIPS (e.g. '42003')
+    # GISJOIN format: G + 2-digit state FIPS + 0 + 3-digit county FIPS
+    df_work = df_analysis.copy()
+    df_work['GEOID'] = (
+        df_work[county_gisjoin_col].str[1:3]
+        + df_work[county_gisjoin_col].str[4:7]
+    )
+
+    # Reproject to US Albers Equal Area
+    gdf_counties = gdf_counties.to_crs('ESRI:102003')
+
+    # Merge analysis data with geometries
+    gdf = gdf_counties.merge(df_work, on='GEOID', how='left')
+
+    # Detect missing-data filter column
+    numeric_cols = df_analysis.select_dtypes(include='number').columns.tolist()
+    filter_col = numeric_cols[0] if numeric_cols else county_gisjoin_col
+
+    gdf_filtered = gdf[
+        (~gdf['STATEFP'].isin(excl_fips)) &
+        (gdf[filter_col].notna())
+    ].copy()
+
+    gdf_alaska = gdf_filtered[gdf_filtered['STATEFP'] == _ALASKA_FIPS].copy()
+    gdf_conus = gdf_filtered[
+        ~gdf_filtered['STATEFP'].isin([_ALASKA_FIPS, '15'])  # exclude AK and HI
+    ].copy()
+
+    return gdf_filtered, gdf_conus, gdf_alaska

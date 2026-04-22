@@ -12,7 +12,7 @@ See README_adoption_kpis.md for methodology notes and design decisions.
 """
 
 import os
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -67,6 +67,11 @@ FUEL_PRICES_PATH = os.path.join(
 SHAPEFILE_PATH = os.path.join(
     PROJECT_ROOT, "cmu_tare_model", "data", "electricity_ng_price_ratio",
     "nhgis0011_shapefile_tl2015_us_state_2015", "US_state_2015.shp"
+)
+
+COUNTY_SHAPEFILE_PATH = os.path.join(
+    PROJECT_ROOT, "cmu_tare_model", "data", "electricity_ng_price_ratio",
+    "tl_2025_us_county", "tl_2025_us_county.shp"
 )
 
 # Original EUSS heating energy columns (all in kWh)
@@ -288,6 +293,8 @@ def compute_thermal_cop(
     fuel_filter: str = 'Natural Gas',
     require_baseline_heating: bool = True,
     verbose: bool = False,
+    *,
+    aggregation: Literal['state', 'county'] = 'state',
 ) -> pd.DataFrame:
     """Compute grouped thermal COP and baseline furnace AFUE from EUSS data.
 
@@ -316,6 +323,11 @@ def compute_thermal_cop(
         hp_total_elec_kbtu, Q_baseline_total_kbtu,
         gas_consumed_total_kbtu, fans_pumps_pct, home_count.
     """
+    if aggregation == 'county':
+        group_cols = ['state', 'county']
+    elif aggregation != 'state':
+        raise ValueError(f"aggregation must be 'state' or 'county', got {aggregation!r}")
+
     elec_col = 'out.electricity.heating.energy_consumption.kwh'
     bkup_col = HP_BACKUP_ELEC_COL
     fans_col = HP_FANS_PUMPS_COL
@@ -477,8 +489,10 @@ def compute_thermal_cop_by_state(
 def compute_breakeven_cop(
     df_prices: pd.DataFrame,
     afue_scenarios: List[float] = [0.80, 0.90, 0.95, 1.00],
+    *,
+    aggregation: Literal['state', 'county'] = 'state',
 ) -> pd.DataFrame:
-    """Compute break-even COP for each state and AFUE scenario.
+    """Compute break-even COP for each state (or county) and AFUE scenario.
 
     The break-even COP is the heat pump efficiency at which operating
     costs equal those of a gas furnace at a given AFUE. Derived from:
@@ -503,8 +517,19 @@ def compute_breakeven_cop(
         DataFrame with columns: state, spark_gap, plus one
         'breakeven_cop_{int(afue*100)}' column per scenario.
     """
-    result = df_prices[['state', 'spark_gap']].copy()
-    if 'state_name' in df_prices.columns:
+    if aggregation == 'county':
+        if 'county' not in df_prices.columns:
+            raise ValueError(
+                "aggregation='county' requires 'county' column in df_prices. "
+                "Use broadcast_prices_to_counties() to add county data."
+            )
+        base_cols = ['state', 'county', 'spark_gap']
+    elif aggregation == 'state':
+        base_cols = ['state', 'spark_gap']
+    else:
+        raise ValueError(f"aggregation must be 'state' or 'county', got {aggregation!r}")
+    result = df_prices[base_cols].copy()
+    if 'state_name' in df_prices.columns and aggregation == 'state':
         result.insert(1, 'state_name', df_prices['state_name'])
 
     for afue in afue_scenarios:
@@ -519,6 +544,8 @@ def compute_spark_gap_metrics(
     df_cop: pd.DataFrame,
     df_breakeven: Optional[pd.DataFrame] = None,
     verbose: bool = False,
+    *,
+    aggregation: Literal['state', 'county'] = 'state',
 ) -> pd.DataFrame:
     """Merge price ratios, thermal COP/AFUE, and break-even COP into one table.
 
@@ -537,19 +564,26 @@ def compute_spark_gap_metrics(
         elec_price_kwh, gas_price_kwh, thermal_cop, baseline_afue,
         breakeven_cop_* columns, fans_pumps_pct, home_count.
     """
+    if aggregation not in ('state', 'county'):
+        raise ValueError(f"aggregation must be 'state' or 'county', got {aggregation!r}")
+    merge_key = ['state', 'county'] if aggregation == 'county' else ['state']
+
     # Start from price data
-    df = df_prices[[
-        'state', 'state_name', 'elec_price_kwh', 'gas_price_kwh', 'spark_gap',
-    ]].copy()
+    price_base_cols = ['state', 'elec_price_kwh', 'gas_price_kwh', 'spark_gap']
+    if aggregation == 'county' and 'county' in df_prices.columns:
+        price_base_cols = ['state', 'county', 'elec_price_kwh', 'gas_price_kwh', 'spark_gap']
+    if 'state_name' in df_prices.columns and aggregation == 'state':
+        price_base_cols.insert(1, 'state_name')
+    df = df_prices[price_base_cols].copy()
 
     # Merge thermal COP and AFUE
-    cop_cols = ['state', 'thermal_cop', 'baseline_afue', 'fans_pumps_pct', 'home_count']
-    df = df.merge(df_cop[cop_cols], on='state', how='inner')
+    cop_cols = merge_key + ['thermal_cop', 'baseline_afue', 'fans_pumps_pct', 'home_count']
+    df = df.merge(df_cop[cop_cols], on=merge_key, how='inner')
 
     # Merge break-even COP columns
     if df_breakeven is not None:
-        be_cols = ['state'] + [c for c in df_breakeven.columns if c.startswith('breakeven_cop_')]
-        df = df.merge(df_breakeven[be_cols], on='state', how='left')
+        be_cols = merge_key + [c for c in df_breakeven.columns if c.startswith('breakeven_cop_')]
+        df = df.merge(df_breakeven[be_cols], on=merge_key, how='left')
     else:
         # Compute inline from spark_gap × AFUE for default scenarios
         for afue in [0.80, 0.90, 0.95, 1.00]:
@@ -558,7 +592,8 @@ def compute_spark_gap_metrics(
 
     if verbose:
         n = len(df)
-        print(f"\n--- Spark Gap Metrics Summary ({n} states) ---")
+        unit = 'counties' if aggregation == 'county' else 'states'
+        print(f"\n--- Spark Gap Metrics Summary ({n} {unit}) ---")
         if 'breakeven_cop_90' in df.columns:
             be90 = df['breakeven_cop_90']
             print(f"Break-even COP @90% AFUE — "
@@ -567,7 +602,8 @@ def compute_spark_gap_metrics(
         cop_col = 'thermal_cop'
         if cop_col in df.columns:
             beats = (df[cop_col] < df.get('breakeven_cop_90', np.inf)).sum()
-            print(f"States where effective COP < break-even @90%: {beats}/{n}")
+            label = 'Counties' if aggregation == 'county' else 'States'
+            print(f"{label} where effective COP < break-even @90%: {beats}/{n}")
 
     return df
 
@@ -718,3 +754,53 @@ def aggregate_demand_by_state(
         print(f"Total site energy change:    {result['site_energy_change_gwh'].sum():+.1f} GWh (efficiency)")
 
     return result.sort_values('elec_change_gwh', ascending=False).reset_index(drop=True)
+
+
+# ============================================================================
+# COUNTY AGGREGATION HELPERS
+# ============================================================================
+
+def broadcast_prices_to_counties(
+    df_prices: pd.DataFrame,
+    df_baseline: pd.DataFrame,
+    county_col: str = COUNTY_COL,
+    state_col: str = 'in.state',
+) -> pd.DataFrame:
+    """Broadcast state-level EIA fuel prices to county level by joining on state.
+
+    NOTE: This is NOT county-specific rate data — state-level EIA rates are
+    broadcast to counties as the best available proxy. Future work: integrate
+    utility-level rates from EIA-861.
+
+    Args:
+        df_prices: State-level prices from calculate_price_ratios(). Must
+            contain a 'state' column with 2-letter state abbreviations.
+        df_baseline: EUSS baseline DataFrame (indexed by bldg_id) with
+            county (GISJOIN) and state abbreviation columns.
+        county_col: Column name in df_baseline for the GISJOIN county code
+            (default: COUNTY_COL = 'in.county').
+        state_col: Column name in df_baseline for the state abbreviation
+            (default: 'in.state').
+
+    Returns:
+        DataFrame with one row per unique (state, county) pair in
+        df_baseline, with all columns from df_prices plus a 'county'
+        column (GISJOIN format, e.g. 'G4200030' for Allegheny County PA).
+    """
+    if county_col not in df_baseline.columns:
+        raise KeyError(
+            f"Column '{county_col}' not found in df_baseline. "
+            f"Available columns: {list(df_baseline.columns[:10])}"
+        )
+    if state_col not in df_baseline.columns:
+        raise KeyError(
+            f"Column '{state_col}' not found in df_baseline. "
+            f"Available columns: {list(df_baseline.columns[:10])}"
+        )
+
+    counties = (
+        df_baseline[[state_col, county_col]]
+        .drop_duplicates()
+        .rename(columns={state_col: 'state', county_col: 'county'})
+    )
+    return counties.merge(df_prices, on='state', how='inner').reset_index(drop=True)
