@@ -86,7 +86,7 @@ def create_choropleth_map(
     column: str,
     title: str,
     cbar_label: str,
-    year: int = 2022,
+    year: int = 2024,
     output_path: Optional[str] = None,
     figsize: Tuple[int, int] = (16, 10),
     dpi: int = 300,

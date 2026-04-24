@@ -309,7 +309,7 @@ TEST_GISJOIN: str = "G4200030"
 # Jenkins et al. break-even COP at 90% AFUE reference values.
 # Used in Task D cross-validation in the preTARE KPI notebook.
 # ASSUMPTION: Jenkins assumes 1020 BTU/cf gas heat content;
-# we use 1038 BTU/cf (current EIA average). This ~1.8% difference
+# we use 1036 BTU/cf (current EIA average). This ~1.8% difference
 # propagates into spark gap and break-even COP.
 JENKINS_BREAKEVEN_REF_90: dict = {
     'FL': 1.50, 'PA': 3.51, 'MN': 3.90,
