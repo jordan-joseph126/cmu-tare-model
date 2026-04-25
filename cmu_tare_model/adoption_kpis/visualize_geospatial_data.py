@@ -139,6 +139,92 @@ def create_choropleth_map(
 
 
 # ============================================================================
+# Combined Multi-MP Choropleth Figure
+# ============================================================================
+
+def plot_combined_choropleth(
+    gdf_states_raw: gpd.GeoDataFrame,
+    data_by_mp: dict,
+    column: str,
+    title_template: str,
+    cbar_label: str,
+    cmap,
+    norm,
+    selected_mps: list,
+    figsize: Optional[Tuple[int, int]] = None,
+    dpi: int = 600,
+    output_path: Optional[str] = None,
+    save_figure: bool = False,
+) -> None:
+    """Render one map panel per MP side-by-side in a single figure with a shared colorbar.
+
+    Args:
+        gdf_states_raw: Raw state boundary GeoDataFrame (any CRS).
+        data_by_mp: Dict mapping MP number → DataFrame with a ``state`` column
+            and the target ``column``.
+        column: Column name to choropleth-shade.
+        title_template: Title string with ``{mp}`` placeholder, e.g.
+            ``'Thermal COP — MP{mp}'``.
+        cbar_label: Colorbar axis label.
+        cmap: Matplotlib colormap (name string or Colormap instance).
+        norm: Matplotlib Normalize instance (e.g. ``TwoSlopeNorm``,
+            ``BoundaryNorm``, ``Normalize``).
+        selected_mps: Ordered list of MP keys to render as panels.
+        figsize: Figure size ``(width, height)`` in inches. Defaults to
+            ``(12 * n + 2, 7)`` where ``n`` is the number of MPs.
+        dpi: Resolution used when saving.
+        output_path: File path to save the figure. Only written when
+            ``save_figure=True``.
+        save_figure: If ``True`` and ``output_path`` is set, save to disk.
+    """
+    n = len(selected_mps)
+    if figsize is None:
+        figsize = (12 * n + 2, 7)
+
+    fig = plt.figure(figsize=figsize, facecolor='white')
+
+    panel_w = 0.86 / n
+    gap = 0.02
+    cbar_x = 0.92
+
+    for i, mp in enumerate(selected_mps):
+        x0 = 0.02 + i * (panel_w + gap)
+        w = panel_w - gap
+
+        ax_main = fig.add_axes([x0, 0.05, w, 0.88])
+        ax_ak   = fig.add_axes([x0, 0.05, w * 0.27, 0.26])
+
+        plot_kw = dict(
+            column=column, cmap=cmap, norm=norm,
+            edgecolor='black', linewidth=0.5, legend=False,
+        )
+        _, gdf_conus, gdf_alaska = prepare_state_geodataframe(
+            gdf_states_raw, data_by_mp[mp], merge_col='state'
+        )
+
+        gdf_conus.plot(ax=ax_main, **plot_kw)
+        ax_main.set_axis_off()
+        ax_main.set_title(
+            title_template.format(mp=mp), fontsize=16, fontweight='bold', pad=10
+        )
+
+        if not gdf_alaska.empty:
+            gdf_alaska.plot(ax=ax_ak, **plot_kw)
+        ax_ak.set_axis_off()
+
+    cax = fig.add_axes([cbar_x, 0.10, 0.025, 0.78])
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    fig.colorbar(sm, cax=cax, label=cbar_label).ax.yaxis.label.set_fontsize(14)
+    cax.tick_params(labelsize=14)
+
+    if save_figure and output_path:
+        fig.savefig(output_path, dpi=dpi, bbox_inches='tight', facecolor='white')
+        print(f"  Saved: {output_path}")
+    plt.show()
+
+
+# ============================================================================
 # Load County Boundaries and Merge with Analysis Data
 # ============================================================================
 

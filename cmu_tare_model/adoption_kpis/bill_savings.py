@@ -23,6 +23,8 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+from cmu_tare_model.adoption_kpis.data_loading import COUNTY_COL
+
 
 # ============================================================================
 # MODULE-LEVEL CONSTANTS
@@ -189,6 +191,13 @@ def compute_bill_savings_ratio(
         print(f"Median bill savings ratio: {df_out['bill_savings_ratio'].median():.3f}")
         print(f"Mean bill savings ratio:   {df_out['bill_savings_ratio'].mean():.3f}")
 
+    # Attach county for downstream county-level aggregation
+    if COUNTY_COL not in df_out.columns:
+        if df_euss is not None and COUNTY_COL in df_euss.columns:
+            df_out = df_out.join(df_euss[[COUNTY_COL]], how='left')
+        elif COUNTY_COL in df_tare.columns:
+            df_out[COUNTY_COL] = df_tare[COUNTY_COL]
+
     return df_out
 
 
@@ -196,11 +205,17 @@ def compute_bill_savings_ratio(
 # STATE-LEVEL AGGREGATION
 # ============================================================================
 
-def aggregate_bill_savings_by_state(
+# ============================================================================
+# AGGREGATION (STATE OR COUNTY)
+# ============================================================================
+
+def aggregate_bill_savings(
     df_ratio: pd.DataFrame,
+    geo_level: str = 'state',
+    min_home_count: int = 30,
     verbose: bool = False,
 ) -> pd.DataFrame:
-    """Aggregate per-building bill savings ratios to state-level summary.
+    """Aggregate per-building bill savings ratios to state- or county-level summary.
 
     Uses MEDIAN as the primary statistic — robust to outlier buildings
     with extreme consumption patterns. Mean and weighted ratio are
@@ -211,21 +226,51 @@ def aggregate_bill_savings_by_state(
             ``compute_bill_savings_ratio()``. Must contain ``in.state``,
             ``weight``, ``baseline_lifetime_fuel_cost``,
             ``retrofit_lifetime_fuel_cost``, ``bill_savings_ratio``.
-        verbose: If ``True``, print count of states where median < 1
+            For county-level, must also contain ``in.county``
+            (automatically attached by ``compute_bill_savings_ratio``
+            when ``df_euss`` is provided).
+        geo_level: ``'state'`` (default) or ``'county'``. When ``'county'``,
+            groups by ``in.county`` and includes ``in.state`` in the output.
+        min_home_count: Minimum homes per county for metric values.
+            Counties below this threshold have metric columns set to ``NaN``.
+            Only applied when ``geo_level='county'``.
+        verbose: If ``True``, print count of states/counties where median < 1
             and the national median ratio.
 
     Returns:
         DataFrame sorted by ``median_bill_savings_ratio`` (ascending) with
-        columns: ``state``, ``home_count``,
+        columns: ``state`` (or ``county`` + ``state``), ``home_count``,
         ``median_bill_savings_ratio``, ``mean_bill_savings_ratio``,
         ``total_baseline_cost``, ``total_retrofit_cost``,
         ``weighted_ratio``.
+
+    Raises:
+        ValueError: If ``geo_level`` is not ``'state'`` or ``'county'``.
+        KeyError: If ``in.county`` is missing when ``geo_level='county'``.
     """
-    grouped = df_ratio.groupby("in.state").agg(
+    if geo_level not in ('state', 'county'):
+        raise ValueError(f"geo_level must be 'state' or 'county', got {geo_level!r}")
+
+    group_col = COUNTY_COL if geo_level == 'county' else 'in.state'
+
+    if geo_level == 'county' and COUNTY_COL not in df_ratio.columns:
+        raise KeyError(
+            f"Column '{COUNTY_COL}' not found in df_ratio. "
+            "Pass df_euss to compute_bill_savings_ratio() to attach county info."
+        )
+
+    grouped = df_ratio.groupby(group_col).agg(
         home_count=("bill_savings_ratio", "size"),
         median_bill_savings_ratio=("bill_savings_ratio", "median"),
         mean_bill_savings_ratio=("bill_savings_ratio", "mean"),
-    ).reset_index().rename(columns={"in.state": "state"})
+    ).reset_index()
+
+    if geo_level == 'county':
+        state_lookup = df_ratio.groupby(COUNTY_COL)['in.state'].first()
+        grouped['state'] = grouped[COUNTY_COL].map(state_lookup)
+        grouped = grouped.rename(columns={COUNTY_COL: 'county'})
+    else:
+        grouped = grouped.rename(columns={'in.state': 'state'})
 
     # Weighted totals for cross-check ratio — computed separately to use weight
     weighted_agg = df_ratio.copy()
@@ -235,18 +280,30 @@ def aggregate_bill_savings_by_state(
     weighted_agg["_weighted_retrofit"] = (
         weighted_agg["retrofit_lifetime_fuel_cost"] * weighted_agg["weight"]
     )
-    totals = weighted_agg.groupby("in.state").agg(
+    totals = weighted_agg.groupby(group_col).agg(
         total_baseline_cost=("_weighted_baseline", "sum"),
         total_retrofit_cost=("_weighted_retrofit", "sum"),
-    ).reset_index().rename(columns={"in.state": "state"})
+    ).reset_index()
+    if geo_level == 'county':
+        totals = totals.rename(columns={COUNTY_COL: 'county'})
+    else:
+        totals = totals.rename(columns={'in.state': 'state'})
 
-    grouped = grouped.merge(totals, on="state", how="left")
+    merge_col = 'county' if geo_level == 'county' else 'state'
+    grouped = grouped.merge(totals, on=merge_col, how="left")
 
     grouped["weighted_ratio"] = np.where(
         grouped["total_baseline_cost"] > 0,
         grouped["total_retrofit_cost"] / grouped["total_baseline_cost"],
         np.nan,
     )
+
+    _metric_cols = ["median_bill_savings_ratio", "mean_bill_savings_ratio",
+                    "weighted_ratio", "total_baseline_cost", "total_retrofit_cost"]
+
+    if geo_level == 'county':
+        below = grouped['home_count'] < min_home_count
+        grouped.loc[below, _metric_cols] = np.nan
 
     for col in ("median_bill_savings_ratio", "mean_bill_savings_ratio", "weighted_ratio"):
         grouped[col] = grouped[col].round(ROUND_RATIO_DECIMALS)
@@ -255,8 +312,13 @@ def aggregate_bill_savings_by_state(
 
     if verbose:
         n_savings = (grouped["median_bill_savings_ratio"] < 1.0).sum()
+        level_label = 'counties' if geo_level == 'county' else 'states'
         national_median = grouped["median_bill_savings_ratio"].median()
-        print(f"States where median home saves money (ratio < 1): {n_savings} / {len(grouped)}")
-        print(f"National median of state medians: {national_median:.3f}")
+        print(f"{level_label.title()} where median home saves money (ratio < 1): {n_savings} / {len(grouped)}")
+        print(f"National median of {level_label} medians: {national_median:.3f}")
 
     return grouped.sort_values("median_bill_savings_ratio", ascending=True).reset_index(drop=True)
+
+
+# Backward-compatible alias
+aggregate_bill_savings_by_state = aggregate_bill_savings

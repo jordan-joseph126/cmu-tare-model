@@ -80,6 +80,10 @@ HP_BACKUP_ELEC_COL: str = "out.electricity.heating_hp_bkup.energy_consumption.kw
 HP_FANS_PUMPS_COL: str = "out.electricity.heating_fans_pumps.energy_consumption.kwh"
 """EUSS column for fan and pump electricity. Always included in COP denominator."""
 
+ELEC_TOTAL_COL: str = "out.electricity.total.energy_consumption.kwh"
+"""EUSS column for total residential electricity (kWh). Includes all end uses.
+Use this for demand change calculations — do NOT use the heating-only column."""
+
 CLIMATE_ZONE_COL: str = "in.ashrae_iecc_climate_zone_2004"
 """EUSS column for ASHRAE/IECC 2004 climate zone."""
 
