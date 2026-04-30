@@ -158,7 +158,8 @@ def aggregate_demand(
     group_col = 'in.county' if geo_level == 'county' else 'in.state'
 
     grouped = df_demand.groupby(group_col).agg(
-        home_count=('weight', 'size'),
+        _sample_count=('weight', 'size'),
+        home_count=('weight', 'sum'),
         weighted_baseline_elec=('weighted_baseline_electric_kwh', 'sum'),
         weighted_retrofit_elec=('weighted_retrofit_electric_kwh', 'sum'),
         weighted_elec_change=('weighted_elec_demand_change_kwh', 'sum'),
@@ -190,7 +191,7 @@ def aggregate_demand(
     ]
 
     if geo_level == 'county':
-        below = grouped['home_count'] < min_home_count
+        below = grouped['_sample_count'] < min_home_count
         grouped.loc[below, _metric_cols] = np.nan
 
     # Demand accounting check (state level only, totals still hold)

@@ -60,6 +60,14 @@ SHAPEFILE_PATH: str = os.path.join(
     "nhgis0011_shapefile_tl2015_us_state_2015", "US_state_2015.shp"
 )
 
+COUNTY_SHAPEFILE_PATH: str = os.path.join(
+    PROJECT_ROOT, "cmu_tare_model", "data", "electricity_ng_price_ratio",
+    "tl_2025_us_county", "tl_2025_us_county.shp"
+)
+# Source: US Census Bureau TIGER/Line 2025 county boundaries.
+# Download: https://www.census.gov/cgi-bin/geo/shapefiles/index.php
+# Required columns: GEOID (5-digit FIPS), STATEFP (2-digit state FIPS).
+
 
 # ============================================================================
 # COLUMN NAME CONSTANTS
@@ -112,7 +120,7 @@ BASELINE_USECOLS: list[str] = [
     "in.hvac_heating_efficiency",
     CLIMATE_ZONE_COL, COUNTY_COL,
     DWELLING_UNIT_WEIGHT,
-] + HEATING_FUEL_COLS + [HEATING_LOAD_COL, HP_BACKUP_ELEC_COL, HP_FANS_PUMPS_COL]
+] + HEATING_FUEL_COLS + [HEATING_LOAD_COL, HP_BACKUP_ELEC_COL, HP_FANS_PUMPS_COL, ELEC_TOTAL_COL]
 
 UPGRADE_USECOLS: list[str] = BASELINE_USECOLS + ["applicability"]
 

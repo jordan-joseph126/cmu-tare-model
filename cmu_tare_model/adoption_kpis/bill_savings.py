@@ -217,8 +217,8 @@ def aggregate_bill_savings(
 ) -> pd.DataFrame:
     """Aggregate per-building bill savings ratios to state- or county-level summary.
 
-    Uses MEDIAN as the primary statistic — robust to outlier buildings
-    with extreme consumption patterns. Mean and weighted ratio are
+    Uses weighted MEDIAN as the primary statistic — robust to outlier buildings
+    with extreme consumption patterns. Mean and total_cost_ratio are
     included as cross-checks only.
 
     Args:
@@ -231,18 +231,20 @@ def aggregate_bill_savings(
             when ``df_euss`` is provided).
         geo_level: ``'state'`` (default) or ``'county'``. When ``'county'``,
             groups by ``in.county`` and includes ``in.state`` in the output.
-        min_home_count: Minimum homes per county for metric values.
+        min_home_count: Minimum sample buildings per county for metric values.
             Counties below this threshold have metric columns set to ``NaN``.
+            Threshold is applied to sample count (not weighted population)
+            to ensure statistical reliability of the estimate.
             Only applied when ``geo_level='county'``.
         verbose: If ``True``, print count of states/counties where median < 1
             and the national median ratio.
 
     Returns:
         DataFrame sorted by ``median_bill_savings_ratio`` (ascending) with
-        columns: ``state`` (or ``county`` + ``state``), ``home_count``,
-        ``median_bill_savings_ratio``, ``mean_bill_savings_ratio``,
-        ``total_baseline_cost``, ``total_retrofit_cost``,
-        ``weighted_ratio``.
+        columns: ``state`` (or ``county`` + ``state``), ``home_count``
+        (weighted population), ``median_bill_savings_ratio``,
+        ``mean_bill_savings_ratio``, ``total_baseline_cost``,
+        ``total_retrofit_cost``, ``total_cost_ratio``.
 
     Raises:
         ValueError: If ``geo_level`` is not ``'state'`` or ``'county'``.
@@ -259,11 +261,31 @@ def aggregate_bill_savings(
             "Pass df_euss to compute_bill_savings_ratio() to attach county info."
         )
 
+    # Sample count (for quality threshold) + weighted home_count (for display)
     grouped = df_ratio.groupby(group_col).agg(
-        home_count=("bill_savings_ratio", "size"),
-        median_bill_savings_ratio=("bill_savings_ratio", "median"),
+        _sample_count=("bill_savings_ratio", "size"),
+        home_count=("weight", "sum"),
         mean_bill_savings_ratio=("bill_savings_ratio", "mean"),
     ).reset_index()
+
+    # Weighted median: sorted cumulative weights, no external dependencies
+    def _wmedian(grp):
+        mask = grp['bill_savings_ratio'].notna()
+        vals = grp.loc[mask, 'bill_savings_ratio'].to_numpy(dtype=float)
+        wts = grp.loc[mask, 'weight'].to_numpy(dtype=float)
+        if len(vals) == 0:
+            return np.nan
+        order = np.argsort(vals)
+        cumwt = np.cumsum(wts[order])
+        return float(vals[order][np.searchsorted(cumwt, cumwt[-1] / 2.0)])
+
+    wmed = (
+        df_ratio.groupby(group_col)
+        .apply(_wmedian)
+        .rename('median_bill_savings_ratio')
+        .reset_index()
+    )
+    grouped = grouped.merge(wmed, on=group_col, how='left')
 
     if geo_level == 'county':
         state_lookup = df_ratio.groupby(COUNTY_COL)['in.state'].first()
@@ -272,7 +294,7 @@ def aggregate_bill_savings(
     else:
         grouped = grouped.rename(columns={'in.state': 'state'})
 
-    # Weighted totals for cross-check ratio — computed separately to use weight
+    # Weighted cost totals for total_cost_ratio cross-check
     weighted_agg = df_ratio.copy()
     weighted_agg["_weighted_baseline"] = (
         weighted_agg["baseline_lifetime_fuel_cost"] * weighted_agg["weight"]
@@ -292,20 +314,24 @@ def aggregate_bill_savings(
     merge_col = 'county' if geo_level == 'county' else 'state'
     grouped = grouped.merge(totals, on=merge_col, how="left")
 
-    grouped["weighted_ratio"] = np.where(
+    # total_cost_ratio = Σ(w×retrofit_cost) / Σ(w×baseline_cost)
+    # Aggregate cost ratio — NOT the weighted average of per-building ratios
+    grouped["total_cost_ratio"] = np.where(
         grouped["total_baseline_cost"] > 0,
         grouped["total_retrofit_cost"] / grouped["total_baseline_cost"],
         np.nan,
     )
 
     _metric_cols = ["median_bill_savings_ratio", "mean_bill_savings_ratio",
-                    "weighted_ratio", "total_baseline_cost", "total_retrofit_cost"]
+                    "total_cost_ratio", "total_baseline_cost", "total_retrofit_cost"]
 
     if geo_level == 'county':
-        below = grouped['home_count'] < min_home_count
+        below = grouped['_sample_count'] < min_home_count
         grouped.loc[below, _metric_cols] = np.nan
 
-    for col in ("median_bill_savings_ratio", "mean_bill_savings_ratio", "weighted_ratio"):
+    grouped = grouped.drop(columns=['_sample_count'])
+
+    for col in ("median_bill_savings_ratio", "mean_bill_savings_ratio", "total_cost_ratio"):
         grouped[col] = grouped[col].round(ROUND_RATIO_DECIMALS)
     for col in ("total_baseline_cost", "total_retrofit_cost"):
         grouped[col] = grouped[col].round(ROUND_COST_DECIMALS)

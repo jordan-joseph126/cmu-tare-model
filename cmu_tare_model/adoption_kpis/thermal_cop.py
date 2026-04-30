@@ -343,3 +343,36 @@ def compute_breakeven_cop(
         result[col] = (result["spark_gap"] * afue).round(2)
 
     return result.reset_index(drop=True)
+
+# ============================================================================
+# BREAK-EVEN CATEGORY ASSIGNMENT
+# ============================================================================
+
+def assign_breakeven_category(df: pd.DataFrame) -> pd.Series:
+    """Assign 4-category break-even favorability from boolean columns.
+
+    Categories (mutually exclusive, ordered from most to least favorable):
+        3 = 'HP beats 95% AFUE'             — HP beats 95% AFUE break-even
+        2 = 'HP beats 90% AFUE'             — HP beats 90% but not 95% AFUE break-even
+        1 = 'HP beats 80% AFUE'             — HP beats 80% but not 90% AFUE break-even
+        0 = 'HP does NOT beat 80% AFUE'     — HP does not beat 80% AFUE break-even
+
+    Args:
+        df: DataFrame with boolean columns
+            ``hp_beats_breakeven_80``, ``hp_beats_breakeven_90``,
+            ``hp_beats_breakeven_95``.
+
+    Returns:
+        Integer Series with category codes 0–3.
+    """
+    conditions = [
+        df['hp_beats_breakeven_95'],
+        df['hp_beats_breakeven_90'] & ~df['hp_beats_breakeven_95'],
+        df['hp_beats_breakeven_80'] & ~df['hp_beats_breakeven_90'],
+    ]
+    return pd.Series(
+        np.select(conditions, [3, 2, 1], default=0),
+        index=df.index,
+        name='be_category',
+        dtype=int,
+    )
