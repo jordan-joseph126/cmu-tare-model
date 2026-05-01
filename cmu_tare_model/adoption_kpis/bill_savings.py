@@ -24,6 +24,7 @@ import numpy as np
 import pandas as pd
 
 from cmu_tare_model.adoption_kpis.data_loading import COUNTY_COL
+from cmu_tare_model.constants import MIN_HOME_COUNT
 
 
 # ============================================================================
@@ -212,14 +213,14 @@ def compute_bill_savings_ratio(
 def aggregate_bill_savings(
     df_ratio: pd.DataFrame,
     geo_level: str = 'state',
-    min_home_count: int = 30,
+    min_home_count: int = MIN_HOME_COUNT,
     verbose: bool = False,
 ) -> pd.DataFrame:
     """Aggregate per-building bill savings ratios to state- or county-level summary.
 
     Uses weighted MEDIAN as the primary statistic — robust to outlier buildings
-    with extreme consumption patterns. Mean and total_cost_ratio are
-    included as cross-checks only.
+    with extreme consumption patterns. ``pct_bill_change`` is derived directly
+    from the median ratio: ``(median_bill_savings_ratio - 1) × 100``.
 
     Args:
         df_ratio: Per-building DataFrame from
@@ -243,8 +244,7 @@ def aggregate_bill_savings(
         DataFrame sorted by ``median_bill_savings_ratio`` (ascending) with
         columns: ``state`` (or ``county`` + ``state``), ``home_count``
         (weighted population), ``median_bill_savings_ratio``,
-        ``mean_bill_savings_ratio``, ``total_baseline_cost``,
-        ``total_retrofit_cost``, ``total_cost_ratio``.
+        ``mean_bill_savings_ratio``, ``pct_bill_change``.
 
     Raises:
         ValueError: If ``geo_level`` is not ``'state'`` or ``'county'``.
@@ -261,31 +261,25 @@ def aggregate_bill_savings(
             "Pass df_euss to compute_bill_savings_ratio() to attach county info."
         )
 
-    # Sample count (for quality threshold) + weighted home_count (for display)
+    # ---------------------------------------------------------------------------
+    # NOTE ON SAMPLING WEIGHTS
+    # ---------------------------------------------------------------------------
+    # ResStock assigns a uniform sampling weight (~242) to every building.
+    # Because the weight is constant, it cancels in any ratio, rate, or
+    # percentage computation.  Simple counts and sums are used for these
+    # metrics.  The weight IS applied when computing absolute population
+    # totals (e.g., home_count in millions) to scale from sample to national.
+    # ---------------------------------------------------------------------------
+
+    # Sample count (for quality threshold) + weighted home_count (for totals)
+    # Median and mean use simple groupby — with uniform weights, weighted and
+    # unweighted statistics are identical.
     grouped = df_ratio.groupby(group_col).agg(
         _sample_count=("bill_savings_ratio", "size"),
         home_count=("weight", "sum"),
+        median_bill_savings_ratio=("bill_savings_ratio", "median"),
         mean_bill_savings_ratio=("bill_savings_ratio", "mean"),
     ).reset_index()
-
-    # Weighted median: sorted cumulative weights, no external dependencies
-    def _wmedian(grp):
-        mask = grp['bill_savings_ratio'].notna()
-        vals = grp.loc[mask, 'bill_savings_ratio'].to_numpy(dtype=float)
-        wts = grp.loc[mask, 'weight'].to_numpy(dtype=float)
-        if len(vals) == 0:
-            return np.nan
-        order = np.argsort(vals)
-        cumwt = np.cumsum(wts[order])
-        return float(vals[order][np.searchsorted(cumwt, cumwt[-1] / 2.0)])
-
-    wmed = (
-        df_ratio.groupby(group_col)
-        .apply(_wmedian)
-        .rename('median_bill_savings_ratio')
-        .reset_index()
-    )
-    grouped = grouped.merge(wmed, on=group_col, how='left')
 
     if geo_level == 'county':
         state_lookup = df_ratio.groupby(COUNTY_COL)['in.state'].first()
@@ -294,36 +288,11 @@ def aggregate_bill_savings(
     else:
         grouped = grouped.rename(columns={'in.state': 'state'})
 
-    # Weighted cost totals for total_cost_ratio cross-check
-    weighted_agg = df_ratio.copy()
-    weighted_agg["_weighted_baseline"] = (
-        weighted_agg["baseline_lifetime_fuel_cost"] * weighted_agg["weight"]
-    )
-    weighted_agg["_weighted_retrofit"] = (
-        weighted_agg["retrofit_lifetime_fuel_cost"] * weighted_agg["weight"]
-    )
-    totals = weighted_agg.groupby(group_col).agg(
-        total_baseline_cost=("_weighted_baseline", "sum"),
-        total_retrofit_cost=("_weighted_retrofit", "sum"),
-    ).reset_index()
-    if geo_level == 'county':
-        totals = totals.rename(columns={COUNTY_COL: 'county'})
-    else:
-        totals = totals.rename(columns={'in.state': 'state'})
-
-    merge_col = 'county' if geo_level == 'county' else 'state'
-    grouped = grouped.merge(totals, on=merge_col, how="left")
-
-    # total_cost_ratio = Σ(w×retrofit_cost) / Σ(w×baseline_cost)
-    # Aggregate cost ratio — NOT the weighted average of per-building ratios
-    grouped["total_cost_ratio"] = np.where(
-        grouped["total_baseline_cost"] > 0,
-        grouped["total_retrofit_cost"] / grouped["total_baseline_cost"],
-        np.nan,
-    )
+    # pct_bill_change derived from the weighted median ratio (consistent with ratio map)
+    grouped["pct_bill_change"] = (grouped["median_bill_savings_ratio"] - 1) * 100
 
     _metric_cols = ["median_bill_savings_ratio", "mean_bill_savings_ratio",
-                    "total_cost_ratio", "total_baseline_cost", "total_retrofit_cost"]
+                    "pct_bill_change"]
 
     if geo_level == 'county':
         below = grouped['_sample_count'] < min_home_count
@@ -331,10 +300,9 @@ def aggregate_bill_savings(
 
     grouped = grouped.drop(columns=['_sample_count'])
 
-    for col in ("median_bill_savings_ratio", "mean_bill_savings_ratio", "total_cost_ratio"):
+    for col in ("median_bill_savings_ratio", "mean_bill_savings_ratio"):
         grouped[col] = grouped[col].round(ROUND_RATIO_DECIMALS)
-    for col in ("total_baseline_cost", "total_retrofit_cost"):
-        grouped[col] = grouped[col].round(ROUND_COST_DECIMALS)
+    grouped["pct_bill_change"] = grouped["pct_bill_change"].round(1)
 
     if verbose:
         n_savings = (grouped["median_bill_savings_ratio"] < 1.0).sum()

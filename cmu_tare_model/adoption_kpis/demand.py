@@ -18,6 +18,7 @@ from cmu_tare_model.adoption_kpis.data_loading import (
     ELEC_TOTAL_COL,
     COUNTY_COL,
 )
+from cmu_tare_model.constants import MIN_HOME_COUNT
 
 
 # ============================================================================
@@ -121,7 +122,7 @@ def compute_scenario_demand(
 def aggregate_demand(
     df_demand: pd.DataFrame,
     geo_level: str = 'state',
-    min_home_count: int = 30,
+    min_home_count: int = MIN_HOME_COUNT,
     verbose: bool = False,
 ) -> pd.DataFrame:
     """Aggregate per-building demand results to state- or county-level GWh totals.
@@ -155,6 +156,16 @@ def aggregate_demand(
     if geo_level not in ('state', 'county'):
         raise ValueError(f"geo_level must be 'state' or 'county', got {geo_level!r}")
 
+    # ---------------------------------------------------------------------------
+    # NOTE ON SAMPLING WEIGHTS
+    # ---------------------------------------------------------------------------
+    # ResStock assigns a uniform sampling weight (~242) to every building.
+    # Because the weight is constant, it cancels in any ratio, rate, or
+    # percentage computation.  Simple counts and sums are used for these
+    # metrics.  The weight IS applied when computing absolute population
+    # totals (e.g., home_count in millions) to scale from sample to national.
+    # ---------------------------------------------------------------------------
+
     group_col = 'in.county' if geo_level == 'county' else 'in.state'
 
     grouped = df_demand.groupby(group_col).agg(
@@ -178,9 +189,12 @@ def aggregate_demand(
     grouped['elec_change_gwh'] = grouped['weighted_elec_change'] / KWH_TO_GWH
     grouped['site_energy_change_gwh'] = grouped['weighted_site_change'] / KWH_TO_GWH
 
+    # ResStock uses uniform sampling weight (~242) for all buildings.
+    # Percentage changes derive from already-computed GWh totals — with
+    # uniform weights, Σ(w×change)/Σ(w×baseline) == change_gwh/baseline_gwh.
     grouped['pct_elec_demand_change'] = np.where(
-        grouped['weighted_baseline_elec'] != 0,
-        grouped['weighted_elec_change'] / grouped['weighted_baseline_elec'] * 100,
+        grouped['baseline_elec_gwh'] != 0,
+        grouped['elec_change_gwh'] / grouped['baseline_elec_gwh'] * 100,
         np.nan,
     )
     grouped['pct_site_energy_change'] = grouped['pct_elec_demand_change']

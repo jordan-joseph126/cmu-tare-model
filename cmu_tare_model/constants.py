@@ -299,6 +299,13 @@ COUNTY_COL: str = "in.county"     # GISJOIN format
 STATE_COL: str = "in.state"       # 2-char state code
 WEIGHT_COL: str = "weight"        # BSQ reads per-row from metadata
 
+# Minimum sample count per county/state for spatial aggregation.
+# Set to 1 — all counties are included regardless of sample size.
+# Sparsely populated counties naturally have fewer samples; excluding
+# them introduces geographic bias.  Consistent with approaches in
+# similar ResStock-based studies.
+MIN_HOME_COUNT: int = 1
+
 # Reference values for Allegheny County validation
 TEST_FIPS: str = "42003"
 TEST_GISJOIN: str = "G4200030"

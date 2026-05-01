@@ -8,6 +8,23 @@ from typing import List, Optional, Tuple, Dict, Any, Union
 # FUNCTIONS: VISUALIZATION USING DATAFRAMES AND SUBPLOTS
 # =========================================================================
 
+# Build adoption column names with cost_scenario included
+def build_adoption_scenario_names(mp, category, scc, rcm, crf, cost_scenario, discount_rate, hvac_replacement_scenario='heating'):
+    """Build preIRA and iraRef adoption column names for a given MP.
+    
+    When category == 'heating', the hvac_replacement_scenario value
+    ('heating' or 'heating_and_cooling') is used in the column name.
+    """
+    if category == 'heating':
+        output_category = hvac_replacement_scenario
+    else:
+        output_category = category
+    return [
+        f'preIRA_mp{mp}_{output_category}_adoption_{scc}_{rcm}_{crf}_{cost_scenario}_{discount_rate}',
+        f'iraRef_mp{mp}_{output_category}_adoption_{scc}_{rcm}_{crf}_{cost_scenario}_{discount_rate}'
+    ]
+
+
 def create_multiIndex_adoption_df(
         df: pd.DataFrame,
         menu_mp: int,

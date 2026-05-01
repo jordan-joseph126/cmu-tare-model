@@ -34,7 +34,7 @@ plt.rcParams.update({
 # COLOUR & MARKER CONFIGURATION
 # ===========================================================================
 FUEL_COLORS: Dict[str, str] = {
-    'National': '#7f7f7f',      # gray
+    'National': '#000000',      # black
     'Electricity': '#2ca02c',   # green
     'Natural Gas': '#1f77b4',   # blue
     'Fuel Oil': '#d62728',      # red
@@ -255,6 +255,8 @@ def plot_adoption_panel(
     separator_alpha: float = 0.5,
     annotation_fontsize: int = 7,
     annotation_y_offset_pts: float = 8.0,
+    xlim_margin: float = 12.0,
+    show_homes_annotation: bool = True,
     fuel_counts_millions: Optional[Dict[str, float]] = None,
 ) -> plt.Axes:
     """Draw a horizontal dot plot showing IRA-Reference adoption with deltas.
@@ -278,6 +280,12 @@ def plot_adoption_panel(
         Font size for the ``X (+Y)`` labels above markers. Default 7.
     annotation_y_offset_pts : float
         Vertical offset in points for annotations. Default 8.
+    xlim_margin : float
+        Extra horizontal margin (in data units) added to each side of the
+        plot so split-cluster labels at x=0% and x=100% have room to
+        render without clipping. Default 12 works for ``annotation_fontsize=7``.
+        Bump to 14 (or higher) when using larger annotation fonts; pair
+        with a wider ``panel_width`` if labels still touch (see README).
 
     Returns
     -------
@@ -299,12 +307,74 @@ def plot_adoption_panel(
         fuel = subset['fuel_type'].iloc[0]
         color = FUEL_COLORS.get(fuel, '#333333')
 
-        all_x: List[float] = []
-
+        row_data = []
         for _, row in subset.iterrows():
-            tier = row['tier_label']
+            x_val = float(row['iraref_pct'])
+            row_data.append({
+                'tier': row['tier_label'],
+                'x': x_val,
+                'delta': float(row['delta_pct']),
+                'homes_m': float(row['weighted_homes_millions']),
+            })
+
+        row_data.sort(key=lambda r: r['x'])
+        for item in row_data:
+            if item['x'] < 10:
+                item['shift'] = 'edge_right'
+            elif item['x'] > 90:
+                item['shift'] = 'edge_left'
+            else:
+                item['shift'] = 'center'
+
+        # Markers within this many percentage points of each other are
+        # treated as a visual cluster and given split labels. Bumped from
+        # 10 to 15 so near-equal pairs (e.g. 4% & 5%, 0% & 2%) are caught.
+        close_threshold = 15.0
+        clusters: List[List[dict]] = []
+        current_cluster: List[dict] = []
+        for item in row_data:
+            if not current_cluster:
+                current_cluster.append(item)
+                continue
+            if item['x'] - current_cluster[-1]['x'] < close_threshold:
+                current_cluster.append(item)
+            else:
+                clusters.append(current_cluster)
+                current_cluster = [item]
+        if current_cluster:
+            clusters.append(current_cluster)
+
+        for cluster in clusters:
+            if len(cluster) == 2:
+                # Any 2-marker cluster — push leftmost label LEFT, rightmost
+                # label RIGHT. Position-independent: works for edge clusters
+                # ([0%, 2%], [100%, 100%]), middle clusters ([33%, 67%]),
+                # AND clusters that straddle the x=10 or x=90 boundary
+                # (e.g., [7%, 17%] in the MP4 National row). The previous
+                # edge_low/edge_high/middle classification produced a
+                # fall-through bug for boundary-spanning clusters.
+                cluster[0]['shift']  = 'cluster_left'
+                cluster[-1]['shift'] = 'cluster_right'
+            elif len(cluster) > 2:
+                # 3+ markers: handle middle-only clusters; mixed/edge
+                # 3-marker clusters fall through to default positioning
+                # (rare; would need vertical-stagger to handle properly).
+                if all(10 <= item['x'] <= 90 for item in cluster):
+                    cluster[0]['shift']  = 'cluster_left'
+                    cluster[-1]['shift'] = 'cluster_right'
+                    for mid in cluster[1:-1]:
+                        mid['shift'] = 'center'
+                else:
+                    for item in cluster:
+                        item['shift'] = None
+
+        all_x: List[float] = []
+        for item in row_data:
+            tier = item['tier']
             marker = TIER_MARKERS.get(tier, 'o')
-            x_val = row['iraref_pct']
+            x_val = item['x']
+            delta = item['delta']
+            homes_m = item['homes_m']
 
             # All markers are filled (IRA-Reference only)
             ax.scatter(
@@ -316,44 +386,65 @@ def plot_adoption_panel(
                 linewidths=marker_linewidth,
                 zorder=3,
             )
-            all_x.append(float(x_val))
+            all_x.append(x_val)
+
+            # Choose horizontal alignment and x-offset.
+            if item.get('shift') == 'cluster_left':
+                # Leftmost marker of any 2-marker cluster — label goes LEFT.
+                ha = 'right'
+                x_text = -14
+            elif item.get('shift') == 'cluster_right':
+                # Rightmost marker of any 2-marker cluster — label goes RIGHT.
+                ha = 'left'
+                x_text = 14
+            elif x_val < 10:
+                ha = 'left'
+                x_text = 16
+            elif x_val > 90:
+                ha = 'right'
+                x_text = -16
+            else:
+                ha = 'center'
+                x_text = 0
 
             # Annotation above: "X% (+Y%)"
-            ira_val = row['iraref_pct']
-            delta = row['delta_pct']
-            homes_m = row['weighted_homes_millions']
+            ira_val = x_val
             sign = '+' if delta >= 0 else ''
             ann_text = f'{ira_val:.0f}% ({sign}{delta:.0f}%)'
-
+            top_offset = annotation_y_offset_pts
             ax.annotate(
                 ann_text,
                 xy=(x_val, y),
-                xytext=(0, annotation_y_offset_pts),
+                xytext=(x_text, top_offset),
                 textcoords='offset points',
                 fontsize=annotation_fontsize,
-                ha='center',
+                ha=ha,
                 va='bottom',
                 color=color,
                 clip_on=True,
             )
 
-            # Annotation below: "X.XM (+Y.YM)" absolute homes count
-            ira_homes = ira_val / 100.0 * homes_m
-            delta_homes = delta / 100.0 * homes_m
-            sign_h = '+' if delta_homes >= 0 else ''
-            ann_homes = f'{ira_homes:.1f}M ({sign_h}{delta_homes:.1f}M)'
-
-            ax.annotate(
-                ann_homes,
-                xy=(x_val, y),
-                xytext=(0, -annotation_y_offset_pts),
-                textcoords='offset points',
-                fontsize=annotation_fontsize,
-                ha='center',
-                va='top',
-                color=color,
-                clip_on=True,
-            )
+            # Annotation below: "X.XM (+Y.YM)" absolute homes count.
+            # Optional — disable via ``show_homes_annotation=False`` for
+            # tight manuscript figures. The homes count is also in the
+            # y-axis label, so this is informationally redundant.
+            if show_homes_annotation:
+                ira_homes = ira_val / 100.0 * homes_m
+                delta_homes = delta / 100.0 * homes_m
+                sign_h = '+' if delta_homes >= 0 else ''
+                ann_homes = f'{ira_homes:.1f}M ({sign_h}{delta_homes:.1f}M)'
+                bottom_offset = -annotation_y_offset_pts
+                ax.annotate(
+                    ann_homes,
+                    xy=(x_val, y),
+                    xytext=(x_text, bottom_offset),
+                    textcoords='offset points',
+                    fontsize=annotation_fontsize,
+                    ha=ha,
+                    va='top',
+                    color=color,
+                    clip_on=True,
+                )
 
         # Connecting line
         if len(all_x) >= 2:
@@ -411,7 +502,10 @@ def plot_adoption_panel(
     ax.set_ylim(-0.5, len(y_order) - 0.5)
 
     # --- X-axis: ticks every 20% ---
-    ax.set_xlim(0, 100)
+    # Margin is parameterized via ``xlim_margin`` so callers can scale it
+    # with annotation_fontsize. Default 12 works for fontsize=7; use ~14
+    # for fontsize=12. Ticks (0, 20, ..., 100) are unaffected.
+    ax.set_xlim(-xlim_margin, 100 + xlim_margin)
     ax.set_xticks(range(0, 101, 20))
     ax.set_xlabel('Adoption Potential (%)', fontsize=ytick_fontsize)
 
@@ -433,3 +527,93 @@ def plot_adoption_panel(
         ax.set_title(title, fontsize=title_fontsize, fontweight='bold')
 
     return ax
+
+
+# ===================================================================
+# plot_adoption_dotplot  (N×1 multi-panel figure)
+# ===================================================================
+
+def plot_adoption_dotplot(
+    panels: List[tuple],
+    fuel_counts_millions: Optional[Dict[str, float]] = None,
+    grouping_order: Optional[List[str]] = None,
+    panel_height: float = 7.0,
+    panel_width: float = 12.0,
+    save_figure: bool = False,
+    output_path: Optional[str] = None,
+) -> "plt.Figure":
+    """Create an N×1 stacked dot-plot figure, one row per panel.
+
+    Each panel renders one call to :func:`plot_adoption_panel`.  All rows
+    share the x-axis so tick marks align.  A single legend is placed below
+    the figure.
+
+    Parameters
+    ----------
+    panels : list of (title, plot_df) tuples
+        Each element is a *(title_str, plot_df)* pair where *plot_df* is
+        the output of :func:`prepare_plot_data`.
+    fuel_counts_millions : dict, optional
+        ``{fuel_type: weighted_homes_millions}`` used to annotate y-axis
+        labels.  Applied identically to every panel.  Include
+        ``'National'`` key for the national total.
+    grouping_order : list of str, optional
+        Y-axis row order (top → bottom).  Defaults to :data:`GROUPING_ORDER`.
+    panel_height : float
+        Height (inches) per row panel.  Default 7.
+    panel_width : float
+        Total figure width (inches).  Default 12.
+    save_figure : bool
+        If ``True`` and *output_path* is set, save the figure to disk.
+    output_path : str, optional
+        File path for the saved figure.
+
+    Returns
+    -------
+    plt.Figure
+    """
+    n_panels = len(panels)
+    if n_panels == 0:
+        raise ValueError("panels must contain at least one (title, plot_df) tuple")
+
+    fig, axes = plt.subplots(
+        n_panels, 1,
+        figsize=(panel_width, panel_height * n_panels),
+        sharex=True,
+    )
+
+    # Ensure axes is always iterable
+    if n_panels == 1:
+        axes = [axes]
+
+    for ax, (title, plot_df) in zip(axes, panels):
+        plot_adoption_panel(
+            plot_df, ax,
+            grouping_order=grouping_order,
+            title=title,
+            fuel_counts_millions=fuel_counts_millions,
+        )
+
+    # Remove x-axis label from all but the bottom panel (sharex handles ticks)
+    for ax in axes[:-1]:
+        ax.set_xlabel('')
+
+    # Shared legend below all panels
+    legend_handles = _build_legend_handles()
+    fig.legend(
+        legend_handles,
+        [h.get_label() for h in legend_handles],
+        loc='lower center',
+        bbox_to_anchor=(0.5, 0.0),
+        ncol=len(legend_handles),
+        fontsize=9,
+        frameon=False,
+    )
+
+    fig.tight_layout(rect=[0.0, 0.04, 1.0, 1.0])
+
+    if save_figure and output_path:
+        fig.savefig(output_path, bbox_inches='tight', dpi=300)
+        print(f"[OK] Dotplot saved: {output_path}")
+
+    return fig
