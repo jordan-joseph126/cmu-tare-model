@@ -481,20 +481,30 @@ _POLICY = 'AEO2023 Reference Case'
 _DISCOUNT_COL = 'private_discount_rate_fixed_base'
 _COST = 'v4MID'
 
+# Generate economic-adopter columns for both HVAC replacement scenarios.
+# 'heating'             = Case A: replace only the furnace/boiler with a heat pump.
+# 'heating_and_cooling' = Case B: replace both the furnace AND the AC with a heat pump.
+# Columns are written directly into the canonical 'inmap' frame so that all
+# downstream cells share a single source of truth — no separate inmap_econ key.
 for mp in selected_mps:
-    df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
-    df_econ = economic_adoption_decision(
-        df_tare,
-        menu_mp=mp,
-        policy_scenario=_POLICY,
-        discount_rate_col_name=_DISCOUNT_COL,
-        cost_scenario=_COST,
-        hvac_replacement_scenario='heating',
-        verbose=False,
-    )
-    # Store alongside, do NOT overwrite the canonical 'inmap' frame.
-    DATAFRAMES_BY_MP[mp]['fixed_base']['inmap_econ'] = df_econ
-    print(f"[OK] Added econ adopter columns for MP{mp} → 'inmap_econ'")
+    df_inmap = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
+    for hvac_scenario in ['heating', 'heating_and_cooling']:
+        df_econ = economic_adoption_decision(
+            df_inmap,
+            menu_mp=mp,
+            policy_scenario=_POLICY,
+            discount_rate_col_name=_DISCOUNT_COL,
+            cost_scenario=_COST,
+            hvac_replacement_scenario=hvac_scenario,
+            verbose=False,
+        )
+        # Copy only the newly created econ columns back into the canonical frame.
+        new_cols = [c for c in df_econ.columns if c not in df_inmap.columns]
+        for col in new_cols:
+            DATAFRAMES_BY_MP[mp]['fixed_base']['inmap'][col] = df_econ[col]
+        print(f"[OK] MP{mp} | {hvac_scenario}: {new_cols}")
+
+print("\n[DONE] Economic adopter columns added to inmap for all selected MPs")
 
 # %%
 # # ============================================================
@@ -547,7 +557,10 @@ for mp in selected_mps:
     print(f"\n{'='*60}")
     print(f"Economic Adoption Rate — MP{mp} (econ_adopter, IRA-Ref)")
     print(f"{'='*60}")
-    df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap_econ']
+    # Count homes where the heat pump pays for itself (econ_adopter == 1.0).
+    # adopter_tiers=[True] selects 1.0 (adopter) vs 0.0 (non-adopter).
+    # NaN rows (excluded homes) are automatically ignored by compute_adoption_rate.
+    df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
     prefix = define_scenario_params(mp, _POLICY)[0]
     adoption_col = f'{prefix}heating_econ_adopter_moreWTP_{_ADOPTION_COST_SCENARIO}_fixed_base'
     print(f'  Adoption column: {adoption_col}')
@@ -582,8 +595,8 @@ if gdf_counties_raw is not None:
     plot_combined_choropleth(
         gdf_counties_raw, econ_adoption_rate_results,
         column='adoption_rate_pct',
-        title_template='Adoption Potential — MP{mp}\n(Economic Adopters, IRA-Ref)',
-        cbar_label='Share of Potential Adopters (%)',
+        title_template='Economic Adoption Potential — MP{mp}\n(Incremental Cost Recovered, IRA-Ref)',
+        cbar_label='Economic Adopters — Incremental Cost Recovered (%)',
         cmap=_adopt_cmap, norm=_adopt_norm,
         selected_mps=selected_mps,
         geo_level='county',
@@ -632,6 +645,16 @@ print(f"  Measure packages: {HEATING_MEASURE_PACKAGES}")
 
 
 # %%
+# =============================================================================
+# ARCHIVED — damage-inclusive multi-tier dot plot, superseded
+# =============================================================================
+# This cell uses the legacy multi-tier adoption model (Tier 1 + T2 + T3) which
+# combines private bill savings with monetized climate and health damages to
+# decide who adopts. The decision rule has been replaced by the single
+# economic test (moreWTP >= 0 from bill savings alone).
+# The re-pointed economic dot plot will be added in Phase 3.
+# Do NOT delete — kept for methodological reference.
+# =============================================================================
 CASE_LABELS = {
     'heating': 'Heating Replacement Only',
     'heating_and_cooling': 'Heating & Cooling Replacement',
@@ -766,6 +789,186 @@ else:
     plt.show()
 
 
+# %% [markdown]
+# ---
+# ## Economic Adopter Dot Plot (Phase 3)
+# ---
+#
+# Shows what fraction of homes in each fuel/income group has `moreWTP >= 0`
+# — the heat pump pays for its incremental cost from **bill savings alone**.
+#
+# - Open circle = Pre-IRA (no rebates)
+# - Filled circle = IRA-Reference
+# - Annotation = IRA-Ref % (Pre→IRA delta in percentage points)
+#
+# This is the re-pointed version of the archived multi-tier dotplot above.
+# Only the private economic test is used — no climate/health damages.
+
+# %%
+import matplotlib.ticker as mtick
+import matplotlib.lines as mlines
+
+_P3_COST          = 'v4MID'
+_P3_DISCOUNT      = 'fixed_base'
+_P3_DISCOUNT_COL  = f'private_discount_rate_{_P3_DISCOUNT}'
+_P3_PREIRA_POLICY = 'No Inflation Reduction Act'
+_P3_IRAREF_POLICY = 'AEO2023 Reference Case'
+_P3_FUEL_COL      = 'base_heating_fuel'
+_P3_INCOME_COL    = 'lmi_or_mui'
+_P3_FUELS         = ['Electricity', 'Natural Gas', 'Fuel Oil', 'Propane']
+
+# Fuel colours — kept local to this cell to avoid namespace pollution.
+_P3_FUEL_COLORS = {
+    'National':    '#000000',
+    'Electricity': '#2ca02c',
+    'Natural Gas': '#1f77b4',
+    'Fuel Oil':    '#d62728',
+    'Propane':     '#ff7f0e',
+}
+
+
+def _p3_econ_row(grouping, fuel, df_g, col_ira, col_pre, scaling_factor=242.0):
+    """Return one summary row for a sub-group (already restricted to valid homes)."""
+    n = len(df_g)
+    if n == 0:
+        return None
+    return {
+        'grouping': grouping,
+        'fuel': fuel,
+        'iraref_pct': float(df_g[col_ira].mean() * 100),
+        'preira_pct': float(df_g[col_pre].mean() * 100),
+        'n': n,
+        'homes_m': n * scaling_factor / 1_000_000,
+    }
+
+
+for mp in HEATING_MEASURE_PACKAGES:
+    df_inmap = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
+    prefix_pre = define_scenario_params(mp, _P3_PREIRA_POLICY)[0]
+    prefix_ira = define_scenario_params(mp, _P3_IRAREF_POLICY)[0]
+    col_pre = f'{prefix_pre}heating_econ_adopter_moreWTP_{_P3_COST}_{_P3_DISCOUNT}'
+    col_ira = f'{prefix_ira}heating_econ_adopter_moreWTP_{_P3_COST}_{_P3_DISCOUNT}'
+
+    # Generate Pre-IRA econ column on demand (idempotent).
+    if col_pre not in df_inmap.columns:
+        df_econ_pre = economic_adoption_decision(
+            df_inmap,
+            menu_mp=mp,
+            policy_scenario=_P3_PREIRA_POLICY,
+            discount_rate_col_name=_P3_DISCOUNT_COL,
+            cost_scenario=_P3_COST,
+            hvac_replacement_scenario='heating',
+            verbose=False,
+        )
+        new_cols = [c for c in df_econ_pre.columns if c not in df_inmap.columns]
+        for col in new_cols:
+            DATAFRAMES_BY_MP[mp]['fixed_base']['inmap'][col] = df_econ_pre[col]
+        print(f"[OK] MP{mp} | preIRA heating: {new_cols}")
+    else:
+        print(f"[OK] MP{mp} | preIRA heating: already present")
+
+    # Restrict to homes valid in both scenarios.
+    df_v = df_inmap[df_inmap[col_ira].notna() & df_inmap[col_pre].notna()].copy()
+
+    # Build one row per GROUPING_ORDER entry.
+    rows = []
+    r = _p3_econ_row('National \u2014 Overall', 'National', df_v, col_ira, col_pre)
+    if r:
+        rows.append(r)
+    for fuel in _P3_FUELS:
+        df_f = df_v[df_v[_P3_FUEL_COL] == fuel]
+        r = _p3_econ_row(f'{fuel} \u2014 Overall', fuel, df_f, col_ira, col_pre)
+        if r:
+            rows.append(r)
+        df_lmi = df_f[df_f[_P3_INCOME_COL] == 'LMI']
+        r = _p3_econ_row(f'{fuel} \u2014 LMI', fuel, df_lmi, col_ira, col_pre)
+        if r:
+            rows.append(r)
+
+    plot_df = pd.DataFrame(rows)
+    _order_map = {g: i for i, g in enumerate(GROUPING_ORDER)}
+    plot_df['_y'] = plot_df['grouping'].map(_order_map)
+    plot_df = (plot_df
+               .dropna(subset=['_y'])
+               .sort_values('_y')
+               .reset_index(drop=True))
+
+    # --- Print summary ---
+    print(f"\n--- MP{mp} economic adoption by group ---")
+    for _, row in plot_df.iterrows():
+        delta = row['iraref_pct'] - row['preira_pct']
+        sign = '+' if delta >= 0 else ''
+        print(f"  {row['grouping']:35s}  preIRA={row['preira_pct']:5.1f}%  "
+              f"iraRef={row['iraref_pct']:5.1f}%  ({sign}{delta:.1f}pp)  "
+              f"n={row['n']:,}")
+
+    # --- Plot ---
+    mp_label = HEATING_MP_SUBTITLES.get(mp, f'MP{mp}')
+    fig, ax = plt.subplots(figsize=(14, max(5, len(plot_df) * 0.85)))
+
+    for idx, row in plot_df.iterrows():
+        color = _P3_FUEL_COLORS.get(row['fuel'], '#333333')
+        pre   = row['preira_pct']
+        ira   = row['iraref_pct']
+        delta = ira - pre
+        sign  = '+' if delta >= 0 else ''
+
+        # Connector line
+        ax.plot([pre, ira], [idx, idx], color=color, alpha=0.4, lw=1.5, zorder=2)
+        # Pre-IRA: open circle
+        ax.scatter(pre, idx, s=80, facecolors='white', edgecolors=color,
+                   linewidths=1.5, zorder=4)
+        # IRA-Ref: filled circle
+        ax.scatter(ira, idx, s=80, facecolors=color, edgecolors=color,
+                   linewidths=1.5, zorder=4)
+        # Annotation above IRA-Ref dot
+        ax.annotate(
+            f'{ira:.0f}% ({sign}{delta:.0f}pp)',
+            xy=(ira, idx), xytext=(0, 9), textcoords='offset points',
+            fontsize=11, ha='center', va='bottom', color=color,
+        )
+
+    ylabels = [f"{r['grouping']}  ({r['homes_m']:.1f}M homes)"
+               for _, r in plot_df.iterrows()]
+    ax.set_yticks(range(len(plot_df)))
+    ax.set_yticklabels(ylabels, fontsize=12)
+    ax.set_xlabel('Economic Adopters — Incremental Cost Recovered (%)', fontsize=13)
+    ax.set_xlim(-10, 110)
+    ax.xaxis.set_major_formatter(mtick.PercentFormatter())
+    ax.axvline(0,  color='#cccccc', lw=0.8)
+    ax.axvline(50, color='#cccccc', lw=0.8, ls='--')
+    ax.grid(axis='x', alpha=0.25)
+    ax.set_ylim(-0.5, len(plot_df) - 0.5)
+    ax.set_title(
+        f'Economic Adoption Potential \u2014 {mp_label}\n'
+        f'(moreWTP \u2265 0, Heating Only, {_P3_COST}, {_P3_DISCOUNT})\n'
+        f'Open \u25cb = Pre-IRA  \u2022  Filled \u25cf = IRA-Ref  '
+        f'\u2022  annotation = IRA-Ref value (Pre\u2192IRA delta)',
+        fontsize=14,
+    )
+    pre_handle = mlines.Line2D([], [], marker='o', color='none',
+                               markerfacecolor='white', markeredgecolor='#555',
+                               markersize=9, label='Pre-IRA (no rebates)')
+    ira_handle = mlines.Line2D([], [], marker='o', color='none',
+                               markerfacecolor='#555', markeredgecolor='#555',
+                               markersize=9, label='IRA-Reference')
+    ax.legend(handles=[pre_handle, ira_handle], loc='lower right', fontsize=12,
+              frameon=True)
+    fig.tight_layout()
+
+    out_dir = os.path.join('.', 'figures')
+    os.makedirs(out_dir, exist_ok=True)
+    for ext in ('png', 'pdf'):
+        fig.savefig(
+            os.path.join(out_dir,
+                         f'figure_econ_adoption_dotplot_mp{mp}_{location_id}.{ext}'),
+            dpi=600, bbox_inches='tight',
+        )
+    print(f"[OK] MP{mp} econ dotplot saved \u2192 "
+          f"figures/figure_econ_adoption_dotplot_mp{mp}_{location_id}.{{png,pdf}}")
+    plt.show()
+
+
 # %%
 mp = selected_mps[0]
 df = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
@@ -838,6 +1041,13 @@ for mp in selected_mps:
 print("\n[OK] WTP columns verified for all selected MPs")
 
 # %%
+# =============================================================================
+# ARCHIVED — damage-inclusive NPV histogram, superseded
+# =============================================================================
+# Shows distribution of private NPV (moreWTP) from the old multi-tier framework.
+# The current analysis uses the economic adopter rule (moreWTP >= 0) instead.
+# Kept for methodological reference. Do NOT delete.
+# =============================================================================
 # =============================================================================
 # TASK 2.1 — STEP 2: Private NPV break-even histogram (n_mps × 2 grid)
 # =============================================================================
