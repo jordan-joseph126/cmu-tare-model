@@ -202,9 +202,9 @@ def plot_combined_choropleth(
 
     fig = plt.figure(figsize=figsize, facecolor='white')
 
-    # Reserve bottom for the horizontal colorbar; maps occupy the top 81%
-    map_bottom = 0.15
-    map_height = 0.81
+    # Reserve bottom for the horizontal colorbar; maps occupy the top 84%
+    map_bottom = 0.12
+    map_height = 0.84
 
     panel_w = 0.96 / n
     gap = 0.01  # tight gap — visual spacing is dominated by map aspect ratio padding
@@ -265,18 +265,23 @@ def plot_combined_choropleth(
             )
 
         ax.set_axis_off()
-        ax.set_title(
-            title_template.format(mp=mp), fontsize=20, fontweight='bold', pad=10
-        )
+
+        if isinstance(title_template, dict):
+            title = title_template.get(mp, f"MP{mp}")
+        else:
+            title = title_template.format(mp=mp)
+
+        ax.set_title(title, fontsize=20, fontweight='bold', pad=10)
 
     # Horizontal colorbar — compact, centered at the bottom
-    cax = fig.add_axes([0.25, 0.04, 0.50, 0.035])
+    cax = fig.add_axes([0.25, 0.06, 0.50, 0.035])
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
     cbar = fig.colorbar(sm, cax=cax, orientation='horizontal', label=cbar_label)
-    cbar.ax.xaxis.label.set_fontsize(18)
+    cbar.ax.xaxis.label.set_fontsize(20)
+    cbar.ax.xaxis.label.set_fontweight('bold')
     cbar.ax.xaxis.set_label_position('bottom')
-    cax.tick_params(labelsize=16, rotation=0)
+    cax.tick_params(labelsize=20, rotation=0)
     if cbar_ticks is not None:
         cbar.set_ticks(cbar_ticks)
 
@@ -284,6 +289,7 @@ def plot_combined_choropleth(
         fig.savefig(output_path, dpi=dpi, bbox_inches='tight', facecolor='white')
         print(f"  Saved: {output_path}")
     plt.show()
+
 
 
 # ============================================================================
