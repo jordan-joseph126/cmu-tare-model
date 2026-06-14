@@ -14,12 +14,13 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
 from config import PROJECT_ROOT
-from cmu_tare_model.constants import VALID_MENU_MPS
+from cmu_tare_model.constants import VALID_MENU_MPS, PRINT_DEBUG
 from cmu_tare_model.utils.load_exported_results_to_df import load_measure_package_data
 
 from cmu_tare_model.adoption_kpis import (
     load_euss_baseline, load_euss_upgrade, mp_to_upgrade,
     compute_scenario_demand, aggregate_demand,
+    compute_bill_savings_ratio, aggregate_bill_savings,
     compute_adoption_rate,
 )
 from cmu_tare_model.grid_impact.peak_load_functions import find_adoption_column
@@ -51,6 +52,79 @@ pd.set_option('display.max_rows', 60)
 SAVE_FIGURES = False  # Set to True to save figure files to disk
 
 print("[OK] Imports loaded")
+
+
+# %%
+def pct_change(new: pd.Series, old: pd.Series) -> pd.Series:
+    """Return per-element percent change: (new - old) / old * 100.
+
+    NaN is propagated wherever old <= 0 (invalid baseline) or either
+    input is NaN, so homes with zero or negative baseline cost are
+    excluded rather than producing infinite or misleading values.
+
+    Args:
+        new: Post-retrofit values (e.g. retrofit lifetime fuel cost).
+        old: Pre-retrofit baseline values (e.g. baseline lifetime fuel cost).
+
+    Returns:
+        Series of percent changes. NaN where old <= 0 or either input is NaN.
+    """
+    old_safe = old.where(old > 0, other=np.nan)
+    return (new - old_safe) / old_safe * 100
+
+
+def make_symmetric_norm(values: pd.Series, center: float = 0.0,
+                        low_q: float = 0.02, high_q: float = 0.98) -> "Normalize":
+    """Return a symmetric matplotlib Normalize centered at `center`.
+
+    Clips to [low_q, high_q] percentiles before computing the symmetric
+    deviation, so a single extreme outlier cannot compress the colormap.
+
+    Args:
+        values: Series of values (NaNs dropped internally).
+        center: Value placed at the colormap midpoint.
+        low_q: Lower clip percentile (default 0.02).
+        high_q: Upper clip percentile (default 0.98).
+
+    Returns:
+        Normalize with vmin = center - dev, vmax = center + dev.
+    """
+    from matplotlib.colors import Normalize
+    v = values.dropna()
+    q_low = v.quantile(low_q)
+    q_high = v.quantile(high_q)
+    dev = max(abs(q_low - center), abs(q_high - center))
+    return Normalize(vmin=center - dev, vmax=center + dev)
+
+
+def print_column_summary(
+    results: dict,
+    column: str,
+    label: str,
+    selected_mps: list,
+    mp_subtitles: dict,
+    positive_direction: str = "increase",
+) -> None:
+    """Print per-MP min/median/mean/max summary for a county-level result column.
+
+    Args:
+        results: Dict mapping MP int -> county-level result DataFrame.
+        column: Column name to summarise.
+        label: Metric label for the section header.
+        selected_mps: MP keys to iterate.
+        mp_subtitles: Dict mapping MP int -> equipment subtitle string.
+        positive_direction: Word used in the "% of counties X" phrase.
+    """
+    print(f"\n--- Summary: {column} ---")
+    for mp in selected_mps:
+        _v = results[mp][column].dropna()
+        _pct = (_v > 0).mean() * 100 if positive_direction == "increase" else (_v < 0).mean() * 100
+        _dir = positive_direction
+        print(f"  MP{mp}: n={len(_v):,} counties | "
+              f"min={_v.min():.1f} | med={_v.median():.1f} | "
+              f"mean={_v.mean():.1f} | max={_v.max():.1f} | "
+              f"{_pct:.1f}% of counties {_dir}")
+
 
 
 # %%
@@ -130,61 +204,39 @@ HEATING_MP_SUBTITLES = {
 }
 
 CASE_LABELS = {
-    'heating': 'Heating Replacement Only',
-    'heating_and_cooling': 'Heating & Cooling Replacement',
+    'heating': 'Heating Replacement Cost',
+    'heating_and_cooling': 'Heating + Cooling Replacement Cost',
 }
 
 # %%
-# ============================================================
-# DIAGNOSTICS — County sample size & coverage
-# ============================================================
+# County sample size diagnostic — gated behind PRINT_DEBUG flag.
+# Set PRINT_DEBUG=True in constants.py to enable; False on clean runs.
+if PRINT_DEBUG:
+    print("=" * 65)
+    print("DIAGNOSTIC: County sample size & coverage")
+    print("=" * 65)
 
-print("=" * 65)
-print("DIAGNOSTIC: County sample size & coverage")
-print("=" * 65)
-      
-for mp in selected_mps:
-    print(f"\n===== County sample size distribution - {HEATING_MP_SUBTITLES.get(mp, f'MP{mp}')} =====")
-    df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
-    
-    county_counts = df_tare.groupby('county').size()
-    
-    print(f"Counties total:             {len(county_counts):,}")
-    print(f"Min / Median / Mean / Max:  "
-          f"{county_counts.min()} / {county_counts.median():.0f} / "
-          f"{county_counts.mean():.1f} / {county_counts.max()}")
-    
-    print("Sample size by threshold:")
-    for thresh in [5, 10, 15, 20, 30]:
-        below = (county_counts < thresh).sum()
-        above = (county_counts >= thresh).sum()
-        print(f"  below {thresh:2d}: {below:4d}   |   at or above {thresh:2d}: {above:4d}")
+    for mp in selected_mps:
+        print(f"\n===== County sample size distribution - {HEATING_MP_SUBTITLES.get(mp, f'MP{mp}')} =====")
+        df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
+
+        county_counts = df_tare.groupby('county').size()
+
+        print(f"Counties total:             {len(county_counts):,}")
+        print(f"Min / Median / Mean / Max:  "
+              f"{county_counts.min()} / {county_counts.median():.0f} / "
+              f"{county_counts.mean():.1f} / {county_counts.max()}")
+
+        print("Sample size by threshold:")
+        for thresh in [5, 10, 15, 20, 30]:
+            below = (county_counts < thresh).sum()
+            above = (county_counts >= thresh).sum()
+            print(f"  below {thresh:2d}: {below:4d}   |   at or above {thresh:2d}: {above:4d}")
+
 
 # %%
-# ============================================================
-# Helper: per-home percent change formula.
-# Used for operating costs; also routes demand % through the
-# same calculation so all three maps share a single definition.
-# Adoption rate is a share (0–100%) — never pass it here.
-# ============================================================
-def pct_change(new: pd.Series, old: pd.Series) -> pd.Series:
-    """Return per-home percent change: (new - old) / old * 100.
-
-    NaN is propagated from either input. Rows where ``old == 0``
-    return NaN to avoid division-by-zero for zero-cost buildings.
-
-    Args:
-        new: Retrofit (or post-retrofit) values.
-        old: Baseline values.
-
-    Returns:
-        Series of percent change values; same index as inputs.
-    """
-    return (new - old) / old * 100
-
-
 print(f"\n{'='*60}")
-print(f"OPERATING COST % CHANGE — All fuels, IRA-Ref, 100% adoption")
+print(f"OPERATING COST % CHANGE — All fuels, 100% adoption")
 print(f"{'='*60}")
 
 bill_savings_geo_level = 'county'
@@ -193,29 +245,19 @@ bill_savings_results = {}
 for mp in selected_mps:
     print(f"\n===== {HEATING_MP_SUBTITLES.get(mp, f'MP{mp}')} =====")
     df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
-
     baseline_col = 'baseline_heating_lifetime_fuel_cost'
     retrofit_col = f'iraRef_mp{mp}_heating_lifetime_fuel_cost'
-
-    # Per-home operating-cost percent change: (retrofit - baseline) / baseline * 100
-    df_pct = pct_change(df_tare[retrofit_col], df_tare[baseline_col])
-
-    # County-level median — drop rows missing county or a valid % change.
-    df_tmp = pd.DataFrame({
-        'county': df_tare['county'],
-        'operating_cost_pct_change': df_pct,
-    }).dropna(subset=['county', 'operating_cost_pct_change'])
-
+    # Per-home direct percent change: (retrofit − baseline) / baseline × 100
+    pct = pct_change(df_tare[retrofit_col], df_tare[baseline_col])
     df_county = (
-        df_tmp.groupby('county')['operating_cost_pct_change']
+        pd.DataFrame({'county': df_tare['county'], 'operating_cost_pct_change': pct})
+        .groupby('county')['operating_cost_pct_change']
         .median()
         .reset_index()
     )
+    n_valid = pct.notna().sum()
+    print(f"  Per-home valid records: {n_valid:,} | Counties: {len(df_county):,}")
     bill_savings_results[mp] = df_county
-
-    print(f"  Counties: {len(df_county):,} | "
-          f"median={df_county['operating_cost_pct_change'].median():.1f}% | "
-          f"mean={df_county['operating_cost_pct_change'].mean():.1f}%")
 
 print(f"\n[OK] Operating cost % change complete ({bill_savings_geo_level}-level)")
 
@@ -236,9 +278,16 @@ for mp in selected_mps:
     df_demand_county = aggregate_demand(
         df_demand, geo_level=demand_geo_level, verbose=True
     )
+    # Re-derive demand % via shared pct_change helper for formula consistency
+    # with the operating-cost % visual. Algebraically identical to aggregate_demand's
+    # internal np.where, but makes the formula source of truth explicit.
+    df_demand_county['pct_elec_demand_change'] = pct_change(
+        df_demand_county['retrofit_elec_gwh'], df_demand_county['baseline_elec_gwh']
+    )
     demand_results[mp] = df_demand_county
 
 print(f"\n[OK] Demand change complete ({demand_geo_level}-level)")
+
 
 # %%
 from matplotlib.colors import Normalize
@@ -260,54 +309,40 @@ except Exception as e:
 
 if gdf_counties_raw is not None:
     # ---- Compute shared norms BEFORE any per-MP map calls ----
-    # Symmetric Normalize: keeps white at the meaningful center (0%).
-    # Clip to 2nd/98th percentile so a single outlier county cannot
-    # compress the colormap for the other 3,000+ counties.
+    # Symmetric Normalize: keeps white at the meaningful center (0%)
+    # and makes the colorbar evenly spaced on both sides.
+    # Clip to 2nd/98th percentile to avoid extreme outliers compressing the scale.
 
-    # 1. Operating-cost percent change — center at 0.
-    # Derived directly from per-home (retrofit - baseline) / baseline * 100.
-    all_pct_bill_vals = pd.concat([
-        bill_savings_results[mp]['operating_cost_pct_change']
-        for mp in selected_mps
-    ]).dropna()
-    _q_low = all_pct_bill_vals.quantile(0.02)
-    _q_high = all_pct_bill_vals.quantile(0.98)
-    _abs = max(abs(_q_low), abs(_q_high))
-    shared_pct_bill_norm = Normalize(vmin=-_abs, vmax=_abs)
-    print(f"Operating cost % norm: [{-_abs:.1f}, 0 (center), {_abs:.1f}]%")
+    # Build shared symmetric norms (centered at 0) before map calls.
+    # make_symmetric_norm clips to 2nd/98th percentile across all MPs so a single extreme county cannot compress the colormap.
+    # Percent bill savings
+    _all_pct_bill = pd.concat([
+        bill_savings_results[mp]['operating_cost_pct_change'] for mp in selected_mps
+    ])
+    shared_pct_bill_norm = make_symmetric_norm(_all_pct_bill)
+    print(f"Operating cost % norm: [{shared_pct_bill_norm.vmin:.1f}, 0 (center), {shared_pct_bill_norm.vmax:.1f}]%")
 
-    # 3. Electricity demand change GWh — center at 0
-    all_demand_vals = pd.concat([
-        demand_results[mp]['elec_change_gwh']
-        for mp in selected_mps
-    ]).dropna()
-    _q_low = all_demand_vals.quantile(0.02)
-    _q_high = all_demand_vals.quantile(0.98)
-    _abs = max(abs(_q_low), abs(_q_high))
-    shared_demand_norm = Normalize(vmin=-_abs, vmax=_abs)
-    print(f"Demand GWh norm: [{-_abs:.1f}, 0 (center), {_abs:.1f}] GWh")
+    # Electricity demand change (GWh)
+    _all_demand_gwh = pd.concat([
+        demand_results[mp]['elec_change_gwh'] for mp in selected_mps
+    ])
+    shared_demand_norm = make_symmetric_norm(_all_demand_gwh)
+    print(f"Demand GWh norm: [{shared_demand_norm.vmin:.1f}, 0 (center), {shared_demand_norm.vmax:.1f}] GWh")
 
-    # 4. Electricity demand percent change — center at 0
-    all_pct_demand_vals = pd.concat([
-        demand_results[mp]['pct_elec_demand_change']
-        for mp in selected_mps
-    ]).dropna()
-    _q_low = all_pct_demand_vals.quantile(0.02)
-    _q_high = all_pct_demand_vals.quantile(0.98)
-    _abs = max(abs(_q_low), abs(_q_high))
-    shared_pct_demand_norm = Normalize(vmin=-_abs, vmax=_abs)
-    print(f"Demand % norm: [{-_abs:.1f}, 0 (center), {_abs:.1f}]%")
+    # Electricity demand percent change (%)
+    _all_pct_demand = pd.concat([
+        demand_results[mp]['pct_elec_demand_change'] for mp in selected_mps
+    ])
+    shared_pct_demand_norm = make_symmetric_norm(_all_pct_demand)
+    print(f"Demand % norm: [{shared_pct_demand_norm.vmin:.1f}, 0 (center), {shared_pct_demand_norm.vmax:.1f}]%")
 
-    # ---- Operating-cost percent change (county-level) ----
-    # operating_cost_pct_change = county median of (retrofit - baseline) / baseline * 100
-    print("\n--- Summary: operating_cost_pct_change ---")
-    for mp in selected_mps:
-        _v = bill_savings_results[mp]['operating_cost_pct_change'].dropna()
-        _pct = (_v < 0).mean() * 100
-        print(f"  MP{mp}: n={len(_v):,} counties | "
-              f"min={_v.min():.1f}% | med={_v.median():.1f}% | "
-              f"mean={_v.mean():.1f}% | max={_v.max():.1f}% | "
-              f"{_pct:.1f}% of counties HP saves money (< 0%)")
+    # ---- Operating cost percent change (county-level) ----
+    # operating_cost_pct_change = county median of (retrofit − baseline) / baseline × 100
+    print_column_summary(
+        bill_savings_results, 'operating_cost_pct_change',
+        'Operating cost % change', selected_mps, HEATING_MP_SUBTITLES,
+        positive_direction='HP saves money (< 0)',
+    )
 
     plot_combined_choropleth(
         gdf_counties_raw, bill_savings_results,
@@ -320,16 +355,12 @@ if gdf_counties_raw is not None:
         output_path=os.path.join(PROJECT_ROOT, 'county_bill_pct_change_combined.png'),
     )
 
-    # ---- Map 3: Electricity demand change GWh (county-level) ----
-    print("\n--- Summary: elec_change_gwh ---")
-    for mp in selected_mps:
-        _v = demand_results[mp]['elec_change_gwh'].dropna()
-        _total = demand_results[mp]['elec_change_gwh'].sum()
-        _pct = (_v > 0).mean() * 100
-        print(f"  MP{mp}: n={len(_v):,} counties | "
-              f"min={_v.min():.1f} | med={_v.median():.1f} | "
-              f"mean={_v.mean():.1f} | max={_v.max():.1f} GWh | "
-              f"total={_total:+.1f} GWh | {_pct:.1f}% of counties increase")
+    # ---- Electricity demand change GWh (county-level) ----
+    print_column_summary(
+        demand_results, 'elec_change_gwh',
+        'Elec demand change (GWh)', selected_mps, HEATING_MP_SUBTITLES,
+        positive_direction='increase',
+    )
         
     plot_combined_choropleth(
         gdf_counties_raw, demand_results,
@@ -342,15 +373,12 @@ if gdf_counties_raw is not None:
         output_path=os.path.join(PROJECT_ROOT, 'county_elec_demand_gwh_combined.png'),
     )
 
-    # ---- Map 4: Electricity demand percent change (county-level) ----
-    print("\n--- Summary: pct_elec_demand_change ---")
-    for mp in selected_mps:
-        _v = demand_results[mp]['pct_elec_demand_change'].dropna()
-        _pct = (_v > 0).mean() * 100
-        print(f"  MP{mp}: n={len(_v):,} counties | "
-              f"min={_v.min():.1f}% | med={_v.median():.1f}% | "
-              f"mean={_v.mean():.1f}% | max={_v.max():.1f}% | "
-              f"{_pct:.1f}% of counties increase demand")
+    # ---- Electricity demand percent change (county-level) ----
+    print_column_summary(
+        demand_results, 'pct_elec_demand_change',
+        'Elec demand % change', selected_mps, HEATING_MP_SUBTITLES,
+        positive_direction='increase',
+    )
         
     plot_combined_choropleth(
         gdf_counties_raw, demand_results,
@@ -366,6 +394,9 @@ if gdf_counties_raw is not None:
     print("[OK] All county-level maps generated")
 else:
     print("[WARN] County maps skipped — county shapefile not available")
+
+
+# %%
 
 
 # %% [markdown]
@@ -473,11 +504,9 @@ else:
 # not as inputs to this decision.
 
 # %%
-# import importlib
-# import cmu_tare_model.adoption_potential.determine_economic_adoption_potential as _m
-# importlib.reload(_m)
+# Note: first import loads bls_cpiu_2005-2023.xlsx for CPI inflation adjustment.
+# This is expected and harmless — the table prints once on import, not on every call.
 
-# %%
 from cmu_tare_model.adoption_potential.determine_economic_adoption_potential import economic_adoption_decision
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 
@@ -485,36 +514,42 @@ _POLICY = 'AEO2023 Reference Case'
 _DISCOUNT_COL = 'private_discount_rate_fixed_base'
 _COST = 'v4MID'
 
-# Generate economic-adopter columns for both HVAC replacement scenarios.
-# 'heating'             = Case A: replace only the furnace/boiler with a heat pump.
-# 'heating_and_cooling' = Case B: replace both the furnace AND the AC with a heat pump.
-# Columns are written directly into the canonical 'inmap' frame so that all
-# downstream cells share a single source of truth — no separate inmap_econ key.
+# Generate economic-adopter columns for both HVAC replacement scenarios AND
+# both policy scenarios. After this cell, all four columns exist in inmap:
+#   preIRA_mp{mp}_heating_econ_adopter_moreWTP_v4MID_fixed_base
+#   preIRA_mp{mp}_heating_and_cooling_econ_adopter_moreWTP_v4MID_fixed_base
+#   iraRef_mp{mp}_heating_econ_adopter_moreWTP_v4MID_fixed_base
+#   iraRef_mp{mp}_heating_and_cooling_econ_adopter_moreWTP_v4MID_fixed_base
+# The dot-plot cell is pure-read — no economic_adoption_decision calls inside it.
 for mp in selected_mps:
     df_inmap = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
-    for hvac_scenario in ['heating', 'heating_and_cooling']:
-        df_econ = economic_adoption_decision(
-            df_inmap,
-            menu_mp=mp,
-            policy_scenario=_POLICY,
-            discount_rate_col_name=_DISCOUNT_COL,
-            cost_scenario=_COST,
-            hvac_replacement_scenario=hvac_scenario,
-            verbose=False,
-        )
-        # Copy only the newly created econ columns back into the canonical frame.
-        new_cols = [c for c in df_econ.columns if c not in df_inmap.columns]
-        for col in new_cols:
-            DATAFRAMES_BY_MP[mp]['fixed_base']['inmap'][col] = df_econ[col]
-        print(f"[OK] MP{mp} | {hvac_scenario}: {new_cols}")
+    for policy in ['No Inflation Reduction Act', 'AEO2023 Reference Case']:
+        for hvac_scenario in ['heating', 'heating_and_cooling']:
+            df_econ = economic_adoption_decision(
+                df_inmap,
+                menu_mp=mp,
+                policy_scenario=policy,
+                discount_rate_col_name=_DISCOUNT_COL,
+                cost_scenario=_COST,
+                hvac_replacement_scenario=hvac_scenario,
+                verbose=False,
+            )
+            # Copy only newly created columns back into the canonical frame.
+            new_cols = [c for c in df_econ.columns if c not in df_inmap.columns]
+            for col in new_cols:
+                DATAFRAMES_BY_MP[mp]['fixed_base']['inmap'][col] = df_econ[col]
+            if new_cols:
+                print(f"[OK] MP{mp} | {policy[:6]} | {hvac_scenario}: {new_cols}")
 
-print("\n[DONE] Economic adopter columns added to inmap for all selected MPs")
+print("\n[DONE] All 4 econ-adopter columns added to inmap for all selected MPs")
 
 
 # %%
-mp = selected_mps[0]
-econ_cols = [c for c in DATAFRAMES_BY_MP[mp]['fixed_base']['inmap'].columns if 'econ_adopter' in c]
-print(econ_cols)
+# Econ column probe — gated behind PRINT_DEBUG flag.
+if PRINT_DEBUG:
+    mp = selected_mps[0]
+    econ_cols = [c for c in DATAFRAMES_BY_MP[mp]['fixed_base']['inmap'].columns if 'econ_adopter' in c]
+    print(econ_cols)
 
 # %%
 from cmu_tare_model.utils.modeling_params import define_scenario_params
@@ -529,7 +564,7 @@ print(f"{'='*60}")
 
 econ_adoption_rate_results = {}
 for mp in selected_mps:
-    print(f"===== HEATING_ =====")
+    print(f"\n===== {HEATING_MP_SUBTITLES.get(mp, f'MP{mp}')} =====")
     # Count homes where the heat pump pays for itself (econ_adopter == 1.0).
     # adopter_tiers=[True] selects 1.0 (adopter) vs 0.0 (non-adopter).
     # NaN rows (excluded homes) are automatically ignored by compute_adoption_rate.
@@ -611,36 +646,114 @@ print(f"  Measure packages: {HEATING_MEASURE_PACKAGES}")
 
 
 # %%
-if not HEATING_MEASURE_PACKAGES:
-    print("No active heating measure packages — skipping dotplot.")
-else:
-    category = 'heating'
-    case_label = CASE_LABELS.get(hvac_replacement_scenario, hvac_replacement_scenario)
+# -----------------------------------------------------------------
+# Economic adoption potential dot plot
+# Two markers per row: Heating Only (Case A) | Heating & Cooling (Case B)
+# Annotation: same X% (+Y%) format as tier dotplot, Y = IRA-Ref − Pre-IRA
+# -----------------------------------------------------------------
+import importlib
+import matplotlib.lines as mlines
+import cmu_tare_model.constants as constants
+importlib.reload(constants)
+import cmu_tare_model.adoption_potential.data_processing.visuals_adoption_dotplot as visuals_adoption_dotplot
+importlib.reload(visuals_adoption_dotplot)
+from cmu_tare_model.adoption_potential.data_processing.visuals_adoption_dotplot import (
+    plot_adoption_panel, GROUPING_ORDER, FUEL_COLORS,
+)
 
-    # Compute national fuel counts in millions (scaling_factor = 242)
+_ECON_CASE_MARKERS = {
+    'Heating Only':       'o',   # circle  — Case A: heating replacement only
+    'Heating & Cooling':  's',   # square  — Case B: heating + cooling replacement
+}
+_ECON_CASES = {
+    'heating':             'Heating Only',
+    'heating_and_cooling': 'Heating & Cooling',
+}
+
+
+def _build_econ_plot_df(
+    source_df, mp, cost_scenario='v4MID', discount_rate='fixed_base',
+    fuel_col='base_heating_fuel', income_col='lmi_or_mui',
+    income_groups=None, scaling_factor=242.0,
+):
+    """Per-(fuel x income) pooled-home mean economic adoption rate for both HVAC cases.
+
+    Returns a DataFrame in the same format as prepare_plot_data() so
+    plot_adoption_panel() can render it without modification.
+    """
+    if income_groups is None:
+        income_groups = ['LMI']
+
+    sample_total = len(source_df)
+    group_counts = source_df.groupby([fuel_col, income_col], observed=True).size()
+    fuel_counts  = source_df.groupby(fuel_col, observed=True).size()
+    total_homes  = int(group_counts.sum())
+    fuels_in_data = list(source_df[fuel_col].dropna().unique())
+
+    def _col(hvac_s, policy_pfx):
+        return f'{policy_pfx}_mp{mp}_{hvac_s}_econ_adopter_moreWTP_{cost_scenario}_{discount_rate}'
+
+    def _mean_rate(df_sub, col):
+        return df_sub[col].mean() * 100.0 if col in df_sub.columns else np.nan
+
+    def _row(grouping, fuel, income_level, case_label, ira_pct, pre_pct, n):
+        return dict(
+            grouping=grouping, fuel_type=fuel, income_level=income_level,
+            tier_label=case_label,
+            iraref_pct=ira_pct, preira_pct=pre_pct, delta_pct=ira_pct - pre_pct,
+            sample_n=n,
+            pct_of_sample=100.0 * n / sample_total if sample_total else 0.0,
+            weighted_homes_millions=n * scaling_factor / 1_000_000,
+        )
+
+    rows = []
+
+    # --- per fuel x income subgroup (show only selected income groups) ---
+    for (fuel, income), n in group_counts.items():
+        if income not in income_groups:
+            continue
+        sub = source_df[(source_df[fuel_col] == fuel) & (source_df[income_col] == income)]
+        grouping = f'{fuel} \u2014 {income}'
+        for hvac_s, case_label in _ECON_CASES.items():
+            ira_pct = _mean_rate(sub, _col(hvac_s, 'iraRef'))
+            pre_pct = _mean_rate(sub, _col(hvac_s, 'preIRA'))
+            rows.append(_row(grouping, fuel, income, case_label, ira_pct, pre_pct, int(n)))
+
+    # --- per fuel - Overall (pooled across ALL income groups) ---
+    for fuel in fuels_in_data:
+        fuel_n = int(fuel_counts.get(fuel, 0))
+        fuel_sub = source_df[source_df[fuel_col] == fuel]
+        grouping = f'{fuel} \u2014 Overall'
+        for hvac_s, case_label in _ECON_CASES.items():
+            ira_pct = _mean_rate(fuel_sub, _col(hvac_s, 'iraRef'))
+            pre_pct = _mean_rate(fuel_sub, _col(hvac_s, 'preIRA'))
+            rows.append(_row(grouping, fuel, 'Overall', case_label, ira_pct, pre_pct, fuel_n))
+
+    # --- National - Overall ---
+    for hvac_s, case_label in _ECON_CASES.items():
+        ira_pct = _mean_rate(source_df, _col(hvac_s, 'iraRef'))
+        pre_pct = _mean_rate(source_df, _col(hvac_s, 'preIRA'))
+        rows.append(_row('National \u2014 Overall', 'National', 'Overall',
+                         case_label, ira_pct, pre_pct, total_homes))
+
+    return pd.DataFrame(rows)
+
+
+if not HEATING_MEASURE_PACKAGES:
+    print("No active heating measure packages — skipping economic adoption dotplot.")
+else:
+    # Compute national fuel counts (same method as tier dotplot)
     _src = DATAFRAMES_BY_MP[HEATING_MEASURE_PACKAGES[0]][discount_rate][rcm_model]
     fuel_counts_millions = {
         str(fuel): int(n) * 242 / 1_000_000
         for fuel, n in _src.groupby('base_heating_fuel', observed=True).size().items()
     }
 
-    # --- Print figure header before creating the figure ---
-    print(f"Heat Pump Adoption Potential — {case_label}")
-    print(f"Discount Rate: {discount_rate} | Cost Scenario: {cost_scenario}")
-    print()
-    print("Fuel sample counts (national, approx.):")
-    for fuel, count in sorted(fuel_counts_millions.items()):
-        print(f"  {fuel}: {count:.1f}M homes")
-    print()
-
     n_mps = len(HEATING_MEASURE_PACKAGES)
-
-    # figsize width 16 (was 12) gives labels room at annotation_fontsize=12.
-    # Below width=16 at this font size, edge labels (x=0%, x=100%) clip the
-    # axis and adjacent labels collide.
     fig, axes = plt.subplots(
         n_mps, 1,
-        figsize=(16, 8 * n_mps),
+        # figsize=(16, 5.5 * n_mps),
+        figsize=(12, 6 * n_mps),
         sharex=True,
         sharey=True,
     )
@@ -649,120 +762,82 @@ else:
 
     for row_idx, mp in enumerate(HEATING_MEASURE_PACKAGES):
         ax = axes[row_idx]
-        panel_title = f'{HEATING_MP_SUBTITLES.get(mp, f"MP{mp}")} — {case_label}'
-
-        # Build the multi-index adoption DataFrame from TARE output
+        panel_title = (
+            f'{HEATING_MP_SUBTITLES.get(mp, f"MP{mp}")}'
+        )
         source_df = DATAFRAMES_BY_MP[mp][discount_rate][rcm_model]
 
-        mi_df = create_multiIndex_adoption_df(
-            df=source_df,
-            menu_mp=mp,
-            category=category,
-            scc=scc,
-            rcm_model=rcm_model,
-            cr_function=cr_function,
-            cost_scenario=cost_scenario,
+        plot_df = _build_econ_plot_df(
+            source_df, mp,
+            cost_scenario=_COST,
             discount_rate=discount_rate,
-            hvac_replacement_scenario=hvac_replacement_scenario,
         )
 
-        if mi_df is None:
-            ax.set_title(panel_title, fontsize=18, fontweight='bold')
-            ax.text(0.5, 0.5, 'No data\n(adoption columns missing)',
-                    transform=ax.transAxes, ha='center', va='center',
-                    fontsize=14, color='gray')
-            # Match populated panels' xlim for visual consistency
-            ax.set_xlim(-14, 114)
-            ax.set_xticks(range(0, 101, 20))
-            y_order = list(reversed(GROUPING_ORDER))
-            ax.set_ylim(-0.5, len(y_order) - 0.5)
-            ax.set_yticks(range(len(y_order)))
-            continue
-
-        scenario_names = build_adoption_scenario_names(
-            mp, category, scc, rcm_model, cr_function,
-            cost_scenario, discount_rate,
-            hvac_replacement_scenario=hvac_replacement_scenario,
-        )
-        preira_col = scenario_names[0]
-        iraref_col = scenario_names[1]
-
-        plot_df = prepare_plot_data(
-            mi_df, source_df,
-            preira_col=preira_col,
-            iraref_col=iraref_col,
-            income_groups=['LMI'],
-        )
-
-        # --- Print sample stats for this panel ---
-        print(f"--- MP{mp} sample stats ---")
-        sample_info = (
-            plot_df[['grouping', 'pct_of_sample', 'weighted_homes_millions']]
-            .drop_duplicates('grouping')
-            .reset_index(drop=True)
-        )
-        for _, r in sample_info.iterrows():
-            print(f"  {r['grouping']}: {r['pct_of_sample']:.1f}% of sample, "
-                  f"{r['weighted_homes_millions']:.1f}M homes")
+        # Print panel summary
+        print(f"--- MP{mp} economic adoption summary ---")
+        for case_label in _ECON_CASES.values():
+            nat_row = plot_df[
+                (plot_df['grouping'] == 'National \u2014 Overall') &
+                (plot_df['tier_label'] == case_label)
+            ]
+            if not nat_row.empty:
+                ira = nat_row.iloc[0]['iraref_pct']
+                delta = nat_row.iloc[0]['delta_pct']
+                sign = '+' if delta >= 0 else ''
+                print(f"  {case_label}: {ira:.1f}% ({sign}{delta:.1f}% IRA delta)")
         print()
 
-        # xlim_margin=14 scales the axis margin to the larger annotation font.
-        # Default 12 works for fontsize=7; 14 is needed for fontsize=12.
+        _ECON_GROUPING_ORDER = [
+            'National \u2014 Overall',
+            'Electricity \u2014 Overall',
+            'Natural Gas \u2014 Overall',
+            'Fuel Oil \u2014 Overall',
+            'Propane \u2014 Overall',
+        ]
+
         plot_adoption_panel(
-            plot_df, ax, title=panel_title,
-            title_fontsize=18,
-            ytick_fontsize=16,
-            annotation_fontsize=16,
-            xlim_margin=14,
+            plot_df, ax,
+            grouping_order=_ECON_GROUPING_ORDER,
+            title=panel_title,
+            title_fontsize=16,
+            ytick_fontsize=14,
+            annotation_fontsize=14,
+            annotation_x_offset_pts=0,
+            annotation_y_offset_pts=8,
+            xlim_margin=20,
             fuel_counts_millions=fuel_counts_millions,
+            custom_tier_markers=_ECON_CASE_MARKERS,
         )
-        ax.tick_params(axis='both', labelsize=16)
+        ax.tick_params(axis='both', labelsize=14)
 
-        # Per-subplot legend — upper right of each panel
-        ax.legend(handles=_build_legend_handles(), loc='upper right', fontsize=16, frameon=True)
+        # Legend: circle = Case A, square = Case B
+        legend_handles = [
+            mlines.Line2D([], [], marker='o', color='none',
+                          markerfacecolor='gray', markeredgecolor='gray',
+                          markersize=8, linestyle='None',
+                          label='Heating Replacement Cost'),
+            mlines.Line2D([], [], marker='s', color='none',
+                          markerfacecolor='gray', markeredgecolor='gray',
+                          markersize=8, linestyle='None',
+                          label='Heating + Cooling Replacement Cost'),
+        ]
+        ax.legend(handles=legend_handles, loc='upper right', fontsize=14, frameon=True)
 
-        # Only bottom panel gets x-axis label
         if row_idx < n_mps - 1:
             ax.set_xlabel('')
 
-    fig.tight_layout()
+    fig.tight_layout(rect=[0.0, 0.02, 1.0, 0.96])
 
-    # --- Save ---
     out_dir = os.path.join('.', 'figures')
     os.makedirs(out_dir, exist_ok=True)
-    case_tag = 'caseA' if hvac_replacement_scenario == 'heating' else 'caseB'
     for ext in ('png', 'pdf'):
         fig.savefig(
-            os.path.join(out_dir, f'figure5_adoption_dotplot_{case_tag}_{location_id}.{ext}'),
+            os.path.join(out_dir, f'figure6_econ_adoption_dotplot_{location_id}.{ext}'),
             dpi=600, bbox_inches='tight',
         )
-    print(f"Saved to {out_dir}/figure5_adoption_dotplot_{case_tag}_{location_id}.{{png,pdf}}")
+    print(f"Saved to {out_dir}/figure6_econ_adoption_dotplot_{location_id}.{{png,pdf}}")
     plt.show()
 
-
-# %%
-mp = selected_mps[0]
-df = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
-col_more = f'preIRA_mp{mp}_heating_and_cooling_private_npv_moreWTP_v4MID_fixed_base'
-col_ira  = f'iraRef_mp{mp}_heating_and_cooling_private_npv_moreWTP_v4MID_fixed_base'
-print(col_more in df.columns, col_ira in df.columns)
-# If False, print a few matching columns:
-print([c for c in df.columns if 'private_npv' in c])
-
-# %%
-df = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
-adoption_col = find_adoption_column(
-    df,
-    mp=mp,
-    cost_scenario='v4MID',
-    discount_rate_key='fixed_base',
-    rcm_model_key='inmap',
-)
-print(f"Adoption column found: {adoption_col}")
-
-# %%
-df = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
-print([c for c in df.columns if 'adoption' in c])
 
 # %% [markdown]
 # ---
