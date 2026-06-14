@@ -16,6 +16,8 @@ import matplotlib.ticker as mtick
 import numpy as np
 import pandas as pd
 
+from cmu_tare_model.constants import FIGURE_DPI
+
 # ===========================================================================
 # APPEARANCE CONFIGURATION
 # ===========================================================================
@@ -27,7 +29,7 @@ plt.rcParams.update({
     'axes.labelsize': 11,
     'xtick.labelsize': 9,
     'ytick.labelsize': 9,
-    'figure.dpi': 300,
+    'figure.dpi': FIGURE_DPI,
 })
 
 # ===========================================================================
@@ -255,10 +257,13 @@ def plot_adoption_panel(
     separator_alpha: float = 0.5,
     annotation_fontsize: int = 7,
     annotation_y_offset_pts: float = 8.0,
+    annotation_x_offset_pts: float = 14.0,
     xlim_margin: float = 12.0,
     show_homes_annotation: bool = True,
     fuel_counts_millions: Optional[Dict[str, float]] = None,
     ytick_label_style: str = 'detailed',
+    custom_tier_markers: Optional[Dict[str, str]] = None,
+    homes_unit: str = 'M',
 ) -> plt.Axes:
     """Draw a horizontal dot plot showing IRA-Reference adoption with deltas.
 
@@ -391,7 +396,7 @@ def plot_adoption_panel(
         all_x: List[float] = []
         for item in row_data:
             tier = item['tier']
-            marker = TIER_MARKERS.get(tier, 'o')
+            marker = (custom_tier_markers or TIER_MARKERS).get(tier, 'o')
             x_val = item['x']
             delta = item['delta']
             homes_m = item['homes_m']
@@ -412,17 +417,17 @@ def plot_adoption_panel(
             if item.get('shift') == 'cluster_left':
                 # Leftmost marker of any 2-marker cluster — label goes LEFT.
                 ha = 'right'
-                x_text = -14
+                x_text = -annotation_x_offset_pts
             elif item.get('shift') == 'cluster_right':
                 # Rightmost marker of any 2-marker cluster — label goes RIGHT.
                 ha = 'left'
-                x_text = 14
+                x_text = annotation_x_offset_pts
             elif x_val < 10:
                 ha = 'left'
-                x_text = 16
+                x_text = annotation_x_offset_pts
             elif x_val > 90:
                 ha = 'right'
-                x_text = -16
+                x_text = -annotation_x_offset_pts
             else:
                 ha = 'center'
                 x_text = 0
@@ -452,7 +457,7 @@ def plot_adoption_panel(
                 ira_homes = ira_val / 100.0 * homes_m
                 delta_homes = delta / 100.0 * homes_m
                 sign_h = '+' if delta_homes >= 0 else ''
-                ann_homes = f'{ira_homes:.1f}M ({sign_h}{delta_homes:.1f}M)'
+                ann_homes = f'{ira_homes:.1f}{homes_unit} ({sign_h}{delta_homes:.1f}{homes_unit})'
                 bottom_offset = -annotation_y_offset_pts
                 ax.annotate(
                     ann_homes,
@@ -503,16 +508,28 @@ def plot_adoption_panel(
                 fuel_total_m = 0.0
 
             if fuel == 'National':
-                # National — Overall: just show total homes
-                label = f'National \u2014 Overall\n{national_total:.1f} M Homes (100%)'
+                # Top-level geo row: use the actual grouping label for the title
+                label = f'{grouping}\n{national_total:.1f} {homes_unit} Homes (100%)'
+                # label = rf'$\mathbf{{National - Overall}}$\n{national_total:.1f} M Homes (100%)'
             elif income_level == 'Overall':
-                # e.g. "Electricity (25.6/80.0M, 32.0% Total)"
+                # e.g. "Electricity — Overall\n25.6/80.0 M Homes\n(32.0% Total)"
                 pct_total = (fuel_total_m / national_total * 100) if national_total else 0.0
-                label = f'{fuel} \u2014 Overall\n{fuel_total_m:.1f}/{national_total:.1f} M Homes ({pct_total:.1f}% Total)'
+                label = (
+                    f'{fuel} \u2014 Overall\n'
+                    # rf'$\mathbf{{{fuel} - Overall}}$\n'
+                    f'{fuel_total_m:.1f}/{national_total:.1f} {homes_unit} Homes\n'
+                    f'({pct_total:.1f}% Total)'
+                )
+                
             else:
-                # LMI row — e.g. "Electricity \u2014 LMI (12.5/25.6M, 48.8% Fuel)"
+                # LMI row — e.g. "Electricity \u2014 LMI\n12.5/25.6 M Homes\n(48.8% Fuel)"
                 pct_fuel = (homes_m / fuel_total_m * 100) if fuel_total_m else 0.0
-                label = f'{fuel} \u2014 LMI\n{homes_m:.1f}/{fuel_total_m:.1f} M Homes ({pct_fuel:.1f}% Fuel)'
+                label = (
+                    f'{fuel} \u2014 LMI\n'
+                    # rf'$\mathbf{{{fuel} - {income_level}}}$\n'
+                    f'{homes_m:.1f}/{fuel_total_m:.1f} {homes_unit} Homes\n'
+                    f'({pct_fuel:.1f}% Fuel)'
+                )
         else:
             label = grouping
         y_labels.append(label)
@@ -531,13 +548,15 @@ def plot_adoption_panel(
     # for fontsize=12. Ticks (0, 20, ..., 100) are unaffected.
     ax.set_xlim(-xlim_margin, 100 + xlim_margin)
     ax.set_xticks(range(0, 101, 20))
-    ax.set_xlabel('Adoption Potential (%)', fontsize=ytick_fontsize)
+    ax.set_xlabel('Share of Homes Recovering Incremental Costs (%)', fontsize=ytick_fontsize)
 
     # --- Grid and separator ---
     ax.set_axisbelow(True)
     ax.grid(axis='x', alpha=grid_alpha, linewidth=0.5)
 
-    national_y = y_positions.get('National \u2014 Overall')
+    # Separator below the top row (works for any geo label, not just 'National')
+    _top_grouping = grouping_order[0] if grouping_order else 'National \u2014 Overall'
+    national_y = y_positions.get(_top_grouping)
     if national_y is not None:
         ax.axhline(
             y=national_y - 0.5,
@@ -637,7 +656,7 @@ def plot_adoption_dotplot(
     fig.tight_layout(rect=[0.0, 0.04, 1.0, 1.0])
 
     if save_figure and output_path:
-        fig.savefig(output_path, bbox_inches='tight', dpi=300)
+        fig.savefig(output_path, bbox_inches='tight', dpi=FIGURE_DPI)
         print(f"[OK] Dotplot saved: {output_path}")
 
     return fig

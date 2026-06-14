@@ -13,6 +13,14 @@
 VERBOSE = False
 PRINT_DEBUG = False
 PRINT_VERBOSE_DATAFRAMES = False
+FIGURE_DPI = 600
+MAP_TITLE_FONT_SIZE = 18
+MAP_TITLE_PAD = 10
+MAP_CBAR_LABEL_FONT_SIZE = 16
+MAP_CBAR_TICK_LABEL_SIZE = 16
+MAP_LEGEND_FONT_SIZE = 16
+
+FIGURE_TITLE_FONT_SIZE = 18
 
 # ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached', 'Mobile Home', 'Multi-Family with 2 - 4 Units']
 ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached']
@@ -331,3 +339,4 @@ PA_COP_RANGES: dict = {
     'mp3': (1.8, 2.4),
     'mp4': (2.5, 3.4),
 }
+

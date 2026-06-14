@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple, Union
 import pandas as pd
 import numpy as np
 import geopandas as gpd
@@ -7,6 +7,14 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
+from cmu_tare_model.constants import (
+    FIGURE_DPI,
+    MAP_TITLE_FONT_SIZE,
+    MAP_TITLE_PAD,
+    MAP_CBAR_LABEL_FONT_SIZE,
+    MAP_CBAR_TICK_LABEL_SIZE,
+    MAP_LEGEND_FONT_SIZE,
+)
 from cmu_tare_model.adoption_kpis.thermal_cop import assign_breakeven_category
 from cmu_tare_model.adoption_kpis.data_loading import SHAPEFILE_PATH
 
@@ -94,7 +102,7 @@ def create_choropleth_map(
     year: int = 2024,
     output_path: Optional[str] = None,
     figsize: Tuple[int, int] = (16, 10),
-    dpi: int = 300,
+    dpi: int = FIGURE_DPI,
     cmap: str = 'Blues',
     norm=None,
     show_plot: bool = True
@@ -120,7 +128,7 @@ def create_choropleth_map(
 
     gdf_conus.plot(ax=ax_main, **plot_kw)
     ax_main.set_axis_off()
-    ax_main.set_title(title, fontsize=20, fontweight='bold', pad=12)
+    ax_main.set_title(title, fontsize=MAP_TITLE_FONT_SIZE, fontweight='bold', pad=MAP_TITLE_PAD)
 
     if not gdf_alaska.empty:
         gdf_alaska.plot(ax=ax_ak, **plot_kw)
@@ -130,8 +138,8 @@ def create_choropleth_map(
     cax = fig.add_axes([0.82, 0.08, 0.03, 0.74])
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
-    fig.colorbar(sm, cax=cax, label=cbar_label).ax.yaxis.label.set_fontsize(14)
-    cax.tick_params(labelsize=14)
+    fig.colorbar(sm, cax=cax, label=cbar_label).ax.yaxis.label.set_fontsize(MAP_CBAR_LABEL_FONT_SIZE)
+    cax.tick_params(labelsize=MAP_CBAR_TICK_LABEL_SIZE)
 
     if output_path:
         fig.savefig(output_path, dpi=dpi, bbox_inches='tight', facecolor='white')
@@ -151,13 +159,13 @@ def plot_combined_choropleth(
     gdf_raw: gpd.GeoDataFrame,
     data_by_mp: dict,
     column: str,
-    title_template: str,
+    title_template: Union[str, Dict[int, str]],
     cbar_label: str,
     cmap,
     norm,
     selected_mps: list,
     figsize: Optional[Tuple[int, int]] = None,
-    dpi: int = 600,
+    dpi: int = FIGURE_DPI,
     output_path: Optional[str] = None,
     save_figure: bool = False,
     geo_level: str = 'state',
@@ -173,8 +181,10 @@ def plot_combined_choropleth(
             (state level) or a ``county`` GISJOIN column (county level) plus the
             target ``column``.
         column: Column name to choropleth-shade.
-        title_template: Title string with ``{mp}`` placeholder, e.g.
-            ``'Thermal COP — MP{mp}'``.
+        title_template: Per-panel title. Either a format string with an ``{mp}``
+            placeholder (e.g. ``'Demand Change — MP{mp}'``) or a dict mapping
+            MP integer keys to literal title strings (e.g. ``HEATING_MP_SUBTITLES``).
+            Use the dict form when titles are equipment-based (no ``{mp}`` token needed).
         cbar_label: Colorbar axis label.
         cmap: Matplotlib colormap (name string or Colormap instance).
         norm: Matplotlib Normalize instance (e.g. ``TwoSlopeNorm``,
@@ -271,17 +281,17 @@ def plot_combined_choropleth(
         else:
             title = title_template.format(mp=mp)
 
-        ax.set_title(title, fontsize=20, fontweight='bold', pad=10)
+        ax.set_title(title, fontsize=MAP_TITLE_FONT_SIZE, fontweight='bold', pad=MAP_TITLE_PAD)
 
     # Horizontal colorbar — compact, centered at the bottom
     cax = fig.add_axes([0.25, 0.06, 0.50, 0.035])
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
     cbar = fig.colorbar(sm, cax=cax, orientation='horizontal', label=cbar_label)
-    cbar.ax.xaxis.label.set_fontsize(20)
+    cbar.ax.xaxis.label.set_fontsize(MAP_CBAR_LABEL_FONT_SIZE)
     cbar.ax.xaxis.label.set_fontweight('bold')
     cbar.ax.xaxis.set_label_position('bottom')
-    cax.tick_params(labelsize=20, rotation=0)
+    cax.tick_params(labelsize=MAP_CBAR_TICK_LABEL_SIZE, rotation=0)
     if cbar_ticks is not None:
         cbar.set_ticks(cbar_ticks)
 
@@ -454,7 +464,7 @@ def plot_categorical_breakeven_map(
         ax.set_axis_off()
         ax.set_title(
             f'Gas Furnace vs ASHP (MP{mp}, 2024)',
-            fontsize=18, fontweight='bold', pad=8,
+            fontsize=MAP_TITLE_FONT_SIZE, fontweight='bold', pad=MAP_TITLE_PAD,
         )
 
     # Shared discrete legend
@@ -463,7 +473,7 @@ def plot_categorical_breakeven_map(
         for i in range(4)
     ]
     fig.legend(
-        handles=patches, loc='lower center', ncol=4, fontsize=16,
+        handles=patches, loc='lower center', ncol=4, fontsize=MAP_LEGEND_FONT_SIZE,
         bbox_to_anchor=(0.5, 0.0),
     )
 
