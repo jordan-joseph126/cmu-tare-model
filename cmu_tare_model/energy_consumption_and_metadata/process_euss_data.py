@@ -173,6 +173,7 @@ def df_enduse_refactored(
 
     # ===== STEP 1: Initialize with common columns (always present) =====
     df_enduse = pd.DataFrame({
+        'weight': df_baseline['weight'],
         'square_footage': df_baseline['in.sqft'],
         'census_region': df_baseline['in.census_region'],
         'census_division': df_baseline['in.census_division'],

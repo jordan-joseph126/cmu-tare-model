@@ -34,7 +34,7 @@ def load_model_run_output(
             - 'fuel_costs_IRA', 'fuel_costs_noIRA': Fuel costs
         menu_mp: Measure package identifier (0 for baseline, VALID_MENU_MPS for retrofits).
         output_folder_path: Base directory where results are stored.
-        location_id: Location identifier in the filename (e.g., 'national', 'NYC').
+        location_id: Location identifier in the filename (e.g., 'National', 'PA', "Pittsburgh").
         results_export_formatted_date: Date string in the filename (e.g., '2024-01-24_10-30').
         rcm_model: RCM model used for health damage calculations (e.g., 'ap2', 'easiur', 
             'inmap'). Required when results_category='summary' and menu_mp != 0.

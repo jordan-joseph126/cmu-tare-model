@@ -27,6 +27,20 @@ __pycache__/
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
+# Large figure output files (save locally, do not commit)
+figures/
+cmu_tare_model/figures/
+cmu_tare_model/docs/*.png
+cmu_tare_model/docs/*.pdf
+cmu_tare_model/grid_impact/*.pdf
+cmu_tare_model/grid_impact/*.html
+*.pdf
+*.png
+*.jpg
+state_*.png
+county_*.png
+combined_*.png
+
 # Python virtual environments
 venv/
 env/

@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from typing import Tuple, Dict, List, Optional, Union
 
-from cmu_tare_model.constants import EQUIPMENT_SPECS, PRIVATE_DISCOUNTING_METHOD_SUFFIXES, REBATE_ELIGIBLE_HEATING_MPS
+from cmu_tare_model.constants import EQUIPMENT_SPECS, PRIVATE_DISCOUNTING_METHOD_SUFFIXES, REBATE_ELIGIBLE_HEATING_MPS, VALID_HVAC_REPLACEMENT_SCENARIOS
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.discounting import calculate_discount_factors
 from cmu_tare_model.utils.validation_framework import (
@@ -77,7 +77,8 @@ def calculate_private_npv(
         discount_rate_col_name: str,
         cost_scenario: str = 'v4MID',
         base_year: int = 2024,
-        verbose: bool = True
+        verbose: bool = True,
+        hvac_replacement_scenario: str = 'heating',
 ) -> pd.DataFrame:
     """
     Calculate private net present value (NPV) using BOTH fixed and variable discount rates.
@@ -107,6 +108,11 @@ def calculate_private_npv(
             'v3', 'v4LOW', 'v4MID' (default), 'v4HIGH'.
         base_year: The base year for discounting calculations. Default is 2024.
         verbose: Whether to print detailed processing information. Default is True.
+        hvac_replacement_scenario: Controls which incumbent equipment costs are credited
+            in the net capital cost calculation. 'heating' (default, Case A) subtracts
+            only heating replacement cost. 'heating_and_cooling' (Case B) also subtracts
+            cooling replacement cost. Output column names use the hvac_replacement_scenario
+            value as the category segment (e.g., 'heating_and_cooling' for Case B).
 
     Returns:
         DataFrame with 2-8 new NPV columns per category (2 WTP scenarios × 1-4 discount methods).
@@ -118,9 +124,18 @@ def calculate_private_npv(
     menu_mp, policy_scenario = validate_common_parameters(
         menu_mp, policy_scenario)
 
+    if hvac_replacement_scenario not in VALID_HVAC_REPLACEMENT_SCENARIOS:
+        raise ValueError(
+            f"Invalid hvac_replacement_scenario: '{hvac_replacement_scenario}'. "
+            f"Must be one of {VALID_HVAC_REPLACEMENT_SCENARIOS}")
+
+    # Build output cost_scenario key: append suffix for Case B so columns are distinguishable
+    output_category = hvac_replacement_scenario
+
     if verbose:
         print(f"""\nCalculating Private NPV with parameters:
-          input_mp: {input_mp}, menu_mp: {menu_mp}, policy_scenario: {policy_scenario}""")
+          input_mp: {input_mp}, menu_mp: {menu_mp}, policy_scenario: {policy_scenario}
+          hvac_replacement_scenario: {hvac_replacement_scenario}, output_category: {output_category}""")
 
     # Create copies to avoid modifying original dataframes
     df_copy = df.copy()
@@ -184,7 +199,8 @@ def calculate_private_npv(
             menu_mp=menu_mp,
             policy_scenario=policy_scenario,
             cost_scenario=cost_scenario,
-            valid_mask=valid_mask
+            valid_mask=valid_mask,
+            hvac_replacement_scenario=hvac_replacement_scenario
         )
         
         # ===== Calculate private discount factors for fixed and variable methods =====
@@ -204,7 +220,8 @@ def calculate_private_npv(
             menu_mp=menu_mp,
             base_year=base_year,
             cost_scenario=cost_scenario,
-            verbose=verbose
+            verbose=verbose,
+            output_category=output_category
         )
 
         for col_name, values in result_cols.items():
@@ -250,7 +267,8 @@ def calculate_capital_costs(
     menu_mp: int,
     policy_scenario: str,
     cost_scenario: str,
-    valid_mask: pd.Series
+    valid_mask: pd.Series,
+    hvac_replacement_scenario: str = 'heating',
 ) -> Tuple[pd.Series, pd.Series]:
     """
     Calculate total and net capital costs for an equipment category.
@@ -258,6 +276,10 @@ def calculate_capital_costs(
     This function computes the total capital cost and net capital cost (after accounting
     for replacement costs) based on the equipment category, measure package, and whether
     IRA rebates are applied.
+
+    Net capital cost depends on hvac_replacement_scenario:
+    - 'heating': net = total − heating replacement cost  (Case A)
+    - 'heating_and_cooling': net = total − (heating + cooling replacement cost)  (Case B)
 
     Args:
         df_copy: DataFrame containing cost data.
@@ -267,8 +289,11 @@ def calculate_capital_costs(
         policy_scenario: Policy scenario that determines if IRA rebates are applied.
                        'No Inflation Reduction Act' means no rebates are applied.
                        'AEO2023 Reference Case' means IRA rebates are applied.
-        cost_scenario: Cost scenario identifier used for column naming (e.g., 'mid').
+        cost_scenario: Cost scenario identifier used for column naming (e.g., 'v4MID').
         valid_mask: Series indicating which rows have valid data for the category.
+        hvac_replacement_scenario: Which incumbent equipment costs offset the upgrade.
+            'heating' (default, Case A) — only heating replacement cost subtracted.
+            'heating_and_cooling' (Case B) — heating + cooling replacement cost subtracted.
 
     Returns:
         A tuple containing:
@@ -277,14 +302,20 @@ def calculate_capital_costs(
 
     Raises:
         KeyError: If required installation cost columns are missing from the DataFrame.
+        ValueError: If hvac_replacement_scenario is not a valid option.
 
     Notes:
         Current modeling assumes equipment prices are the same under IRA Reference
         and IRA High scenarios. Costs differ for pre-IRA because no rebates are applied.
 
     """
+    if hvac_replacement_scenario not in VALID_HVAC_REPLACEMENT_SCENARIOS:
+        raise ValueError(
+            f"Invalid hvac_replacement_scenario: '{hvac_replacement_scenario}'. "
+            f"Must be one of {VALID_HVAC_REPLACEMENT_SCENARIOS}")
+
     if verbose:
-        print(f"\nCalculating costs for {category}... ")
+        print(f"\nCalculating costs for {category} (hvac_replacement_scenario='{hvac_replacement_scenario}')... ")
 
     # Build list of required columns based on category and policy scenario
     upgrade_cost_col_name = create_cost_col(menu_mp=menu_mp, category=category, cost_type='upgrade', cost_scenario=cost_scenario)
@@ -306,6 +337,11 @@ def calculate_capital_costs(
 
     elif policy_scenario != 'No Inflation Reduction Act':
         required_cols.append(create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario))
+
+    # Case B: also require cooling replacement cost column
+    if hvac_replacement_scenario == 'heating_and_cooling':
+        cooling_replacement_col = create_cost_col(menu_mp=menu_mp, category='cooling', cost_type='replacement', cost_scenario=cost_scenario)
+        required_cols.append(cooling_replacement_col)
 
     # Validate required columns exist
     missing_cols = _validate_required_columns(df_copy, required_cols,
@@ -365,6 +401,11 @@ def calculate_capital_costs(
             total_capital_cost = installation_cost - rebate_amount
             net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='replacement', cost_scenario=cost_scenario)].fillna(0)
 
+    # Case B: also subtract cooling replacement cost from net capital cost
+    if hvac_replacement_scenario == 'heating_and_cooling':
+        cooling_replacement_cost = df_copy[create_cost_col(menu_mp=menu_mp, category='cooling', cost_type='replacement', cost_scenario=cost_scenario)].fillna(0)
+        net_capital_cost = net_capital_cost - cooling_replacement_cost
+
     # Apply masking to costs based on valid_mask. Valid homes keep their values, invalid homes get NaN
     total_capital_cost_masked = pd.Series(np.nan, index=df_copy.index)
     net_capital_cost_masked = pd.Series(np.nan, index=df_copy.index)
@@ -390,7 +431,8 @@ def calculate_and_update_npv(
     menu_mp: int,
     base_year: int = 2024,
     cost_scenario: str = 'v3',
-    verbose: bool = False
+    verbose: bool = False,
+    output_category: Optional[str] = None
 ) -> Dict[str, pd.Series]:
     """Calculate and update NPV values for fuel cost savings.
     
@@ -404,7 +446,7 @@ def calculate_and_update_npv(
     Args:
         df_measure_costs: DataFrame containing measure package fuel costs.
         df_baseline_costs: DataFrame containing baseline fuel costs.
-        category: Equipment category being processed.
+        category: Equipment category used for fuel cost column lookups.
         lifetime: Expected lifetime of the equipment in years.
         total_capital_cost: Series with total capital costs.
         net_capital_cost: Series with net capital costs.
@@ -420,6 +462,9 @@ def calculate_and_update_npv(
             Determines the REMDB suffix on output capital/NPV column names
             (e.g., '_v3', '_v4MID').
         verbose: Whether to print detailed progress messages.
+        output_category: Category label used in output column names. Defaults to
+            ``category`` when None. Set to ``'heating_and_cooling'`` for Case B
+            so output columns carry the replacement scenario distinction.
 
     Returns:
         A dictionary with new columns (keys are column names, values are Series).
@@ -427,6 +472,10 @@ def calculate_and_update_npv(
     Raises:
         ValueError: If the category is not recognized or if the DataFrame is empty.
     """    
+    # Default output_category to category when not specified
+    if output_category is None:
+        output_category = category
+
     # ===== STEP 2: Initialize result series with template =====
     # Use create_retrofit_only_series to properly initialize with zeros for valid homes, NaN for others
     discounted_savings_template = create_retrofit_only_series(df_measure_costs, valid_mask)
@@ -496,10 +545,10 @@ def calculate_and_update_npv(
     
     # Create a dictionary to hold the results
     result_columns = {
-        create_capital_col(scenario_prefix=scenario_prefix, category=category, net=False, cost_scenario=cost_scenario): total_capital_cost,
-        create_capital_col(scenario_prefix=scenario_prefix, category=category, net=True, cost_scenario=cost_scenario): net_capital_cost,
-        create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='lessWTP', cost_scenario=cost_scenario, method_suffix=method_suffix): npv_less_wtp,
-        create_npv_col(scenario_prefix=scenario_prefix, category=category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix): npv_more_wtp
+        create_capital_col(scenario_prefix=scenario_prefix, category=output_category, net=False, cost_scenario=cost_scenario): total_capital_cost,
+        create_capital_col(scenario_prefix=scenario_prefix, category=output_category, net=True, cost_scenario=cost_scenario): net_capital_cost,
+        create_npv_col(scenario_prefix=scenario_prefix, category=output_category, wtp='lessWTP', cost_scenario=cost_scenario, method_suffix=method_suffix): npv_less_wtp,
+        create_npv_col(scenario_prefix=scenario_prefix, category=output_category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix): npv_more_wtp
     }
 
     return result_columns

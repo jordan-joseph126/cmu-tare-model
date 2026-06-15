@@ -13,6 +13,14 @@
 VERBOSE = False
 PRINT_DEBUG = False
 PRINT_VERBOSE_DATAFRAMES = False
+FIGURE_DPI = 600
+MAP_TITLE_FONT_SIZE = 18
+MAP_TITLE_PAD = 10
+MAP_CBAR_LABEL_FONT_SIZE = 16
+MAP_CBAR_TICK_LABEL_SIZE = 16
+MAP_LEGEND_FONT_SIZE = 16
+
+FIGURE_TITLE_FONT_SIZE = 18
 
 # ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached', 'Mobile Home', 'Multi-Family with 2 - 4 Units']
 ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached']
@@ -66,7 +74,7 @@ VALID_MENU_MPS = [
     0,
     3,
     4,
-    8,
+    # 8,
     # 9,
     # 10
     ]
@@ -74,38 +82,38 @@ VALID_MENU_MPS = [
 # InMAP-ACS is considered our base case
 CR_FUNCTIONS = [
     'acs',
-    'h6c'
+    # 'h6c'
     ]
 
 # InMAP-ACS sensitivity is considered our base case.
 RCM_MODELS = [
-    'ap2',
-    'easiur',
+    # 'ap2',
+    # 'easiur',
     'inmap'
     ]
 
 # Short key identifiers for discount rates (used in dictionaries and user-facing code)
 PRIVATE_DISCOUNT_RATE_SHORT_KEYS = [
-    'fixed_low',
+    # 'fixed_low',
     'fixed_base',
-    'fixed_high',
-    'variable'
+    # 'fixed_high',
+    # 'variable'
 ]
 
 # Full column names for discount rates (used in DataFrames)
 PRIVATE_DISCOUNT_RATE_COLS = [
-    'private_discount_rate_fixed_low',
+    # 'private_discount_rate_fixed_low',
     'private_discount_rate_fixed_base',
-    'private_discount_rate_fixed_high',
-    'private_discount_rate_variable'
+    # 'private_discount_rate_fixed_high',
+    # 'private_discount_rate_variable'
 ]
 
 # Legacy - Method suffixes for file naming
 PRIVATE_DISCOUNTING_METHOD_SUFFIXES = {
-    'private_discount_rate_fixed_low': '_fixed_low',
+    # 'private_discount_rate_fixed_low': '_fixed_low',
     'private_discount_rate_fixed_base': '_fixed_base',
-    'private_discount_rate_fixed_high': '_fixed_high',
-    'private_discount_rate_variable': '_variable'
+    # 'private_discount_rate_fixed_high': '_fixed_high',
+    # 'private_discount_rate_variable': '_variable'
 }
 
 PUBLIC_DISCOUNTING_METHOD_SUFFIXES = {
@@ -158,9 +166,9 @@ SCC_ASSUMPTIONS = [
 PUBLIC_DISCOUNT_RATE = 0.02      # 2% social discount rate, converted to decimal
 
 # Fixed Private Discount Rate Constants
-PRIVATE_FIXED_RATE_LOW = 0.02
+# PRIVATE_FIXED_RATE_LOW = 0.02
 PRIVATE_FIXED_RATE_BASE = 0.07
-PRIVATE_FIXED_RATE_HIGH = 0.12
+# PRIVATE_FIXED_RATE_HIGH = 0.12
 
 # Variable Private Discount Rate Parameters
 VARIABLE_RATE_MIN = 0.07         # Minimum rate for high-AMI households (>=150% AMI)
@@ -205,6 +213,22 @@ REMDB_COST_SCENARIO_KEYS = [
     'v4MID',       # REMDB v4: 50th percentile (median)
     # 'v4HIGH'       # REMDB v4: 90th percentile
 ]
+
+# =============================================================
+# CONSTANTS: HVAC REPLACEMENT SCENARIO (Case A / Case B)
+# =============================================================
+# Controls which incumbent equipment costs are credited when
+# computing net capital cost for the adoption NPV calculation.
+#
+# Case A ('heating'):
+#   Net capital cost = ASHP upgrade − heating replacement cost
+#   Assumes the household replaces only the heating system.
+#
+# Case B ('heating_and_cooling'):
+#   Net capital cost = ASHP upgrade − (heating + cooling replacement cost)
+#   Assumes the household replaces both heating AND cooling systems
+#   with a single heat pump that serves both loads.
+VALID_HVAC_REPLACEMENT_SCENARIOS = ['heating', 'heating_and_cooling']
 
 # =============================================================
 # CONSTANTS: EFFICIENCY FLOORS FOR REPLACEMENT COST ESTIMATION
@@ -257,3 +281,62 @@ EFFICIENCY_FLOORS_PM2 = {
 #   1.0 tons → leave as 1.0  (33% below, beyond 10%)
 # =============================================================
 CAPACITY_BOUND_CLAMPING_TOLERANCE = 0.10  # 10%
+
+# =============================================================
+# CONSTANTS: BSQ / EUSS TIMESERIES COLUMN NAMES
+# =============================================================
+# Column names for BuildStockQuery timeseries queries against
+# ResStock EUSS 2022.1.1 (AMY2018). Used by the peak load
+# analysis notebook and peak_load_functions.py.
+#
+# Weight handling: BSQ reads per-row weights from the metadata
+# table and applies them via SUM(enduse × baseline.weight) in
+# generated SQL. No hardcoded weight constants are used.
+
+# Timeseries table columns
+BLDG_ID_COL: str = "bldg_id"
+TIMESTAMP_COL: str = "timestamp"
+ELEC_TOTAL_COL: str = "out.electricity.total.energy_consumption"
+
+# BSQ returns enduse columns WITHOUT the 'out.' prefix
+BSQ_ELEC_COL: str = "electricity.total.energy_consumption"
+
+# Metadata table columns
+METADATA_TABLE: str = "resstock_amy2018_release_1_1_metadata"
+COUNTY_COL: str = "in.county"     # GISJOIN format
+STATE_COL: str = "in.state"       # 2-char state code
+WEIGHT_COL: str = "weight"        # BSQ reads per-row from metadata
+
+# Minimum sample count per county/state for spatial aggregation.
+# Set to 1 — all counties are included regardless of sample size.
+# Sparsely populated counties naturally have fewer samples; excluding
+# them introduces geographic bias.  Consistent with approaches in
+# similar ResStock-based studies.
+MIN_HOME_COUNT: int = 1
+
+# Reference values for Allegheny County validation
+TEST_FIPS: str = "42003"
+TEST_GISJOIN: str = "G4200030"
+
+# =============================================================
+# CONSTANTS: PRE-TARE KPI VALIDATION
+# =============================================================
+# Jenkins et al. break-even COP at 90% AFUE reference values.
+# Used in Task D cross-validation in the preTARE KPI notebook.
+# ASSUMPTION: Jenkins assumes 1020 BTU/cf gas heat content;
+# we use 1036 BTU/cf (current EIA average). This ~1.8% difference
+# propagates into spark gap and break-even COP.
+JENKINS_BREAKEVEN_REF_90: dict = {
+    'FL': 1.50, 'PA': 3.51, 'MN': 3.90,
+    'AK': 5.69, 'CA': 4.49, 'MA': 3.60,
+}
+
+# PA climate zone spot-check ranges for COP benchmark validation.
+# PA is primarily CZ 4-5 (Pittsburgh, Philadelphia).
+# Source: Literature estimates for ASHP performance in mixed-humid climate.
+# TODO: follow-up (P0.2) — PA CZ 6-7 spot check currently fails.
+PA_COP_RANGES: dict = {
+    'mp3': (1.8, 2.4),
+    'mp4': (2.5, 3.4),
+}
+
