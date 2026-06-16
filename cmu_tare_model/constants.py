@@ -62,6 +62,7 @@ ALLOWED_TECHNOLOGIES = {
 # Cooling is excluded from EQUIPMENT_SPECS and VALID_CATEGORIES because other calculations are not performed.
 EQUIPMENT_SPECS = {
     'heating': 15,
+    'cooling': 15,
     # 'waterHeating': 12,
     # 'clothesDrying': 13,
     # 'cooking': 15

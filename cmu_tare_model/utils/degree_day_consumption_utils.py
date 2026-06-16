@@ -22,27 +22,37 @@ import pandas as pd
 from config import PROJECT_ROOT
 from cmu_tare_model.constants import EQUIPMENT_SPECS, FUEL_MAPPING
 
-# Load HDD factors data (same source as precompute_hdd_factors.py)
-filename = 'aeo_projections_2022_2050.xlsx'
-relative_path = os.path.join("cmu_tare_model", "data", "projections", filename)
-file_path = os.path.join(PROJECT_ROOT, relative_path)
+# Load degree-day factors from the new AEO2026 CSV artifact.
+# Year column headers arrive as strings from pd.read_csv — cast to int so that
+# division_data.get(year_label, 1.0) finds integer keys (Constraint 4).
+_DD_PATH = os.path.join(
+    PROJECT_ROOT, "cmu_tare_model", "data", "projections",
+    "aeo2026_degree_day_factors_2025_2050.csv"
+)
 
-# Heating Degree Day (HDD) factors lookup
 try:
-    df_hdd_projection_factors = pd.read_excel(io=file_path, sheet_name='hdd_factors_2022_2050')
-    lookup_hdd_factor = df_hdd_projection_factors.set_index(['census_division']).to_dict('index')
+    _df_dd = pd.read_csv(_DD_PATH)
+    _df_dd.columns = [int(c) if isinstance(c, str) and c.isdigit() else c
+                      for c in _df_dd.columns]
+
+    # Heating Degree Day (HDD) factors lookup
+    lookup_hdd_factor = (
+        _df_dd[_df_dd["dd_type"] == "hdd"]
+        .drop(columns="dd_type")
+        .set_index("census_division")
+        .to_dict("index")
+    )
+
+    # Cooling Degree Day (CDD) factors lookup
+    lookup_cdd_factor = (
+        _df_dd[_df_dd["dd_type"] == "cdd"]
+        .drop(columns="dd_type")
+        .set_index("census_division")
+        .to_dict("index")
+    )
 except Exception as e:
-    print(f"Warning: Could not load HDD factors from {file_path}: {e}")
+    print(f"Warning: Could not load degree-day factors from {_DD_PATH}: {e}")
     lookup_hdd_factor = {}
-
-# Cooling Degree Day (CDD) factors lookup
-# Load CDD factors data for cooling projections
-try:
-    df_cdd_projection_factors = pd.read_excel(io=file_path, sheet_name='cdd_factors_2022_2050')
-    lookup_cdd_factor = df_cdd_projection_factors.set_index(['census_division']).to_dict('index')
-except Exception as e:
-    print(f"Warning: Could not load CDD factors from {file_path}: {e}")
-    print("CDD projection functionality will not be available for cooling calculations.")
     lookup_cdd_factor = {}
 
 
@@ -69,8 +79,8 @@ def get_hdd_factor_for_year(
     if 'census_division' not in df.columns:
         raise KeyError("Required column 'census_division' not found in DataFrame")
     
-    if not isinstance(year_label, int) or year_label < 2020 or year_label > 2060:
-        raise ValueError(f"Invalid year_label: {year_label}. Must be integer between 2020-2060")
+    if not isinstance(year_label, int) or year_label < 2024 or year_label > 2050:
+        raise ValueError(f"Invalid year_label: {year_label}. Must be integer between 2024-2050")
     
     # Apply exact logic from precompute_hdd_factors.py
     def get_factor_for_division(division):
@@ -109,8 +119,8 @@ def get_cdd_factor_for_year(
     if 'census_division' not in df.columns:
         raise KeyError("Required column 'census_division' not found in DataFrame")
     
-    if not isinstance(year_label, int) or year_label < 2020 or year_label > 2060:
-        raise ValueError(f"Invalid year_label: {year_label}. Must be integer between 2020-2060")
+    if not isinstance(year_label, int) or year_label < 2024 or year_label > 2050:
+        raise ValueError(f"Invalid year_label: {year_label}. Must be integer between 2024-2050")
     
     # Apply exact logic from get_hdd_factor_for_year() but for CDD
     def get_factor_for_division(division):

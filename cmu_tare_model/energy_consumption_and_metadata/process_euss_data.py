@@ -212,12 +212,13 @@ def df_enduse_refactored(
         df_enduse['base_naturalGas_heating_consumption'] = df_baseline['out.natural_gas.heating.energy_consumption.kwh']
         df_enduse['base_propane_heating_consumption'] = df_baseline['out.propane.heating.energy_consumption.kwh']
 
-        # ADD COOLING COLUMNS FOR REPLACEMENT COST CALCULATIONS 
+    # COOLING - only if in scope
+    if 'cooling' in VALID_CATEGORIES:
         df_enduse['base_cooling_fuel'] = 'Electricity'  # Cooling is always electric
         df_enduse['cooling_type'] = df_baseline['in.hvac_cooling_type']
         df_enduse['base_cooling_efficiency'] = df_baseline['in.hvac_cooling_efficiency']
         df_enduse['base_electricity_cooling_consumption'] = df_baseline['out.electricity.cooling.energy_consumption.kwh']
-    
+
     # WATER HEATING - only if in scope
     if 'waterHeating' in VALID_CATEGORIES:
         df_enduse['base_waterHeating_fuel'] = df_baseline['in.water_heater_fuel']
@@ -314,7 +315,6 @@ def df_enduse_compare(
     # - This allows for a scenario where only heating is replaced AND one where heating and cooling systems are both replace with HP
     # - Resolves the excessive data columns and double counting with $8000 rebate. No longer need CDD projections.
     VALID_CATEGORIES = list(EQUIPMENT_SPECS.keys())
-    # VALID_CATEGORIES.append('cooling')
 
     # ===== STEP 1: Initialize with common columns (always present) =====
     df_compare = pd.DataFrame({
@@ -332,12 +332,13 @@ def df_enduse_compare(
         # df_compare['size_heating_secondary_k_btu_h'] = df_mp['out.params.size_heating_system_secondary_k_btu_h']
         df_compare['upgrade_hvac_heating_efficiency'] = df_mp['upgrade.hvac_heating_efficiency']
     
-        # ADD COOLING COLUMNS FOR REPLACEMENT COST CALCULATIONS 
+    # COOLING - only if in scope
+    if 'cooling' in VALID_CATEGORIES:
         df_compare['hvac_cooling_type'] = df_mp['in.hvac_cooling_type']
         df_compare['hvac_cooling_efficiency'] = df_mp['in.hvac_cooling_efficiency']
         df_compare['size_cooling_system_primary_k_btu_h'] = df_mp['out.params.size_cooling_system_primary_k_btu_h']
         df_compare['upgrade_hvac_cooling_efficiency'] = df_mp['upgrade.hvac_cooling_efficiency']
-    
+
     # WATER HEATING - only if in scope
     if 'waterHeating' in VALID_CATEGORIES:
         df_compare['water_heater_efficiency'] = df_mp['in.water_heater_efficiency']
@@ -414,9 +415,9 @@ def df_enduse_compare(
             else:
                 # Standard heating consumption (no enclosure upgrades)
                 df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp['out.electricity.heating.energy_consumption.kwh'].round(2)
-        
-        # Cooling category only used for initial columns and retrofit capital costs
-        # REMOVED consumption col because cooling emissions/health/fuel calculations are not calculated.
+
+        elif category == 'cooling':
+            df_compare[f'mp{menu_mp}_cooling_consumption'] = df_mp['out.electricity.cooling.energy_consumption.kwh'].round(2)
 
         elif category == 'waterHeating':
             df_compare[f'mp{menu_mp}_waterHeating_consumption'] = df_mp['out.electricity.hot_water.energy_consumption.kwh'].round(2)

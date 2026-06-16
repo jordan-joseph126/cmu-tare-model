@@ -1,67 +1,58 @@
 # import functions.tare_setup as tare_setup
 from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_fossil_fuel import lookup_emissions_fossil_fuel
-from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_electricity_climate import lookup_emissions_electricity_climate_preIRA, lookup_emissions_electricity_climate_IRA
+from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_electricity_climate import lookup_emissions_electricity_climate_preIRA
 from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_electricity_health import lookup_emissions_electricity_health
-from cmu_tare_model.private_impact.data_processing.create_lookup_fuel_prices import lookup_fuel_prices_preIRA, lookup_fuel_prices_iraRef
+from cmu_tare_model.private_impact.data_processing.create_lookup_fuel_prices import lookup_fuel_prices_aeo2026
 from typing import Tuple, Dict
 
 from cmu_tare_model.constants import VERBOSE
 
 def define_scenario_params(
     menu_mp: int,
-    policy_scenario: str,
+    policy_scenario: str = "2025 Reference Case",
     verbose: bool = VERBOSE
 ) -> Tuple[str, str, Dict, Dict, Dict, Dict]:
     """
-    Define scenario-specific params based on a measure package and policy scenario.
+    Define scenario-specific params based on a measure package.
+
+    There is one policy scenario: 2025 Reference Case.
+    The policy_scenario argument is accepted for API compatibility but not used
+    for scenario routing; it is passed through as the lookup key so callers
+    must supply the exact string "2025 Reference Case".
 
     Args:
         menu_mp (int): Measure package identifier (0 indicates baseline).
-        policy_scenario (str): Policy scenario name ('No Inflation Reduction Act' or 'AEO2023 Reference Case').
-        verbose (bool): Whether to print scenario configuration details. Default False.
+        policy_scenario (str): Must equal "2025 Reference Case".
+            Accepted for backward-compatibility; routing is single-scenario only.
+        verbose (bool): Whether to print scenario configuration details.
 
     Returns:
         tuple:
-            str: `scenario_prefix` used in output column naming.
-            str: `cambium_scenario` describing the chosen Cambium scenario (e.g., 'MidCase').
-            dict: `lookup_emissions_fossil_fuel` for fossil fuel emission factors.
-            dict: `lookup_emissions_electricity_climate` for electricity climate factors.
-            dict: `lookup_emissions_electricity_health` for electricity health damage factors.
-            dict: `lookup_fuel_prices` for fuel prices based on the policy scenario.
+            str: scenario_prefix  ('baseline_' for mp=0, 'aeo2026_mp{mp}_' otherwise)
+            str: cambium_scenario ('MidCase')
+            dict: lookup_emissions_fossil_fuel
+            dict: lookup_emissions_electricity_climate_preIRA
+            dict: lookup_emissions_electricity_health
+            dict: lookup_fuel_prices_aeo2026
 
     Raises:
-        ValueError: If the policy_scenario is invalid.
+        ValueError: If menu_mp is not an integer.
     """
-
     if menu_mp == 0:
+        scenario_prefix = "baseline_"
         if verbose:
             print(f"-- Scenario: Baseline (mp{menu_mp}) --")
-
-        # print(f"""-- Scenario: Baseline -- 
-        #       scenario_prefix: 'baseline_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
-        #       lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
-        #       """)
-        return "baseline_", "MidCase", lookup_emissions_fossil_fuel, lookup_emissions_electricity_climate_preIRA, lookup_emissions_electricity_health, lookup_fuel_prices_preIRA
-
-    if policy_scenario == 'No Inflation Reduction Act':
+    else:
+        scenario_prefix = f"aeo2026_mp{menu_mp}_"
         if verbose:
-            print(f"-- Scenario: No Inflation Reduction Act (mp{menu_mp}) --")
+            print(f"-- Scenario: 2025 Reference Case (mp{menu_mp}) --")
 
-        # print(f"""-- Scenario: No Inflation Reduction Act -- 
-        #       scenario_prefix: f'preIRA_mp{menu_mp}_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
-        #       lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_preIRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_preIRA'
-        #       """)
-        return f"preIRA_mp{menu_mp}_", "MidCase", lookup_emissions_fossil_fuel, lookup_emissions_electricity_climate_preIRA, lookup_emissions_electricity_health, lookup_fuel_prices_preIRA
-
-    if policy_scenario == 'AEO2023 Reference Case':
-        if verbose:
-            print(f"-- Scenario: Inflation Reduction Act Reference (mp{menu_mp}) --")
-
-        # print(f"""-- Scenario: Inflation Reduction Act (IRA) Reference -- 
-        #       scenario_prefix: 'iraRef_mp{menu_mp}_', cambium_scenario: 'MidCase', lookup_emissions_fossil_fuel: 'lookup_emissions_fossil_fuel', 
-        #       lookup_emissions_electricity_climate: 'lookup_emissions_electricity_climate_IRA', lookup_emissions_electricity_health: 'lookup_emissions_electricity_health', lookup_fuel_prices: 'lookup_fuel_prices_iraRef'
-        #       """)
-        return f"iraRef_mp{menu_mp}_", "MidCase", lookup_emissions_fossil_fuel, lookup_emissions_electricity_climate_IRA, lookup_emissions_electricity_health, lookup_fuel_prices_iraRef
-
-    raise ValueError("Invalid Policy Scenario! Choose 'No Inflation Reduction Act' or 'AEO2023 Reference Case'.")
+    return (
+        scenario_prefix,
+        "MidCase",
+        lookup_emissions_fossil_fuel,
+        lookup_emissions_electricity_climate_preIRA,
+        lookup_emissions_electricity_health,
+        lookup_fuel_prices_aeo2026,
+    )
 

@@ -413,7 +413,8 @@ def validate_common_parameters(
         raise ValueError(f"Invalid menu_mp: {menu_mp}. Must be convertible to an integer.")
     
     # Validate policy_scenario
-    valid_scenarios = ['No Inflation Reduction Act', 'AEO2023 Reference Case']
+    valid_scenarios = ['No Inflation Reduction Act', 'AEO2023 Reference Case',
+                       '2025 Reference Case']
     if policy_scenario not in valid_scenarios:
         raise ValueError(f"Invalid policy_scenario: {policy_scenario}. Must be one of {valid_scenarios}")
        
