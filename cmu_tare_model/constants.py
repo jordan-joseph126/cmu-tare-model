@@ -31,7 +31,8 @@ ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached']
 ALLOWED_TECHNOLOGIES = {
     # in.hvac_heating_type_and_fuel exclude existing heat pump options
     'heating': [
-        'Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace', 'Electricity ASHP',
+        'Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace', 
+        # 'Electricity ASHP',
         'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace', 
         'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
         'Propane Fuel Boiler', 'Propane Fuel Furnace'

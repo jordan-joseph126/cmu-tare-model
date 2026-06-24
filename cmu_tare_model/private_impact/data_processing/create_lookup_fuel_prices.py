@@ -137,4 +137,3 @@ lookup_fuel_prices_aeo2026 = _build_lookup()
 if print_verbose:
     print(f"Fuel-price lookup built: {len(lookup_fuel_prices_aeo2026)} location keys")
     print_truncated_dict(lookup_fuel_prices_aeo2026, n=5)
-
