@@ -28,7 +28,7 @@ These apply to every session, every task, without exception.
 |---|---|
 | `utils/validation_framework.py` | Core validation logic — never touch |
 | Any `.ipynb` file | VSCode in-memory cache causes changes not to persist; backport manually |
-| `fetch_aeo_data_and_project_EXPORT_14June2026.py` | EIA API scenario string must match API identifier — do NOT rename |
+| `fetch_aeo_data_and_project_EXPORT_24June2026.py` | EIA API scenario string must match API identifier — do NOT rename |
 | TARE/EUSS load cells (preserved region) | Upstream data source — do not modify |
 | Demand computation cells (preserved region) | Preserve original computation — do not modify |
 | `utils/validation_framework.py` | Repeated for emphasis — never, ever touch |
@@ -184,11 +184,11 @@ If an existing-ASHP entry is found in `constants.py`, flag it and remove it.
 
 Per home:
 - `NPV2 ≥ NPV1` (Case 2 adds cooling savings ≥ 0)
-- `NPV2 ≥ NPV3` (Case 3 adds cooling capital cost, reducing NPV)
+- `NPV3 ≥ NPV2` (Case 3 credits the avoided cooling replacement, raising NPV)
 
 Per county (means):
 - Adoption rate Case 2 ≥ Case 1
-- Adoption rate Case 2 ≥ Case 3
+- Adoption rate Case 3 ≥ Case 2
 
 ---
 
@@ -314,7 +314,7 @@ Do not suggest any of these:
 ❌ Let climate/health damages enter the adoption decision
 ❌ Hardcode 'mp3', 'ref2025_mp3_', 'aeo2026_mp3_', 'iraRef_mp3_', or any scenario prefix
 ❌ Use old scenario strings: 'AEO2023 Reference Case', 'No Inflation Reduction Act', preIRA, iraRef, aeo2026_mp{mp}_
-❌ Rename anything in fetch_aeo_data_and_project_EXPORT_14June2026.py
+❌ Rename anything in fetch_aeo_data_and_project_EXPORT_24June2026.py
 ❌ Add 'Electricity ASHP' or any ASHP variant to EQUIPMENT_SPECS / ALLOWED_TECHNOLOGIES['heating'] — existing-ASHP homes are excluded by design
 ❌ Read degree-day CSV without int-casting year columns — silent flat 1.0 results
 ❌ Use full state name as price lookup key ('Pennsylvania') — must be abbreviation ('PA') — fails silently as zero

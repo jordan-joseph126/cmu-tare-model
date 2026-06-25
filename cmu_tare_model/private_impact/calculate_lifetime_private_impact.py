@@ -1,10 +1,15 @@
 # Updated
-from tabnanny import verbose
 import pandas as pd
 import numpy as np
 from typing import Tuple, Dict, List, Optional, Union
 
-from cmu_tare_model.constants import EQUIPMENT_SPECS, PRIVATE_DISCOUNTING_METHOD_SUFFIXES, REBATE_ELIGIBLE_HEATING_MPS, VALID_HVAC_REPLACEMENT_SCENARIOS
+from cmu_tare_model.constants import (
+    EQUIPMENT_SPECS,
+    PRIVATE_DISCOUNTING_METHOD_SUFFIXES,
+    REBATE_ELIGIBLE_HEATING_MPS,
+    REMDB_COST_SCENARIO_KEYS,
+    VALID_HVAC_REPLACEMENT_SCENARIOS,
+)
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.discounting import calculate_discount_factors
 from cmu_tare_model.utils.validation_framework import (
@@ -23,6 +28,7 @@ from cmu_tare_model.utils.column_names import (
     create_rebate_col,
     create_capital_col,
     create_npv_col,
+    create_npv_case_col,
     create_enclosure_cost_col,
     create_weatherization_rebate_col,
     create_installation_premium_col
@@ -78,64 +84,67 @@ def calculate_private_npv(
         cost_scenario: str = 'v4MID',
         base_year: int = 2024,
         verbose: bool = True,
-        hvac_replacement_scenario: str = 'heating',
 ) -> pd.DataFrame:
     """
-    Calculate private net present value (NPV) using BOTH fixed and variable discount rates.
-    
-    This function automatically computes NPV for all equipment categories using:
-    - 'private_discount_rate_fixed_{low|base|high}': Constant fixed private discount rates for all households
-    - 'private_discount_rate_variable': Private discount rate (household-specific), inverse relationship proportional to AMI
+    Calculate private net present value (NPV) for the three heat-pump NPV cases.
 
-    This function follows the five-step validation framework:
-    1. Mask Initialization: Identifies valid homes using inclusion flags and retrofit status
-    2. Series Initialization: Creates result series with zeros for valid homes, NaN for others
-    3. Valid-Only Calculation: Performs calculations only for valid homes
-    4. Valid-Only Updates: Uses list-based collection of yearly values instead of incremental updates
-    5. Final Masking: Applies consistent masking to all result columns
+    A single heat pump replaces the home's heating system and also serves the
+    cooling load, so all three cases share the same heating retrofit and differ
+    only in whether cooling savings and the avoided cooling-system replacement
+    are counted:
+
+      - heating_only:                heating capital;           heating savings
+      - heating_and_cooling_savings: heating capital;           heating + cooling savings
+      - heating_and_cooling_full:    heating + cooling capital; heating + cooling savings
+
+    Cooling savings and the cooling replacement credit are zero for homes with
+    no AC (include_cooling = False), so for those homes Case 2 == Case 1 and
+    Case 3 == Case 1.
+
+    The adoption-relevant output is the moreWTP NPV (savings minus the net
+    capital cost, i.e. the incremental cost over a like-for-like replacement).
+    A lessWTP NPV (savings minus the full gross capital cost) is also retained
+    for backward compatibility but is not used by the adoption decision.
 
     Args:
-        df: Input DataFrame with installation costs, fuel savings, and potential rebates.
-            IMPORTANT: Must contain discount rate columns created by prepare_discount_rates().
-        df_fuel_costs: DataFrame containing measure package fuel costs.
-        df_baseline_costs: DataFrame containing baseline fuel costs.
-        input_mp: Input policy_scenario for calculating costs.
+        df: Input DataFrame with installation costs and validation flags.
+            IMPORTANT: Must contain the discount rate columns created by
+            prepare_discount_rates().
+        df_fuel_costs: DataFrame containing measure-package annual fuel costs.
+        df_baseline_costs: DataFrame containing baseline annual fuel costs.
+        input_mp: Upgrade label used for cost column selection (e.g., 'upgrade03').
         menu_mp: Measure package identifier.
-        policy_scenario: Policy scenario that determines electricity grid projections. 
-            Accepted values: 'No Inflation Reduction Act', 'AEO2023 Reference Case'.
+        policy_scenario: Policy scenario for electricity grid projections.
+            Accepted value: '2025 Reference Case'.
         discount_rate_col_name: Discount rate column name for private discounting.
-        cost_scenario: Cost scenario identifier for column naming. Supported values:
-            'v3', 'v4LOW', 'v4MID' (default), 'v4HIGH'.
-        base_year: The base year for discounting calculations. Default is 2024.
+        cost_scenario: Cost scenario identifier for column naming. Supported
+            values: 'v3', 'v4LOW', 'v4MID' (default), 'v4HIGH'.
+        base_year: Base year for discounting calculations. Default is 2024.
         verbose: Whether to print detailed processing information. Default is True.
-        hvac_replacement_scenario: Controls which incumbent equipment costs are credited
-            in the net capital cost calculation. 'heating' (default, Case A) subtracts
-            only heating replacement cost. 'heating_and_cooling' (Case B) also subtracts
-            cooling replacement cost. Output column names use the hvac_replacement_scenario
-            value as the category segment (e.g., 'heating_and_cooling' for Case B).
 
     Returns:
-        DataFrame with 2-8 new NPV columns per category (2 WTP scenarios × 1-4 discount methods).
+        DataFrame with, per measure package, moreWTP and lessWTP NPV columns and
+        capital cost columns for each of the three NPV cases (see
+        NPV_CASE_CATEGORIES).
 
     Raises:
-        ValueError: If an invalid policy_scenario or menu_mp is provided.
+        ValueError: If policy_scenario, menu_mp, or cost_scenario is invalid.
+        KeyError: If a required cost or fuel-cost column is missing.
     """
     # ===== STEP 0: Validate input parameters =====
     menu_mp, policy_scenario = validate_common_parameters(
         menu_mp, policy_scenario)
 
-    if hvac_replacement_scenario not in VALID_HVAC_REPLACEMENT_SCENARIOS:
+    if cost_scenario not in REMDB_COST_SCENARIO_KEYS:
         raise ValueError(
-            f"Invalid hvac_replacement_scenario: '{hvac_replacement_scenario}'. "
-            f"Must be one of {VALID_HVAC_REPLACEMENT_SCENARIOS}")
-
-    # Build output cost_scenario key: append suffix for Case B so columns are distinguishable
-    output_category = hvac_replacement_scenario
+            f"Invalid cost_scenario: '{cost_scenario}'. "
+            f"Must be one of {REMDB_COST_SCENARIO_KEYS}")
 
     if verbose:
-        print(f"""\nCalculating Private NPV with parameters:
-          input_mp: {input_mp}, menu_mp: {menu_mp}, policy_scenario: {policy_scenario}
-          hvac_replacement_scenario: {hvac_replacement_scenario}, output_category: {output_category}""")
+        print(
+            f"\nCalculating Private NPV (three cases) | "
+            f"input_mp={input_mp}, menu_mp={menu_mp}, "
+            f"policy_scenario={policy_scenario}")
 
     # Create copies to avoid modifying original dataframes
     df_copy = df.copy()
@@ -181,55 +190,120 @@ def calculate_private_npv(
 
     method_suffix = PRIVATE_DISCOUNTING_METHOD_SUFFIXES[discount_rate_col_name]
 
-    # Process each equipment category
-    for category, lifetime in EQUIPMENT_SPECS.items():
-        if verbose:
-            print(f"\nDetermining lifetime private impacts for category: {category} with lifetime: {lifetime}")
+    # ===== STEP 1: Heating validity drives all three cases =====
+    # The retrofit is a single heat pump that replaces the heating system and
+    # also serves cooling, so NPV is defined for homes with valid heating data
+    # that are scheduled for this measure package.
+    _, heating_valid_mask, _, _ = initialize_validation_tracking(
+        df_copy, 'heating', menu_mp, verbose=verbose, copy=False)
 
-        # ===== STEP 1: Initialize validation tracking =====
-        # MEMORY OPTIMIZATION: copy=False since df_copy was already copied at the start
-        _, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-            df_copy, category, menu_mp, verbose=verbose, copy=False)
-        
-        # Calculate total and net capital costs based on policy scenario        
-        total_capital_cost, net_capital_cost = calculate_capital_costs(
-            df_copy=df_copy,
-            category=category,
-            input_mp=input_mp,
-            menu_mp=menu_mp,
-            policy_scenario=policy_scenario,
-            cost_scenario=cost_scenario,
-            valid_mask=valid_mask,
-            hvac_replacement_scenario=hvac_replacement_scenario
-        )
-        
-        # ===== Calculate private discount factors for fixed and variable methods =====
-        # Calculate and get NPV values using FIXED discounting method
-        result_cols = calculate_and_update_npv(
-            df_measure_costs=df_fuel_costs_copy,
-            df_baseline_costs=df_baseline_costs_copy,
-            category=category,
-            lifetime=lifetime,
-            total_capital_cost=total_capital_cost,
-            net_capital_cost=net_capital_cost,
-            policy_scenario=policy_scenario,
-            scenario_prefix=scenario_prefix,
-            discount_factors=discount_factors,
-            method_suffix=method_suffix,
-            valid_mask=valid_mask,
-            menu_mp=menu_mp,
-            base_year=base_year,
-            cost_scenario=cost_scenario,
-            verbose=verbose,
-            output_category=output_category
-        )
+    # Homes with no AC (include_cooling = False) get zero cooling savings and
+    # zero cooling replacement credit, so for them Case 2 == Case 1 and
+    # Case 3 == Case 1.
+    if 'include_cooling' in df_copy.columns:
+        include_cooling = df_copy['include_cooling'].fillna(False).astype(bool)
+    else:
+        include_cooling = pd.Series(False, index=df_copy.index)
 
-        for col_name, values in result_cols.items():
-            df_new_columns[col_name] = values
-            category_columns_to_mask.append(col_name)
+    # ===== STEP 2-4: Discounted lifetime savings per category =====
+    # Baseline cooling assumption: the home's existing AC (efficiency from the
+    # ResStock source data) versus the ASHP in cooling mode (MP3 SEER1=15;
+    # MP4 SEER1=24-29.3). Cooling savings are priced with the same electricity
+    # $/kWh path as heating.
+    heating_savings = _calculate_discounted_savings(
+        df_measure_costs=df_fuel_costs_copy,
+        df_baseline_costs=df_baseline_costs_copy,
+        category='heating',
+        lifetime=EQUIPMENT_SPECS['heating'],
+        scenario_prefix=scenario_prefix,
+        discount_factors=discount_factors,
+        valid_mask=heating_valid_mask,
+        menu_mp=menu_mp,
+        base_year=base_year,
+        verbose=verbose,
+    )
+    cooling_savings_raw = _calculate_discounted_savings(
+        df_measure_costs=df_fuel_costs_copy,
+        df_baseline_costs=df_baseline_costs_copy,
+        category='cooling',
+        lifetime=EQUIPMENT_SPECS['cooling'],
+        scenario_prefix=scenario_prefix,
+        discount_factors=discount_factors,
+        valid_mask=heating_valid_mask,
+        menu_mp=menu_mp,
+        base_year=base_year,
+        verbose=verbose,
+    )
 
-        # Add all columns for this category to the masking dictionary
-        all_columns_to_mask[category].extend(category_columns_to_mask)
+    # Zero cooling savings for no-AC homes; keep them where the home has AC.
+    cooling_savings = cooling_savings_raw.where(include_cooling, other=0.0)
+    heating_and_cooling_savings = heating_savings + cooling_savings
+
+    # ===== Capital costs =====
+    # Heating capital: heat-pump install (minus rebate) credited against the
+    # heating system it replaces. The total (gross) capital is shared by all
+    # three cases; only the net capital differs.
+    total_capital, net_capital_heating = calculate_capital_costs(
+        df_copy=df_copy,
+        category='heating',
+        input_mp=input_mp,
+        menu_mp=menu_mp,
+        policy_scenario=policy_scenario,
+        cost_scenario=cost_scenario,
+        valid_mask=heating_valid_mask,
+        hvac_replacement_scenario='heating',
+        verbose=verbose,
+    )
+
+    # Case 3 also credits the avoided cooling-system replacement, but only for
+    # homes that actually have AC (include_cooling = True).
+    cooling_replacement_col = create_cost_col(
+        menu_mp=menu_mp, category='cooling',
+        cost_type='replacement', cost_scenario=cost_scenario)
+    cooling_replacement_cost = (
+        df_copy[cooling_replacement_col].fillna(0).where(include_cooling, other=0.0))
+    net_capital_heating_and_cooling = net_capital_heating - cooling_replacement_cost
+
+    # ===== Assemble the three NPV cases =====
+    # Each entry maps an NPV case to its (savings, net capital cost) pair.
+    npv_case_inputs = {
+        'heating_only': (heating_savings, net_capital_heating),
+        'heating_and_cooling_savings': (
+            heating_and_cooling_savings, net_capital_heating),
+        'heating_and_cooling_full': (
+            heating_and_cooling_savings, net_capital_heating_and_cooling),
+    }
+
+    # The shared gross capital is stored once under the heating category.
+    total_capital_col = create_capital_col(
+        scenario_prefix=scenario_prefix, category='heating',
+        net=False, cost_scenario=cost_scenario)
+    df_new_columns[total_capital_col] = total_capital
+    all_columns_to_mask['heating'].append(total_capital_col)
+
+    for npv_case, (case_savings, case_net_capital) in npv_case_inputs.items():
+        # moreWTP NPV: savings minus the incremental (net) capital cost. This is
+        # the value the economic adoption decision uses (moreWTP >= 0).
+        npv_more_wtp = round(case_savings - case_net_capital, 2)
+        # lessWTP NPV: savings minus the full (gross) capital cost. Retained for
+        # backward compatibility; not used by the economic adoption decision.
+        npv_less_wtp = round(case_savings - total_capital, 2)
+
+        more_wtp_col = create_npv_case_col(
+            scenario_prefix=scenario_prefix, npv_case=npv_case, wtp='moreWTP',
+            cost_scenario=cost_scenario, method_suffix=method_suffix)
+        less_wtp_col = create_npv_case_col(
+            scenario_prefix=scenario_prefix, npv_case=npv_case, wtp='lessWTP',
+            cost_scenario=cost_scenario, method_suffix=method_suffix)
+        net_capital_col = create_capital_col(
+            scenario_prefix=scenario_prefix, category=npv_case,
+            net=True, cost_scenario=cost_scenario)
+
+        df_new_columns[more_wtp_col] = npv_more_wtp
+        df_new_columns[less_wtp_col] = npv_less_wtp
+        df_new_columns[net_capital_col] = case_net_capital
+        all_columns_to_mask['heating'].extend(
+            [more_wtp_col, less_wtp_col, net_capital_col])
 
     # ===== STEP 5: Apply final verification masking for consistency =====
     df_result = apply_temporary_validation_and_mask(df_copy, df_new_columns, all_columns_to_mask, verbose=verbose)
@@ -238,6 +312,98 @@ def calculate_private_npv(
         print(f"\nPrivate NPV calculation completed. Added {len(df_new_columns.columns)} new columns.")
     
     return df_result
+
+
+def _calculate_discounted_savings(
+    df_measure_costs: pd.DataFrame,
+    df_baseline_costs: pd.DataFrame,
+    category: str,
+    lifetime: int,
+    scenario_prefix: str,
+    discount_factors: Dict[int, pd.Series],
+    valid_mask: pd.Series,
+    menu_mp: int,
+    base_year: int = 2024,
+    verbose: bool = False,
+) -> pd.Series:
+    """Compute discounted lifetime fuel-cost savings for one equipment category.
+
+    Sums, over the equipment lifetime, the per-year avoided fuel cost
+    (baseline minus measure) discounted to the base year. Values are masked to
+    NaN outside valid_mask so excluded homes do not enter NPV aggregates.
+
+    Args:
+        df_measure_costs: DataFrame with measure-package annual fuel costs.
+        df_baseline_costs: DataFrame with baseline annual fuel costs.
+        category: Equipment category for fuel-cost column lookups
+            ('heating' or 'cooling').
+        lifetime: Equipment lifetime in years.
+        scenario_prefix: Measure scenario prefix (e.g., 'ref2025_mp3_').
+        discount_factors: Mapping from year label to a per-home discount factor.
+        valid_mask: Homes with valid baseline data scheduled for the retrofit.
+        menu_mp: Measure package identifier (0 = baseline; nonzero applies masking).
+        base_year: Base year used to build year labels. Default is 2024.
+        verbose: Whether to raise on partial-year coverage. Default is False.
+
+    Returns:
+        Series of discounted lifetime savings, NaN outside valid_mask.
+
+    Raises:
+        ValueError: If a required annual fuel-cost column is missing for any year.
+    """
+    # Initialize with zeros for valid homes, NaN for others.
+    discounted_savings_template = create_retrofit_only_series(
+        df_measure_costs, valid_mask)
+
+    yearly_avoided_costs = []
+    years_processed = 0
+
+    # Sum the discounted avoided cost for each year of the equipment lifetime.
+    for year in range(1, lifetime + 1):
+        year_label = year + (base_year - 1)
+        discount_factor = discount_factors[year_label]
+
+        base_cost_col_name = create_fuel_cost_col('baseline_', year_label, category)
+        measure_cost_col_name = create_fuel_cost_col(
+            scenario_prefix, year_label, category)
+
+        cols_exist = (
+            base_cost_col_name in df_baseline_costs.columns
+            and measure_cost_col_name in df_measure_costs.columns)
+        if not cols_exist:
+            raise ValueError(
+                f"Fuel cost data missing for year {year_label}, "
+                f"category '{category}'")
+
+        avoided_costs = calculate_avoided_values(
+            baseline_values=df_baseline_costs[base_cost_col_name],
+            measure_values=df_measure_costs[measure_cost_col_name],
+            retrofit_mask=(valid_mask if menu_mp != 0 else None),
+        ) * discount_factor
+        yearly_avoided_costs.append(avoided_costs)
+        years_processed += 1
+
+    if yearly_avoided_costs:
+        avoided_costs_df = pd.concat(yearly_avoided_costs, axis=1)
+        # skipna=False so a missing year propagates NaN rather than undercounting.
+        total_discounted_savings = avoided_costs_df.sum(axis=1, skipna=False)
+        if menu_mp != 0:
+            total_discounted_savings = pd.Series(
+                np.where(valid_mask, total_discounted_savings, np.nan),
+                index=total_discounted_savings.index,
+            )
+    else:
+        total_discounted_savings = discounted_savings_template
+
+    # Replace tiny values with NaN to avoid numerical artifacts.
+    total_discounted_savings = replace_small_values_with_nan(
+        total_discounted_savings)
+
+    if verbose and years_processed < lifetime:
+        raise ValueError(
+            f"Only processed {years_processed}/{lifetime} years for '{category}'")
+
+    return total_discounted_savings
 
 
 def _validate_required_columns(
@@ -269,6 +435,7 @@ def calculate_capital_costs(
     cost_scenario: str,
     valid_mask: pd.Series,
     hvac_replacement_scenario: str = 'heating',
+    verbose: bool = False,
 ) -> Tuple[pd.Series, pd.Series]:
     """
     Calculate total and net capital costs for an equipment category.
@@ -294,6 +461,7 @@ def calculate_capital_costs(
         hvac_replacement_scenario: Which incumbent equipment costs offset the upgrade.
             'heating' (default, Case A) — only heating replacement cost subtracted.
             'heating_and_cooling' (Case B) — heating + cooling replacement cost subtracted.
+        verbose: Whether to print detailed processing information. Default is False.
 
     Returns:
         A tuple containing:

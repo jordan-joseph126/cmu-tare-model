@@ -1,3 +1,11 @@
+# =============================================================================
+# DEPRECATED — Session 2, 16 June 2026
+# This module is superseded by determine_economic_adoption_potential.py.
+# The tiered adoption framework (Tier 1 / Tier 2) is retired.
+# Adoption decision is now: moreWTP >= 0 (economic payback only).
+# Climate / health damages are computed and stored but excluded from adoption.
+# Do not import from this module in new code.
+# =============================================================================
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional

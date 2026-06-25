@@ -28,7 +28,7 @@ def define_scenario_params(
 
     Returns:
         tuple:
-            str: scenario_prefix  ('baseline_' for mp=0, 'aeo2026_mp{mp}_' otherwise)
+            str: scenario_prefix  ('baseline_' for mp=0, 'ref2025_mp{mp}_' otherwise)
             str: cambium_scenario ('MidCase')
             dict: lookup_emissions_fossil_fuel
             dict: lookup_emissions_electricity_climate_preIRA
@@ -43,7 +43,7 @@ def define_scenario_params(
         if verbose:
             print(f"-- Scenario: Baseline (mp{menu_mp}) --")
     else:
-        scenario_prefix = f"aeo2026_mp{menu_mp}_"
+        scenario_prefix = f"ref2025_mp{menu_mp}_"
         if verbose:
             print(f"-- Scenario: 2025 Reference Case (mp{menu_mp}) --")
 

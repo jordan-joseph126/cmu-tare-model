@@ -422,7 +422,63 @@ def validate_common_parameters(
 
     return menu_mp_int, policy_scenario
 
-    
+
+# ===== Shared DataFrame Helpers =====
+# Relocated here so non-deprecated modules (e.g., the economic adoption module)
+# do not have to import from determine_adoption_potential_sensitivity.py.
+def fix_duplicate_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Remove duplicate columns if found, keeping first occurrence.
+    Silent operation unless duplicates are actually fixed.
+
+    Args:
+        df: DataFrame with potential duplicate columns.
+
+    Returns:
+        DataFrame with duplicates removed.
+    """
+    duplicate_count = len(df.columns) - len(df.columns.unique())
+    if duplicate_count == 0:
+        return df
+
+    # Only print if action taken
+    print(f"Fixed {duplicate_count} duplicate columns")
+    return df.loc[:, ~df.columns.duplicated(keep='first')]
+
+
+def _validate_required_columns(
+    df: pd.DataFrame,
+    required_columns: List[str],
+    context_params: Dict[str, str]
+) -> None:
+    """
+    Validates that all required columns exist in DataFrame.
+
+    Args:
+        df: DataFrame to validate.
+        required_columns: List of column names that must exist.
+        context_params: Dictionary of parameters for error message context.
+
+    Raises:
+        KeyError: If any required columns are missing, with complete list.
+    """
+    missing_columns = [col for col in required_columns if col not in df.columns]
+
+    if missing_columns:
+        unique_missing = sorted(set(missing_columns))
+        context_str = "\n".join(
+            f"  {key}: {value}" for key, value in context_params.items()
+        )
+
+        error_msg = (
+            f"Required columns missing:\n"
+            f"{context_str}\n"
+            f"\nMissing columns ({len(unique_missing)}):\n"
+        )
+        error_msg += "\n".join(f"  - {col}" for col in unique_missing)
+        raise KeyError(error_msg)
+
+
 # ===== Apply Temporary Validation and Masking, Remove Duplicate Columns =====
 def apply_temporary_validation_and_mask(
     df_copy: pd.DataFrame,

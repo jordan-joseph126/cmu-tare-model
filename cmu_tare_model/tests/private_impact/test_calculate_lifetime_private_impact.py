@@ -3,7 +3,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from cmu_tare_model.tests.conftest import (
     FULL_EQUIPMENT_SPECS, FULL_UPGRADE_COLUMNS, FULL_FUEL_MAPPING, BASE_YEAR,
@@ -31,7 +31,7 @@ def mock_constants(monkeypatch):
 
 @pytest.fixture
 def private_impact_df():
-    """DataFrame with columns required for private NPV calculation."""
+    """DataFrame with columns required for capital cost / NPV unit tests (MP8)."""
     n = 6
     np.random.seed(42)
     data = {
@@ -121,7 +121,6 @@ def test_validate_required_columns_some_missing(private_impact_df):
 # calculate_capital_costs
 # =============================================================================
 
-@patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.verbose', False)
 def test_calculate_capital_costs_no_ira(private_impact_df):
     """Pre-IRA: total cost = upgrade + installation premium (for heating), no rebate."""
     from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_capital_costs
@@ -146,7 +145,6 @@ def test_calculate_capital_costs_no_ira(private_impact_df):
     assert (total.loc[valid_mask] >= 0).all()
 
 
-@patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.verbose', False)
 def test_calculate_capital_costs_with_ira(private_impact_df):
     """IRA scenario: total cost = upgrade + premium - rebate for heating."""
     from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_capital_costs
@@ -158,7 +156,7 @@ def test_calculate_capital_costs_with_ira(private_impact_df):
         category='heating',
         input_mp='upgrade03',
         menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
+        policy_scenario='2025 Reference Case',
         cost_scenario='v4MID',
         valid_mask=valid_mask,
     )
@@ -172,7 +170,6 @@ def test_calculate_capital_costs_with_ira(private_impact_df):
         assert net.loc[idx] == pytest.approx(expected_net, abs=0.01)
 
 
-@patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.verbose', False)
 def test_calculate_capital_costs_missing_columns_raises(private_impact_df):
     """Raises KeyError when required cost columns are missing."""
     from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_capital_costs
@@ -193,7 +190,7 @@ def test_calculate_capital_costs_missing_columns_raises(private_impact_df):
 
 
 # =============================================================================
-# calculate_and_update_npv
+# calculate_and_update_npv (retained legacy helper; still used by tests)
 # =============================================================================
 
 @pytest.mark.parametrize("category", list(FULL_EQUIPMENT_SPECS.keys()))
@@ -286,71 +283,186 @@ def test_calculate_and_update_npv_nan_propagation(private_impact_df, fuel_costs_
 
 
 # =============================================================================
-# calculate_private_npv (integration)
+# calculate_private_npv (three-case integration)
 # =============================================================================
 
+@pytest.fixture
+def npv_cases_df():
+    """6-home DataFrame for the three-case NPV path (heating + cooling, MP3).
+
+    Homes 0-3 are valid heating retrofits; home 2 has no AC (include_cooling
+    False); homes 4-5 are excluded (invalid heating / no retrofit). Cost values
+    are fixed constants so the NPV arithmetic is deterministic.
+    """
+    n = 6
+    data = {
+        'include_heating': [True, True, True, True, False, True],
+        'valid_fuel_heating': [True, True, True, True, False, True],
+        'valid_tech_heating': [True, True, True, True, False, True],
+        'upgrade_hvac_heating_efficiency': [
+            'ASHP', 'ASHP', 'ASHP', 'ASHP', None, None],
+        # Home 2 has no AC; the rest do.
+        'include_cooling': [True, True, False, True, True, True],
+        'private_discount_rate_fixed_base': [0.07] * n,
+        # Fixed cost columns (MP3, v4MID).
+        'mp3_heating_upgrade_installed_cost_v4MID': [12000.0] * n,
+        'mp3_heating_replacement_installed_cost_v4MID': [5000.0] * n,
+        'mp3_heating_installation_premium': [800.0] * n,
+        # Cooling replacement is non-NaN even for the no-AC home, to prove the
+        # include_cooling mask (not the data) zeroes the credit.
+        'mp3_cooling_replacement_installed_cost_v4MID': [4000.0] * n,
+    }
+    return pd.DataFrame(data)
+
+
+@pytest.fixture
+def npv_cases_fuel_costs(npv_cases_df):
+    """Baseline and measure annual fuel costs for the three-case NPV path.
+
+    Baseline always exceeds measure, so per-year avoided cost is positive and
+    the lifetime savings are deterministic. Home 2's cooling columns are NaN to
+    mimic the no-AC masking applied upstream.
+    """
+    n = len(npv_cases_df)
+    lifetime = 15  # EQUIPMENT_SPECS heating == cooling == 15
+    df_baseline = pd.DataFrame(index=npv_cases_df.index)
+    df_measure = pd.DataFrame(index=npv_cases_df.index)
+
+    for year in range(BASE_YEAR, BASE_YEAR + lifetime):
+        # Heating: avoided 600/yr for every home.
+        df_baseline[f'baseline_{year}_heating_fuel_cost'] = [1000.0] * n
+        df_measure[f'ref2025_mp3_{year}_heating_fuel_cost'] = [400.0] * n
+
+        # Cooling: avoided 200/yr; home 2 (no AC) is NaN.
+        df_baseline[f'baseline_{year}_cooling_fuel_cost'] = [500.0, 500.0, np.nan, 500.0, 500.0, 500.0]
+        df_measure[f'ref2025_mp3_{year}_cooling_fuel_cost'] = [300.0, 300.0, np.nan, 300.0, 300.0, 300.0]
+
+    return df_baseline, df_measure
+
+
+@pytest.fixture
+def heating_cooling_specs(mock_constants, monkeypatch):
+    """Point EQUIPMENT_SPECS at the real heating+cooling spec for the NPV path.
+
+    The autouse mock_constants fixture sets EQUIPMENT_SPECS to a spec without
+    'cooling'; the three-case NPV path needs both heating and cooling, so this
+    fixture overrides the module-level binding (depends on mock_constants to run
+    after it).
+    """
+    specs = {'heating': 15, 'cooling': 15}
+    monkeypatch.setattr('cmu_tare_model.constants.EQUIPMENT_SPECS', specs)
+    monkeypatch.setattr(
+        'cmu_tare_model.private_impact.calculate_lifetime_private_impact.EQUIPMENT_SPECS',
+        specs,
+    )
+    return specs
+
+
 @patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.define_scenario_params')
 @patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.calculate_discount_factors')
-@patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.verbose', False)
-def test_private_npv_integration_output_structure(mock_discount, mock_params, private_impact_df, fuel_costs_dfs):
-    """End-to-end test: produces DataFrame with NPV columns for all categories."""
+def test_private_npv_three_cases_columns_and_dtype(mock_discount, mock_params, npv_cases_df, npv_cases_fuel_costs, heating_cooling_specs):
+    """Produces moreWTP + lessWTP NPV columns for all three cases as float64."""
     from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_private_npv
+    from cmu_tare_model.utils.column_names import NPV_CASE_CATEGORIES
 
-    df_baseline, df_measure = fuel_costs_dfs
-
-    mock_params.return_value = ('iraRef_mp8_', 'MidCase', {}, {}, {}, {})
-    mock_discount.return_value = pd.Series(0.95, index=private_impact_df.index)
+    df_baseline, df_measure = npv_cases_fuel_costs
+    mock_params.return_value = ('ref2025_mp3_', 'MidCase', {}, {}, {}, {})
+    mock_discount.return_value = pd.Series(0.95, index=npv_cases_df.index)
 
     result = calculate_private_npv(
-        df=private_impact_df,
+        df=npv_cases_df,
         df_fuel_costs=df_measure,
         df_baseline_costs=df_baseline,
         input_mp='upgrade03',
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
+        menu_mp=3,
+        policy_scenario='2025 Reference Case',
         discount_rate_col_name='private_discount_rate_fixed_base',
         cost_scenario='v4MID',
         base_year=BASE_YEAR,
         verbose=False,
     )
 
-    assert isinstance(result, pd.DataFrame)
-    assert len(result) == len(private_impact_df)
-
-    # Should have NPV columns for at least heating
-    npv_cols = [c for c in result.columns if 'private_npv' in c]
-    assert len(npv_cols) > 0
+    for npv_case in NPV_CASE_CATEGORIES:
+        for wtp in ['moreWTP', 'lessWTP']:
+            col = f'ref2025_mp3_{npv_case}_private_npv_{wtp}_v4MID_fixed_base'
+            assert col in result.columns, f"Missing {col}"
+            assert result[col].dtype == 'float64'
 
 
 @patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.define_scenario_params')
 @patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.calculate_discount_factors')
-@patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.verbose', False)
-def test_private_npv_invalid_homes_masked(mock_discount, mock_params, private_impact_df, fuel_costs_dfs):
-    """Invalid homes have NaN in NPV columns."""
+def test_private_npv_three_cases_ordering(mock_discount, mock_params, npv_cases_df, npv_cases_fuel_costs, heating_cooling_specs):
+    """Per home: NPV1 <= NPV2 <= NPV3; no-AC home has NPV1 == NPV2 == NPV3."""
     from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_private_npv
 
-    df_baseline, df_measure = fuel_costs_dfs
-
-    mock_params.return_value = ('iraRef_mp8_', 'MidCase', {}, {}, {}, {})
-    mock_discount.return_value = pd.Series(0.95, index=private_impact_df.index)
+    df_baseline, df_measure = npv_cases_fuel_costs
+    mock_params.return_value = ('ref2025_mp3_', 'MidCase', {}, {}, {}, {})
+    mock_discount.return_value = pd.Series(0.95, index=npv_cases_df.index)
 
     result = calculate_private_npv(
-        df=private_impact_df,
+        df=npv_cases_df,
         df_fuel_costs=df_measure,
         df_baseline_costs=df_baseline,
         input_mp='upgrade03',
-        menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
+        menu_mp=3,
+        policy_scenario='2025 Reference Case',
         discount_rate_col_name='private_discount_rate_fixed_base',
         cost_scenario='v4MID',
         base_year=BASE_YEAR,
         verbose=False,
     )
 
-    for cat in FULL_EQUIPMENT_SPECS:
-        invalid_mask = ~private_impact_df[f'include_{cat}']
-        npv_cols = [c for c in result.columns if f'_{cat}_private_npv' in c]
-        for col in npv_cols:
-            if invalid_mask.any():
-                assert result.loc[invalid_mask, col].isna().all(), \
-                    f"Invalid homes should have NaN in {col}"
+    base = 'ref2025_mp3_{case}_private_npv_moreWTP_v4MID_fixed_base'
+    npv1 = result[base.format(case='heating_only')]
+    npv2 = result[base.format(case='heating_and_cooling_savings')]
+    npv3 = result[base.format(case='heating_and_cooling_full')]
+
+    valid = npv_cases_df['include_heating'] & \
+        npv_cases_df['upgrade_hvac_heating_efficiency'].notna()
+
+    # Cooling savings >= 0 and cooling replacement credit >= 0 by construction.
+    assert (npv2[valid] >= npv1[valid]).all()
+    assert (npv3[valid] >= npv2[valid]).all()
+
+    # Home 2 has no AC: all three cases collapse to the heating-only value.
+    assert npv1.iloc[2] == npv2.iloc[2] == npv3.iloc[2]
+
+    # Exact arithmetic spot-check on an AC home (home 0):
+    #   heating savings = 600 * 0.95 * 15 = 8550
+    #   cooling savings = 200 * 0.95 * 15 = 2850
+    #   total capital   = 12000 + 800 = 12800 ; net heating = 7800
+    #   net heat+cool   = 7800 - 4000 = 3800
+    assert npv1.iloc[0] == pytest.approx(8550 - 7800)           # 750
+    assert npv2.iloc[0] == pytest.approx(8550 + 2850 - 7800)    # 3600
+    assert npv3.iloc[0] == pytest.approx(8550 + 2850 - 3800)    # 7600
+
+
+@patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.define_scenario_params')
+@patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.calculate_discount_factors')
+def test_private_npv_three_cases_invalid_homes_masked(mock_discount, mock_params, npv_cases_df, npv_cases_fuel_costs, heating_cooling_specs):
+    """Excluded homes (invalid heating or no retrofit) are NaN in every case."""
+    from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_private_npv
+    from cmu_tare_model.utils.column_names import NPV_CASE_CATEGORIES
+
+    df_baseline, df_measure = npv_cases_fuel_costs
+    mock_params.return_value = ('ref2025_mp3_', 'MidCase', {}, {}, {}, {})
+    mock_discount.return_value = pd.Series(0.95, index=npv_cases_df.index)
+
+    result = calculate_private_npv(
+        df=npv_cases_df,
+        df_fuel_costs=df_measure,
+        df_baseline_costs=df_baseline,
+        input_mp='upgrade03',
+        menu_mp=3,
+        policy_scenario='2025 Reference Case',
+        discount_rate_col_name='private_discount_rate_fixed_base',
+        cost_scenario='v4MID',
+        base_year=BASE_YEAR,
+        verbose=False,
+    )
+
+    excluded = ~(npv_cases_df['include_heating']
+                 & npv_cases_df['upgrade_hvac_heating_efficiency'].notna())
+    for npv_case in NPV_CASE_CATEGORIES:
+        col = f'ref2025_mp3_{npv_case}_private_npv_moreWTP_v4MID_fixed_base'
+        assert result.loc[excluded, col].isna().all()
