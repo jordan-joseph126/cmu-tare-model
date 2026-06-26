@@ -22,8 +22,8 @@ MAP_LEGEND_FONT_SIZE = 16
 
 FIGURE_TITLE_FONT_SIZE = 18
 
-# ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached', 'Mobile Home', 'Multi-Family with 2 - 4 Units']
-ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached']
+ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached', 'Mobile Home', 'Multi-Family with 2 - 4 Units']
+# ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached']
 
 # Excludes HP Tech for Space/Water Heating and Clothes Drying. Also excludes electric resistance cooking and induction cooking.
 # enumeration_dictionary.tsv provides additional details on the allowed technologies for each equipment category.
