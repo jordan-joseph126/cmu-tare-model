@@ -43,31 +43,27 @@ FUEL_COLORS: Dict[str, str] = {
     'Propane': '#ff7f0e',       # orange/yellow
 }
 
-# Marker for each tier (left-to-right on the dot plot)
+# Marker for the single economic-adopter tier
 TIER_MARKERS: Dict[str, str] = {
-    'Tier 1: Feasible': 'o',                                     # circle
-    'Total Adoption Potential': '^',                              # triangle
-    'Total Adoption Potential (Additional Subsidy)': 'D',         # diamond
+    'Economic Adopter': 'o',
+    'Total Adoption Potential': '^',
 }
 
 TIER_LABELS_SHORT: Dict[str, str] = {
-    'Tier 1: Feasible': 'T1: Feasible',
-    'Total Adoption Potential': 'T1+T2: Adoption Potential',
-    'Total Adoption Potential (Additional Subsidy)': 'T1+T2+T3: With Subsidy',
+    'Economic Adopter': 'Economic Adopter (moreWTP >= 0)',
+    'Total Adoption Potential': 'Total Adoption Potential',
 }
 
-# Tiers extracted from the MultiIndex DataFrame (excludes Already Upgraded)
+# Tiers extracted from the MultiIndex DataFrame for dotplot lookup
 MI_TIER_NAMES: List[str] = [
-    'Tier 1: Feasible',
+    'Economic Adopter',
     'Total Adoption Potential',
-    'Total Adoption Potential (Additional Subsidy)',
 ]
 
 # All tiers (plot order: left -> right)
 ALL_TIER_NAMES: List[str] = [
-    'Tier 1: Feasible',
+    'Economic Adopter',
     'Total Adoption Potential',
-    'Total Adoption Potential (Additional Subsidy)',
 ]
 
 # ===========================================================================
@@ -91,31 +87,38 @@ GROUPING_ORDER: List[str] = [
 # ===================================================================
 
 def prepare_plot_data(
-    mi_df: pd.DataFrame,
+    mi_df_a: pd.DataFrame,
     source_df: pd.DataFrame,
-    preira_col: str,
-    iraref_col: str,
+    case_a_col: str,
+    case_b_col: str,
+    mi_df_b: Optional[pd.DataFrame] = None,
     fuel_col: str = 'base_heating_fuel',
     income_col: str = 'lmi_or_mui',
     income_groups: Optional[List[str]] = None,
     sample_total: Optional[int] = None,
     scaling_factor: float = 242.0,
 ) -> pd.DataFrame:
-    """Flatten MultiIndex adoption DataFrame into plot-ready long format.
+    """Flatten two MultiIndex adoption DataFrames into plot-ready long format.
 
-    Returns one row per (grouping, tier) with IRA-Reference adoption %,
-    Pre-IRA adoption %, and the delta.  Also computes "Already Upgraded"
+    Returns one row per (grouping, tier) with Case B adoption %,
+    Case A adoption %, and the delta (B - A).  Also computes "Already Upgraded"
     percentages directly from *source_df*.
 
     Parameters
     ----------
-    mi_df : pd.DataFrame
-        MultiIndex DataFrame from ``create_multiIndex_adoption_df()``.
+    mi_df_a : pd.DataFrame
+        MultiIndex DataFrame for Case A (e.g., heating_only) from
+        ``create_multiIndex_adoption_df()``.
     source_df : pd.DataFrame
         Raw per-dwelling DataFrame used for population weights and
         "Already Upgraded" calculation.
-    preira_col, iraref_col : str
-        Scenario column names for Pre-IRA and IRA-Reference.
+    case_a_col : str
+        Adopter column name in *mi_df_a* (Case A -- reference case).
+    case_b_col : str
+        Adopter column name in *mi_df_b* (Case B -- comparison case).
+    mi_df_b : pd.DataFrame, optional
+        MultiIndex DataFrame for Case B. If None, uses *mi_df_a* for both
+        cases (delta will be zero -- for single-case display).
     fuel_col, income_col : str
         Column names in *source_df*.
     income_groups : list of str, optional
@@ -129,32 +132,34 @@ def prepare_plot_data(
     -------
     pd.DataFrame
         Columns: grouping, fuel_type, income_level, tier_label,
-        iraref_pct, preira_pct, delta_pct, sample_n, pct_of_sample,
+        case_b_pct, case_a_pct, delta_pct, sample_n, pct_of_sample,
         weighted_homes_millions.
     """
     if income_groups is None:
         income_groups = ['LMI']
     if sample_total is None:
         sample_total = len(source_df)
+    if mi_df_b is None:
+        mi_df_b = mi_df_a
 
     group_counts = source_df.groupby([fuel_col, income_col], observed=True).size()
     total_homes = int(group_counts.sum())
     fuel_counts = source_df.groupby(fuel_col, observed=True).size()
 
-    fuels_in_data = list(dict.fromkeys(f for f, _ in mi_df.index))
+    fuels_in_data = list(dict.fromkeys(f for f, _ in mi_df_a.index))
 
     rows: List[Dict] = []
 
-    def _make_row(grouping, fuel, income_level, tier, iraref_val, preira_val,
+    def _make_row(grouping, fuel, income_level, tier, case_b_val, case_a_val,
                   n):
         return {
             'grouping': grouping,
             'fuel_type': fuel,
             'income_level': income_level,
             'tier_label': tier,
-            'iraref_pct': iraref_val,
-            'preira_pct': preira_val,
-            'delta_pct': iraref_val - preira_val,
+            'case_b_pct': case_b_val,
+            'case_a_pct': case_a_val,
+            'delta_pct': case_b_val - case_a_val,
             'sample_n': n,
             'pct_of_sample': 100.0 * n / sample_total if sample_total else 0.0,
             'weighted_homes_millions': n * scaling_factor / 1_000_000,
@@ -163,52 +168,50 @@ def prepare_plot_data(
     # ------------------------------------------------------------------
     # Per fuel x selected income-group rows
     # ------------------------------------------------------------------
-    for fuel, income in mi_df.index:
+    for fuel, income in mi_df_a.index:
         if income not in income_groups:
             continue
 
         grouping = f'{fuel} \u2014 {income}'
         n = int(group_counts.get((fuel, income), 0))
 
-        # MI tiers
         for tier in MI_TIER_NAMES:
-            iraref_val = float(mi_df.loc[(fuel, income), (iraref_col, tier)])
-            preira_val = float(mi_df.loc[(fuel, income), (preira_col, tier)])
+            case_b_val = float(mi_df_b.loc[(fuel, income), (case_b_col, tier)])
+            case_a_val = float(mi_df_a.loc[(fuel, income), (case_a_col, tier)])
             rows.append(_make_row(grouping, fuel, income, tier,
-                                  iraref_val, preira_val, n))
+                                  case_b_val, case_a_val, n))
 
     # ------------------------------------------------------------------
     # Per-fuel "Overall" rows (population-weighted)
     # ------------------------------------------------------------------
     for fuel in fuels_in_data:
         fuel_n = int(fuel_counts.get(fuel, 0))
-        income_levels = [inc for f, inc in mi_df.index if f == fuel]
+        income_levels = [inc for f, inc in mi_df_a.index if f == fuel]
 
-        # MI tiers - weighted
         for tier in MI_TIER_NAMES:
-            ira_w = 0.0
-            pre_w = 0.0
+            b_w = 0.0
+            a_w = 0.0
             for income in income_levels:
                 ni = int(group_counts.get((fuel, income), 0))
                 w = ni / fuel_n if fuel_n else 0.0
-                ira_w += w * float(mi_df.loc[(fuel, income), (iraref_col, tier)])
-                pre_w += w * float(mi_df.loc[(fuel, income), (preira_col, tier)])
+                b_w += w * float(mi_df_b.loc[(fuel, income), (case_b_col, tier)])
+                a_w += w * float(mi_df_a.loc[(fuel, income), (case_a_col, tier)])
             rows.append(_make_row(f'{fuel} \u2014 Overall', fuel, 'Overall',
-                                  tier, ira_w, pre_w, fuel_n))
+                                  tier, b_w, a_w, fuel_n))
 
     # ------------------------------------------------------------------
     # National - Overall
     # ------------------------------------------------------------------
     for tier in MI_TIER_NAMES:
-        ira_w = 0.0
-        pre_w = 0.0
-        for fuel, income in mi_df.index:
+        b_w = 0.0
+        a_w = 0.0
+        for fuel, income in mi_df_a.index:
             ni = int(group_counts.get((fuel, income), 0))
             w = ni / total_homes if total_homes else 0.0
-            ira_w += w * float(mi_df.loc[(fuel, income), (iraref_col, tier)])
-            pre_w += w * float(mi_df.loc[(fuel, income), (preira_col, tier)])
+            b_w += w * float(mi_df_b.loc[(fuel, income), (case_b_col, tier)])
+            a_w += w * float(mi_df_a.loc[(fuel, income), (case_a_col, tier)])
         rows.append(_make_row('National \u2014 Overall', 'National', 'Overall',
-                              tier, ira_w, pre_w, total_homes))
+                              tier, b_w, a_w, total_homes))
 
     return pd.DataFrame(rows)
 
@@ -334,7 +337,7 @@ def plot_adoption_panel(
 
         row_data = []
         for _, row in subset.iterrows():
-            x_val = float(row['iraref_pct'])
+            x_val = float(row['case_b_pct'])
             row_data.append({
                 'tier': row['tier_label'],
                 'x': x_val,

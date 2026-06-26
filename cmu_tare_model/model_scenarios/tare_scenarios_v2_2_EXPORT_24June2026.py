@@ -1,32 +1,32 @@
 # %%
-# import os
+import os
 
-# # import from cmu-tare-model package
-# from config import PROJECT_ROOT
+# import from cmu-tare-model package
+from config import PROJECT_ROOT
 
-# # Measure Package 0: Baseline
-# menu_mp = 0
-# input_mp = 'baseline'
+# Measure Package 0: Baseline
+menu_mp = 0
+input_mp = 'baseline'
 
-# print(f"PROJECT_ROOT (from config.py): {PROJECT_ROOT}")
+print(f"PROJECT_ROOT (from config.py): {PROJECT_ROOT}")
 
-# # Construct the absolute path to the .py file
-# relative_path = os.path.join("cmu_tare_model", "model_scenarios", "tare_baseline_v2_2.ipynb")
-# file_path = os.path.join(PROJECT_ROOT, relative_path)
+# Construct the absolute path to the .py file
+relative_path = os.path.join("cmu_tare_model", "model_scenarios", "tare_baseline_v2_2.ipynb")
+file_path = os.path.join(PROJECT_ROOT, relative_path)
 
-# # On Windows, to avoid any path-escape quirks, convert backslashes to forward slashes
-# file_path = file_path.replace("\\", "/")
+# On Windows, to avoid any path-escape quirks, convert backslashes to forward slashes
+file_path = file_path.replace("\\", "/")
 
-# print(f"Running file: {file_path}")
+print(f"Running file: {file_path}")
 
-# # %run magic command to run a .py file and import variables into the current IPython session
-# # # If your path has spaces, wrap it in quotes:
-# %run -i {file_path} # If your path has NO spaces, no quotes needed.
+# %run magic command to run a .py file and import variables into the current IPython session
+# # If your path has spaces, wrap it in quotes:
+%run -i {file_path} # If your path has NO spaces, no quotes needed.
 
-# print("Baseline Scenario - Model Run Complete")
+print("Baseline Scenario - Model Run Complete")
 
-# # Flag to prevent excessive output in other scenario files
-# individual_scenario_run = True
+# Flag to prevent excessive output in other scenario files
+individual_scenario_run = True
 
 # %% [markdown]
 # # LOAD EUSS DATA: Annual Energy Consumption and Metadata
@@ -303,7 +303,7 @@ if PRINT_DEBUG:
 
 # %% [markdown]
 # # PUBLIC IMPACTS: Climate and Health Damages
-# ## Scenarios: No IRA and IRA-Reference
+# ## Scenario: 2025 Reference Case
 
 # %%
 from cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity import calculate_lifetime_climate_impacts
@@ -318,13 +318,9 @@ PUBLIC IMPACTS: DAMAGES FROM CLIMATE AND HEALTH-RELATED EMISSIONS
 
 # Make copies from scenario consumption to keep df smaller
 print("\n", "Creating dataframe to store marginal damages calculations ...")
-# Climate damages: No IRA and IRA-Reference
-df_mpX_noIRA_damages_climate = df_euss_am_mpX_home.copy()
-df_mpX_IRA_damages_climate = df_euss_am_mpX_home.copy()
-
-# Health damages: No IRA and IRA-Reference
-df_mpX_noIRA_damages_health = df_euss_am_mpX_home.copy()
-df_mpX_IRA_damages_health = df_euss_am_mpX_home.copy()
+# Damage DataFrames: 2025 Reference Case
+df_mpX_ref2025_damages_climate = df_euss_am_mpX_home.copy()
+df_mpX_ref2025_damages_health = df_euss_am_mpX_home.copy()
 
 
 # %%
@@ -358,71 +354,37 @@ if PRINT_DEBUG:
 
 # %%
 print("""
-========== SCENARIO: No Inflation Reduction Act ==========
+========== SCENARIO: 2025 Reference Case ==========
 """)
-df_euss_am_mpX_home, df_mpX_noIRA_damages_climate = calculate_lifetime_climate_impacts(
+df_euss_am_mpX_home, df_mpX_ref2025_damages_climate = calculate_lifetime_climate_impacts(
     df=df_euss_am_mpX_home,
-    menu_mp=menu_mp, 
-    policy_scenario='No Inflation Reduction Act', 
+    menu_mp=menu_mp,
+    policy_scenario='2025 Reference Case',
     df_baseline_damages=df_baseline_damages_climate,
-    verbose=VERBOSE  # Add this parameter
+    verbose=VERBOSE
     )
 
-df_euss_am_mpX_home, df_mpX_noIRA_damages_health = calculate_lifetime_health_impacts(
+df_euss_am_mpX_home, df_mpX_ref2025_damages_health = calculate_lifetime_health_impacts(
     df=df_euss_am_mpX_home,
-    menu_mp=menu_mp, 
-    policy_scenario='No Inflation Reduction Act', 
+    menu_mp=menu_mp,
+    policy_scenario='2025 Reference Case',
     df_baseline_damages=df_baseline_damages_health,
     debug=False,
-    verbose=VERBOSE  # Add this parameter
+    verbose=VERBOSE
     )
 
 
-print("""
-========== SCENARIO: Inflation Reduction Act (AEO2023 Reference Case) ==========
-""")
-df_euss_am_mpX_home, df_mpX_IRA_damages_climate = calculate_lifetime_climate_impacts(
-    df=df_euss_am_mpX_home,
-    menu_mp=menu_mp, 
-    policy_scenario='AEO2023 Reference Case', 
-    df_baseline_damages=df_baseline_damages_climate,
-    verbose=VERBOSE  # Add this parameter
-    )
-
-
-df_euss_am_mpX_home, df_mpX_IRA_damages_health = calculate_lifetime_health_impacts(
-    df=df_euss_am_mpX_home,
-    menu_mp=menu_mp, 
-    policy_scenario='AEO2023 Reference Case', 
-    df_baseline_damages=df_baseline_damages_health,
-    debug=False,
-    verbose=VERBOSE  # Add this parameter
-    )
-
-
-print(f"""  
+print(f"""
 ====================================================================================================================================================================
 Post-Retrofit (MP{menu_mp}) Marginal Damages: WHOLE-HOME
-Scenario: No Inflation Reduction Act and AEO2023 Reference Case
+Scenario: 2025 Reference Case
 ====================================================================================================================================================================
-calculate_emissions_damages.py file contains the definition for the calculate_marginal_damages function.
-Additional information on emissions and damage factor lookups can be found in the calculate_emissions_damages.py file as well. 
-      
-CLIMATE DAMAGES: No IRA and IRA-Reference
---------------------------------------------------------
-Climate Damages (No IRA): df_mp{menu_mp}_noIRA_damages_climate
-{df_mpX_noIRA_damages_climate}
 
-Climate Damages (IRA): df_mpX_IRA_damages_climate
-{df_mpX_IRA_damages_climate}
+CLIMATE DAMAGES (2025 Reference Case): df_mpX_ref2025_damages_climate
+{df_mpX_ref2025_damages_climate}
 
-HEALTH DAMAGES: No IRA and IRA-Reference
---------------------------------------------------------
-Health Damages (No IRA): df_mp{menu_mp}_noIRA_damages_health
-{df_mpX_noIRA_damages_health}
-
-Health Damages (IRA): df_mp{menu_mp}_IRA_damages_health
-{df_mpX_IRA_damages_health}
+HEALTH DAMAGES (2025 Reference Case): df_mpX_ref2025_damages_health
+{df_mpX_ref2025_damages_health}
 
 SUMMARY DATAFRAME FOR MP{menu_mp}: df_euss_am_mp{menu_mp}_home
 {df_euss_am_mpX_home}
@@ -589,7 +551,7 @@ df_detailed_health_IRA dataframe is created using df_mpX_IRA_damages_health:
 
 # %% [markdown]
 # # PRIVATE IMPACTS: FUEL COSTS
-# ## Scenarios: No IRA and IRA-Reference
+# ## Scenario: 2025 Reference Case
 
 # %%
 from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import calculate_lifetime_fuel_costs
@@ -600,7 +562,7 @@ PRIVATE IMPACTS: OVERVIEW
 ====================================================================================================================================================================
 Step 1: Calculate annual operating (fuel) costs
 Step 2: Calculate equipment capital costs (For space heating, include ductwork and weatherization (MP9 and MP10))
-Step 3: Calculate replacement cost (replacing existing piece of eqipment with similar technology)
+Step 3: Calculate replacement cost (replacing existing piece of equipment with similar technology)
 Step 4: Calculate net equipment capital costs and private NPV (less WTP and more WTP)
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -608,46 +570,30 @@ Step 1: Calculate annual operating (fuel) costs
 ----------------------------------------------------------------------------------------------------------------------
 
 ====================================================================================================================================================================
-FUEL COSTS RESULTS: No IRA and IRA-Reference
+FUEL COSTS RESULTS: 2025 Reference Case
 
 """)
 
 print("\n", "Creating dataframe to store annual fuel cost calculations ...")
-# Annual fuel costs: No IRA and IRA-Reference
-df_mpX_fuel_costs_noIRA = df_euss_am_mpX_home.copy()
-df_mpX_fuel_costs_IRA = df_euss_am_mpX_home.copy()
 
 # %%
 print("""
-========== SCENARIO: No Inflation Reduction Act ==========
+========== SCENARIO: 2025 Reference Case ==========
 """)
-df_euss_am_mpX_home, df_mpX_noIRA_fuel_costs = calculate_lifetime_fuel_costs(
+df_euss_am_mpX_home, df_mpX_ref2025_fuel_costs = calculate_lifetime_fuel_costs(
     df=df_euss_am_mpX_home,
     menu_mp=menu_mp,
-    policy_scenario='No Inflation Reduction Act',
-    df_baseline_costs=df_baseline_fuel_costs  # Add this line
-    )
-
-print("""
-========== SCENARIO: Inflation Reduction Act (AEO2023 Reference Case) ==========
-""")
-df_euss_am_mpX_home, df_mpX_IRA_fuel_costs = calculate_lifetime_fuel_costs(
-    df=df_euss_am_mpX_home,
-    menu_mp=menu_mp,
-    policy_scenario='AEO2023 Reference Case',
-    df_baseline_costs=df_baseline_fuel_costs  # Add this line
+    policy_scenario='2025 Reference Case',
+    df_baseline_costs=df_baseline_fuel_costs
     )
 
 
-print(f"""  
+print(f"""
 ====================================================================================================================================================================
-Creating Dataframes for Lifetime Fuel Costs ...
+Lifetime Fuel Costs: 2025 Reference Case
 
-FUEL COSTS (No IRA): df_mpX_noIRA_fuel_costs
-{df_mpX_noIRA_fuel_costs}
-
-FUEL COSTS (IRA): df_mpX_IRA_fuel_costs
-{df_mpX_IRA_fuel_costs}
+FUEL COSTS (2025 Reference Case): df_mpX_ref2025_fuel_costs
+{df_mpX_ref2025_fuel_costs}
 
 SUMMARY DATAFRAME FOR MP{menu_mp}: df_euss_am_mp{menu_mp}_home
 {df_euss_am_mpX_home}
@@ -1427,15 +1373,16 @@ DATAFRAME: df_euss_am_mpX_home AFTER CALCULATING REBATE AMOUNTS
 """)
 
 # %% [markdown]
-# # SCENARIO ANALYSIS: 
-# ## "No Inflation Reduction Act" and "AEO2023 Reference Case"
-# ## Public Impact, Private Impact and Adoption Potential (Degree of Adoption Feasibility)
+# # SCENARIO ANALYSIS: 2025 Reference Case
+# ## Public Impact, Private Impact and Adoption Potential
 
 # %%
-from cmu_tare_model.constants import CR_FUNCTIONS, RCM_MODELS, VALID_HVAC_REPLACEMENT_SCENARIOS
+from cmu_tare_model.constants import CR_FUNCTIONS, RCM_MODELS
 from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_private_npv
 from cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity import calculate_public_npv
-from cmu_tare_model.adoption_potential.determine_adoption_potential_sensitivity import adoption_decision, calculate_climate_only_adoption_robust, calculate_health_only_adoption_robust
+from cmu_tare_model.adoption_potential.determine_economic_adoption_potential import (
+    economic_adoption_decision
+)
 
 # Create dictionary directly with copies - removed dataframes saved as intermediate variables
 # Structure: [discount_rate][rcm] for consistent level ordering
@@ -1512,17 +1459,16 @@ Step 4: Calculate net equipment capital costs and private NPV (less WTP and more
 
 ========================================================================================================
 SCENARIO ANALYSIS: ADOPTION POTENTIAL
-    determine_adoption_potential_sensitivity.py file contains the definitions for:
-        - adoption_decision function (combined climate + health analysis)
-        - calculate_climate_only_adoption_robust function (climate-only analysis)
-        - calculate_health_only_adoption_robust function (health-only analysis)
+    determine_economic_adoption_potential.py defines economic_adoption_decision.
+    A home is an economic adopter if its private incremental NPV (moreWTP framing) >= 0.
+    Climate and health damages are computed and stored but do not enter the adoption decision.
+    Three adopter columns are produced per call, one per NPV case.
 ========================================================================================================
 
-Determine adoption potential based on private NPV and public NPV and decision logic
-Tier 1 (Feasible):                      --> Private NPV (total capital cost) >= 0 
-Tier 2 (Feasible vs. Alternative):      --> Private NPV (net capital cost) >= 0
-Tier 3 (Subsidy-Dependent Feasibility): --> Private NPV + Public NPV >= 0
-Tier 4 (Averse):                        --> Private NPV + Public NPV < 0
+Economic adopter condition (moreWTP >= 0) applied across three NPV cases:
+    heating_only                --> Heating capital; heating savings only
+    heating_and_cooling_savings --> Heating capital; heating + cooling savings
+    heating_and_cooling_full    --> Heating + cooling capital; heating + cooling savings
 
 ------------------------------------------------------------------------------------------------------
 
@@ -1531,250 +1477,17 @@ Cost scenarios to process: {REMDB_COST_SCENARIO_KEYS}
 """)
 
 # %% [markdown]
-# ## MEASURE PACKAGE (MPX): NO INFLATION REDUCTION ACT
-# ### Assumptions
-# - NREL End-Use Savings Shapes Database: Measure Package X
-# - AEO2023 No Inflation Reduction Act:  HDD and Fuel Price Projections
-# - Cambium 2021 MidCase Scenario
+# ## MEASURE PACKAGE (MPX): 2025 REFERENCE CASE
 
 # %%
-scenario_name = 'No Inflation Reduction Act'
-cost_scenario = 'Fuel Costs: AEO2023 No Inflation Reduction Act'
-grid_scenario = 'Electricity Grid: Cambium 2021 MidCase Scenario'
-policy_scenario ='No Inflation Reduction Act'
-
-print(f"""
-====================================================================================================================================================================
-Scenario {scenario_name}:
-Advanced Retrofit: Measure Package {menu_mp}
-{cost_scenario}
-{grid_scenario}
-====================================================================================================================================================================
-""")
-
-# %%
-print(f"""  
-====================================================================================================================================================================
-SCENARIO ANALYSIS ({policy_scenario.upper()}): PUBLIC IMPACT 
-====================================================================================================================================================================
-- Private discount rate IS used for storing results, but NOT used for public impact calculations. 
-""")
-
-# Process each discount rate, then each RCM model (matches dictionary structure)
-print("Calculating Public NPV for different RCM models and discount methods ...")
-
-for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
-    # Only used for storing results in the dictionary
-    print(f"Discount Rate: {discount_rate}")
-    
-    # Process each RCM model for this discount rate
-    for rcm_model in RCM_MODELS:
-        print(f"  RCM Model: {rcm_model.upper()}")
-        
-        # Get the specific DataFrame for this discount rate × RCM combination
-        df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model]
-                
-        # Calculates climate, health and combined public NPV for each RCM-CR function sensitivity
-        df = calculate_public_npv(
-            df=df,
-            df_baseline_climate=df_baseline_damages_climate,
-            df_baseline_health=df_baseline_damages_health,
-            df_mp_climate=df_mpX_noIRA_damages_climate,
-            df_mp_health=df_mpX_noIRA_damages_health,
-            menu_mp=menu_mp,
-            policy_scenario=policy_scenario,
-            rcm_model=rcm_model,
-            base_year=2024,
-            verbose=VERBOSE
-        )
-
-        # Update the DataFrame in the dictionary
-        DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model] = df
-
-if PRINT_VERBOSE_DATAFRAMES:
-    print(f"\n{'='*100}")
-    print(f"DATAFRAME FOR MP{menu_mp} AFTER CALCULATING PUBLIC NPV ({policy_scenario.upper()})")
-    print(f"{'='*100}")
-    for rcm_model in RCM_MODELS:
-        print(f"\n--- {rcm_model.upper()} ---")
-        print(DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base'][rcm_model])
-    print()
-
-# %%
-print(f"""
-====================================================================================================================================================================
-SCENARIO ANALYSIS ({policy_scenario.upper()}): PRIVATE IMPACT
-====================================================================================================================================================================
-""")
-
-# Process each cost scenario, then discount rate, then RCM model
-print("Calculating Private NPV for all cost scenarios, RCM models, and discount methods ...")
-
-for cost_scenario_key in REMDB_COST_SCENARIO_KEYS:
-    print(f"\n--- Cost Scenario: {cost_scenario_key} ---")
-
-    # v3 has no cooling replacement data, so skip 'heating_and_cooling' for v3
-    if cost_scenario_key == 'v3':
-        active_hvac_replacement_scenarios = [s for s in VALID_HVAC_REPLACEMENT_SCENARIOS if s != 'heating_and_cooling']
-    else:
-        active_hvac_replacement_scenarios = VALID_HVAC_REPLACEMENT_SCENARIOS
-
-    for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
-        # Create full discount rate column name
-        discount_rate_col_name = f'private_discount_rate_{discount_rate}'
-        print(f"  Discount Rate: {discount_rate}, Column: {discount_rate_col_name}")
-        
-        # Process each RCM model for this discount rate
-        for rcm_model in RCM_MODELS:
-            print(f"    RCM Model: {rcm_model.upper()}")
-            
-            # Get the specific DataFrame for this discount rate × RCM combination
-            df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model]
-            
-            for hvac_replacement_scenario in active_hvac_replacement_scenarios:
-                df = calculate_private_npv(
-                    df=df,
-                    df_fuel_costs=df_mpX_noIRA_fuel_costs,
-                    df_baseline_costs=df_baseline_fuel_costs,
-                    menu_mp=menu_mp,
-                    input_mp=input_mp,
-                    policy_scenario=policy_scenario,
-                    discount_rate_col_name=discount_rate_col_name,
-                    cost_scenario=cost_scenario_key,
-                    base_year=2024,
-                    verbose=VERBOSE,
-                    hvac_replacement_scenario=hvac_replacement_scenario
-                    )
-            
-            # Update the DataFrame back in the dictionary
-            DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model] = df
-
-if PRINT_VERBOSE_DATAFRAMES:
-    print(f"\n{'='*100}")
-    print(f"DATAFRAME FOR MP{menu_mp} AFTER CALCULATING PRIVATE NPV ({policy_scenario.upper()})")
-    print(f"{'='*100}")
-    for rcm_model in RCM_MODELS:
-        print(f"\n--- {rcm_model.upper()} ---")
-        print(DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base'][rcm_model])
-    print()
-
-# %%
-print(f"""
-====================================================================================================
-SCENARIO ANALYSIS ({policy_scenario.upper()}): ADOPTION POTENTIAL
-====================================================================================================
-""")
-
-# Process each cost scenario, then discount rate, then RCM model
-print("Determining Adoption Potential for all cost scenarios, RCM models, and discount rate methods ... ")
-
-for cost_scenario_key in REMDB_COST_SCENARIO_KEYS:
-    print(f"\n--- Cost Scenario: {cost_scenario_key} ---")
-
-    # v3 has no cooling replacement data, so skip 'heating_and_cooling' for v3
-    if cost_scenario_key == 'v3':
-        active_hvac_replacement_scenarios = [s for s in VALID_HVAC_REPLACEMENT_SCENARIOS if s != 'heating_and_cooling']
-    else:
-        active_hvac_replacement_scenarios = VALID_HVAC_REPLACEMENT_SCENARIOS
-
-    for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
-        # Create full discount rate column name
-        discount_rate_col_name = f'private_discount_rate_{discount_rate}'
-        print(f"  Discount Rate: {discount_rate}, Column: {discount_rate_col_name}")
-        
-        # Process each RCM model for this discount rate
-        for rcm_model in RCM_MODELS:
-            print(f"    RCM Model: {rcm_model.upper()}")
-            
-            # Get the specific DataFrame for this discount rate × RCM combination
-            df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model]
-            
-            duplicate_mask = df.columns.duplicated(keep='first')
-            duplicate_count = duplicate_mask.sum()
-            
-            # Diagnostic check BEFORE processing
-            if duplicate_count > 0:
-                duplicate_cols = df.columns[duplicate_mask].unique().tolist()
-                print(f"\n{discount_rate}-{rcm_model}: {duplicate_count} duplicates")
-                print(f"  Columns: {duplicate_cols[:5]}")  # Show first 5
-
-            for hvac_replacement_scenario in active_hvac_replacement_scenarios:
-                # Combined climate + health analysis for each CR function
-                for cr_function in CR_FUNCTIONS:
-                    print(f"      Combined climate + health analysis: {cr_function} ({hvac_replacement_scenario})...")
-                    df = adoption_decision(
-                        df=df,
-                        menu_mp=menu_mp,
-                        policy_scenario=policy_scenario,
-                        rcm_model=rcm_model,
-                        cr_function=cr_function,
-                        discount_rate_col_name=discount_rate_col_name,
-                        cost_scenario=cost_scenario_key,
-                        verbose=VERBOSE,
-                        hvac_replacement_scenario=hvac_replacement_scenario
-                    )
-                
-                # Climate-only analysis (no CR function needed)
-                print(f"      Climate-only analysis ({hvac_replacement_scenario})...")
-                df = calculate_climate_only_adoption_robust(
-                    df=df,
-                    menu_mp=menu_mp,
-                    policy_scenario=policy_scenario,
-                    discount_rate_col_name=discount_rate_col_name,
-                    cost_scenario=cost_scenario_key,
-                    verbose=VERBOSE,
-                    hvac_replacement_scenario=hvac_replacement_scenario
-                )
-                
-                # Health-only analysis for each CR function
-                for cr_function in CR_FUNCTIONS:
-                    print(f"      Health-only analysis: {cr_function} ({hvac_replacement_scenario})...")
-                    df = calculate_health_only_adoption_robust(
-                        df=df,
-                        menu_mp=menu_mp,
-                        policy_scenario=policy_scenario,
-                        rcm_model=rcm_model,
-                        cr_function=cr_function,
-                        discount_rate_col_name=discount_rate_col_name,
-                        cost_scenario=cost_scenario_key,
-                        verbose=VERBOSE,
-                        hvac_replacement_scenario=hvac_replacement_scenario
-                    )
-        
-            # Update the DataFrame back in the dictionary
-            DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model] = df
-
-# Diagnostic check AFTER processing
-if PRINT_VERBOSE_DATAFRAMES:
-    print(f"\n{'='*100}")
-    print(f"DATAFRAME FOR MP{menu_mp} AFTER DETERMINING ADOPTION FEASIBILITY ({policy_scenario.upper()})")
-    print("Includes: Combined (Climate + Health), Climate-Only, and Health-Only Adoption Analysis")
-    print(f"{'='*100}")
-    for rcm_model in RCM_MODELS:
-        print(f"\n--- {rcm_model.upper()} ---")
-        print(DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base'][rcm_model])
-    print()
-
-# %% [markdown]
-# ## (MPX): AEO2023 REFERENCE CASE
-# ## Assumptions
-# - AEO2023 REFERENCE CASE: HDD and Fuel Price Projections
-# - Cambium 2023 MidCase Scenario
-
-# %%
-scenario_name = 'IRA-Reference'
-cost_scenario = 'Fuel Costs: AEO2023 Reference Case'
-grid_scenario = 'Electricity Grid: Cambium 2023 MidCase Scenario'
-policy_scenario='AEO2023 Reference Case'
+policy_scenario = '2025 Reference Case'
 
 print(f"""
 ====================================================================================================================================================================
 MODEL SCENARIO
 ====================================================================================================================================================================
-Scenario {scenario_name}:
 EUSS Measure Package {menu_mp}
-{cost_scenario}
-{grid_scenario}
+Policy Scenario: {policy_scenario}
 ====================================================================================================================================================================
 """)
 
@@ -1792,21 +1505,21 @@ print("Calculating Public NPV for different RCM models and discount methods ..."
 for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
     # Only used for storing results in the dictionary
     print(f"Discount Rate: {discount_rate}")
-    
+
     # Process each RCM model for this discount rate
     for rcm_model in RCM_MODELS:
         print(f"  RCM Model: {rcm_model.upper()}")
-        
-        # Get the specific DataFrame for this discount rate × RCM combination
+
+        # Get the specific DataFrame for this discount rate x RCM combination
         df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model]
-                
+
         # Calculates climate, health and combined public NPV for each RCM-CR function sensitivity
         df = calculate_public_npv(
             df=df,
             df_baseline_climate=df_baseline_damages_climate,
             df_baseline_health=df_baseline_damages_health,
-            df_mp_climate=df_mpX_IRA_damages_climate,
-            df_mp_health=df_mpX_IRA_damages_health,
+            df_mp_climate=df_mpX_ref2025_damages_climate,
+            df_mp_health=df_mpX_ref2025_damages_health,
             menu_mp=menu_mp,
             policy_scenario=policy_scenario,
             rcm_model=rcm_model,
@@ -1827,7 +1540,7 @@ if PRINT_VERBOSE_DATAFRAMES:
     print()
 
 # %%
-print(f"""  
+print(f"""
 ====================================================================================================================================================================
 SCENARIO ANALYSIS ({policy_scenario.upper()}): PRIVATE IMPACT
 ====================================================================================================================================================================
@@ -1839,39 +1552,33 @@ print("Calculating Private NPV for all cost scenarios, RCM models, and discount 
 for cost_scenario_key in REMDB_COST_SCENARIO_KEYS:
     print(f"\n--- Cost Scenario: {cost_scenario_key} ---")
 
-    # v3 has no cooling replacement data, so skip 'heating_and_cooling' for v3
-    if cost_scenario_key == 'v3':
-        active_hvac_replacement_scenarios = [s for s in VALID_HVAC_REPLACEMENT_SCENARIOS if s != 'heating_and_cooling']
-    else:
-        active_hvac_replacement_scenarios = VALID_HVAC_REPLACEMENT_SCENARIOS
-
     for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
         # Create full discount rate column name
         discount_rate_col_name = f'private_discount_rate_{discount_rate}'
         print(f"  Discount Rate: {discount_rate}, Column: {discount_rate_col_name}")
-        
+
         # Process each RCM model for this discount rate
         for rcm_model in RCM_MODELS:
             print(f"    RCM Model: {rcm_model.upper()}")
-            
-            # Get the specific DataFrame for this discount rate × RCM combination
+
+            # Get the specific DataFrame for this discount rate x RCM combination
             df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model]
-            
-            for hvac_replacement_scenario in active_hvac_replacement_scenarios:
-                df = calculate_private_npv(
-                    df=df,
-                    df_fuel_costs=df_mpX_IRA_fuel_costs,
-                    df_baseline_costs=df_baseline_fuel_costs,
-                    menu_mp=menu_mp,
-                    input_mp=input_mp,
-                    policy_scenario=policy_scenario,
-                    discount_rate_col_name=discount_rate_col_name,
-                    cost_scenario=cost_scenario_key,
-                    base_year=2024,
-                    verbose=VERBOSE,
-                    hvac_replacement_scenario=hvac_replacement_scenario
-                    )
-            
+
+            # One call per (cost_scenario, discount_rate, rcm_model) combination.
+            # calculate_private_npv produces all three NPV case columns in a single call.
+            df = calculate_private_npv(
+                df=df,
+                df_fuel_costs=df_mpX_ref2025_fuel_costs,
+                df_baseline_costs=df_baseline_fuel_costs,
+                menu_mp=menu_mp,
+                input_mp=input_mp,
+                policy_scenario=policy_scenario,
+                discount_rate_col_name=discount_rate_col_name,
+                cost_scenario=cost_scenario_key,
+                base_year=2024,
+                verbose=VERBOSE,
+            )
+
             # Update the DataFrame back in the dictionary
             DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model] = df
 
@@ -1892,89 +1599,53 @@ SCENARIO ANALYSIS ({policy_scenario.upper()}): ADOPTION POTENTIAL
 """)
 
 # Process each cost scenario, then discount rate, then RCM model
-print("Determining Adoption Potential for all cost scenarios, RCM models, and discount rate methods ... ")
+print("Determining Economic Adoption Potential for all cost scenarios, RCM models, and discount methods ...")
 
 for cost_scenario_key in REMDB_COST_SCENARIO_KEYS:
     print(f"\n--- Cost Scenario: {cost_scenario_key} ---")
-
-    # v3 has no cooling replacement data, so skip 'heating_and_cooling' for v3
-    if cost_scenario_key == 'v3':
-        active_hvac_replacement_scenarios = [s for s in VALID_HVAC_REPLACEMENT_SCENARIOS if s != 'heating_and_cooling']
-    else:
-        active_hvac_replacement_scenarios = VALID_HVAC_REPLACEMENT_SCENARIOS
 
     for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
         # Create full discount rate column name
         discount_rate_col_name = f'private_discount_rate_{discount_rate}'
         print(f"  Discount Rate: {discount_rate}, Column: {discount_rate_col_name}")
-        
+
         # Process each RCM model for this discount rate
         for rcm_model in RCM_MODELS:
             print(f"    RCM Model: {rcm_model.upper()}")
-            
-            # Get the specific DataFrame for this discount rate × RCM combination
+
+            # Get the specific DataFrame for this discount rate x RCM combination
             df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model]
-            
+
             duplicate_mask = df.columns.duplicated(keep='first')
             duplicate_count = duplicate_mask.sum()
-            
+
             # Diagnostic check BEFORE processing
             if duplicate_count > 0:
                 duplicate_cols = df.columns[duplicate_mask].unique().tolist()
                 print(f"\n{discount_rate}-{rcm_model}: {duplicate_count} duplicates")
                 print(f"  Columns: {duplicate_cols[:5]}")  # Show first 5
 
-            for hvac_replacement_scenario in active_hvac_replacement_scenarios:
-                # Combined climate + health analysis for each CR function
-                for cr_function in CR_FUNCTIONS:
-                    print(f"      Combined climate + health analysis: {cr_function} ({hvac_replacement_scenario})...")
-                    df = adoption_decision(
-                        df=df,
-                        menu_mp=menu_mp,
-                        policy_scenario=policy_scenario,
-                        rcm_model=rcm_model,
-                        cr_function=cr_function,
-                        discount_rate_col_name=discount_rate_col_name,
-                        cost_scenario=cost_scenario_key,
-                        verbose=VERBOSE,
-                        hvac_replacement_scenario=hvac_replacement_scenario
-                    )
-                
-                # Climate-only analysis (no CR function needed)
-                print(f"      Climate-only analysis ({hvac_replacement_scenario})...")
-                df = calculate_climate_only_adoption_robust(
-                    df=df,
-                    menu_mp=menu_mp,
-                    policy_scenario=policy_scenario,
-                    discount_rate_col_name=discount_rate_col_name,
-                    cost_scenario=cost_scenario_key,
-                    verbose=VERBOSE,
-                    hvac_replacement_scenario=hvac_replacement_scenario
-                )
-                
-                # Health-only analysis for each CR function
-                for cr_function in CR_FUNCTIONS:
-                    print(f"      Health-only analysis: {cr_function} ({hvac_replacement_scenario})...")
-                    df = calculate_health_only_adoption_robust(
-                        df=df,
-                        menu_mp=menu_mp,
-                        policy_scenario=policy_scenario,
-                        rcm_model=rcm_model,
-                        cr_function=cr_function,
-                        discount_rate_col_name=discount_rate_col_name,
-                        cost_scenario=cost_scenario_key,
-                        verbose=VERBOSE,
-                        hvac_replacement_scenario=hvac_replacement_scenario
-                    )
-        
+            # One call per (cost_scenario, discount_rate, rcm_model) combination.
+            # economic_adoption_decision applies moreWTP >= 0 across all three NPV cases
+            # in a single call. Climate and health damages remain in the DataFrame for
+            # sensitivity analysis but do not enter the adoption decision.
+            df = economic_adoption_decision(
+                df=df,
+                menu_mp=menu_mp,
+                policy_scenario=policy_scenario,
+                discount_rate_col_name=discount_rate_col_name,
+                cost_scenario=cost_scenario_key,
+                verbose=VERBOSE,
+            )
+
             # Update the DataFrame back in the dictionary
             DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model] = df
 
-# Diagnostic check AFTER processing
 if PRINT_VERBOSE_DATAFRAMES:
     print(f"\n{'='*100}")
-    print(f"DATAFRAME FOR MP{menu_mp} AFTER DETERMINING ADOPTION FEASIBILITY ({policy_scenario.upper()})")
-    print("Includes: Combined (Climate + Health), Climate-Only, and Health-Only Adoption Analysis")
+    print(f"DATAFRAME FOR MP{menu_mp} AFTER DETERMINING ECONOMIC ADOPTION FEASIBILITY")
+    print("Three adopter columns produced per NPV case:")
+    print("  heating_only, heating_and_cooling_savings, heating_and_cooling_full")
     print(f"{'='*100}")
     for rcm_model in RCM_MODELS:
         print(f"\n--- {rcm_model.upper()} ---")

@@ -219,15 +219,17 @@ REMDB_COST_SCENARIO_KEYS = [
 # =============================================================
 # CONSTANTS: HVAC REPLACEMENT SCENARIO (Case A / Case B)
 # =============================================================
-# Controls which incumbent equipment costs are credited when
-# computing net capital cost for the adoption NPV calculation.
+# Internal capital-cost parameter only. Used by the calculate_lifetime_private_impact
+# module to decide which incumbent equipment costs are credited when computing net
+# capital cost. Do NOT use this list to drive NPV or adoption loops in notebook code
+# -- the three public NPV cases are defined in NPV_CASE_CATEGORIES (column_names.py).
 #
 # Case A ('heating'):
-#   Net capital cost = ASHP upgrade − heating replacement cost
+#   Net capital cost = ASHP upgrade - heating replacement cost
 #   Assumes the household replaces only the heating system.
 #
 # Case B ('heating_and_cooling'):
-#   Net capital cost = ASHP upgrade − (heating + cooling replacement cost)
+#   Net capital cost = ASHP upgrade - (heating + cooling replacement cost)
 #   Assumes the household replaces both heating AND cooling systems
 #   with a single heat pump that serves both loads.
 VALID_HVAC_REPLACEMENT_SCENARIOS = ['heating', 'heating_and_cooling']

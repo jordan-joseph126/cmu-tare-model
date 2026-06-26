@@ -14,10 +14,14 @@ result_export_time = datetime.now()
 model_run_date_time = result_export_time.strftime("%Y-%m-%d_%H-%M")
 
 from config import PROJECT_ROOT
-from cmu_tare_model.constants import RCM_MODELS, REMDB_COST_SCENARIO_KEYS, VALID_MENU_MPS, CR_FUNCTIONS, EQUIPMENT_SPECS
+from cmu_tare_model.constants import RCM_MODELS, REMDB_COST_SCENARIO_KEYS, VALID_MENU_MPS
 from cmu_tare_model.constants import PRIVATE_DISCOUNT_RATE_COLS, PRIVATE_DISCOUNT_RATE_SHORT_KEYS
 from cmu_tare_model.utils.export_model_run_results import export_model_run_output
-from cmu_tare_model.utils.column_names import create_cost_col, create_npv_col, create_adoption_col
+from cmu_tare_model.utils.column_names import (
+    create_cost_col,
+    create_npv_case_col,
+    NPV_CASE_CATEGORIES,
+)
 
 print(f"""
 Running the model for the following measure packages:
@@ -40,7 +44,7 @@ Note: Each exported CSV contains columns for ALL active cost scenarios.
 # ===================================================================================================================================================================================
 # Measure Package 0: Baseline
 # ===================================================================================================================================================================================
-# BASELINE Pre-IRA Scenario:
+# BASELINE 2025 Reference Case:
 menu_mp = 0
 input_mp = 'baseline'
 
@@ -109,12 +113,10 @@ export_model_run_output(
 # -------------------------------------------------------------------------------------------------------
 # # EUSS Post-Retrofit Measure Packages
 # -------------------------------------------------------------------------------------------------------
-# ## No IRA Scenario:
-# - AEO2023 No Inflation Reduction Act
-# - Cambium 2021 MidCase
-# ## IRA-Reference Scenario:
-# - AEO2023 REFERENCE CASE - HDD and Fuel Price Projections
-# - Cambium 2022 and 2023 MidCase
+# ## 2025 Reference Case:
+# - AEO2026 fuel price projections
+# - AEO2026 degree-day factors
+# - Cambium MidCase electricity grid
 # -------------------------------------------------------------------------------------------------------
 
 # %%
@@ -127,17 +129,11 @@ Running the model for the following measure packages:
 VALID_MENU_MPS = {VALID_MENU_MPS}
 
 -------------------------------------------------------------------------------------------------------
-TARE MODEL SCENARIOS
+TARE MODEL SCENARIO: 2025 Reference Case
 -------------------------------------------------------------------------------------------------------
-- Pre-IRA Scenario:
-    - NREL End-Use Savings Shapes Database: Measure Package 8/9/10
-    - AEO2023 No Inflation Reduction Act
-    - Cambium 2021 MidCase
-      
-- IRA-Reference Scenario:
-    - NREL End-Use Savings Shapes Database: Measure Package 8/9/10
-    - AEO2023 REFERENCE CASE - HDD and Fuel Price Projections
-    - Cambium 2022 and 2023 MidCase
+- AEO2026 fuel price projections
+- AEO2026 degree-day factors
+- Cambium MidCase electricity grid
 """)
 
 # %% [markdown]
@@ -179,13 +175,10 @@ if 3 in VALID_MENU_MPS:
     Preserving MP{menu_mp} results by copying dataframe variables and re-assigning to MP-specific names.
     This allows the scenarios file to be re-run for MP{menu_mp} without overwriting previous model run data""")
 
-    # Supplemental DataFrames
-    df_mp3_noIRA_damages_climate = df_mpX_noIRA_damages_climate.copy()
-    df_mp3_IRA_damages_climate = df_mpX_IRA_damages_climate.copy()
-    df_mp3_noIRA_damages_health = df_mpX_noIRA_damages_health.copy()
-    df_mp3_IRA_damages_health = df_mpX_IRA_damages_health.copy()
-    df_mp3_noIRA_fuel_costs = df_mpX_noIRA_fuel_costs.copy()
-    df_mp3_IRA_fuel_costs = df_mpX_IRA_fuel_costs.copy()
+    # Supplemental DataFrames (single scenario: 2025 Reference Case)
+    df_mp3_ref2025_damages_climate = df_mpX_ref2025_damages_climate.copy()
+    df_mp3_ref2025_damages_health = df_mpX_ref2025_damages_health.copy()
+    df_mp3_ref2025_fuel_costs = df_mpX_ref2025_fuel_costs.copy()
 
     # Summary results dictionary (nested: discount rate -> RCM model -> DataFrame)
     # Structure matches new organization: [discount_rate][rcm_model]
@@ -210,8 +203,8 @@ if 3 in VALID_MENU_MPS:
 
     # ===== DAMAGES RESULTS =====
     export_model_run_output(
-        df_results_export=df_mp3_noIRA_damages_climate,
-        results_category='damages_climate_noIRA',
+        df_results_export=df_mp3_ref2025_damages_climate,
+        results_category='damages_climate_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -219,26 +212,8 @@ if 3 in VALID_MENU_MPS:
     )
 
     export_model_run_output(
-        df_results_export=df_mp3_IRA_damages_climate,
-        results_category='damages_climate_IRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp3_noIRA_damages_health,
-        results_category='damages_health_noIRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp3_IRA_damages_health,
-        results_category='damages_health_IRA',
+        df_results_export=df_mp3_ref2025_damages_health,
+        results_category='damages_health_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -247,17 +222,8 @@ if 3 in VALID_MENU_MPS:
 
     # ===== FUEL COSTS RESULTS =====
     export_model_run_output(
-        df_results_export=df_mp3_noIRA_fuel_costs,
-        results_category='fuel_costs_noIRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp3_IRA_fuel_costs,
-        results_category='fuel_costs_IRA',
+        df_results_export=df_mp3_ref2025_fuel_costs,
+        results_category='fuel_costs_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -302,39 +268,37 @@ if 3 in VALID_MENU_MPS:
     print(f"{'='*80}")
     print(f"Active cost scenarios: {REMDB_COST_SCENARIO_KEYS}\n")
 
-    for rcm_model in RCM_MODELS:
-        print(f"Checking RCM model: {rcm_model.upper()}")    
-        # Check a representative DataFrame (fixed_base × first active RCM)
-        df_check = DATAFRAMES_MP3_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][rcm_model]
+    scenario_prefix = f'ref2025_mp{menu_mp}_'
+    df_check = DATAFRAMES_MP3_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][RCM_MODELS[0]]
 
+    for cost_scenario in REMDB_COST_SCENARIO_KEYS:
+        # Check installed cost columns
+        cost_col = create_cost_col(
+            menu_mp=3, category='heating',
+            cost_type='upgrade', cost_scenario=cost_scenario,
+        )
+        cost_present = cost_col in df_check.columns
 
-        for cost_scenario in REMDB_COST_SCENARIO_KEYS:
-            # Check installed cost columns
-            cost_col = create_cost_col(menu_mp=3, category='heating', cost_type='upgrade', cost_scenario=cost_scenario)
-            cost_present = cost_col in df_check.columns
-            
-            # Check NPV columns  
-            npv_col = create_npv_col(scenario_prefix='iraRef_mp3_', category='heating', wtp='moreWTP', 
-                                    cost_scenario=cost_scenario, method_suffix='_fixed_base')
-            npv_present = npv_col in df_check.columns
-            
-            for cr_function in CR_FUNCTIONS:
-                # Check adoption columns
-                adopt_col = create_adoption_col(scenario_prefix='iraRef_mp3_', category='heating', column_type='adoption',
-                                                cost_scenario=cost_scenario, method_suffix='_fixed_base',
-                                                scc_assumption='central', rcm_model=rcm_model, cr_function=cr_function)
-                adopt_present = adopt_col in df_check.columns
-                
-                status = "PASS" if (cost_present and npv_present and adopt_present) else "WARN"
-                print(f"  [{status}] {cost_scenario}:")
-                print(f"    Cost column   ({cost_col}): {'✓' if cost_present else '✗ MISSING'}")
-                print(f"    NPV column    ({npv_col}): {'✓' if npv_present else '✗ MISSING'}")
-                print(f"    Adoption col  ({adopt_col}): {'✓' if adopt_present else '✗ MISSING'}")
+        # Check NPV columns (one per NPV case)
+        npv_results = {}
+        for npv_case in NPV_CASE_CATEGORIES:
+            npv_col = create_npv_case_col(
+                scenario_prefix, npv_case, wtp='moreWTP',
+                cost_scenario=cost_scenario,
+                method_suffix='_fixed_base',
+            )
+            npv_results[npv_case] = (npv_col, npv_col in df_check.columns)
 
-    # Count v4-suffixed columns
-    v4_cols = [c for c in df_check.columns if any(f'_{cs}' in c for cs in REMDB_COST_SCENARIO_KEYS if cs != 'v3')]
-    print(f"\nTotal v4-suffixed columns: {len(v4_cols)}")
-    print(f"Total columns in DataFrame: {len(df_check.columns)}")
+        all_ok = cost_present and all(v[1] for v in npv_results.values())
+        status = "PASS" if all_ok else "WARN"
+        print(f"  [{status}] {cost_scenario}:")
+        flag = "[OK]" if cost_present else "[MISSING]"
+        print(f"    Cost column   ({cost_col}): {flag}")
+        for npv_case, (col, present) in npv_results.items():
+            flag = "[OK]" if present else "[MISSING]"
+            print(f"    NPV {npv_case} ({col}): {flag}")
+
+    print(f"\nTotal columns in DataFrame: {len(df_check.columns)}")
     print(f"{'='*80}")
 
 # %% [markdown]
@@ -376,13 +340,10 @@ if 4 in VALID_MENU_MPS:
     Preserving MP{menu_mp} results by copying dataframe variables and re-assigning to MP-specific names.
     This allows the scenarios file to be re-run for MP{menu_mp} without overwriting previous model run data""")
 
-    # Supplemental DataFrames
-    df_mp4_noIRA_damages_climate = df_mpX_noIRA_damages_climate.copy()
-    df_mp4_IRA_damages_climate = df_mpX_IRA_damages_climate.copy()
-    df_mp4_noIRA_damages_health = df_mpX_noIRA_damages_health.copy()
-    df_mp4_IRA_damages_health = df_mpX_IRA_damages_health.copy()
-    df_mp4_noIRA_fuel_costs = df_mpX_noIRA_fuel_costs.copy()
-    df_mp4_IRA_fuel_costs = df_mpX_IRA_fuel_costs.copy()
+    # Supplemental DataFrames (single scenario: 2025 Reference Case)
+    df_mp4_ref2025_damages_climate = df_mpX_ref2025_damages_climate.copy()
+    df_mp4_ref2025_damages_health = df_mpX_ref2025_damages_health.copy()
+    df_mp4_ref2025_fuel_costs = df_mpX_ref2025_fuel_costs.copy()
 
     # Summary results dictionary (nested: discount rate -> RCM model -> DataFrame)
     # Structure matches new organization: [discount_rate][rcm_model]
@@ -407,8 +368,8 @@ if 4 in VALID_MENU_MPS:
 
     # ===== DAMAGES RESULTS =====
     export_model_run_output(
-        df_results_export=df_mp4_noIRA_damages_climate,
-        results_category='damages_climate_noIRA',
+        df_results_export=df_mp4_ref2025_damages_climate,
+        results_category='damages_climate_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -416,26 +377,8 @@ if 4 in VALID_MENU_MPS:
     )
 
     export_model_run_output(
-        df_results_export=df_mp4_IRA_damages_climate,
-        results_category='damages_climate_IRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp4_noIRA_damages_health,
-        results_category='damages_health_noIRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp4_IRA_damages_health,
-        results_category='damages_health_IRA',
+        df_results_export=df_mp4_ref2025_damages_health,
+        results_category='damages_health_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -444,17 +387,8 @@ if 4 in VALID_MENU_MPS:
 
     # ===== FUEL COSTS RESULTS =====
     export_model_run_output(
-        df_results_export=df_mp4_noIRA_fuel_costs,
-        results_category='fuel_costs_noIRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp4_IRA_fuel_costs,
-        results_category='fuel_costs_IRA',
+        df_results_export=df_mp4_ref2025_fuel_costs,
+        results_category='fuel_costs_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -499,39 +433,35 @@ if 4 in VALID_MENU_MPS:
     print(f"{'='*80}")
     print(f"Active cost scenarios: {REMDB_COST_SCENARIO_KEYS}\n")
 
-    for rcm_model in RCM_MODELS:
-        print(f"Checking RCM model: {rcm_model.upper()}")    
-        # Check a representative DataFrame (fixed_base × first active RCM)
-        df_check = DATAFRAMES_MP4_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][rcm_model]
+    scenario_prefix = f'ref2025_mp{menu_mp}_'
+    df_check = DATAFRAMES_MP4_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][RCM_MODELS[0]]
 
+    for cost_scenario in REMDB_COST_SCENARIO_KEYS:
+        cost_col = create_cost_col(
+            menu_mp=4, category='heating',
+            cost_type='upgrade', cost_scenario=cost_scenario,
+        )
+        cost_present = cost_col in df_check.columns
 
-        for cost_scenario in REMDB_COST_SCENARIO_KEYS:
-            # Check installed cost columns
-            cost_col = create_cost_col(menu_mp=4, category='heating', cost_type='upgrade', cost_scenario=cost_scenario)
-            cost_present = cost_col in df_check.columns
-            
-            # Check NPV columns  
-            npv_col = create_npv_col(scenario_prefix='iraRef_mp4_', category='heating', wtp='moreWTP', 
-                                    cost_scenario=cost_scenario, method_suffix='_fixed_base')
-            npv_present = npv_col in df_check.columns
-            
-            for cr_function in CR_FUNCTIONS:
-                # Check adoption columns
-                adopt_col = create_adoption_col(scenario_prefix='iraRef_mp4_', category='heating', column_type='adoption',
-                                                cost_scenario=cost_scenario, method_suffix='_fixed_base',
-                                                scc_assumption='central', rcm_model=rcm_model, cr_function=cr_function)
-                adopt_present = adopt_col in df_check.columns
-                
-                status = "PASS" if (cost_present and npv_present and adopt_present) else "WARN"
-                print(f"  [{status}] {cost_scenario}:")
-                print(f"    Cost column   ({cost_col}): {'✓' if cost_present else '✗ MISSING'}")
-                print(f"    NPV column    ({npv_col}): {'✓' if npv_present else '✗ MISSING'}")
-                print(f"    Adoption col  ({adopt_col}): {'✓' if adopt_present else '✗ MISSING'}")
+        npv_results = {}
+        for npv_case in NPV_CASE_CATEGORIES:
+            npv_col = create_npv_case_col(
+                scenario_prefix, npv_case, wtp='moreWTP',
+                cost_scenario=cost_scenario,
+                method_suffix='_fixed_base',
+            )
+            npv_results[npv_case] = (npv_col, npv_col in df_check.columns)
 
-    # Count v4-suffixed columns
-    v4_cols = [c for c in df_check.columns if any(f'_{cs}' in c for cs in REMDB_COST_SCENARIO_KEYS if cs != 'v4')]
-    print(f"\nTotal v4-suffixed columns: {len(v4_cols)}")
-    print(f"Total columns in DataFrame: {len(df_check.columns)}")
+        all_ok = cost_present and all(v[1] for v in npv_results.values())
+        status = "PASS" if all_ok else "WARN"
+        print(f"  [{status}] {cost_scenario}:")
+        flag = "[OK]" if cost_present else "[MISSING]"
+        print(f"    Cost column   ({cost_col}): {flag}")
+        for npv_case, (col, present) in npv_results.items():
+            flag = "[OK]" if present else "[MISSING]"
+            print(f"    NPV {npv_case} ({col}): {flag}")
+
+    print(f"\nTotal columns in DataFrame: {len(df_check.columns)}")
     print(f"{'='*80}")
 
 # %% [markdown]
@@ -570,13 +500,10 @@ if 8 in VALID_MENU_MPS:
     Preserving MP{menu_mp} results by copying dataframe variables and re-assigning to MP-specific names.
     This allows the scenarios file to be re-run for MP{menu_mp} without overwriting previous model run data""")
 
-    # Supplemental DataFrames
-    df_mp8_noIRA_damages_climate = df_mpX_noIRA_damages_climate.copy()
-    df_mp8_IRA_damages_climate = df_mpX_IRA_damages_climate.copy()
-    df_mp8_noIRA_damages_health = df_mpX_noIRA_damages_health.copy()
-    df_mp8_IRA_damages_health = df_mpX_IRA_damages_health.copy()
-    df_mp8_noIRA_fuel_costs = df_mpX_noIRA_fuel_costs.copy()
-    df_mp8_IRA_fuel_costs = df_mpX_IRA_fuel_costs.copy()
+    # Supplemental DataFrames (single scenario: 2025 Reference Case)
+    df_mp8_ref2025_damages_climate = df_mpX_ref2025_damages_climate.copy()
+    df_mp8_ref2025_damages_health = df_mpX_ref2025_damages_health.copy()
+    df_mp8_ref2025_fuel_costs = df_mpX_ref2025_fuel_costs.copy()
 
     # Summary results dictionary (nested: discount rate -> RCM model -> DataFrame)
     # Structure matches new organization: [discount_rate][rcm_model]
@@ -601,8 +528,8 @@ if 8 in VALID_MENU_MPS:
 
     # ===== DAMAGES RESULTS =====
     export_model_run_output(
-        df_results_export=df_mp8_noIRA_damages_climate,
-        results_category='damages_climate_noIRA',
+        df_results_export=df_mp8_ref2025_damages_climate,
+        results_category='damages_climate_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -610,26 +537,8 @@ if 8 in VALID_MENU_MPS:
     )
 
     export_model_run_output(
-        df_results_export=df_mp8_IRA_damages_climate,
-        results_category='damages_climate_IRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp8_noIRA_damages_health,
-        results_category='damages_health_noIRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp8_IRA_damages_health,
-        results_category='damages_health_IRA',
+        df_results_export=df_mp8_ref2025_damages_health,
+        results_category='damages_health_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -638,17 +547,8 @@ if 8 in VALID_MENU_MPS:
 
     # ===== FUEL COSTS RESULTS =====
     export_model_run_output(
-        df_results_export=df_mp8_noIRA_fuel_costs,
-        results_category='fuel_costs_noIRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp8_IRA_fuel_costs,
-        results_category='fuel_costs_IRA',
+        df_results_export=df_mp8_ref2025_fuel_costs,
+        results_category='fuel_costs_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -693,39 +593,35 @@ if 8 in VALID_MENU_MPS:
     print(f"{'='*80}")
     print(f"Active cost scenarios: {REMDB_COST_SCENARIO_KEYS}\n")
 
-    for rcm_model in RCM_MODELS:
-        print(f"Checking RCM model: {rcm_model.upper()}")    
-        # Check a representative DataFrame (fixed_base × first active RCM)
-        df_check = DATAFRAMES_MP8_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][rcm_model]
+    scenario_prefix = f'ref2025_mp{menu_mp}_'
+    df_check = DATAFRAMES_MP8_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][RCM_MODELS[0]]
 
+    for cost_scenario in REMDB_COST_SCENARIO_KEYS:
+        cost_col = create_cost_col(
+            menu_mp=8, category='heating',
+            cost_type='upgrade', cost_scenario=cost_scenario,
+        )
+        cost_present = cost_col in df_check.columns
 
-        for cost_scenario in REMDB_COST_SCENARIO_KEYS:
-            # Check installed cost columns
-            cost_col = create_cost_col(menu_mp=8, category='heating', cost_type='upgrade', cost_scenario=cost_scenario)
-            cost_present = cost_col in df_check.columns
-            
-            # Check NPV columns  
-            npv_col = create_npv_col(scenario_prefix='iraRef_mp8_', category='heating', wtp='moreWTP', 
-                                    cost_scenario=cost_scenario, method_suffix='_fixed_base')
-            npv_present = npv_col in df_check.columns
-            
-            for cr_function in CR_FUNCTIONS:
-                # Check adoption columns
-                adopt_col = create_adoption_col(scenario_prefix='iraRef_mp8_', category='heating', column_type='adoption',
-                                                cost_scenario=cost_scenario, method_suffix='_fixed_base',
-                                                scc_assumption='central', rcm_model=rcm_model, cr_function=cr_function)
-                adopt_present = adopt_col in df_check.columns
-                
-                status = "PASS" if (cost_present and npv_present and adopt_present) else "WARN"
-                print(f"  [{status}] {cost_scenario}:")
-                print(f"    Cost column   ({cost_col}): {'✓' if cost_present else '✗ MISSING'}")
-                print(f"    NPV column    ({npv_col}): {'✓' if npv_present else '✗ MISSING'}")
-                print(f"    Adoption col  ({adopt_col}): {'✓' if adopt_present else '✗ MISSING'}")
+        npv_results = {}
+        for npv_case in NPV_CASE_CATEGORIES:
+            npv_col = create_npv_case_col(
+                scenario_prefix, npv_case, wtp='moreWTP',
+                cost_scenario=cost_scenario,
+                method_suffix='_fixed_base',
+            )
+            npv_results[npv_case] = (npv_col, npv_col in df_check.columns)
 
-    # Count v4-suffixed columns
-    v4_cols = [c for c in df_check.columns if any(f'_{cs}' in c for cs in REMDB_COST_SCENARIO_KEYS if cs != 'v8')]
-    print(f"\nTotal v4-suffixed columns: {len(v4_cols)}")
-    print(f"Total columns in DataFrame: {len(df_check.columns)}")
+        all_ok = cost_present and all(v[1] for v in npv_results.values())
+        status = "PASS" if all_ok else "WARN"
+        print(f"  [{status}] {cost_scenario}:")
+        flag = "[OK]" if cost_present else "[MISSING]"
+        print(f"    Cost column   ({cost_col}): {flag}")
+        for npv_case, (col, present) in npv_results.items():
+            flag = "[OK]" if present else "[MISSING]"
+            print(f"    NPV {npv_case} ({col}): {flag}")
+
+    print(f"\nTotal columns in DataFrame: {len(df_check.columns)}")
     print(f"{'='*80}")
 
 # %% [markdown]
@@ -762,13 +658,10 @@ if 9 in VALID_MENU_MPS:
     Preserving MP{menu_mp} results by copying dataframe variables and re-assigning to MP-specific names.
     This allows the scenarios file to be re-run for MP{menu_mp} without overwriting previous model run data""")
 
-    # Supplemental DataFrames
-    df_mp9_noIRA_damages_climate = df_mpX_noIRA_damages_climate.copy()
-    df_mp9_IRA_damages_climate = df_mpX_IRA_damages_climate.copy()
-    df_mp9_noIRA_damages_health = df_mpX_noIRA_damages_health.copy()
-    df_mp9_IRA_damages_health = df_mpX_IRA_damages_health.copy()
-    df_mp9_noIRA_fuel_costs = df_mpX_noIRA_fuel_costs.copy()
-    df_mp9_IRA_fuel_costs = df_mpX_IRA_fuel_costs.copy()
+    # Supplemental DataFrames (single scenario: 2025 Reference Case)
+    df_mp9_ref2025_damages_climate = df_mpX_ref2025_damages_climate.copy()
+    df_mp9_ref2025_damages_health = df_mpX_ref2025_damages_health.copy()
+    df_mp9_ref2025_fuel_costs = df_mpX_ref2025_fuel_costs.copy()
 
     # Summary results dictionary (nested: discount rate -> RCM model -> DataFrame)
     # Structure matches new organization: [discount_rate][rcm_model]
@@ -795,8 +688,8 @@ if 9 in VALID_MENU_MPS:
 
     # ===== DAMAGES RESULTS =====
     export_model_run_output(
-        df_results_export=df_mp9_noIRA_damages_climate,
-        results_category='damages_climate_noIRA',
+        df_results_export=df_mp9_ref2025_damages_climate,
+        results_category='damages_climate_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -804,26 +697,8 @@ if 9 in VALID_MENU_MPS:
     )
 
     export_model_run_output(
-        df_results_export=df_mp9_IRA_damages_climate,
-        results_category='damages_climate_IRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp9_noIRA_damages_health,
-        results_category='damages_health_noIRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp9_IRA_damages_health,
-        results_category='damages_health_IRA',
+        df_results_export=df_mp9_ref2025_damages_health,
+        results_category='damages_health_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -832,17 +707,8 @@ if 9 in VALID_MENU_MPS:
 
     # ===== FUEL COSTS RESULTS =====
     export_model_run_output(
-        df_results_export=df_mp9_noIRA_fuel_costs,
-        results_category='fuel_costs_noIRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp9_IRA_fuel_costs,
-        results_category='fuel_costs_IRA',
+        df_results_export=df_mp9_ref2025_fuel_costs,
+        results_category='fuel_costs_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -887,39 +753,35 @@ if 9 in VALID_MENU_MPS:
     print(f"{'='*80}")
     print(f"Active cost scenarios: {REMDB_COST_SCENARIO_KEYS}\n")
 
-    for rcm_model in RCM_MODELS:
-        print(f"Checking RCM model: {rcm_model.upper()}")    
-        # Check a representative DataFrame (fixed_base × first active RCM)
-        df_check = DATAFRAMES_MP9_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][rcm_model]
+    scenario_prefix = f'ref2025_mp{menu_mp}_'
+    df_check = DATAFRAMES_MP9_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][RCM_MODELS[0]]
 
+    for cost_scenario in REMDB_COST_SCENARIO_KEYS:
+        cost_col = create_cost_col(
+            menu_mp=9, category='heating',
+            cost_type='upgrade', cost_scenario=cost_scenario,
+        )
+        cost_present = cost_col in df_check.columns
 
-        for cost_scenario in REMDB_COST_SCENARIO_KEYS:
-            # Check installed cost columns
-            cost_col = create_cost_col(menu_mp=9, category='heating', cost_type='upgrade', cost_scenario=cost_scenario)
-            cost_present = cost_col in df_check.columns
-            
-            # Check NPV columns  
-            npv_col = create_npv_col(scenario_prefix='iraRef_mp9_', category='heating', wtp='moreWTP', 
-                                    cost_scenario=cost_scenario, method_suffix='_fixed_base')
-            npv_present = npv_col in df_check.columns
-            
-            for cr_function in CR_FUNCTIONS:
-                # Check adoption columns
-                adopt_col = create_adoption_col(scenario_prefix='iraRef_mp9_', category='heating', column_type='adoption',
-                                                cost_scenario=cost_scenario, method_suffix='_fixed_base',
-                                                scc_assumption='central', rcm_model=rcm_model, cr_function=cr_function)
-                adopt_present = adopt_col in df_check.columns
-                
-                status = "PASS" if (cost_present and npv_present and adopt_present) else "WARN"
-                print(f"  [{status}] {cost_scenario}:")
-                print(f"    Cost column   ({cost_col}): {'✓' if cost_present else '✗ MISSING'}")
-                print(f"    NPV column    ({npv_col}): {'✓' if npv_present else '✗ MISSING'}")
-                print(f"    Adoption col  ({adopt_col}): {'✓' if adopt_present else '✗ MISSING'}")
+        npv_results = {}
+        for npv_case in NPV_CASE_CATEGORIES:
+            npv_col = create_npv_case_col(
+                scenario_prefix, npv_case, wtp='moreWTP',
+                cost_scenario=cost_scenario,
+                method_suffix='_fixed_base',
+            )
+            npv_results[npv_case] = (npv_col, npv_col in df_check.columns)
 
-    # Count v4-suffixed columns
-    v4_cols = [c for c in df_check.columns if any(f'_{cs}' in c for cs in REMDB_COST_SCENARIO_KEYS if cs != 'v9')]
-    print(f"\nTotal v4-suffixed columns: {len(v4_cols)}")
-    print(f"Total columns in DataFrame: {len(df_check.columns)}")
+        all_ok = cost_present and all(v[1] for v in npv_results.values())
+        status = "PASS" if all_ok else "WARN"
+        print(f"  [{status}] {cost_scenario}:")
+        flag = "[OK]" if cost_present else "[MISSING]"
+        print(f"    Cost column   ({cost_col}): {flag}")
+        for npv_case, (col, present) in npv_results.items():
+            flag = "[OK]" if present else "[MISSING]"
+            print(f"    NPV {npv_case} ({col}): {flag}")
+
+    print(f"\nTotal columns in DataFrame: {len(df_check.columns)}")
     print(f"{'='*80}")
 
 # %% [markdown]
@@ -956,13 +818,10 @@ if 10 in VALID_MENU_MPS:
     Preserving MP{menu_mp} results by copying dataframe variables and re-assigning to MP-specific names.
     This allows the scenarios file to be re-run for MP{menu_mp} without overwriting previous model run data""")
 
-    # Supplemental DataFrames
-    df_mp10_noIRA_damages_climate = df_mpX_noIRA_damages_climate.copy()
-    df_mp10_IRA_damages_climate = df_mpX_IRA_damages_climate.copy()
-    df_mp10_noIRA_damages_health = df_mpX_noIRA_damages_health.copy()
-    df_mp10_IRA_damages_health = df_mpX_IRA_damages_health.copy()
-    df_mp10_noIRA_fuel_costs = df_mpX_noIRA_fuel_costs.copy()
-    df_mp10_IRA_fuel_costs = df_mpX_IRA_fuel_costs.copy()
+    # Supplemental DataFrames (single scenario: 2025 Reference Case)
+    df_mp10_ref2025_damages_climate = df_mpX_ref2025_damages_climate.copy()
+    df_mp10_ref2025_damages_health = df_mpX_ref2025_damages_health.copy()
+    df_mp10_ref2025_fuel_costs = df_mpX_ref2025_fuel_costs.copy()
 
     # Summary results dictionary (nested: discount rate -> RCM model -> DataFrame)
     # Structure matches new organization: [discount_rate][rcm_model]
@@ -990,8 +849,8 @@ if 10 in VALID_MENU_MPS:
 
     # ===== DAMAGES RESULTS =====
     export_model_run_output(
-        df_results_export=df_mp10_noIRA_damages_climate,
-        results_category='damages_climate_noIRA',
+        df_results_export=df_mp10_ref2025_damages_climate,
+        results_category='damages_climate_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -999,26 +858,8 @@ if 10 in VALID_MENU_MPS:
     )
 
     export_model_run_output(
-        df_results_export=df_mp10_IRA_damages_climate,
-        results_category='damages_climate_IRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp10_noIRA_damages_health,
-        results_category='damages_health_noIRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp10_IRA_damages_health,
-        results_category='damages_health_IRA',
+        df_results_export=df_mp10_ref2025_damages_health,
+        results_category='damages_health_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -1027,17 +868,8 @@ if 10 in VALID_MENU_MPS:
 
     # ===== FUEL COSTS RESULTS =====
     export_model_run_output(
-        df_results_export=df_mp10_noIRA_fuel_costs,
-        results_category='fuel_costs_noIRA',
-        menu_mp=menu_mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time
-    )
-
-    export_model_run_output(
-        df_results_export=df_mp10_IRA_fuel_costs,
-        results_category='fuel_costs_IRA',
+        df_results_export=df_mp10_ref2025_fuel_costs,
+        results_category='fuel_costs_ref2025',
         menu_mp=menu_mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
@@ -1082,39 +914,35 @@ if 10 in VALID_MENU_MPS:
     print(f"{'='*80}")
     print(f"Active cost scenarios: {REMDB_COST_SCENARIO_KEYS}\n")
 
-    for rcm_model in RCM_MODELS:
-        print(f"Checking RCM model: {rcm_model.upper()}")    
-        # Check a representative DataFrame (fixed_base × first active RCM)
-        df_check = DATAFRAMES_MP10_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][rcm_model]
+    scenario_prefix = f'ref2025_mp{menu_mp}_'
+    df_check = DATAFRAMES_MP10_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][RCM_MODELS[0]]
 
+    for cost_scenario in REMDB_COST_SCENARIO_KEYS:
+        cost_col = create_cost_col(
+            menu_mp=10, category='heating',
+            cost_type='upgrade', cost_scenario=cost_scenario,
+        )
+        cost_present = cost_col in df_check.columns
 
-        for cost_scenario in REMDB_COST_SCENARIO_KEYS:
-            # Check installed cost columns
-            cost_col = create_cost_col(menu_mp=10, category='heating', cost_type='upgrade', cost_scenario=cost_scenario)
-            cost_present = cost_col in df_check.columns
-            
-            # Check NPV columns  
-            npv_col = create_npv_col(scenario_prefix='iraRef_mp10_', category='heating', wtp='moreWTP', 
-                                    cost_scenario=cost_scenario, method_suffix='_fixed_base')
-            npv_present = npv_col in df_check.columns
-            
-            for cr_function in CR_FUNCTIONS:
-                # Check adoption columns
-                adopt_col = create_adoption_col(scenario_prefix='iraRef_mp10_', category='heating', column_type='adoption',
-                                                cost_scenario=cost_scenario, method_suffix='_fixed_base',
-                                                scc_assumption='central', rcm_model=rcm_model, cr_function=cr_function)
-                adopt_present = adopt_col in df_check.columns
-                
-                status = "PASS" if (cost_present and npv_present and adopt_present) else "WARN"
-                print(f"  [{status}] {cost_scenario}:")
-                print(f"    Cost column   ({cost_col}): {'✓' if cost_present else '✗ MISSING'}")
-                print(f"    NPV column    ({npv_col}): {'✓' if npv_present else '✗ MISSING'}")
-                print(f"    Adoption col  ({adopt_col}): {'✓' if adopt_present else '✗ MISSING'}")
+        npv_results = {}
+        for npv_case in NPV_CASE_CATEGORIES:
+            npv_col = create_npv_case_col(
+                scenario_prefix, npv_case, wtp='moreWTP',
+                cost_scenario=cost_scenario,
+                method_suffix='_fixed_base',
+            )
+            npv_results[npv_case] = (npv_col, npv_col in df_check.columns)
 
-    # Count v4-suffixed columns
-    v4_cols = [c for c in df_check.columns if any(f'_{cs}' in c for cs in REMDB_COST_SCENARIO_KEYS if cs != 'v3')]
-    print(f"\nTotal v4-suffixed columns: {len(v4_cols)}")
-    print(f"Total columns in DataFrame: {len(df_check.columns)}")
+        all_ok = cost_present and all(v[1] for v in npv_results.values())
+        status = "PASS" if all_ok else "WARN"
+        print(f"  [{status}] {cost_scenario}:")
+        flag = "[OK]" if cost_present else "[MISSING]"
+        print(f"    Cost column   ({cost_col}): {flag}")
+        for npv_case, (col, present) in npv_results.items():
+            flag = "[OK]" if present else "[MISSING]"
+            print(f"    NPV {npv_case} ({col}): {flag}")
+
+    print(f"\nTotal columns in DataFrame: {len(df_check.columns)}")
     print(f"{'='*80}")
 
 

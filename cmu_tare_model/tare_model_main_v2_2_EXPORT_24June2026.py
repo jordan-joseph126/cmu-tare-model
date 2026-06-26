@@ -7,17 +7,12 @@
 # - MP10: Whole-Home Electrification + Enhanced Enclosure Upgrade
 # 
 # -------------------------------------------------------------------------------------------------------
-# # TARE MODEL SCENARIOS
+# # TARE MODEL SCENARIO: 2025 Reference Case
 # -------------------------------------------------------------------------------------------------------
-# - Pre-IRA Scenario:
-#     - NREL End-Use Savings Shapes Database: Measure Package 8/9/10
-#     - AEO2023 No Inflation Reduction Act
-#     - Cambium 2021 MidCase
-#       
-# - IRA-Reference Scenario:
-#     - NREL End-Use Savings Shapes Database: Measure Package 8/9/10
-#     - AEO2023 REFERENCE CASE - HDD and Fuel Price Projections
-#     - Cambium 2022 and 2023 MidCase
+# - AEO2026 fuel price projections
+# - AEO2026 degree-day factors
+# - Cambium MidCase electricity grid
+# - Single scenario: '2025 Reference Case'
 
 # %%
 # =============================================================================
@@ -47,7 +42,6 @@ from cmu_tare_model.constants import (
     VALID_CATEGORIES,
     PRINT_DEBUG,
     PRINT_VERBOSE_DATAFRAMES,
-    VALID_HVAC_REPLACEMENT_SCENARIOS
 )
 from cmu_tare_model.constants import (
     PRIVATE_DISCOUNT_RATE_COLS, 
@@ -56,11 +50,12 @@ from cmu_tare_model.constants import (
 
 # Column name builders
 from cmu_tare_model.utils.column_names import (
+    NPV_CASE_CATEGORIES,
     create_cost_col,
     create_capital_col,
     create_npv_col,
+    create_npv_case_col,
     create_rebate_col,
-    create_adoption_col,
     create_total_npv_col,
     create_health_npv_col,
     create_climate_npv_col
@@ -271,7 +266,8 @@ if VERBOSE:
 if 8 not in DATAFRAMES_BY_MP:
     print("MP8 not in VALID_MENU_MPS — skipping health impact visualizations.")
 else:
-    scenario_prefix = 'iraRef_mp8_'
+    mp = 8
+    scenario_prefix = f'ref2025_mp{mp}_'
     category = 'heating'
     lower_percentile = 0.5
     upper_percentile = 99.5
@@ -342,7 +338,8 @@ else:
 if 8 not in DATAFRAMES_BY_MP:
     print("MP8 not in VALID_MENU_MPS — skipping climate SCC visualization.")
 else:
-    scenario_prefix = 'iraRef_mp8_'
+    mp = 8
+    scenario_prefix = f'ref2025_mp{mp}_'
     category = 'heating'
     rcm_model = 'inmap'
     discount_rate = 'fixed_base'
@@ -492,28 +489,29 @@ if not HEATING_MEASURE_PACKAGES:
     print("No non-baseline measure packages in VALID_MENU_MPS — skipping adoption potential.")
     ALL_HEATING_ADOPTION_MI = {}
 else:
-    # Master dictionary to store all results
-    # Structure: [mp][hvac_scenario][cost_scenario][discount_rate][rcm][crf]
+    # Master dictionary to store all results.
+    # Structure: [mp][npv_case][cost_scenario][discount_rate]
+    # NPV case is the primary dimension (heating_only, heating_and_cooling_savings,
+    # heating_and_cooling_full). SCC, RCM, and CR-function dimensions are removed
+    # because economic adoption does not use damages; the adopter column is the
+    # same in all RCM DataFrames.
     ALL_HEATING_ADOPTION_MI = {
         mp: {
-            hvac_scenario: {
+            npv_case: {
                 cost_scenario: {
-                    discount_rate: {
-                        rcm: {crf: None for crf in CR_FUNCTIONS}
-                        for rcm in RCM_MODELS
-                    }
+                    discount_rate: None
                     for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS
                 }
                 for cost_scenario in REMDB_COST_SCENARIO_KEYS
             }
-            for hvac_scenario in VALID_HVAC_REPLACEMENT_SCENARIOS
+            for npv_case in NPV_CASE_CATEGORIES
         }
         for mp in HEATING_MEASURE_PACKAGES
     }
 
     print("Creating adoption potential DataFrames...")
     print(f"Active Measure Packages: {HEATING_MEASURE_PACKAGES}")
-    print(f"HVAC replacement scenarios: {VALID_HVAC_REPLACEMENT_SCENARIOS}")
+    print(f"NPV cases: {NPV_CASE_CATEGORIES}")
     print(f"Cost scenarios: {REMDB_COST_SCENARIO_KEYS}")
 
     _skipped = []  # track skipped combos for summary
@@ -523,8 +521,8 @@ else:
         print(f"MEASURE PACKAGE {menu_mp}")
         print(f"{'='*80}")
 
-        for hvac_replacement_scenario in VALID_HVAC_REPLACEMENT_SCENARIOS:
-            print(f"\n  HVAC Scenario: {hvac_replacement_scenario}")
+        for npv_case in NPV_CASE_CATEGORIES:
+            print(f"\n  NPV Case: {npv_case}")
 
             for cost_scenario in REMDB_COST_SCENARIO_KEYS:
                 print(f"    Cost Scenario: {cost_scenario}")
@@ -532,42 +530,37 @@ else:
                 for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
                     print(f"      Discount Rate: {discount_rate}")
 
-                    for rcm_model in RCM_MODELS:
-                        for cr_function in CR_FUNCTIONS:
-                            # Direct dictionary access with short keys
-                            source_df = DATAFRAMES_BY_MP[menu_mp][discount_rate][rcm_model]
+                    # Economic adopter columns are identical across all RCM DataFrames
+                    # (damages are not in the adoption decision). Use the first RCM
+                    # model as a consistent source for the source DataFrame.
+                    source_df = DATAFRAMES_BY_MP[menu_mp][discount_rate][RCM_MODELS[0]]
 
-                            # Build expected column names to verify they exist
-                            expected_cols = build_adoption_scenario_names(
-                                menu_mp, 'heating', scc, rcm_model, cr_function,
-                                cost_scenario, discount_rate,
-                                hvac_replacement_scenario=hvac_replacement_scenario,
-                            )
-                            missing = [c for c in expected_cols if c not in source_df.columns]
-                            if missing:
-                                tag = f"MP{menu_mp}/{hvac_replacement_scenario}/{cost_scenario}/{discount_rate}"
-                                _skipped.append(tag)
-                                print(f"        ⚠ SKIPPED ({tag}): columns not found — {missing}")
-                                continue
+                    # Verify the adopter column exists before building the mi_df
+                    expected_cols = build_adoption_scenario_names(
+                        menu_mp, npv_case, cost_scenario, discount_rate
+                    )
+                    missing = [c for c in expected_cols if c not in source_df.columns]
+                    if missing:
+                        tag = f"MP{menu_mp}/{npv_case}/{cost_scenario}/{discount_rate}"
+                        _skipped.append(tag)
+                        print(f"        SKIPPED ({tag}): columns not found -- {missing}")
+                        continue
 
-                            df_mi = create_multiIndex_adoption_df(
-                                df=source_df,
-                                menu_mp=menu_mp,
-                                category='heating',
-                                scc=scc,
-                                rcm_model=rcm_model,
-                                cr_function=cr_function,
-                                cost_scenario=cost_scenario,
-                                discount_rate=discount_rate,
-                                hvac_replacement_scenario=hvac_replacement_scenario,
-                            )
+                    df_mi = create_multiIndex_adoption_df(
+                        df=source_df,
+                        menu_mp=menu_mp,
+                        npv_case=npv_case,
+                        cost_scenario=cost_scenario,
+                        discount_rate=discount_rate,
+                    )
 
-                            ALL_HEATING_ADOPTION_MI[menu_mp][hvac_replacement_scenario][cost_scenario][discount_rate][rcm_model][cr_function] = df_mi
+                    ALL_HEATING_ADOPTION_MI[menu_mp][npv_case][cost_scenario][discount_rate] = df_mi
 
-    _created = (len(VALID_HVAC_REPLACEMENT_SCENARIOS) * len(REMDB_COST_SCENARIO_KEYS) *
-                len(PRIVATE_DISCOUNT_RATE_SHORT_KEYS) * len(HEATING_MEASURE_PACKAGES) *
-                len(RCM_MODELS) * len(CR_FUNCTIONS)) - len(_skipped)
-    print(f"\n✓ Created {_created} DataFrames, skipped {len(_skipped)} (missing columns)")
+    _created = (
+        len(NPV_CASE_CATEGORIES) * len(REMDB_COST_SCENARIO_KEYS)
+        * len(PRIVATE_DISCOUNT_RATE_SHORT_KEYS) * len(HEATING_MEASURE_PACKAGES)
+    ) - len(_skipped)
+    print(f"\n[OK] Created {_created} DataFrames, skipped {len(_skipped)} (missing columns)")
     if _skipped:
         print(f"  Skipped combos: {', '.join(sorted(set(_skipped)))}")
 
@@ -583,13 +576,13 @@ discount_rate = 'fixed_base'
 # Capital cost scenario: 'v3', 'v4MID', etc.
 cost_scenario = 'v4MID'
 
-# Health model parameters (typically keep these fixed)
+# Health model parameters (used for public-impact columns, not for adoption)
 scc = 'central'
 rcm_model = 'inmap'
 cr_function = 'acs'
 
-# HVAC replacement scenario for bar-chart visualization (Case A default)
-hvac_replacement_scenario = 'heating'
+# NPV case for bar-chart visualization (Case 1 default)
+npv_case = 'heating_only'
 
 # =============================================================================
 # ADOPTION POTENTIAL VISUALIZATION
@@ -598,14 +591,14 @@ if not HEATING_MEASURE_PACKAGES:
     print("No active heating measure packages — skipping adoption visualization.")
 else:
     category = 'heating'
-    
-    # Subplot titles and labels for each measure package
+
+    # Subplot titles for each measure package
     HEATING_MP_SUBTITLES = {
-        3: "ASHP (MP3 - Min Efficiency):\nNo IRA vs. IRA-Reference",
-        4: "ASHP (MP4 - High Efficiency):\nNo IRA vs. IRA-Reference",
-        8: "ASHP (MP4) + No Enclosure:\nNo IRA vs. IRA-Reference",
-        9: "ASHP (MP4) + Basic Enclosure:\nNo IRA vs. IRA-Reference",
-        10: "ASHP (MP4) + Enhanced Enclosure:\nNo IRA vs. IRA-Reference"
+        3: "ASHP (MP3 - Min Efficiency)",
+        4: "ASHP (MP4 - High Efficiency)",
+        8: "ASHP (MP4) + No Enclosure",
+        9: "ASHP (MP4) + Basic Enclosure",
+        10: "ASHP (MP4) + Enhanced Enclosure"
     }
 
     print(f"""
@@ -615,25 +608,24 @@ ADOPTION POTENTIAL VISUALIZATION
 Active Measure Packages: {HEATING_MEASURE_PACKAGES}
 Discount Rate: {discount_rate}
 Cost Scenario: {cost_scenario}
-HVAC Scenario: {hvac_replacement_scenario}
-SCC: {scc} | RCM: {rcm_model} | CRF: {cr_function}
+NPV Case: {npv_case}
 """)
 
     n_panels = len(HEATING_MEASURE_PACKAGES)
 
     fig_adoption = subplot_grid_adoption_vBar(
         dataframes=[
-            ALL_HEATING_ADOPTION_MI[mp][hvac_replacement_scenario][cost_scenario][discount_rate][rcm_model][cr_function]
+            ALL_HEATING_ADOPTION_MI[mp][npv_case][cost_scenario][discount_rate]
             for mp in HEATING_MEASURE_PACKAGES
         ],
         scenarios_list=[
-            build_adoption_scenario_names(mp, category, scc, rcm_model, cr_function, cost_scenario, discount_rate, hvac_replacement_scenario)
+            build_adoption_scenario_names(mp, npv_case, cost_scenario, discount_rate)
             for mp in HEATING_MEASURE_PACKAGES
         ],
         subplot_positions=[(0, i) for i in range(n_panels)],
         filter_fuel=['Electricity', 'Natural Gas', 'Fuel Oil', 'Propane'],
         x_labels=[""] * (n_panels // 2) + ["Fuel Type and Income Group (LMI: Low-to-Moderate-Income, MUI: Middle-to-Upper-Income)"] + [""] * (n_panels - n_panels // 2 - 1),
-        plot_titles=[HEATING_MP_SUBTITLES.get(mp, f"MP{mp}:\nNo IRA vs. IRA-Reference") for mp in HEATING_MEASURE_PACKAGES],
+        plot_titles=[HEATING_MP_SUBTITLES.get(mp, f"MP{mp}") for mp in HEATING_MEASURE_PACKAGES],
         y_labels=["Retrofit Adoption Potential (%)"] + [""] * (n_panels - 1),
         figure_size=(6 * n_panels, 12),
         sharey=True,
@@ -644,31 +636,32 @@ SCC: {scc} | RCM: {rcm_model} | CRF: {cr_function}
     # PRINT ADOPTION DECISION PERCENTAGES
     # =======================================================================================================
     for i, menu_mp in enumerate(HEATING_MEASURE_PACKAGES):
-        scenario_names = build_adoption_scenario_names(menu_mp, category, scc, rcm_model, cr_function, cost_scenario, discount_rate, hvac_replacement_scenario)
+        scenario_name = build_adoption_scenario_names(
+            menu_mp, npv_case, cost_scenario, discount_rate
+        )[0]
         print_adoption_decision_percentages(
-                dataframes=[
-                    ALL_HEATING_ADOPTION_MI[menu_mp][hvac_replacement_scenario][cost_scenario][discount_rate][rcm_model][cr_function],
-                    ALL_HEATING_ADOPTION_MI[menu_mp][hvac_replacement_scenario][cost_scenario][discount_rate][rcm_model][cr_function],
-                    ],
-                scenario_names=scenario_names,
-                source_dataframes=[
-                    DATAFRAMES_BY_MP[menu_mp][discount_rate][rcm_model],
-                    DATAFRAMES_BY_MP[menu_mp][discount_rate][rcm_model],
-                ],
-                category='heating',
-                title=f"SPACE HEATING ADOPTION POTENTIAL: {discount_rate.upper()} | Cost: {cost_scenario}", 
-                subtitle=HEATING_MP_SUBTITLES.get(menu_mp, f"MP{menu_mp}"),
-                print_header_key=True,
-            )
+            dataframes=[
+                ALL_HEATING_ADOPTION_MI[menu_mp][npv_case][cost_scenario][discount_rate],
+            ],
+            scenario_names=[scenario_name],
+            source_dataframes=[
+                DATAFRAMES_BY_MP[menu_mp][discount_rate][RCM_MODELS[0]],
+            ],
+            category='heating',
+            title=f"SPACE HEATING ADOPTION POTENTIAL: {discount_rate.upper()} | Cost: {cost_scenario}",
+            subtitle=HEATING_MP_SUBTITLES.get(menu_mp, f"MP{menu_mp}"),
+            print_header_key=True,
+        )
 
     display(fig_adoption)
 
 # %%
-## Adoption Potential Dot Plot: MP3 vs. MP4 — Case A (Heating) vs. Case B (Heating & Cooling)
+## Adoption Potential Dot Plot: Case 1 (Heating Only) vs. Case 3 (Heating + Full Cooling)
 
 # %%
 # =============================================================================
-# ADOPTION POTENTIAL DOT PLOT: 1-row × N-col (one col per MP, shared x + y)
+# ADOPTION POTENTIAL DOT PLOT: 1-row x N-col (one col per MP, shared x + y)
+# Compares Case 1 (heating_only) vs. Case 3 (heating_and_cooling_full).
 # =============================================================================
 import importlib
 import cmu_tare_model.adoption_potential.data_processing.visuals_adoption_dotplot as _vdp
@@ -681,25 +674,33 @@ from cmu_tare_model.adoption_potential.data_processing.visuals_adoption_dotplot 
 )
 
 CASE_LABELS = {
-    'heating': 'Case A: Heating Only',
-    'heating_and_cooling': 'Case B: Heating & Cooling',
+    'heating_only': 'Case 1: Heating Only',
+    'heating_and_cooling_savings': 'Case 2: Heating + Cooling Savings',
+    'heating_and_cooling_full': 'Case 3: Heating + Full Cooling',
 }
+
+# The dotplot compares Case A (heating_only) vs. Case B (heating_and_cooling_full).
+# The delta annotation shows the additional adoption from including full cooling costs.
+DOTPLOT_CASE_A = 'heating_only'
+DOTPLOT_CASE_B = 'heating_and_cooling_full'
 
 if not HEATING_MEASURE_PACKAGES:
     print("No active heating measure packages — skipping dotplot.")
 else:
     category = 'heating'
-    case_label = CASE_LABELS.get(hvac_replacement_scenario, hvac_replacement_scenario)
+    case_label = (
+        f"{CASE_LABELS.get(DOTPLOT_CASE_A)} vs. {CASE_LABELS.get(DOTPLOT_CASE_B)}"
+    )
 
     # Compute national fuel counts in millions (scaling_factor = 242)
-    _src = DATAFRAMES_BY_MP[HEATING_MEASURE_PACKAGES[0]][discount_rate][rcm_model]
+    _src = DATAFRAMES_BY_MP[HEATING_MEASURE_PACKAGES[0]][discount_rate][RCM_MODELS[0]]
     fuel_counts_millions = {
         str(fuel): int(n) * 242 / 1_000_000
         for fuel, n in _src.groupby('base_heating_fuel', observed=True).size().items()
     }
 
     # Print figure title and fuel counts before creating the figure
-    print(f"Heat Pump Adoption Potential — {case_label}")
+    print(f"Heat Pump Adoption Potential -- {case_label}")
     print(f"Discount Rate: {discount_rate} | Cost Scenario: {cost_scenario}")
     print()
     print("Fuel sample counts (national, approx.):")
@@ -721,11 +722,12 @@ else:
 
     for col_idx, mp in enumerate(HEATING_MEASURE_PACKAGES):
         ax = axes[col_idx]
-        panel_title = f'{HEATING_MP_SUBTITLES.get(mp, f"MP{mp}")} — {case_label}'
+        panel_title = f'{HEATING_MP_SUBTITLES.get(mp, f"MP{mp}")} -- {case_label}'
 
-        mi_df = ALL_HEATING_ADOPTION_MI[mp][hvac_replacement_scenario][cost_scenario][discount_rate][rcm_model][cr_function]
+        mi_df_a = ALL_HEATING_ADOPTION_MI[mp][DOTPLOT_CASE_A][cost_scenario][discount_rate]
+        mi_df_b = ALL_HEATING_ADOPTION_MI[mp][DOTPLOT_CASE_B][cost_scenario][discount_rate]
 
-        if mi_df is None:
+        if mi_df_a is None or mi_df_b is None:
             ax.set_title(panel_title, fontsize=16, fontweight='bold')
             ax.text(0.5, 0.5, 'No data\n(adoption columns missing\nfor this scenario)',
                     transform=ax.transAxes, ha='center', va='center',
@@ -739,21 +741,17 @@ else:
                 ax.set_yticklabels([])
             continue
 
-        scenario_names = build_adoption_scenario_names(
-            mp, category, scc, rcm_model, cr_function,
-            cost_scenario, discount_rate,
-            hvac_replacement_scenario=hvac_replacement_scenario,
-        )
-        preira_col = scenario_names[0]
-        iraref_col = scenario_names[1]
+        case_a_col = build_adoption_scenario_names(mp, DOTPLOT_CASE_A, cost_scenario, discount_rate)[0]
+        case_b_col = build_adoption_scenario_names(mp, DOTPLOT_CASE_B, cost_scenario, discount_rate)[0]
 
         source_df = DATAFRAMES_BY_MP[mp][discount_rate][rcm_model]
 
         plot_df = prepare_plot_data(
-            mi_df,
-            source_df,
-            preira_col=preira_col,
-            iraref_col=iraref_col,
+            mi_df_a=mi_df_a,
+            source_df=source_df,
+            case_a_col=case_a_col,
+            case_b_col=case_b_col,
+            mi_df_b=mi_df_b,
             income_groups=['LMI'],
         )
 
@@ -799,7 +797,7 @@ else:
     # Save — case tag in filename
     out_dir = os.path.join('.', 'figures')
     os.makedirs(out_dir, exist_ok=True)
-    case_tag = 'caseA' if hvac_replacement_scenario == 'heating' else 'caseB'
+    case_tag = DOTPLOT_CASE_A.replace('_', '-')
     for ext in ('png', 'pdf'):
         fig.savefig(
             os.path.join(out_dir, f'figure5_adoption_dotplot_{case_tag}_{location_id}.{ext}'),
@@ -825,15 +823,18 @@ from cmu_tare_model.adoption_potential.data_processing.visuals_adoption_dotplot 
 )
 
 CASE_LABELS = {
-    'heating': 'Case A: Heating Only',
-    'heating_and_cooling': 'Case B: Heating & Cooling',
+    'heating_only': 'Case 1: Heating Only',
+    'heating_and_cooling_savings': 'Case 2: Heating + Cooling Savings',
+    'heating_and_cooling_full': 'Case 3: Heating + Full Cooling',
 }
 
 if not HEATING_MEASURE_PACKAGES:
     print("No active heating measure packages — skipping dotplot.")
 else:
     category = 'heating'
-    case_label = CASE_LABELS.get(hvac_replacement_scenario, hvac_replacement_scenario)
+    case_label = (
+        f"{CASE_LABELS.get(DOTPLOT_CASE_A)} vs. {CASE_LABELS.get(DOTPLOT_CASE_B)}"
+    )
 
     # Compute national fuel counts in millions (scaling_factor = 242)
     _src = DATAFRAMES_BY_MP[HEATING_MEASURE_PACKAGES[0]][discount_rate][rcm_model]
@@ -843,7 +844,7 @@ else:
     }
 
     # Print figure title and fuel counts before creating the figure
-    print(f"Heat Pump Adoption Potential — {case_label}")
+    print(f"Heat Pump Adoption Potential -- {case_label}")
     print(f"Discount Rate: {discount_rate} | Cost Scenario: {cost_scenario}")
     print()
     print("Fuel sample counts (national, approx.):")
@@ -865,11 +866,12 @@ else:
 
     for col_idx, mp in enumerate(HEATING_MEASURE_PACKAGES):
         ax = axes[col_idx]
-        panel_title = f'{HEATING_MP_SUBTITLES.get(mp, f"MP{mp}")} — {case_label}'
+        panel_title = f'{HEATING_MP_SUBTITLES.get(mp, f"MP{mp}")} -- {case_label}'
 
-        mi_df = ALL_HEATING_ADOPTION_MI[mp][hvac_replacement_scenario][cost_scenario][discount_rate][rcm_model][cr_function]
+        mi_df_a = ALL_HEATING_ADOPTION_MI[mp][DOTPLOT_CASE_A][cost_scenario][discount_rate]
+        mi_df_b = ALL_HEATING_ADOPTION_MI[mp][DOTPLOT_CASE_B][cost_scenario][discount_rate]
 
-        if mi_df is None:
+        if mi_df_a is None or mi_df_b is None:
             ax.set_title(panel_title, fontsize=16, fontweight='bold')
             ax.text(0.5, 0.5, 'No data\n(adoption columns missing\nfor this scenario)',
                     transform=ax.transAxes, ha='center', va='center',
@@ -883,21 +885,17 @@ else:
                 ax.set_yticklabels([])
             continue
 
-        scenario_names = build_adoption_scenario_names(
-            mp, category, scc, rcm_model, cr_function,
-            cost_scenario, discount_rate,
-            hvac_replacement_scenario=hvac_replacement_scenario,
-        )
-        preira_col = scenario_names[0]
-        iraref_col = scenario_names[1]
+        case_a_col = build_adoption_scenario_names(mp, DOTPLOT_CASE_A, cost_scenario, discount_rate)[0]
+        case_b_col = build_adoption_scenario_names(mp, DOTPLOT_CASE_B, cost_scenario, discount_rate)[0]
 
         source_df = DATAFRAMES_BY_MP[mp][discount_rate][rcm_model]
 
         plot_df = prepare_plot_data(
-            mi_df,
-            source_df,
-            preira_col=preira_col,
-            iraref_col=iraref_col,
+            mi_df_a=mi_df_a,
+            source_df=source_df,
+            case_a_col=case_a_col,
+            case_b_col=case_b_col,
+            mi_df_b=mi_df_b,
             income_groups=['LMI'],
         )
 
@@ -943,7 +941,7 @@ else:
     # Save — case tag in filename
     out_dir = os.path.join('.', 'figures')
     os.makedirs(out_dir, exist_ok=True)
-    case_tag = 'caseA' if hvac_replacement_scenario == 'heating' else 'caseB'
+    case_tag = DOTPLOT_CASE_A.replace('_', '-')
     for ext in ('png', 'pdf'):
         fig.savefig(
             os.path.join(out_dir, f'figure5_adoption_dotplot_{case_tag}_{location_id}.{ext}'),
@@ -1151,9 +1149,18 @@ else:
     category = 'heating'
     rcm_model = 'inmap' if 'inmap' in RCM_MODELS else RCM_MODELS[0]
     cost_scenario = 'v4MID' if 'v4MID' in REMDB_COST_SCENARIO_KEYS else REMDB_COST_SCENARIO_KEYS[0]
-    policy_scenario = 'iraRef'  # Focus on IRA-Reference scenario for discount rate sensitivity
+    policy_scenario = '2025 Reference Case'  # single scenario
     lower_percentile = 0.5
     upper_percentile = 99.5
+
+    # Build NPV column names using the heating_only NPV case
+    npv_cols = {
+        discount_rate: create_npv_case_col(
+            f'ref2025_mp{menu_mp_input}_', 'heating_only', 'moreWTP',
+            cost_scenario, f'_{discount_rate}'
+        )
+        for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS
+    }
 
     # Human-readable labels for each discount rate key
     DISCOUNT_RATE_LABELS = {
@@ -1162,14 +1169,7 @@ else:
         'fixed_high': 'Fixed Discount Rate\n High (12%)',
         'variable': 'Variable Discount Rate\n Inverse to % AMI (7% to 45%)'
     }
-
     n_rates = len(PRIVATE_DISCOUNT_RATE_SHORT_KEYS)
-
-    # Build NPV column names dynamically using centralized builders
-    npv_cols = {
-        discount_rate: create_npv_col(f'{policy_scenario}_mp{menu_mp_input}_', category, 'moreWTP', cost_scenario, f'_{discount_rate}')
-        for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS
-    }
 
     fig_discount_rate_sensitivity = create_subplot_grid_histogram(
         dataframes=[
@@ -1178,7 +1178,7 @@ else:
         subplot_positions=[(0, i) for i in range(n_rates)],
         x_cols=[npv_cols[discount_rate] for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS],
         x_labels=['Private NPV [$USD2023]'] * n_rates,
-        y_labels=['Dwelling units in IRA-Reference Scenario'] + [''] * (n_rates - 1),
+        y_labels=['Dwelling units (2025 Reference Case)'] + [''] * (n_rates - 1),
         bin_number='auto',
         lower_percentile=lower_percentile,
         upper_percentile=upper_percentile,
@@ -1192,7 +1192,7 @@ else:
 
     # Print comparison statistics
     print("="*60)
-    print("IRA-Reference Scenario\nAdoption Feasibility under Different Discount Rate Assumptions")
+    print("2025 Reference Case\nAdoption Feasibility under Different Discount Rate Assumptions")
     print(f"Cost Scenario: {cost_scenario} | RCM Model: {rcm_model}")
     print("="*60)
 
