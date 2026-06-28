@@ -13,6 +13,7 @@ def validate_damage_dataframes(
     equipment_specs: Dict[str, int],
     rcm_model: str,
     cr_function: str,
+    check_health: bool = False,
     verbose: bool = False
 ) -> Tuple[bool, List[str]]:
     """
@@ -30,6 +31,9 @@ def validate_damage_dataframes(
         equipment_specs: Dictionary mapping equipment categories to their lifetimes.
         rcm_model: Reduced Complexity Model name (e.g., 'inmap', 'ap2', 'easiur').
         cr_function: Concentration-response function name (e.g., 'acs', 'h6c').
+        check_health: Whether to validate health damage columns. Health is
+            dormant (Session 3), so this defaults to False and only climate
+            columns are required; set True to re-enable health validation.
         verbose: Whether to print detailed validation messages. Defaults to False.
 
     Returns:
@@ -42,9 +46,11 @@ def validate_damage_dataframes(
     
     # Track column existence for each DataFrame
     found_baseline_climate = False
-    found_baseline_health = False
     found_retrofit_climate = False
-    found_retrofit_health = False
+    # Health is dormant (Session 3): when not checking health, treat it as
+    # already satisfied so climate-only validation can still pass.
+    found_baseline_health = not check_health
+    found_retrofit_health = not check_health
     
     # Example missing columns for reporting
     example_baseline_climate = ""
@@ -64,12 +70,13 @@ def validate_damage_dataframes(
             elif not example_baseline_climate:
                 example_baseline_climate = base_climate_col
             
-            # Check health damage columns (baseline)
-            base_health_col = f'baseline_{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
-            if base_health_col in df_baseline_health.columns:
-                found_baseline_health = True
-            elif not example_baseline_health:
-                example_baseline_health = base_health_col
+            # Check health damage columns (baseline) -- only when health is active
+            if check_health:
+                base_health_col = f'baseline_{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
+                if base_health_col in df_baseline_health.columns:
+                    found_baseline_health = True
+                elif not example_baseline_health:
+                    example_baseline_health = base_health_col
             
             # Check climate damage columns (retrofit)
             retrofit_climate_col = f'{scenario_prefix}{year_label}_{category}_damages_climate_lrmer_central'
@@ -78,12 +85,13 @@ def validate_damage_dataframes(
             elif not example_retrofit_climate:
                 example_retrofit_climate = retrofit_climate_col
             
-            # Check health damage columns (retrofit)
-            retrofit_health_col = f'{scenario_prefix}{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
-            if retrofit_health_col in df_mp_health.columns:
-                found_retrofit_health = True
-            elif not example_retrofit_health:
-                example_retrofit_health = retrofit_health_col
+            # Check health damage columns (retrofit) -- only when health is active
+            if check_health:
+                retrofit_health_col = f'{scenario_prefix}{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
+                if retrofit_health_col in df_mp_health.columns:
+                    found_retrofit_health = True
+                elif not example_retrofit_health:
+                    example_retrofit_health = retrofit_health_col
             
             # Once we find at least one column of each type, we can break
             if (found_baseline_climate and found_baseline_health and 
@@ -100,10 +108,17 @@ def validate_damage_dataframes(
                 found_retrofit_climate and found_retrofit_health)
     
     if verbose or not is_valid:
-        print(f"Baseline Climate DataFrame: {'✓ Valid' if found_baseline_climate else '✗ Missing expected columns'}")
-        print(f"Baseline Health DataFrame: {'✓ Valid' if found_baseline_health else '✗ Missing expected columns'}")
-        print(f"Retrofit Climate DataFrame: {'✓ Valid' if found_retrofit_climate else '✗ Missing expected columns'}")
-        print(f"Retrofit Health DataFrame: {'✓ Valid' if found_retrofit_health else '✗ Missing expected columns'}")
+        ok_label = "[OK] Valid"
+        missing_label = "[MISSING] expected columns"
+        print(f"Baseline Climate DataFrame: "
+              f"{ok_label if found_baseline_climate else missing_label}")
+        print(f"Retrofit Climate DataFrame: "
+              f"{ok_label if found_retrofit_climate else missing_label}")
+        if check_health:
+            print(f"Baseline Health DataFrame: "
+                  f"{ok_label if found_baseline_health else missing_label}")
+            print(f"Retrofit Health DataFrame: "
+                  f"{ok_label if found_retrofit_health else missing_label}")
 
     # Generate warning messages for missing columns
     if not found_baseline_climate:

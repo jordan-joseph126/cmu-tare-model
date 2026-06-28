@@ -18,17 +18,12 @@ import pandas as pd
 from config import PROJECT_ROOT
 from cmu_tare_model.constants import EQUIPMENT_SPECS, FUEL_MAPPING
 
-# Load HDD factors data (same source as precompute_hdd_factors.py)
-filename = 'aeo_projections_2022_2050.xlsx'
-relative_path = os.path.join("cmu_tare_model", "data", "projections", filename)
-file_path = os.path.join(PROJECT_ROOT, relative_path)
-
-try:
-    df_hdd_projection_factors = pd.read_excel(io=file_path, sheet_name='hdd_factors_2022_2050')
-    lookup_hdd_factor = df_hdd_projection_factors.set_index(['census_division']).to_dict('index')
-except Exception as e:
-    print(f"Warning: Could not load HDD factors from {file_path}: {e}")
-    lookup_hdd_factor = {}
+# DEPRECATED MODULE -- superseded by degree_day_consumption_utils.py.
+# The legacy Excel workbook (aeo_projections_2022_2050.xlsx) has been archived,
+# so the HDD factors are sourced from the current AEO2026 CSV-based util rather
+# than the removed file. New code should import from degree_day_consumption_utils
+# directly; this re-export only keeps the few remaining importers working.
+from cmu_tare_model.utils.degree_day_consumption_utils import lookup_hdd_factor
 
 
 def get_hdd_factor_for_year(

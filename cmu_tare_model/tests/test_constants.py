@@ -19,9 +19,7 @@ from cmu_tare_model.constants import (
     TD_LOSSES,
     TD_LOSSES_MULTIPLIER,
     PUBLIC_DISCOUNT_RATE,
-    PRIVATE_FIXED_RATE_LOW,
     PRIVATE_FIXED_RATE_BASE,
-    PRIVATE_FIXED_RATE_HIGH,
     VARIABLE_RATE_MIN,
     VARIABLE_RATE_MAX,
     AMI_THRESHOLD,
@@ -96,11 +94,13 @@ def test_scc_assumptions_contains_expected():
 
 
 def test_cr_functions_contains_expected():
-    assert set(CR_FUNCTIONS) == {'acs', 'h6c'}
+    # h6c retired in constants; acs is the only active CR function.
+    assert set(CR_FUNCTIONS) == {'acs'}
 
 
 def test_rcm_models_contains_expected():
-    assert set(RCM_MODELS) == {'ap2', 'easiur', 'inmap'}
+    # ap2 and easiur retired in constants; inmap is the only active RCM model.
+    assert set(RCM_MODELS) == {'inmap'}
 
 
 # ── VALID_MENU_MPS ───────────────────────────────────────────────────────────
@@ -120,8 +120,9 @@ def test_public_discount_rate_value():
     assert PUBLIC_DISCOUNT_RATE == 0.02
 
 
-def test_private_fixed_rates_ordering():
-    assert PRIVATE_FIXED_RATE_LOW <= PRIVATE_FIXED_RATE_BASE <= PRIVATE_FIXED_RATE_HIGH
+def test_private_fixed_base_rate_value():
+    # fixed_low and fixed_high are retired; only fixed_base remains active.
+    assert 0 < PRIVATE_FIXED_RATE_BASE < 1
 
 
 def test_variable_rate_bounds():
@@ -135,11 +136,14 @@ def test_ami_threshold_positive():
 
 
 def test_discount_rate_short_keys_count():
-    assert len(PRIVATE_DISCOUNT_RATE_SHORT_KEYS) == 4
+    # fixed_low / fixed_high retired in constants; fixed_base only.
+    assert len(PRIVATE_DISCOUNT_RATE_SHORT_KEYS) == 1
+    assert 'fixed_base' in PRIVATE_DISCOUNT_RATE_SHORT_KEYS
 
 
 def test_discount_rate_cols_count():
-    assert len(PRIVATE_DISCOUNT_RATE_COLS) == 4
+    assert len(PRIVATE_DISCOUNT_RATE_COLS) == 1
+    assert 'private_discount_rate_fixed_base' in PRIVATE_DISCOUNT_RATE_COLS
 
 
 # ── TD_LOSSES ────────────────────────────────────────────────────────────────

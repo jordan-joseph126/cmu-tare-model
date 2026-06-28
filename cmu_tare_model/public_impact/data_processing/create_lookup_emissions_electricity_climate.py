@@ -173,73 +173,84 @@ def create_cambium_co2e_lookup(df_cambium_processed: pd.DataFrame) -> dict:
 
     return emis_scenario_cambium_lookup
 
-### Climate-Related Emissions from CAMBIUM LRMER/SRMER 
+### Climate-Related Emissions from CAMBIUM LRMER/SRMER
 ### Includes pre-combustion (fugitive) and combustion
 
-if print_verbose:
-    print("""
--------------------------------------------------------------------------------------------------------
-    PRE-IRA LONG RUN AND SHORT RUN MARGINAL EMISSIONS RATES (LRMER, SRMER) FROM CAMBIUM 2021 RELEASE
--------------------------------------------------------------------------------------------------------
-""")
+# Cambium 2024, MidCase scenario, downloaded 2026-06-26. NREL distributes
+# Cambium as a manual file download (no API), so the raw file is committed to
+# the data directory and preprocessed here on import.
+#
+# Raw-file quirks this preprocessing absorbs:
+#   - A 5-row metadata banner precedes the data, so the real header is row 5.
+#   - All 8 scenarios are stacked in one file, so filter to MidCase.
+#   - The combined lrmer_co2e / srmer_co2e columns are kg/MWh (combustion plus
+#     precombustion) -- the analog of the old single "*_co2e_kg_per_MWh" factor.
+#     The "_c" / "_p" component columns are g/MWh and are intentionally unused.
+CAMBIUM_VERSION = "Cambium24"
+CAMBIUM_SCENARIO = "MidCase"
+CAMBIUM_HEADER_ROW = 5
 
-# CAMBIUM 2021 FOR PRE-IRA SCENARIO
-filename = 'cambium21_midCase_annual_gea.xlsx'
+# The model's climate loop starts at 2024, but Cambium 2024 begins at 2025.
+# Hold the pre-anchor year 2024 at the 2025 value, matching how the fuel-price
+# projection holds 2024 at the 2025 anchor.
+CLIMATE_ANCHOR_YEAR = 2025
+CLIMATE_FIRST_MODEL_YEAR = 2024
+
+filename = "cambium24_allScenarios_annual_gea.csv"
 relative_path = os.path.join("cmu_tare_model", "data", "projections", filename)
 file_path = os.path.join(PROJECT_ROOT, relative_path)
-df_cambium21_margEmis_electricity = pd.read_excel(io=file_path, sheet_name='proc_Cambium21_MidCase_gea')
+
+# Read past the metadata banner, then keep only the central scenario.
+df_cambium24_raw = pd.read_csv(file_path, header=CAMBIUM_HEADER_ROW)
+df_cambium24_midcase = df_cambium24_raw[
+    df_cambium24_raw["scenario"] == CAMBIUM_SCENARIO
+].copy()
+
+# Keep the combined kg/MWh factors and rename to the schema the functions above
+# expect.
+cambium_column_renames = {
+    "scenario": "scenario",
+    "gea": "gea_region",
+    "t": "year",
+    "lrmer_co2e": "lrmer_co2e_kg_per_MWh",
+    "srmer_co2e": "srmer_co2e_kg_per_MWh",
+}
+df_cambium24_margEmis_electricity = df_cambium24_midcase[
+    list(cambium_column_renames.keys())
+].rename(columns=cambium_column_renames)
+
+# Year must be int so the annual interpolation and year lookups use integer keys.
+df_cambium24_margEmis_electricity["year"] = (
+    df_cambium24_margEmis_electricity["year"].astype(int)
+)
+
+# Add a 2024 row per region equal to the 2025 anchor so the model's first year
+# (2024) has a factor; interpolation between 2024 and 2025 is then flat.
+df_anchor_hold = df_cambium24_margEmis_electricity[
+    df_cambium24_margEmis_electricity["year"] == CLIMATE_ANCHOR_YEAR
+].copy()
+df_anchor_hold["year"] = CLIMATE_FIRST_MODEL_YEAR
+df_cambium24_margEmis_electricity = pd.concat(
+    [df_anchor_hold, df_cambium24_margEmis_electricity], ignore_index=True
+)
 
 if print_verbose:
     print(f"""
+-------------------------------------------------------------------------------------------------------
+LRMER / SRMER MARGINAL EMISSIONS RATES FROM {CAMBIUM_VERSION} ({CAMBIUM_SCENARIO})
+-------------------------------------------------------------------------------------------------------
     Retrieved data for filename: {filename}
     Located at filepath: {file_path}
 
-    Loading dataframe ...
-
-    {df_cambium21_margEmis_electricity}
-
-    Creating lookup dictionary for LRMER and SRMER ...
+{df_cambium24_margEmis_electricity}
 -------------------------------------------------------------------------------------------------------
 """)
 
-# Calculate electricity emission factors for Cambium 2021
-df_cambium21_processed = calculate_electricity_co2e_cambium(df_cambium21_margEmis_electricity)
-
-# Create the lookup dictionary
-lookup_emissions_electricity_climate_preIRA = create_cambium_co2e_lookup(df_cambium21_processed)
-
-if print_verbose:
-    print("""
--------------------------------------------------------------------------------------------------------
-IRA LONG RUN AND SHORT RUN MARGINAL EMISSIONS RATES (LRMER, SRMER) FROM CAMBIUM 2022 RELEASE
--------------------------------------------------------------------------------------------------------
-""")
-
-# CAMBIUM 2022 FOR IRA SCENARIO
-filename = 'cambium22_allScenarios_annual_gea.xlsx'
-relative_path = os.path.join("cmu_tare_model", "data", "projections", filename)
-file_path = os.path.join(PROJECT_ROOT, relative_path)
-df_cambium22_margEmis_electricity = pd.read_excel(io=file_path, sheet_name='proc_Cambium22_MidCase_gea')
-
-if print_verbose:
-    print(f"""
-    Retrieved data for filename: {filename}
-    Located at filepath: {file_path}
-
-    Loading dataframe ...
-
-    {df_cambium22_margEmis_electricity}
-
-    Creating lookup dictionary for 2024 LRMER and SRMER ...
--------------------------------------------------------------------------------------------------------
-""")
-
-# Calculate electricity emission factors for Cambium 2022
-df_cambium22_processed = calculate_electricity_co2e_cambium(df_cambium22_margEmis_electricity)
-
-# Create the lookup dictionary
-lookup_emissions_electricity_climate_IRA = create_cambium_co2e_lookup(df_cambium22_processed)
-
-# Display the dictionaries (commented out, but left unchanged)
-# lookup_emissions_electricity_climate_preIRA
-# lookup_emissions_electricity_climate_IRA
+# Interpolate Cambium's 5-year steps to annual values, then build the lookup
+# keyed by (scenario, gea_region) -> year -> {lrmer, srmer} in mt CO2e/kWh.
+df_cambium24_processed = calculate_electricity_co2e_cambium(
+    df_cambium24_margEmis_electricity
+)
+lookup_emissions_electricity_climate = create_cambium_co2e_lookup(
+    df_cambium24_processed
+)

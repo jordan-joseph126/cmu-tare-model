@@ -59,9 +59,6 @@ def private_impact_df():
         data[f'mp8_{cat}_replacement_installed_cost_v4MID'] = np.random.uniform(2000, 8000, n)
         data[f'mp8_{cat}_rebate_amount_v4MID'] = np.random.uniform(500, 3000, n)
 
-    # Heating-specific columns
-    data['mp8_heating_installation_premium'] = np.random.uniform(200, 1000, n)
-
     return pd.DataFrame(data)
 
 
@@ -76,13 +73,13 @@ def fuel_costs_dfs(private_impact_df):
         for year in range(1, lifetime + 1):
             year_label = year + (BASE_YEAR - 1)
             baseline_col = f'baseline_{year_label}_{cat}_fuel_cost'
-            measure_col = f'iraRef_mp8_{year_label}_{cat}_fuel_cost'
+            measure_col = f'ref2025_mp8_{year_label}_{cat}_fuel_cost'
             df_baseline[baseline_col] = np.random.uniform(500, 2000, n)
             df_measure[measure_col] = np.random.uniform(200, 1000, n)
 
         # Lifetime totals
         df_baseline[f'baseline_{cat}_lifetime_fuel_cost'] = np.random.uniform(5000, 25000, n)
-        df_measure[f'iraRef_mp8_{cat}_lifetime_fuel_cost'] = np.random.uniform(2000, 15000, n)
+        df_measure[f'ref2025_mp8_{cat}_lifetime_fuel_cost'] = np.random.uniform(2000, 15000, n)
 
     # Copy validation columns
     for col in private_impact_df.columns:
@@ -121,8 +118,8 @@ def test_validate_required_columns_some_missing(private_impact_df):
 # calculate_capital_costs
 # =============================================================================
 
-def test_calculate_capital_costs_no_ira(private_impact_df):
-    """Pre-IRA: total cost = upgrade + installation premium (for heating), no rebate."""
+def test_calculate_capital_costs_excludes_installation_premium(private_impact_df):
+    """Single scenario: heating total = upgrade - rebate, with no installation premium."""
     from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_capital_costs
 
     valid_mask = private_impact_df['include_heating']
@@ -132,21 +129,26 @@ def test_calculate_capital_costs_no_ira(private_impact_df):
         category='heating',
         input_mp='upgrade03',
         menu_mp=8,
-        policy_scenario='No Inflation Reduction Act',
+        policy_scenario='2025 Reference Case',
         cost_scenario='v4MID',
         valid_mask=valid_mask,
     )
 
-    # Invalid homes should be NaN
+    # Invalid homes should be NaN.
     assert total.loc[~valid_mask].isna().all()
     assert net.loc[~valid_mask].isna().all()
 
-    # Valid homes should have positive costs
-    assert (total.loc[valid_mask] >= 0).all()
+    # MP8 is rebate-eligible and input_mp='upgrade03' adds no weatherization, so
+    # total = upgrade - rebate with no installation premium term included.
+    expected_total = (
+        private_impact_df['mp8_heating_upgrade_installed_cost_v4MID']
+        - private_impact_df['mp8_heating_rebate_amount_v4MID'])
+    for idx in valid_mask[valid_mask].index:
+        assert total.loc[idx] == pytest.approx(expected_total.loc[idx], abs=0.01)
 
 
 def test_calculate_capital_costs_with_ira(private_impact_df):
-    """IRA scenario: total cost = upgrade + premium - rebate for heating."""
+    """Single scenario: heating total = upgrade - rebate; net = total - replacement."""
     from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_capital_costs
 
     valid_mask = private_impact_df['include_heating']
@@ -183,7 +185,7 @@ def test_calculate_capital_costs_missing_columns_raises(private_impact_df):
             category='heating',
             input_mp='upgrade03',
             menu_mp=8,
-            policy_scenario='No Inflation Reduction Act',
+            policy_scenario='2025 Reference Case',
             cost_scenario='v4MID',
             valid_mask=valid_mask,
         )
@@ -219,8 +221,8 @@ def test_calculate_and_update_npv_returns_four_columns(private_impact_df, fuel_c
         lifetime=lifetime,
         total_capital_cost=total_capital,
         net_capital_cost=net_capital,
-        policy_scenario='AEO2023 Reference Case',
-        scenario_prefix='iraRef_mp8_',
+        policy_scenario='2025 Reference Case',
+        scenario_prefix='ref2025_mp8_',
         discount_factors=discount_factors,
         method_suffix='_fixed_base',
         valid_mask=valid_mask,
@@ -244,7 +246,7 @@ def test_calculate_and_update_npv_nan_propagation(private_impact_df, fuel_costs_
     # Inject NaN into one year's fuel cost for home 0
     cat = 'heating'
     year_label = BASE_YEAR
-    nan_col = f'iraRef_mp8_{year_label}_{cat}_fuel_cost'
+    nan_col = f'ref2025_mp8_{year_label}_{cat}_fuel_cost'
     if nan_col in df_measure.columns:
         df_measure.loc[0, nan_col] = np.nan
 
@@ -264,8 +266,8 @@ def test_calculate_and_update_npv_nan_propagation(private_impact_df, fuel_costs_
         lifetime=lifetime,
         total_capital_cost=total_capital,
         net_capital_cost=net_capital,
-        policy_scenario='AEO2023 Reference Case',
-        scenario_prefix='iraRef_mp8_',
+        policy_scenario='2025 Reference Case',
+        scenario_prefix='ref2025_mp8_',
         discount_factors=discount_factors,
         method_suffix='_fixed_base',
         valid_mask=valid_mask,
@@ -307,7 +309,6 @@ def npv_cases_df():
         # Fixed cost columns (MP3, v4MID).
         'mp3_heating_upgrade_installed_cost_v4MID': [12000.0] * n,
         'mp3_heating_replacement_installed_cost_v4MID': [5000.0] * n,
-        'mp3_heating_installation_premium': [800.0] * n,
         # Cooling replacement is non-NaN even for the no-AC home, to prove the
         # include_cooling mask (not the data) zeroes the credit.
         'mp3_cooling_replacement_installed_cost_v4MID': [4000.0] * n,
@@ -430,11 +431,11 @@ def test_private_npv_three_cases_ordering(mock_discount, mock_params, npv_cases_
     # Exact arithmetic spot-check on an AC home (home 0):
     #   heating savings = 600 * 0.95 * 15 = 8550
     #   cooling savings = 200 * 0.95 * 15 = 2850
-    #   total capital   = 12000 + 800 = 12800 ; net heating = 7800
-    #   net heat+cool   = 7800 - 4000 = 3800
-    assert npv1.iloc[0] == pytest.approx(8550 - 7800)           # 750
-    assert npv2.iloc[0] == pytest.approx(8550 + 2850 - 7800)    # 3600
-    assert npv3.iloc[0] == pytest.approx(8550 + 2850 - 3800)    # 7600
+    #   total capital   = 12000 (installation premium removed) ; net heating = 7000
+    #   net heat+cool   = 7000 - 4000 = 3000
+    assert npv1.iloc[0] == pytest.approx(8550 - 7000)           # 1550
+    assert npv2.iloc[0] == pytest.approx(8550 + 2850 - 7000)    # 4400
+    assert npv3.iloc[0] == pytest.approx(8550 + 2850 - 3000)    # 8400
 
 
 @patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.define_scenario_params')

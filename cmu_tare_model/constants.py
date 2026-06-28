@@ -209,8 +209,8 @@ REBATE_ELIGIBLE_HEATING_MPS = [4, 8, 9, 10]
 # =============================================================
 
 # REMDB v4 MID is considered our base case
+# Removed v3
 REMDB_COST_SCENARIO_KEYS = [
-    'v3',          # Existing method (Excel dictionaries for REMDB v3)
     # 'v4LOW',       # REMDB v4: 10th percentile
     'v4MID',       # REMDB v4: 50th percentile (median)
     # 'v4HIGH'       # REMDB v4: 90th percentile

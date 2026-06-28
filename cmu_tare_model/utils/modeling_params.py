@@ -1,6 +1,6 @@
 # import functions.tare_setup as tare_setup
 from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_fossil_fuel import lookup_emissions_fossil_fuel
-from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_electricity_climate import lookup_emissions_electricity_climate_preIRA
+from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_electricity_climate import lookup_emissions_electricity_climate
 from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_electricity_health import lookup_emissions_electricity_health
 from cmu_tare_model.private_impact.data_processing.create_lookup_fuel_prices import lookup_fuel_prices_aeo2026
 from typing import Tuple, Dict
@@ -31,7 +31,7 @@ def define_scenario_params(
             str: scenario_prefix  ('baseline_' for mp=0, 'ref2025_mp{mp}_' otherwise)
             str: cambium_scenario ('MidCase')
             dict: lookup_emissions_fossil_fuel
-            dict: lookup_emissions_electricity_climate_preIRA
+            dict: lookup_emissions_electricity_climate
             dict: lookup_emissions_electricity_health
             dict: lookup_fuel_prices_aeo2026
 
@@ -51,7 +51,7 @@ def define_scenario_params(
         scenario_prefix,
         "MidCase",
         lookup_emissions_fossil_fuel,
-        lookup_emissions_electricity_climate_preIRA,
+        lookup_emissions_electricity_climate,
         lookup_emissions_electricity_health,
         lookup_fuel_prices_aeo2026,
     )

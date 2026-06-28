@@ -8,7 +8,7 @@ from cmu_tare_model.utils.column_names import (
     create_lifetime_damages_col, 
     create_avoided_damages_col
 )
-from cmu_tare_model.utils.hdd_consumption_utils import (
+from cmu_tare_model.utils.degree_day_consumption_utils import (
     get_electricity_consumption_for_year,
     get_hdd_adjusted_consumption,
     get_total_baseline_consumption
@@ -57,7 +57,7 @@ def calculate_lifetime_climate_impacts(
     Args:
         df (pd.DataFrame): Input DataFrame containing equipment consumption data, region info, etc.
         menu_mp (int): Measure package identifier (0 for baseline, nonzero for different scenarios).
-        policy_scenario (str): Determines emissions scenario inputs (e.g., 'No Inflation Reduction Act' or 'AEO2023 Reference Case').
+        policy_scenario (str): Single policy scenario. Must equal '2025 Reference Case'.
         base_year (int, optional): Base year for calculations. Defaults to 2024.
         df_baseline_damages (pd.DataFrame, optional): Baseline damages for computing avoided emissions/damages.
         verbose (bool, optional): Whether to print detailed progress messages. Defaults to False.
@@ -347,6 +347,11 @@ def calculate_climate_emissions_and_damages(
     total_fossil_fuel_emissions_co2e = total_fossil_fuel_emissions['co2e']
     
     def get_emission_factor_lrmer(region: str) -> float:
+        # Homes whose county is not in the Cambium crosswalk have no GEA region
+        # (region is NaN). They are flagged at data load and excluded from
+        # climate damages here via NaN masking, rather than raising.
+        if pd.isna(region):
+            return np.nan
         # Retrieve LRMER factor based on the region and year. If not found, raise an exception.
         region_data = lookup_emissions_electricity_climate.get((cambium_scenario, region))
         if not region_data or year_label not in region_data or 'lrmer_mt_per_kWh_co2e' not in region_data[year_label]:
@@ -356,6 +361,10 @@ def calculate_climate_emissions_and_damages(
         return region_data[year_label]['lrmer_mt_per_kWh_co2e']
 
     def get_emission_factor_srmer(region: str) -> float:
+        # Homes with no GEA region (county not in the crosswalk) get a NaN factor
+        # and are excluded from climate damages via NaN masking, rather than raising.
+        if pd.isna(region):
+            return np.nan
         # Retrieve SRMER factor based on the region and year. Raise an exception if not found.
         region_data = lookup_emissions_electricity_climate.get((cambium_scenario, region))
         if not region_data or year_label not in region_data or 'srmer_mt_per_kWh_co2e' not in region_data[year_label]:

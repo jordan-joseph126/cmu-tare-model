@@ -1,3 +1,13 @@
+# =============================================================================
+# DORMANT -- June 2026
+# Health-impact (criteria air pollutant) damages are set aside to streamline
+# the codebase around economic adoption + climate damages.
+# Prior sensitivity analysis: criteria-pollutant damages are mostly beneficial
+# reductions but far smaller in magnitude than monetized climate impacts, so
+# omitting them here does not change study conclusions.
+# Retained, not deleted. Do not consume this module's outputs in active code.
+# Re-enable in a later session if the health sensitivity is revisited.
+# =============================================================================
 # Description: This script processes the RCM data for use in creating a health-related emissions marginal social cost lookup dictionary.
 # Marginal Social Costs for Health-Related Emissions
 # ===================================================================================================================================================================================

@@ -1,4 +1,14 @@
-"""Tests for calculate_lifetime_fuel_costs (private_impact/calculate_lifetime_fuel_costs.py)."""
+"""Tests for calculate_lifetime_fuel_costs (private_impact/calculate_lifetime_fuel_costs.py).
+
+FOLLOW-UP (flagged, not yet addressed):
+    These tests are order-dependent. They pass in isolation, in two-file combos,
+    and in the full suite, but fail with a KeyError on 'waterHeating' when the
+    private_impact folder is run on its own -- another test file in that folder
+    leaks monkeypatched shared state (e.g. EQUIPMENT_SPECS / FUEL_MAPPING) that
+    is not restored before these run. The fix is to isolate the polluting
+    fixture, not to change this module. Reproduce with:
+        pytest cmu_tare_model/tests/private_impact/
+"""
 
 import pytest
 import pandas as pd

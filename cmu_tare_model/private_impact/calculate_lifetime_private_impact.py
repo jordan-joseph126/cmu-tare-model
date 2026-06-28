@@ -31,7 +31,6 @@ from cmu_tare_model.utils.column_names import (
     create_npv_case_col,
     create_enclosure_cost_col,
     create_weatherization_rebate_col,
-    create_installation_premium_col
 )
 
 """
@@ -67,6 +66,9 @@ considering different cost assumptions and potential IRA rebates.
 
     This prevents cryptic KeyError messages and helps debug data pipeline
     issues where installation cost columns weren't created upstream.
+# UPDATED JUNE 26, 2026
+    1. Removed references to create_installation_premium_col() in calculate_capital_costs() and calculate_private_npv().
+    2. Removed the v3 cost scenario from REMDB_COST_SCENARIO_KEYS in constants.py and all references in this file.
 """
 
 # ========================================================================================================================================================================
@@ -118,7 +120,7 @@ def calculate_private_npv(
             Accepted value: '2025 Reference Case'.
         discount_rate_col_name: Discount rate column name for private discounting.
         cost_scenario: Cost scenario identifier for column naming. Supported
-            values: 'v3', 'v4LOW', 'v4MID' (default), 'v4HIGH'.
+            values: 'v4LOW', 'v4MID' (default), 'v4HIGH'.
         base_year: Base year for discounting calculations. Default is 2024.
         verbose: Whether to print detailed processing information. Default is True.
 
@@ -453,9 +455,9 @@ def calculate_capital_costs(
         category: Equipment category (e.g., 'heating', 'waterHeating').
         input_mp: Measure package identifier (string) used for column naming.
         menu_mp: Measure package identifier (integer) used for column naming.
-        policy_scenario: Policy scenario that determines if IRA rebates are applied.
-                       'No Inflation Reduction Act' means no rebates are applied.
-                       'AEO2023 Reference Case' means IRA rebates are applied.
+        policy_scenario: Policy scenario for the run. Single supported value:
+            '2025 Reference Case'. IRA rebates are always applied for
+            rebate-eligible measure packages.
         cost_scenario: Cost scenario identifier used for column naming (e.g., 'v4MID').
         valid_mask: Series indicating which rows have valid data for the category.
         hvac_replacement_scenario: Which incumbent equipment costs offset the upgrade.
@@ -473,8 +475,8 @@ def calculate_capital_costs(
         ValueError: If hvac_replacement_scenario is not a valid option.
 
     Notes:
-        Current modeling assumes equipment prices are the same under IRA Reference
-        and IRA High scenarios. Costs differ for pre-IRA because no rebates are applied.
+        Single policy scenario ('2025 Reference Case'); IRA rebates are always
+        applied for rebate-eligible measure packages.
 
     """
     if hvac_replacement_scenario not in VALID_HVAC_REPLACEMENT_SCENARIOS:
@@ -491,19 +493,16 @@ def calculate_capital_costs(
     required_cols = [upgrade_cost_col_name, replacement_cost_col_name]
 
     if category == 'heating':
-        required_cols.append(create_installation_premium_col(menu_mp, category))
         if input_mp in ['upgrade09', 'upgrade10']:
             required_cols.append(create_enclosure_cost_col(menu_mp=menu_mp, cost_scenario=cost_scenario))
+            # Weatherization rebate applies to MP9 and MP10.
+            required_cols.append(create_weatherization_rebate_col(cost_scenario=cost_scenario))
 
-            # Weatherization rebate only applies to MP9 and MP10 under IRA scenarios
-            if policy_scenario != 'No Inflation Reduction Act':
-                required_cols.append(create_weatherization_rebate_col(cost_scenario=cost_scenario))
-
-        # Only high-efficiency MPs are eligible for heating rebates
-        if policy_scenario != 'No Inflation Reduction Act' and menu_mp in REBATE_ELIGIBLE_HEATING_MPS:
+        # Only high-efficiency MPs are eligible for heating rebates.
+        if menu_mp in REBATE_ELIGIBLE_HEATING_MPS:
             required_cols.append(create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario))
 
-    elif policy_scenario != 'No Inflation Reduction Act':
+    else:
         required_cols.append(create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario))
 
     # Case B: also require cooling replacement cost column
@@ -522,52 +521,36 @@ def calculate_capital_costs(
             f"Ensure installation costs are calculated before calling calculate_private_npv()."
         )
 
-    if policy_scenario == 'No Inflation Reduction Act':
-        if category == 'heating':
-            if input_mp == 'upgrade09':            
-                weatherization_cost = df_copy[create_enclosure_cost_col(menu_mp=menu_mp, cost_scenario=cost_scenario)].fillna(0)
-            elif input_mp == 'upgrade10':
-                weatherization_cost = df_copy[create_enclosure_cost_col(menu_mp=menu_mp, cost_scenario=cost_scenario)].fillna(0)
-            else:
-                weatherization_cost = 0.0
-            
-            total_capital_cost = (df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='upgrade', cost_scenario=cost_scenario)].fillna(0) + 
-                                  weatherization_cost + 
-                                  df_copy[create_installation_premium_col(menu_mp=menu_mp, category='heating')].fillna(0))
-            net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='replacement', cost_scenario=cost_scenario)].fillna(0)
-            
+    # Single policy scenario ('2025 Reference Case'): IRA rebates always apply.
+    if category == 'heating':
+        if input_mp in ('upgrade09', 'upgrade10'):
+            # MP9/MP10 add a weatherization (enclosure) cost, net of its rebate.
+            weatherization_cost = (
+                df_copy[create_enclosure_cost_col(menu_mp=menu_mp, cost_scenario=cost_scenario)].fillna(0)
+                - df_copy[create_weatherization_rebate_col(cost_scenario=cost_scenario)].fillna(0))
         else:
-            total_capital_cost = df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='upgrade', cost_scenario=cost_scenario)].fillna(0)
-            net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='replacement', cost_scenario=cost_scenario)].fillna(0)
-    
-    else:
-        if category == 'heating':
-            if input_mp == 'upgrade09':
-                # menu_mp should be 9            
-                weatherization_cost = df_copy[create_enclosure_cost_col(menu_mp=menu_mp, cost_scenario=cost_scenario)].fillna(0) - df_copy[create_weatherization_rebate_col(cost_scenario=cost_scenario)].fillna(0)
-            elif input_mp == 'upgrade10':
-                # menu_mp should be 10
-                weatherization_cost = df_copy[create_enclosure_cost_col(menu_mp=menu_mp, cost_scenario=cost_scenario)].fillna(0) - df_copy[create_weatherization_rebate_col(cost_scenario=cost_scenario)].fillna(0)
-            else:
-                weatherization_cost = 0.0       
-            
-            installation_cost = (df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='upgrade', cost_scenario=cost_scenario)].fillna(0) + 
-                                 weatherization_cost + 
-                                 df_copy[create_installation_premium_col(menu_mp=menu_mp, category=category)].fillna(0))
-            
-            # Only high-efficiency MPs are eligible for heating rebates
-            if menu_mp in REBATE_ELIGIBLE_HEATING_MPS:
-                rebate_amount = df_copy[create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)].fillna(0)
-            else:
-                rebate_amount = 0.0
-            total_capital_cost = installation_cost - rebate_amount
-            net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='replacement', cost_scenario=cost_scenario)].fillna(0)
-        
-        else:
-            installation_cost = df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='upgrade', cost_scenario=cost_scenario)].fillna(0)
+            weatherization_cost = 0.0
+
+        # Heating installation cost is the upgrade cost plus any weatherization
+        # cost. The former installation heating premium term has been removed.
+        installation_cost = (
+            df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='upgrade', cost_scenario=cost_scenario)].fillna(0)
+            + weatherization_cost)
+
+        # Only high-efficiency MPs are eligible for heating rebates.
+        if menu_mp in REBATE_ELIGIBLE_HEATING_MPS:
             rebate_amount = df_copy[create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)].fillna(0)
-            total_capital_cost = installation_cost - rebate_amount
-            net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='replacement', cost_scenario=cost_scenario)].fillna(0)
+        else:
+            rebate_amount = 0.0
+
+        total_capital_cost = installation_cost - rebate_amount
+        net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='replacement', cost_scenario=cost_scenario)].fillna(0)
+
+    else:
+        installation_cost = df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='upgrade', cost_scenario=cost_scenario)].fillna(0)
+        rebate_amount = df_copy[create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)].fillna(0)
+        total_capital_cost = installation_cost - rebate_amount
+        net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='replacement', cost_scenario=cost_scenario)].fillna(0)
 
     # Case B: also subtract cooling replacement cost from net capital cost
     if hvac_replacement_scenario == 'heating_and_cooling':
@@ -598,7 +581,7 @@ def calculate_and_update_npv(
     valid_mask: pd.Series,
     menu_mp: int,
     base_year: int = 2024,
-    cost_scenario: str = 'v3',
+    cost_scenario: str = 'v4MID',
     verbose: bool = False,
     output_category: Optional[str] = None
 ) -> Dict[str, pd.Series]:
@@ -626,7 +609,7 @@ def calculate_and_update_npv(
         valid_mask: Series indicating which rows have valid data for the category.
         menu_mp: Measure package identifier (integer) used for column naming.
         base_year: Base year for calculations.
-        cost_scenario: Cost methodology key ('v3' or 'v4LOW/MID/HIGH').
+        cost_scenario: Cost methodology key ('v4LOW', 'v4MID', or 'v4HIGH').
             Determines the REMDB suffix on output capital/NPV column names
             (e.g., '_v3', '_v4MID').
         verbose: Whether to print detailed progress messages.

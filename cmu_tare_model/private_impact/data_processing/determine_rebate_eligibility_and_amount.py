@@ -348,10 +348,18 @@ def calculate_rebateIRA(
         4. Applies final verification masking
     """
 
+    # Cooling rebates are not modeled separately -- the heat-pump rebate covers
+    # both heating and cooling, so cooling is a no-op here and the DataFrame
+    # passes through unchanged.
+    if category == 'cooling':
+        if verbose:
+            print("Skipping rebate for 'cooling' (covered by the heating heat-pump rebate).")
+        return df_results_IRA
+
     # Validate category has rebate mapping
     if category not in REBATE_MAPPING:
         raise ValueError(
-            f"Category '{category}' is not supported for rebate calculations. " 
+            f"Category '{category}' is not supported for rebate calculations. "
             f"Valid categories with rebates: {list(REBATE_MAPPING.keys())}. "
             f"Note: Cooling rebates are not modeled separately - heat pump rebates cover both heating and cooling."
         )

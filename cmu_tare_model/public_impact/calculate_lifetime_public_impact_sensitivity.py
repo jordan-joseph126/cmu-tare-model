@@ -140,109 +140,109 @@ def calculate_climate_npv(
     return all_npvs
 
 
-def calculate_health_npv(
-    df_copy: pd.DataFrame,
-    df_baseline_health: pd.DataFrame,
-    df_mp_health: pd.DataFrame,
-    menu_mp: int,
-    policy_scenario: str,
-    rcm_model: str,
-    cr_function: str,
-    base_year: int,
-    discount_rate_col_name: str,
-    all_columns_to_mask: Dict[str, List[str]],
-    verbose: bool = VERBOSE
-) -> Dict[str, pd.Series]:
-    """
-    Calculate health NPV for all equipment categories for a specific CR function.
+# def calculate_health_npv(
+#     df_copy: pd.DataFrame,
+#     df_baseline_health: pd.DataFrame,
+#     df_mp_health: pd.DataFrame,
+#     menu_mp: int,
+#     policy_scenario: str,
+#     rcm_model: str,
+#     cr_function: str,
+#     base_year: int,
+#     discount_rate_col_name: str,
+#     all_columns_to_mask: Dict[str, List[str]],
+#     verbose: bool = VERBOSE
+# ) -> Dict[str, pd.Series]:
+#     """
+#     Calculate health NPV for all equipment categories for a specific CR function.
     
-    Health NPV varies by RCM model and CR function. Unlike climate, health damages 
-    require discounting because they represent annual marginal social costs.
+#     Health NPV varies by RCM model and CR function. Unlike climate, health damages 
+#     require discounting because they represent annual marginal social costs.
     
-    Args:
-        df_copy: DataFrame for validation tracking.
-        df_baseline_health: Baseline health damage projections.
-        df_mp_health: Post-retrofit health damage projections.
-        menu_mp: Measure package identifier.
-        policy_scenario: Policy scenario name.
-        rcm_model: RCM model name.
-        cr_function: Concentration-response function name.
-        base_year: Base year for discounting.
-        discount_rate_col_name: Discount rate column name.
-        all_columns_to_mask: Dictionary tracking columns for masking.
-        verbose: Whether to print progress messages.
+#     Args:
+#         df_copy: DataFrame for validation tracking.
+#         df_baseline_health: Baseline health damage projections.
+#         df_mp_health: Post-retrofit health damage projections.
+#         menu_mp: Measure package identifier.
+#         policy_scenario: Policy scenario name.
+#         rcm_model: RCM model name.
+#         cr_function: Concentration-response function name.
+#         base_year: Base year for discounting.
+#         discount_rate_col_name: Discount rate column name.
+#         all_columns_to_mask: Dictionary tracking columns for masking.
+#         verbose: Whether to print progress messages.
         
-    Returns:
-        Dictionary mapping column names to health NPV Series (unrounded).
-    """
-    scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
-    max_lifetime = max(EQUIPMENT_SPECS.values())
+#     Returns:
+#         Dictionary mapping column names to health NPV Series (unrounded).
+#     """
+#     scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
+#     max_lifetime = max(EQUIPMENT_SPECS.values())
     
-    # Pre-calculate discount factors
-    discount_factors: Dict[int, pd.Series] = {}
-    for year in range(1, max_lifetime + 1):
-        year_label = year + (base_year - 1)
-        discount_factors[year_label] = calculate_discount_factors(
-            df=df_copy,
-            base_year=base_year,
-            target_year=year_label,
-            discount_rate_col_name=discount_rate_col_name
-        )
+#     # Pre-calculate discount factors
+#     discount_factors: Dict[int, pd.Series] = {}
+#     for year in range(1, max_lifetime + 1):
+#         year_label = year + (base_year - 1)
+#         discount_factors[year_label] = calculate_discount_factors(
+#             df=df_copy,
+#             base_year=base_year,
+#             target_year=year_label,
+#             discount_rate_col_name=discount_rate_col_name
+#         )
     
-    all_npvs: Dict[str, pd.Series] = {}
+#     all_npvs: Dict[str, pd.Series] = {}
     
-    for category, lifetime in EQUIPMENT_SPECS.items():
-        if verbose:
-            print(f"      Health NPV for {category}...")
+#     for category, lifetime in EQUIPMENT_SPECS.items():
+#         if verbose:
+#             print(f"      Health NPV for {category}...")
         
-        # ===== STEP 1: Initialize validation tracking =====
-        # Moved outside of SCC loop: Validation only depends on category, not SCC
-        # MEMORY OPTIMIZATION: copy=False since df_copy was already copied at the start
-        _, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-            df_copy, category, menu_mp, verbose=verbose, copy=False)
+#         # ===== STEP 1: Initialize validation tracking =====
+#         # Moved outside of SCC loop: Validation only depends on category, not SCC
+#         # MEMORY OPTIMIZATION: copy=False since df_copy was already copied at the start
+#         _, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
+#             df_copy, category, menu_mp, verbose=verbose, copy=False)
         
-        # # ===== STEP 2: Initialize result series for health NPV =====
-        health_npv_template = create_retrofit_only_series(df_copy, valid_mask)
-        health_npv_key = create_health_npv_col(scenario_prefix, category, rcm_model, cr_function)
-        yearly_health_avoided = []
+#         # # ===== STEP 2: Initialize result series for health NPV =====
+#         health_npv_template = create_retrofit_only_series(df_copy, valid_mask)
+#         health_npv_key = create_health_npv_col(scenario_prefix, category, rcm_model, cr_function)
+#         yearly_health_avoided = []
         
-        # ===== STEP 3 & 4: Valid-Only Calculation and Updates =====
-        for year in range(1, lifetime + 1):
-            year_label = year + (base_year - 1)
-            discount_factor = discount_factors[year_label]
+#         # ===== STEP 3 & 4: Valid-Only Calculation and Updates =====
+#         for year in range(1, lifetime + 1):
+#             year_label = year + (base_year - 1)
+#             discount_factor = discount_factors[year_label]
             
-            base_health_col = f'baseline_{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
-            retrofit_health_col = f'{scenario_prefix}{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
+#             base_health_col = f'baseline_{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
+#             retrofit_health_col = f'{scenario_prefix}{year_label}_{category}_damages_health_{rcm_model}_{cr_function}'
             
-            if (base_health_col in df_baseline_health.columns and 
-                retrofit_health_col in df_mp_health.columns):
+#             if (base_health_col in df_baseline_health.columns and 
+#                 retrofit_health_col in df_mp_health.columns):
                 
-                avoided_health = calculate_avoided_values(
-                    baseline_values=df_baseline_health[base_health_col],
-                    measure_values=df_mp_health[retrofit_health_col],
-                    retrofit_mask=(valid_mask if menu_mp != 0 else None)
-                ) * discount_factor
+#                 avoided_health = calculate_avoided_values(
+#                     baseline_values=df_baseline_health[base_health_col],
+#                     measure_values=df_mp_health[retrofit_health_col],
+#                     retrofit_mask=(valid_mask if menu_mp != 0 else None)
+#                 ) * discount_factor
                 
-                yearly_health_avoided.append(avoided_health)
+#                 yearly_health_avoided.append(avoided_health)
         
-        # Sum discounted yearly avoided health damages into total NPV
-        health_npv = _sum_yearly_damages(
-            yearly_damages=yearly_health_avoided,
-            template_series=health_npv_template,
-            valid_mask=valid_mask,
-            menu_mp=menu_mp
-        )
+#         # Sum discounted yearly avoided health damages into total NPV
+#         health_npv = _sum_yearly_damages(
+#             yearly_damages=yearly_health_avoided,
+#             template_series=health_npv_template,
+#             valid_mask=valid_mask,
+#             menu_mp=menu_mp
+#         )
         
-        health_npv = replace_small_values_with_nan(health_npv)
+#         health_npv = replace_small_values_with_nan(health_npv)
 
-        all_npvs[health_npv_key] = health_npv
+#         all_npvs[health_npv_key] = health_npv
         
-        if health_npv_key not in category_columns_to_mask:
-            category_columns_to_mask.append(health_npv_key)
+#         if health_npv_key not in category_columns_to_mask:
+#             category_columns_to_mask.append(health_npv_key)
         
-        all_columns_to_mask[category].extend(category_columns_to_mask)
+#         all_columns_to_mask[category].extend(category_columns_to_mask)
     
-    return all_npvs
+#     return all_npvs
 
 
 def calculate_public_npv(
@@ -256,6 +256,7 @@ def calculate_public_npv(
     rcm_model: str,
     discount_rate_col_name: str = 'public_discount_rate',
     base_year: int = 2024,
+    include_health: bool = False,
     verbose: bool = VERBOSE
 ) -> pd.DataFrame:
     """
@@ -278,6 +279,9 @@ def calculate_public_npv(
         rcm_model: Reduced Complexity Model for health impact calculations.
         discount_rate_col_name: Column name for discount rate. Default 'public_discount_rate'.
         base_year: Base year for discounting. Default 2024.
+        include_health: Whether to compute and add health and combined public
+            NPV. Health is dormant (Session 3), so this defaults to False and the
+            function returns climate NPV only. Set True to re-enable health.
         verbose: Whether to print progress messages.
 
     Returns:
@@ -303,7 +307,8 @@ def calculate_public_npv(
             df_baseline_climate, df_baseline_health,
             df_mp_climate, df_mp_health,
             menu_mp, policy_scenario, base_year, EQUIPMENT_SPECS,
-            rcm_model=rcm_model, cr_function=cr_function
+            rcm_model=rcm_model, cr_function=cr_function,
+            check_health=include_health
         )
     
     if verbose and messages:
@@ -350,62 +355,68 @@ def calculate_public_npv(
         temp_df = pd.DataFrame(climate_npvs, index=df_copy.index)
         df_new_columns = pd.concat([df_new_columns, temp_df], axis=1)
 
-    # ===== Calculate health NPV for each CR function =====
-    if verbose:
-        print("\nCalculating health NPV for each CR function...")
-    
-    for cr_function in CR_FUNCTIONS:
+    # ===== Calculate health NPV for each CR function (dormant in Session 3) =====
+    # Health is set aside this session; with include_health=False the public
+    # track is climate damages only. Set include_health=True to re-enable.
+    if include_health:
         if verbose:
-            print(f"  Processing CR Function: {cr_function}")
-        
-        health_npvs = calculate_health_npv(
-            df_copy=df_copy,
-            df_baseline_health=df_baseline_health_ref,
-            df_mp_health=df_mp_health_ref,
-            menu_mp=menu_mp,
-            policy_scenario=policy_scenario,
-            rcm_model=rcm_model,
-            cr_function=cr_function,
-            base_year=base_year,
-            discount_rate_col_name=discount_rate_col_name,
-            all_columns_to_mask=all_columns_to_mask,
-            verbose=verbose
-        )
-        
-        if health_npvs:
-            temp_df = pd.DataFrame(health_npvs, index=df_copy.index)
-            df_new_columns = pd.concat([df_new_columns, temp_df], axis=1)
+            print("\nCalculating health NPV for each CR function...")
+
+        for cr_function in CR_FUNCTIONS:
+            if verbose:
+                print(f"  Processing CR Function: {cr_function}")
+
+            health_npvs = calculate_health_npv(
+                df_copy=df_copy,
+                df_baseline_health=df_baseline_health_ref,
+                df_mp_health=df_mp_health_ref,
+                menu_mp=menu_mp,
+                policy_scenario=policy_scenario,
+                rcm_model=rcm_model,
+                cr_function=cr_function,
+                base_year=base_year,
+                discount_rate_col_name=discount_rate_col_name,
+                all_columns_to_mask=all_columns_to_mask,
+                verbose=verbose
+            )
+
+            if health_npvs:
+                temp_df = pd.DataFrame(health_npvs, index=df_copy.index)
+                df_new_columns = pd.concat([df_new_columns, temp_df], axis=1)
 
     # ===== Calculate combined public NPV (climate + health) =====
-    if verbose:
-        print("\nCalculating combined public NPV...")
-    
-    for category in EQUIPMENT_SPECS.keys():
-        category_columns_to_mask = []
-        
-        # Get the climate NPV key once (same for all CR functions)
-        for scc in SCC_ASSUMPTIONS:
-            climate_npv_key = create_climate_npv_col(scenario_prefix, category, scc)
+    # Combined public NPV sums climate and health; with health dormant the
+    # climate NPV columns are the public-impact output, so this is skipped.
+    if include_health:
+        if verbose:
+            print("\nCalculating combined public NPV...")
 
-            # Now loop over CR functions to create health npv key and combined public NPV key
-            for cr_function in CR_FUNCTIONS:
-                health_npv_key = create_health_npv_col(scenario_prefix, category, rcm_model, cr_function)
-                public_npv_key = create_public_npv_col(scenario_prefix, category, scc, rcm_model, cr_function)
-                
-                # Check if both climate and health NPV columns exist, then calculate combined public NPV
-                if climate_npv_key in df_new_columns.columns and health_npv_key in df_new_columns.columns:
-                    # Sum unrounded values first, then round
-                    public_npv = (
-                        df_new_columns[climate_npv_key] + 
-                        df_new_columns[health_npv_key]
-                    )
-                    
-                    public_npv_rounded = public_npv.round(2)
+        for category in EQUIPMENT_SPECS.keys():
+            category_columns_to_mask = []
 
-                    df_new_columns[public_npv_key] = public_npv_rounded
-                    category_columns_to_mask.append(public_npv_key)
-        
-        all_columns_to_mask[category].extend(category_columns_to_mask)
+            # Get the climate NPV key once (same for all CR functions)
+            for scc in SCC_ASSUMPTIONS:
+                climate_npv_key = create_climate_npv_col(scenario_prefix, category, scc)
+
+                # Loop over CR functions to create health and combined public NPV keys
+                for cr_function in CR_FUNCTIONS:
+                    health_npv_key = create_health_npv_col(scenario_prefix, category, rcm_model, cr_function)
+                    public_npv_key = create_public_npv_col(scenario_prefix, category, scc, rcm_model, cr_function)
+
+                    # If both climate and health NPV columns exist, sum them
+                    if climate_npv_key in df_new_columns.columns and health_npv_key in df_new_columns.columns:
+                        # Sum unrounded values first, then round
+                        public_npv = (
+                            df_new_columns[climate_npv_key] +
+                            df_new_columns[health_npv_key]
+                        )
+
+                        public_npv_rounded = public_npv.round(2)
+
+                        df_new_columns[public_npv_key] = public_npv_rounded
+                        category_columns_to_mask.append(public_npv_key)
+
+            all_columns_to_mask[category].extend(category_columns_to_mask)
 
     # ===== Apply deferred rounding to climate and health columns =====
     # This matches original behavior: public_npv calculated from unrounded values

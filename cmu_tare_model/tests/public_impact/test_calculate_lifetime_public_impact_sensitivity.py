@@ -62,14 +62,14 @@ def damage_dataframes(public_npv_df):
             year_label = year + (BASE_YEAR - 1)
             for scc in ['lower', 'central', 'upper']:
                 base_col = f'baseline_{year_label}_{cat}_damages_climate_lrmer_{scc}'
-                mp_col = f'iraRef_mp8_{year_label}_{cat}_damages_climate_lrmer_{scc}'
+                mp_col = f'ref2025_mp8_{year_label}_{cat}_damages_climate_lrmer_{scc}'
                 df_baseline_climate[base_col] = np.random.uniform(10, 100, n)
                 df_mp_climate[mp_col] = np.random.uniform(5, 50, n)
 
             for rcm in ['ap2', 'easiur', 'inmap']:
                 for cr in ['acs', 'h6c']:
                     base_health = f'baseline_{year_label}_{cat}_damages_health_{rcm}_{cr}'
-                    mp_health = f'iraRef_mp8_{year_label}_{cat}_damages_health_{rcm}_{cr}'
+                    mp_health = f'ref2025_mp8_{year_label}_{cat}_damages_health_{rcm}_{cr}'
                     df_baseline_health[base_health] = np.random.uniform(5, 50, n)
                     df_mp_health[mp_health] = np.random.uniform(2, 25, n)
 
@@ -135,7 +135,7 @@ def test_climate_npv_returns_dict(mock_params, public_npv_df, damage_dataframes)
     from cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity import calculate_climate_npv
 
     df_baseline_climate, _, df_mp_climate, _ = damage_dataframes
-    mock_params.return_value = ('iraRef_mp8_', 'MidCase', {}, {}, {}, {})
+    mock_params.return_value = ('ref2025_mp8_', 'MidCase', {}, {}, {}, {})
 
     all_cols = {cat: [] for cat in FULL_EQUIPMENT_SPECS}
 
@@ -144,7 +144,7 @@ def test_climate_npv_returns_dict(mock_params, public_npv_df, damage_dataframes)
         df_baseline_climate=df_baseline_climate,
         df_mp_climate=df_mp_climate,
         menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
+        policy_scenario='2025 Reference Case',
         base_year=BASE_YEAR,
         all_columns_to_mask=all_cols,
         verbose=False,
@@ -154,7 +154,7 @@ def test_climate_npv_returns_dict(mock_params, public_npv_df, damage_dataframes)
     # Should have entries for each (category, SCC) combination
     for cat in FULL_EQUIPMENT_SPECS:
         for scc in ['lower', 'central', 'upper']:
-            expected_key = f'iraRef_mp8_{cat}_climate_npv_{scc}'
+            expected_key = f'ref2025_mp8_{cat}_climate_npv_{scc}'
             assert expected_key in result, f"Missing {expected_key}"
 
 
@@ -162,6 +162,9 @@ def test_climate_npv_returns_dict(mock_params, public_npv_df, damage_dataframes)
 # calculate_health_npv
 # =============================================================================
 
+@pytest.mark.skip(
+    reason="Health track dormant (Session 3): calculate_health_npv is commented "
+    "out. Re-enable this test when the health sensitivity is restored.")
 @patch('cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity.calculate_discount_factors')
 @patch('cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity.define_scenario_params')
 def test_health_npv_returns_dict(mock_params, mock_discount, public_npv_df, damage_dataframes):
@@ -169,7 +172,7 @@ def test_health_npv_returns_dict(mock_params, mock_discount, public_npv_df, dama
     from cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity import calculate_health_npv
 
     _, df_baseline_health, _, df_mp_health = damage_dataframes
-    mock_params.return_value = ('iraRef_mp8_', 'MidCase', {}, {}, {}, {})
+    mock_params.return_value = ('ref2025_mp8_', 'MidCase', {}, {}, {}, {})
     mock_discount.return_value = pd.Series(0.95, index=public_npv_df.index)
 
     all_cols = {cat: [] for cat in FULL_EQUIPMENT_SPECS}
@@ -179,7 +182,7 @@ def test_health_npv_returns_dict(mock_params, mock_discount, public_npv_df, dama
         df_baseline_health=df_baseline_health,
         df_mp_health=df_mp_health,
         menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
+        policy_scenario='2025 Reference Case',
         rcm_model='inmap',
         cr_function='acs',
         base_year=BASE_YEAR,
@@ -190,7 +193,7 @@ def test_health_npv_returns_dict(mock_params, mock_discount, public_npv_df, dama
 
     assert isinstance(result, dict)
     for cat in FULL_EQUIPMENT_SPECS:
-        expected_key = f'iraRef_mp8_{cat}_health_npv_inmap_acs'
+        expected_key = f'ref2025_mp8_{cat}_health_npv_inmap_acs'
         assert expected_key in result, f"Missing {expected_key}"
 
 
@@ -203,11 +206,15 @@ def test_health_npv_returns_dict(mock_params, mock_discount, public_npv_df, dama
 @patch('cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity.define_scenario_params')
 def test_public_npv_output_structure(mock_params, mock_discount, mock_validate,
                                       public_npv_df, damage_dataframes):
-    """End-to-end: produces DataFrame with climate, health, and combined NPV columns."""
+    """End-to-end: produces a DataFrame with climate NPV columns.
+
+    Health is dormant (Session 3), so no health or combined public NPV columns
+    are produced; the climate NPV columns are the public-impact output.
+    """
     from cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity import calculate_public_npv
 
     df_baseline_climate, df_baseline_health, df_mp_climate, df_mp_health = damage_dataframes
-    mock_params.return_value = ('iraRef_mp8_', 'MidCase', {}, {}, {}, {})
+    mock_params.return_value = ('ref2025_mp8_', 'MidCase', {}, {}, {}, {})
     mock_discount.return_value = pd.Series(0.95, index=public_npv_df.index)
     mock_validate.return_value = (True, [])
 
@@ -218,7 +225,7 @@ def test_public_npv_output_structure(mock_params, mock_discount, mock_validate,
         df_mp_climate=df_mp_climate,
         df_mp_health=df_mp_health,
         menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
+        policy_scenario='2025 Reference Case',
         rcm_model='inmap',
         base_year=BASE_YEAR,
         verbose=False,
@@ -227,17 +234,16 @@ def test_public_npv_output_structure(mock_params, mock_discount, mock_validate,
     assert isinstance(result, pd.DataFrame)
     assert len(result) == len(public_npv_df)
 
-    # Check for climate NPV columns
+    # Climate NPV columns are produced (the public-impact output this session).
     climate_cols = [c for c in result.columns if 'climate_npv' in c]
     assert len(climate_cols) > 0
 
-    # Check for health NPV columns
+    # Health is dormant: no health or combined public NPV columns are produced.
     health_cols = [c for c in result.columns if 'health_npv' in c]
-    assert len(health_cols) > 0
+    assert len(health_cols) == 0
 
-    # Check for combined public NPV columns
     public_cols = [c for c in result.columns if 'public_npv' in c]
-    assert len(public_cols) > 0
+    assert len(public_cols) == 0
 
 
 @patch('cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity.validate_damage_dataframes')
@@ -248,7 +254,7 @@ def test_public_npv_invalid_rcm_raises(mock_params, mock_discount, mock_validate
     from cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity import calculate_public_npv
 
     df_baseline_climate, df_baseline_health, df_mp_climate, df_mp_health = damage_dataframes
-    mock_params.return_value = ('iraRef_mp8_', 'MidCase', {}, {}, {}, {})
+    mock_params.return_value = ('ref2025_mp8_', 'MidCase', {}, {}, {}, {})
     mock_validate.return_value = (True, [])
 
     with pytest.raises(ValueError, match="Invalid rcm_model"):
@@ -259,7 +265,7 @@ def test_public_npv_invalid_rcm_raises(mock_params, mock_discount, mock_validate
             df_mp_climate=df_mp_climate,
             df_mp_health=df_mp_health,
             menu_mp=8,
-            policy_scenario='AEO2023 Reference Case',
+            policy_scenario='2025 Reference Case',
             rcm_model='invalid_rcm',
             verbose=False,
         )
@@ -274,7 +280,7 @@ def test_public_npv_invalid_homes_masked(mock_params, mock_discount, mock_valida
     from cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity import calculate_public_npv
 
     df_baseline_climate, df_baseline_health, df_mp_climate, df_mp_health = damage_dataframes
-    mock_params.return_value = ('iraRef_mp8_', 'MidCase', {}, {}, {}, {})
+    mock_params.return_value = ('ref2025_mp8_', 'MidCase', {}, {}, {}, {})
     mock_discount.return_value = pd.Series(0.95, index=public_npv_df.index)
     mock_validate.return_value = (True, [])
 
@@ -285,7 +291,7 @@ def test_public_npv_invalid_homes_masked(mock_params, mock_discount, mock_valida
         df_mp_climate=df_mp_climate,
         df_mp_health=df_mp_health,
         menu_mp=8,
-        policy_scenario='AEO2023 Reference Case',
+        policy_scenario='2025 Reference Case',
         rcm_model='inmap',
         base_year=BASE_YEAR,
         verbose=False,

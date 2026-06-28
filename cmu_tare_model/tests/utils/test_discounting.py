@@ -27,25 +27,24 @@ def ami_df():
 
 # ── prepare_discount_rates ───────────────────────────────────────────────────
 
-def test_prepare_discount_rates_adds_five_columns(ami_df):
+def test_prepare_discount_rates_adds_active_columns(ami_df):
     result = prepare_discount_rates(ami_df)
+    # fixed_low and fixed_high are retired; only the active rates are produced.
     expected_cols = [
         'public_discount_rate',
-        'private_discount_rate_fixed_low',
         'private_discount_rate_fixed_base',
-        'private_discount_rate_fixed_high',
         'private_discount_rate_variable',
     ]
     for col in expected_cols:
         assert col in result.columns
+    assert 'private_discount_rate_fixed_low' not in result.columns
+    assert 'private_discount_rate_fixed_high' not in result.columns
 
 
 def test_prepare_discount_rates_fixed_values(ami_df):
     result = prepare_discount_rates(ami_df)
     assert (result['public_discount_rate'] == 0.02).all()
-    assert (result['private_discount_rate_fixed_low'] == 0.02).all()
     assert (result['private_discount_rate_fixed_base'] == 0.07).all()
-    assert (result['private_discount_rate_fixed_high'] == 0.12).all()
 
 
 def test_prepare_discount_rates_variable_inverse_relationship(ami_df):
@@ -124,8 +123,9 @@ def test_discount_factors_returns_series(ami_df):
 def test_discount_factors_higher_rate_lower_factor(ami_df):
     """Higher discount rate should produce lower discount factor."""
     df = prepare_discount_rates(ami_df)
-    low_factors = calculate_discount_factors(df, 2024, 2030, 'private_discount_rate_fixed_low')
-    high_factors = calculate_discount_factors(df, 2024, 2030, 'private_discount_rate_fixed_high')
+    # Compare the public rate (2%) against the private fixed_base rate (7%).
+    low_factors = calculate_discount_factors(df, 2024, 2030, 'public_discount_rate')
+    high_factors = calculate_discount_factors(df, 2024, 2030, 'private_discount_rate_fixed_base')
     assert (low_factors > high_factors).all()
 
 

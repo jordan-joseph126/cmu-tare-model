@@ -1,0 +1,984 @@
+# %%
+# import os
+
+# # import from cmu-tare-model package
+# from config import PROJECT_ROOT
+
+# # Measure Package 0: Baseline
+# menu_mp = 0
+# input_mp = 'baseline'
+
+# print(f"PROJECT_ROOT (from config.py): {PROJECT_ROOT}")
+
+# # Construct the absolute path to the .py file
+# relative_path = os.path.join("cmu_tare_model", "model_scenarios", "tare_baseline_v2_3.ipynb")
+# file_path = os.path.join(PROJECT_ROOT, relative_path)
+
+# # On Windows, to avoid any path-escape quirks, convert backslashes to forward slashes
+# file_path = file_path.replace("\\", "/")
+
+# print(f"Running file: {file_path}")
+
+# # %run magic command to run a .py file and import variables into the current IPython session
+# # # If your path has spaces, wrap it in quotes:
+# %run -i {file_path} # If your path has NO spaces, no quotes needed.
+
+# print("Baseline Scenario - Model Run Complete")
+
+# # Flag to prevent excessive output in other scenario files
+# individual_scenario_run = True
+
+# %% [markdown]
+# # LOAD EUSS DATA: Annual Energy Consumption and Metadata
+# ## MEASURE PACKAGE 7 (MP7): Data for Electric Resistance Cooking
+
+# %%
+print(f"""
+====================================================================================================================================================================
+We assume the use of Electric Resistance (MP7) rather than Induction (MP8-10).
+Electric Resistance is significantly cheaper and only slightly less efficient than Induction.
+====================================================================================================================================================================
+""")
+from cmu_tare_model.constants import ALLOWED_HOUSING_TYPES
+
+# Measure Package 7
+menu_mp = 7
+input_mp = 'upgrade07'
+
+filename = "upgrade07_metadata_and_annual_results.csv"
+relative_path = os.path.join("cmu_tare_model", "data", "euss_data", "resstock_amy2018_release_1.1", "national", "csv", filename)
+file_path = os.path.join(PROJECT_ROOT, relative_path)
+
+print(f"Retrieved data for filename: {filename}")
+print(f"Located at filepath: {file_path}")
+print("\n")
+
+# low_memory=False reads the entire file before inferring dtypes,
+# so mixed-type columns are automatically cast to object (str) without warnings.
+df_euss_am_mp7 = pd.read_csv(file_path, low_memory=False, index_col="bldg_id")
+print(f"DATAFRAME SIZE before applying any filters: {df_euss_am_mp7.shape}")
+
+# Filter for occupied homes
+occupancy_filter = df_euss_am_mp7['in.vacancy_status'] == 'Occupied'
+df_euss_am_mp7 = df_euss_am_mp7.loc[occupancy_filter]
+print(f"DATAFRAME SIZE after filtering for 'Occupied' homes: {df_euss_am_mp7.shape}")
+
+# Filter for allowed housing types
+house_type_filter = df_euss_am_mp7['in.geometry_building_type_recs'].isin(ALLOWED_HOUSING_TYPES)
+df_euss_am_mp7 = df_euss_am_mp7.loc[house_type_filter]
+print(f"Allowed housing types: {ALLOWED_HOUSING_TYPES}")
+print(f"DATAFRAME SIZE after filtering for allowed housing types: {df_euss_am_mp7.shape}")
+
+# National Level 
+if menu_state == 'N':
+    print("You chose to analyze all of the United States.")
+    input_state = 'National'
+
+# Filter down to state or city
+else:
+    print(f"You chose to filter for: {input_state}")
+    state_filter = df_euss_am_mp7['in.state'].eq(input_state)
+    df_euss_am_mp7 = df_euss_am_mp7.loc[state_filter]
+
+    # Filter for the entire selected state
+    if menu_city == 'N':
+        print(f"You chose to analyze all of state: {input_state}")
+        
+    # Filter to a city within the selected state
+    else:
+        print(f"You chose to filter for: {input_state}, {input_cityFilter}")
+        city_filter = df_euss_am_mp7['in.city'].eq(f"{input_state}, {input_cityFilter}")
+        df_euss_am_mp7 = df_euss_am_mp7.loc[city_filter]
+
+# Display the filtered dataframe
+print(f"DATAFRAME SIZE after applying geographic filter: {df_euss_am_mp7.shape}")
+print(df_euss_am_mp7)
+
+# %% [markdown]
+# ## MEASURE PACKAGE X (MPX): Metadata, Space Heating, Water Heating, and Clothes Drying
+
+# %%
+from cmu_tare_model.constants import VERBOSE, PRINT_VERBOSE_DATAFRAMES, EQUIPMENT_SPECS, VALID_CATEGORIES, VALID_MENU_MPS
+
+# Build valid MP strings and upgrade mapping from VALID_MENU_MPS
+# Exclude MP0 (baseline) — it's not a selectable measure package
+SELECTABLE_MPS = [mp for mp in VALID_MENU_MPS if mp != 0]
+SELECTABLE_MPS_STRINGS = [str(mp) for mp in SELECTABLE_MPS]
+
+def mp_to_upgrade(mp_num):
+    """Convert MP number to EUSS upgrade string (e.g., 8 -> 'upgrade08', 10 -> 'upgrade10')."""
+    return f"upgrade{mp_num:02d}"
+
+print(f"""
+\nAVAILABLE EUSS MEASURE PACKAGES FOR TARE MODEL RUN:
+VALID_MENU_MPS = {VALID_MENU_MPS}
+Selectable (non-baseline): {SELECTABLE_MPS}
+""")
+
+# Check if measure package was pre-set (batch mode from tare_run_simulation)
+# When running interactively, these variables won't exist or will be None
+_batch_mode = 'input_measure_package' in dir() and input_measure_package is not None
+
+if _batch_mode:
+    # Batch mode: use pre-set value from calling notebook
+    input_measure_package = str(input_measure_package).strip()
+    
+    if input_measure_package not in SELECTABLE_MPS_STRINGS:
+        raise ValueError(f"Invalid pre-set measure package: {input_measure_package}. Must be one of {SELECTABLE_MPS_STRINGS}.")
+    
+    menu_mp = int(input_measure_package)
+    input_mp = mp_to_upgrade(menu_mp)
+    print(f"[BATCH MODE] Using pre-set Measure Package {input_measure_package}.")
+    
+else:
+    # Interactive mode: prompt user for input
+    while True:
+        input_measure_package = input(f"Please enter the measure package you want to run the analysis for ({', '.join(SELECTABLE_MPS_STRINGS)}): ")
+        
+        input_measure_package = input_measure_package.strip()
+
+        if input_measure_package not in SELECTABLE_MPS_STRINGS:
+            print(f"Invalid measure package. Must be one of {SELECTABLE_MPS_STRINGS}. Please try again.")
+            continue
+        else:
+            menu_mp = int(input_measure_package)
+            input_mp = mp_to_upgrade(menu_mp)
+            print(f"You selected Measure Package {input_measure_package}.")
+            break
+
+# %%
+# Measure Package 
+cost_scenario = 'BAU Costs'
+grid_scenario = 'Current Electricity Grid'
+
+print(f"""
+====================================================================================================================================================================
+MODEL SCENARIO
+====================================================================================================================================================================
+Measure Package {menu_mp}
+{cost_scenario}
+{grid_scenario}
+====================================================================================================================================================================
+""")
+
+filename = f"{input_mp}_metadata_and_annual_results.csv"
+relative_path = os.path.join("cmu_tare_model", "data", "euss_data", "resstock_amy2018_release_1.1", "national", "csv", filename)
+
+file_path = os.path.join(PROJECT_ROOT, relative_path)
+
+print(f"Retrieved data for filename: {filename}")
+print(f"Located at filepath: {file_path}")
+print("\n")
+
+# low_memory=False reads the entire file before inferring dtypes,
+# so mixed-type columns are automatically cast to object (str) without warnings.
+df_euss_am_mpX = pd.read_csv(file_path, low_memory=False, index_col="bldg_id")
+print(f"DATAFRAME SIZE before applying any filters: {df_euss_am_mpX.shape}")
+
+# Filter for occupied homes
+occupancy_filter = df_euss_am_mpX['in.vacancy_status'] == 'Occupied'
+df_euss_am_mpX = df_euss_am_mpX.loc[occupancy_filter]
+print(f"DATAFRAME SIZE after filtering for 'Occupied' homes: {df_euss_am_mpX.shape}")
+
+# Filter for allowed housing types
+house_type_filter = df_euss_am_mpX['in.geometry_building_type_recs'].isin(ALLOWED_HOUSING_TYPES)
+df_euss_am_mpX = df_euss_am_mpX.loc[house_type_filter]
+print(f"Allowed housing types: {ALLOWED_HOUSING_TYPES}")
+print(f"DATAFRAME SIZE after filtering for allowed housing types: {df_euss_am_mpX.shape}")
+
+# National Level 
+if menu_state == 'N':
+    print("You chose to analyze all of the United States.")
+    input_state = 'National'
+
+# Filter down to state or city
+else:
+    print(f"You chose to filter for: {input_state}")
+    state_filter = df_euss_am_mpX['in.state'].eq(input_state)
+    df_euss_am_mpX = df_euss_am_mpX.loc[state_filter]
+
+    # Filter for the entire selected state
+    if menu_city == 'N':
+        print(f"You chose to analyze all of state: {input_state}")
+        
+    # Filter to a city within the selected state
+    else:
+        print(f"You chose to filter for: {input_state}, {input_cityFilter}")
+        city_filter = df_euss_am_mpX['in.city'].eq(f"{input_state}, {input_cityFilter}")
+        df_euss_am_mpX = df_euss_am_mpX.loc[city_filter]
+
+# Display the filtered dataframe
+# Display the filtered dataframe
+print(f"DATAFRAME SIZE after applying geographic filter: {df_euss_am_mpX.shape}")
+print(df_euss_am_mpX)
+
+# %% [markdown]
+# # Project Future Energy Consumption
+
+# %%
+from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import df_enduse_compare
+
+print(F"""
+====================================================================================================================================================================
+LOAD EUSS DATA FOR MEASURE PACKAGE {menu_mp} (MP{menu_mp})
+====================================================================================================================================================================
+You'll notice that the number of rows differs from df_euss_am_mp7 and df_euss_am_mpX.
+      - df_euss_am_baseline_home has fewer rows (representative dwelling units) because a tech filter was applied. 
+      - df_euss_am_mpX_home will have the same number of rows as df_euss_am_baseline_home after df_enduse_compare function is run.
+      - df_enduse_compare function performs an inner merge on the two dataframes, keeping only the rows that are present in both dataframes.
+====================================================================================================================================================================
+df_euss_am_mpX_home will be created by running the df_enduse_compare function (contains post-retrofit consumption data for the entire home in 2024).
+process_euss_data.py file contains the function definition.
+      
+""")
+
+# df_enduse_compare(df_mp, category, df_baseline):
+df_euss_am_mpX_home = df_enduse_compare(
+    df_mp = df_euss_am_mpX,
+    input_mp=input_mp,
+    menu_mp=menu_mp,
+    df_baseline = df_euss_am_baseline_home,
+    df_cooking_range=df_euss_am_mp7,
+    )
+
+
+# %% [markdown]
+# # PUBLIC IMPACTS: Climate and Health Damages
+# ## Scenario: 2025 Reference Case
+
+# %%
+from cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity import calculate_lifetime_climate_impacts
+from cmu_tare_model.public_impact.calculate_lifetime_health_impacts_sensitivity import calculate_lifetime_health_impacts
+
+print(f"""
+====================================================================================================================================================================
+PUBLIC IMPACTS: DAMAGES FROM CLIMATE AND HEALTH-RELATED EMISSIONS
+====================================================================================================================================================================
+
+""")
+
+# Make copies from scenario consumption to keep df smaller
+print("\n", "Creating dataframe to store marginal damages calculations ...")
+# Damage DataFrames: 2025 Reference Case
+df_mpX_ref2025_damages_climate = df_euss_am_mpX_home.copy()
+df_mpX_ref2025_damages_health = df_euss_am_mpX_home.copy()
+
+# %%
+# Health Impacts: Baseline Scenario
+print(f"""
+====================================================================================================================================================================
+df_euss_am_baseline_home: DataFrame containing the baseline scenario data
+{df_euss_am_baseline_home}
+      
+df_baseline_damages_health: DataFrame containing the baseline scenario data with health damages
+{df_baseline_damages_health}
+
+""")
+
+# %%
+print("""
+========== SCENARIO: 2025 Reference Case ==========
+""")
+df_euss_am_mpX_home, df_mpX_ref2025_damages_climate = calculate_lifetime_climate_impacts(
+    df=df_euss_am_mpX_home,
+    menu_mp=menu_mp,
+    policy_scenario='2025 Reference Case',
+    df_baseline_damages=df_baseline_damages_climate,
+    verbose=VERBOSE
+    )
+
+df_euss_am_mpX_home, df_mpX_ref2025_damages_health = calculate_lifetime_health_impacts(
+    df=df_euss_am_mpX_home,
+    menu_mp=menu_mp,
+    policy_scenario='2025 Reference Case',
+    df_baseline_damages=df_baseline_damages_health,
+    debug=False,
+    verbose=VERBOSE
+    )
+
+
+print(f"""
+====================================================================================================================================================================
+Post-Retrofit (MP{menu_mp}) Marginal Damages: WHOLE-HOME
+Scenario: 2025 Reference Case
+====================================================================================================================================================================
+
+CLIMATE DAMAGES (2025 Reference Case): df_mpX_ref2025_damages_climate
+{df_mpX_ref2025_damages_climate}
+
+HEALTH DAMAGES (2025 Reference Case): df_mpX_ref2025_damages_health
+{df_mpX_ref2025_damages_health}
+
+SUMMARY DATAFRAME FOR MP{menu_mp}: df_euss_am_mp{menu_mp}_home
+{df_euss_am_mpX_home}
+====================================================================================================================================================================
+""")
+
+# %% [markdown]
+# # PRIVATE IMPACTS: FUEL COSTS
+# ## Scenario: 2025 Reference Case
+
+# %%
+from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import calculate_lifetime_fuel_costs
+
+print(f"""
+====================================================================================================================================================================
+PRIVATE IMPACTS: OVERVIEW
+====================================================================================================================================================================
+Step 1: Calculate annual operating (fuel) costs
+Step 2: Calculate equipment capital costs (For space heating, include ductwork and weatherization (MP9 and MP10))
+Step 3: Calculate replacement cost (replacing existing piece of equipment with similar technology)
+Step 4: Calculate net equipment capital costs and private NPV (less WTP and more WTP)
+
+----------------------------------------------------------------------------------------------------------------------
+Step 1: Calculate annual operating (fuel) costs
+----------------------------------------------------------------------------------------------------------------------
+
+====================================================================================================================================================================
+FUEL COSTS RESULTS: 2025 Reference Case
+
+""")
+
+# %%
+print("""
+========== SCENARIO: 2025 Reference Case ==========
+""")
+print("Creating dataframe to store annual fuel cost calculations ...")
+df_euss_am_mpX_home, df_mpX_ref2025_fuel_costs = calculate_lifetime_fuel_costs(
+    df=df_euss_am_mpX_home,
+    menu_mp=menu_mp,
+    policy_scenario='2025 Reference Case',
+    df_baseline_costs=df_baseline_fuel_costs
+    )
+
+
+print(f"""
+====================================================================================================================================================================
+Lifetime Fuel Costs: 2025 Reference Case
+
+FUEL COSTS (2025 Reference Case): df_mpX_ref2025_fuel_costs
+{df_mpX_ref2025_fuel_costs}
+
+SUMMARY DATAFRAME FOR MP{menu_mp}: df_euss_am_mp{menu_mp}_home
+{df_euss_am_mpX_home}
+
+====================================================================================================================================================================
+""")
+
+# %% [markdown]
+# # PRIVATE IMPACTS: CAPITAL COSTS
+# ## Scenarios: 2025 Reference Case
+
+# %%
+from cmu_tare_model.utils.inflation_adjustment import *
+from cmu_tare_model.utils.column_names import create_cost_col
+
+# ============================================================================
+# UNIFIED COST MODULES: Routes to v3 (probabilistic) or v4 (regression)
+# based on cost_scenario parameter
+# ============================================================================
+from cmu_tare_model.private_impact.calculations.calculate_equipment_installation_costs import (
+    calculate_upgrade_installed_cost,
+    obtain_heating_system_specs,
+    calculate_heating_installation_premium
+)
+from cmu_tare_model.private_impact.calculations.calculate_equipment_replacement_costs import (
+    calculate_replacement_installed_cost
+)
+
+# Enclosure costs (not yet unified — still uses v3 calculations path)
+from cmu_tare_model.private_impact.calculations.calculate_enclosure_upgrade_costs import (
+    calculate_enclosure_retrofit_upgrade_costs
+)
+
+# REMDB v4 utilities (data loading & metric preparation)
+from cmu_tare_model.constants import REMDB_COST_SCENARIO_KEYS
+from cmu_tare_model.utils.remdb_v4_installed_cost_utils import (
+    load_remdb_v4_data,
+    add_remdb_metrics
+)
+
+if VERBOSE:
+    print(f"""
+    ====================================================================================================================================================================
+    PRIVATE IMPACTS: NET CAPITAL COSTS AND TOTAL CAPITAL COSTS
+    ====================================================================================================================================================================
+    Completed Steps:
+    1. Calculate annual operating (fuel) costs                                                                  [COMPLETED]
+
+    REMAINING STEPS:
+    Step 2: Calculate equipment capital costs (For space heating, include ductwork)
+    Step 3: Calculate replacement cost (replacing existing piece of eqipment with similar technology)
+
+    ----------------------------------------------------------------------------------------------------------------------
+    Step 4 (MP9 AND MP10 SPACE HEATING ONLY): 
+        Calculate Enclosure Upgrade Costs
+        - calculate_enclosure_upgrade_costs.py file contains the definition for the calculate_enclosure_upgrade_costs function.
+    ----------------------------------------------------------------------------------------------------------------------
+
+    Cost Databases:
+    - REMDB v3: Excel-based probabilistic cost dictionaries (existing)
+    - REMDB v4: Regression-based deterministic cost calculations (new)
+    - Cost scenarios: {REMDB_COST_SCENARIO_KEYS}
+
+    ====================================================================================================================================================================
+    LIFETIME CAPITAL COSTS RESULTS: No IRA and IRA-Reference (Rebates)
+
+    """)
+
+# %%
+print("\n" + "="*80)
+print("LOADING CAPITAL COST DATABASES")
+print("="*80)
+
+# ============================================================================
+# REMDB v3: Excel-based cost dictionaries (existing)
+# DELETED V3 BECAUSE WE ARE NOW USING V4 (REGRESSION-BASED COSTS)
+# ============================================================================
+
+# ============================================================================
+# REMDB v4: Regression-based cost database (new)
+# ============================================================================
+print("\nREMDB v4 (Regression):")
+remdb_v4_costs = load_remdb_v4_data()
+print(f"  Loaded {len(remdb_v4_costs)} equipment types from REMDB v4")
+
+print("\n" + "="*80 + "\n")
+
+# %% [markdown]
+# ## REMDB v4: Capital Costs (Regression-Based)
+# ### Heating only - additional end-uses to be added in future versions
+
+# %%
+# ============================================================================
+# REMDB v4: CAPITAL COST SCENARIO LOOP
+# ============================================================================
+# Calculates installed costs using REMDB v4 regression methodology alongside
+# the existing REMDB v3 probabilistic costs. Results stored in nested dict
+# for cross-scenario comparison.
+#
+# v4 workflow (two-step per end-use):
+#   1. add_remdb_metrics() - assigns row_id, maps coefficients, converts units
+#   2. calculate_*_installed_cost() - applies regression formula (unified)
+#
+# Currently implemented for heating only. Other end-uses (waterHeating,
+# clothesDrying, cooking) will be added when REMDB v4 supports them.
+# ============================================================================
+VERBOSE = True
+
+# Initialize nested dictionary: CAPITAL_COSTS_MPX[end_use][cost_type][scenario_key]
+CAPITAL_COSTS_MPX = {
+    end_use: {'replacement': {}, 'upgrade': {}}
+    for end_use in VALID_CATEGORIES
+}
+
+print("="*80)
+print(f"CALCULATING CAPITAL COSTS - MEASURE PACKAGE {menu_mp}")
+print("="*80)
+
+# Store v3 results from df_euss_am_mpX_home (already calculated above)
+CAPITAL_COSTS_MPX['heating']['replacement']['v3'] = df_euss_am_mpX_home.copy()
+CAPITAL_COSTS_MPX['heating']['upgrade']['v3'] = df_euss_am_mpX_home.copy()
+print("\nScenario: v3 | Method: v3 | Percentile: ref")
+print(f"  Stored existing v3 results from df_euss_am_mpX_home")
+
+# Loop over REMDB v4 cost scenarios (low, mid, high percentiles)
+for scenario_key in REMDB_COST_SCENARIO_KEYS:
+    # Derive routing method and percentile from cost_scenario
+    if scenario_key == 'v3':
+        method, percentile = 'v3', None
+    else:
+        method = 'remdb_v4'
+        percentile = scenario_key[2:].lower()
+    
+    # Skip v3 (already stored above)
+    if method == 'v3':
+        continue
+    
+    print(f"\nScenario: {scenario_key} | Method: {method} | Percentile: {percentile}")
+    
+    # Work from a clean copy of the base DataFrame
+    df_scenario = df_euss_am_mpX_home.copy()
+    
+    for end_use in ['heating']:
+        # STEP 1: Prepare replacement metrics (assigns row_id, converts units)
+        df_scenario, df_detailed_repl = add_remdb_metrics(
+            df=df_scenario,
+            remdb_v4_costs=remdb_v4_costs,
+            end_use=end_use,
+            metric_type='replacement',
+            percentile=percentile,
+            verbose=VERBOSE
+        )
+        
+        # STEP 2: Calculate replacement installed costs
+        df_scenario, df_detailed_repl = calculate_replacement_installed_cost(
+            df=df_scenario,
+            df_detailed=df_detailed_repl,
+            menu_mp=menu_mp,
+            end_use=end_use,
+            cost_scenario=scenario_key
+        )
+        
+        # STEP 3: Prepare upgrade metrics
+        df_scenario, df_detailed_upgr = add_remdb_metrics(
+            df=df_scenario,
+            remdb_v4_costs=remdb_v4_costs,
+            end_use=end_use,
+            metric_type='upgrade',
+            percentile=percentile,
+            verbose=VERBOSE
+        )
+        
+        # STEP 4: Calculate upgrade installed costs
+        df_scenario, df_detailed_upgr = calculate_upgrade_installed_cost(
+            df=df_scenario,
+            df_detailed=df_detailed_upgr,
+            menu_mp=menu_mp,
+            end_use=end_use,
+            cost_scenario=scenario_key
+        )
+        
+        # Also calculate cooling replacement costs (metadata for net cost calculation)
+        df_scenario, df_detailed_cool = add_remdb_metrics(
+            df=df_scenario,
+            remdb_v4_costs=remdb_v4_costs,
+            end_use='cooling',
+            metric_type='replacement',
+            percentile=percentile,
+            verbose=VERBOSE
+        )
+        
+        df_scenario, df_detailed_cool = calculate_replacement_installed_cost(
+            df=df_scenario,
+            df_detailed=df_detailed_cool,
+            menu_mp=menu_mp,
+            end_use='cooling',
+            cost_scenario=scenario_key
+        )
+    
+    # Store results for this scenario
+    CAPITAL_COSTS_MPX['heating']['replacement'][scenario_key] = df_scenario.copy()
+    CAPITAL_COSTS_MPX['heating']['upgrade'][scenario_key] = df_scenario.copy()
+    
+    replacement_cost_col_name = create_cost_col(menu_mp=menu_mp, category=end_use, cost_type='replacement', cost_scenario=scenario_key)
+    upgrade_cost_col_name = create_cost_col(menu_mp=menu_mp, category=end_use, cost_type='upgrade', cost_scenario=scenario_key)
+
+    if replacement_cost_col_name in df_scenario.columns:
+        valid_repl = df_scenario[replacement_cost_col_name].notna().sum()
+        mean_repl = df_scenario[replacement_cost_col_name].mean()
+        print(f"  Replacement: {valid_repl:,} valid homes, mean=${mean_repl:,.2f}")
+    if upgrade_cost_col_name in df_scenario.columns:
+        valid_upgr = df_scenario[upgrade_cost_col_name].notna().sum()
+        mean_upgr = df_scenario[upgrade_cost_col_name].mean()
+        print(f"  Upgrade: {valid_upgr:,} valid homes, mean=${mean_upgr:,.2f}")
+
+print(f"\nCalculated {len(REMDB_COST_SCENARIO_KEYS)} scenarios: {REMDB_COST_SCENARIO_KEYS}")
+print("="*80)
+
+# %%
+# ============================================================================
+# MERGE v4 COST COLUMNS INTO df_euss_am_mpX_home
+# ============================================================================
+# The v4 cost loop above computed installed costs on per-scenario DataFrame
+# copies stored in CAPITAL_COSTS_MPX. The rebate calculation below runs on
+# df_euss_am_mpX_home and expects all cost scenario columns to be present.
+# This block merges only the final cost columns (not REMDB intermediates)
+# from each v4 scenario back onto df_euss_am_mpX_home so that
+# calculate_rebateIRA() can find them.
+# ============================================================================
+
+v4_columns_merged = []
+
+for scenario_key in REMDB_COST_SCENARIO_KEYS:
+    if scenario_key == 'v3':
+        continue  # v3 columns already on df_euss_am_mpX_home
+
+    # The 'upgrade' DataFrame contains heating upgrade, heating replacement,
+    # AND cooling replacement cost columns (all computed in the v4 loop)
+    df_v4_source = CAPITAL_COSTS_MPX['heating']['upgrade'][scenario_key]
+
+    # Build the list of final cost columns to merge for this scenario
+    cost_columns_to_merge = []
+    for end_use, cost_type in [('heating', 'replacement'), ('heating', 'upgrade'), ('cooling', 'replacement')]:
+        col_name = create_cost_col(menu_mp=menu_mp, category=end_use, cost_type=cost_type, cost_scenario=scenario_key)
+        if col_name in df_v4_source.columns:
+            cost_columns_to_merge.append(col_name)
+
+    # Merge via column assignment (aligned by index - same row order as source)
+    for col in cost_columns_to_merge:
+        df_euss_am_mpX_home[col] = df_v4_source[col].values
+
+    v4_columns_merged.extend(cost_columns_to_merge)
+
+# ============================================================================
+# NOTE ON v4 MONOTONICITY — DO NOT ENFORCE
+# ============================================================================
+# Per the REMDB Machine Readable Guidance Document, low/mid/high represent
+# 10th, 50th, and 90th percentile quantile regressions fitted independently.
+# Coefficient-level non-monotonicity is BY DESIGN — the guidance document
+# itself shows examples where coefficients decrease from low→high (e.g.,
+# Water Heater PM2 coefficients: 28.81 → 19.33 → 8.39; intercepts:
+# 155.30 → 436.45 → -651.90). For certain input value combinations,
+# quantile regression crossings are expected and should NOT be "corrected."
+# ============================================================================
+
+# Diagnostic output
+print("\n" + "=" * 80)
+print(f"MERGED v4 COST COLUMNS INTO df_euss_am_mpX_home ({len(v4_columns_merged)} columns)")
+print("=" * 80)
+for col in sorted(v4_columns_merged):
+    print(f"  {col}")
+print(f"\ndf_euss_am_mpX_home shape: {df_euss_am_mpX_home.shape}")
+print("=" * 80)
+
+# %% [markdown]
+#  ## Calculate Rebate Amounts (Applicable to IRA-Reference)
+
+# %%
+from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import calculate_percent_AMI, calculate_rebateIRA
+from cmu_tare_model.utils.discounting import prepare_discount_rates
+from cmu_tare_model.constants import PRIVATE_DISCOUNT_RATE_SHORT_KEYS
+
+print(f"""
+====================================================================================================================================================================
+CALCULATE HOUSEHOLD PERCENT AREA MEDIAN INCOME (%AMI) AND REBATE ELIGIBILITY/AMOUNTS
+====================================================================================================================================================================
+determine_rebate_eligibility_and_amount.py file contains the function definitions for calculating rebate amounts and determining household %AMI.
+process_income_data_for_rebates.py file contains additional information on data sources and procedures used to process data for determine_rebate_eligibility_and_amount.py file.
+
+----------------------------------------------------------------------------------------------------------------------
+
+""")
+
+# Determine Percent AMI and Rebate Amounts
+# This needs to be done before running the calculate_percent_AMI function
+df_euss_am_mpX_home = df_euss_am_mpX_home.copy()
+
+print("Calculating Percent AMI for each household ...")
+df_euss_am_mpX_home = calculate_percent_AMI(df_results_IRA=df_euss_am_mpX_home)
+
+# New function that prepares discount rates (e.g., variable) for NPV calculations and prints the discount rates used if verbose=True
+print("Preparing discount rates for NPV calculations ...")
+df_euss_am_mpX_home = prepare_discount_rates(df=df_euss_am_mpX_home,
+                                             verbose=VERBOSE)
+
+for end_use in VALID_CATEGORIES:
+    print(VALID_CATEGORIES)
+    for cost_scenario in REMDB_COST_SCENARIO_KEYS:
+        print(f"\nCalculating rebate amounts for {end_use} ({cost_scenario}) ...")
+        df_euss_am_mpX_home = calculate_rebateIRA(df_results_IRA=df_euss_am_mpX_home,
+                                                  category=end_use,
+                                                  menu_mp=menu_mp,
+                                                  cost_scenario=cost_scenario)
+
+print(f"""
+====================================================================================================================================================================
+DATAFRAME: df_euss_am_mpX_home AFTER CALCULATING REBATE AMOUNTS
+{df_euss_am_mpX_home}
+
+====================================================================================================================================================================
+""")
+
+# %% [markdown]
+# # SCENARIO ANALYSIS: 2025 Reference Case
+# ## Public Impact, Private Impact and Adoption Potential
+
+# %%
+from cmu_tare_model.constants import CR_FUNCTIONS, RCM_MODELS
+from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_private_npv
+from cmu_tare_model.public_impact.calculate_lifetime_public_impact_sensitivity import calculate_public_npv
+from cmu_tare_model.adoption_potential.determine_economic_adoption_potential import (
+    economic_adoption_decision
+)
+
+# Create dictionary directly with copies - removed dataframes saved as intermediate variables
+# Structure: [discount_rate][rcm] for consistent level ordering
+DATAFRAMES_MPX_RCM_DISCOUNT_RATE = {
+    discount_rate: {
+        rcm: df_euss_am_mpX_home.copy()
+        for rcm in RCM_MODELS
+    }
+    for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS
+}
+
+# ============================================================================
+# Merge REMAINING v4 columns into each scenario DataFrame.
+# NOTE: Final cost columns (installed_cost_{v4LOW/MID/HIGH}) were already
+# merged into df_euss_am_mpX_home BEFORE the rebate calculation cell.
+# Since DATAFRAMES_MPX_RCM_DISCOUNT_RATE was built from df_euss_am_mpX_home
+# (which now includes v4 cost columns), those columns are already present.
+# This block propagates any remaining columns (REMDB intermediates like
+# row_id_*, *_pm1_euss, *_pm2_euss) into DATAFRAMES_MPX_RCM_DISCOUNT_RATE
+# so they are available for downstream diagnostic/analysis if needed.
+# ============================================================================
+v4_cost_columns_added = []
+for scenario_key in REMDB_COST_SCENARIO_KEYS:
+    # Skip v3 — v3 columns already present from df_euss_am_mpX_home
+    if scenario_key == 'v3':
+        continue
+
+    # Get v4 DataFrame that contains the scenario-specific columns
+    # Use 'upgrade' since it contains both upgrade and replacement columns
+    df_v4_source = CAPITAL_COSTS_MPX['heating']['upgrade'][scenario_key]
+
+    # Identify new columns not yet on df_euss_am_mpX_home (cost columns
+    # are already merged; this picks up REMDB intermediate columns only)
+    base_cols = set(df_euss_am_mpX_home.columns)
+    new_cols = [col for col in df_v4_source.columns if col not in base_cols]
+    v4_cost_columns_added.extend(new_cols)
+
+    # Add these remaining columns to every DataFrame in the dictionary
+    for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
+        for rcm in RCM_MODELS:
+            for col in new_cols:
+                DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm][col] = df_v4_source[col].values
+
+print(f"  v4 cost columns merged into dictionary: {sorted(set(v4_cost_columns_added))}")
+
+print(f"""  
+========================================================================================================
+SCENARIO ANALYSIS: PUBLIC IMPACT
+    - calculate_lifetime_public_impact.py file contains the definition for the calculate_public_npv function.
+    - Additional information on emissions/damage factor lookups as well as marginal damages calculation methods can be found in the public_impact folder. 
+========================================================================================================
+
+Completed Steps:
+1. Calculate the baseline marginal damages for climate and health-related emissions                         [COMPLETED]
+2. Calculate the post-retrofit marginal damages for climate and health-related emissions                    [COMPLETED]
+
+REMAINING STEP:
+Step 3: Discount climate and health impacts and calculate lifetime public impacts (public NPV)
+
+========================================================================================================
+SCENARIO ANALYSIS: PRIVATE IMPACT
+    - calculate_lifetime_private_impact.py file contains the definition for the calculate_private_npv function.
+    - Additional information on fuel price lookups as well as capital costs calculation methods can be found in the private_impact folder.
+========================================================================================================
+
+Completed Steps:
+1. Calculate annual operating (fuel) costs                                                                  [COMPLETED]
+2. Calculate equipment capital costs (For space heating, include ductwork and weatherization (MP9-10))      [COMPLETED]
+3. Calculate replacement cost (replacing existing piece of eqipment with similar technology)                [COMPLETED]
+
+REMAINING STEP:
+Step 4: Calculate net equipment capital costs and private NPV (less WTP and more WTP)
+------------------------------------------------------------------------------------------------------
+
+========================================================================================================
+SCENARIO ANALYSIS: ADOPTION POTENTIAL
+    determine_economic_adoption_potential.py defines economic_adoption_decision.
+    A home is an economic adopter if its private incremental NPV (moreWTP framing) >= 0.
+    Climate and health damages are computed and stored but do not enter the adoption decision.
+    Three adopter columns are produced per call, one per NPV case.
+========================================================================================================
+
+Economic adopter condition (moreWTP >= 0) applied across three NPV cases:
+    heating_only                --> Heating capital; heating savings only
+    heating_and_cooling_savings --> Heating capital; heating + cooling savings
+    heating_and_cooling_full    --> Heating + cooling capital; heating + cooling savings
+
+------------------------------------------------------------------------------------------------------
+
+Cost scenarios to process: {REMDB_COST_SCENARIO_KEYS}
+      
+""")
+
+# %% [markdown]
+# # MEASURE PACKAGE (MPX): 2025 REFERENCE CASE
+
+# %%
+policy_scenario = '2025 Reference Case'
+
+print(f"""
+====================================================================================================================================================================
+MODEL SCENARIO
+====================================================================================================================================================================
+EUSS Measure Package {menu_mp}
+Policy Scenario: {policy_scenario}
+====================================================================================================================================================================
+""")
+
+# %%
+print(f"""  
+====================================================================================================================================================================
+SCENARIO ANALYSIS ({policy_scenario.upper()}): PUBLIC IMPACT 
+====================================================================================================================================================================
+- Private discount rate IS used for storing results, but NOT used for public impact calculations. 
+""")
+
+# Process each discount rate, then each RCM model (matches dictionary structure)
+print("Calculating Public NPV for different RCM models and discount methods ...")
+
+for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
+    # Only used for storing results in the dictionary
+    print(f"Discount Rate: {discount_rate}")
+
+    # Process each RCM model for this discount rate
+    for rcm_model in RCM_MODELS:
+        print(f"  RCM Model: {rcm_model.upper()}")
+
+        # Get the specific DataFrame for this discount rate x RCM combination
+        df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model]
+
+        # Calculates climate, health and combined public NPV for each RCM-CR function sensitivity
+        df = calculate_public_npv(
+            df=df,
+            df_baseline_climate=df_baseline_damages_climate,
+            df_baseline_health=df_baseline_damages_health,
+            df_mp_climate=df_mpX_ref2025_damages_climate,
+            df_mp_health=df_mpX_ref2025_damages_health,
+            menu_mp=menu_mp,
+            policy_scenario=policy_scenario,
+            rcm_model=rcm_model,
+            base_year=2024,
+            verbose=VERBOSE
+        )
+
+        # Update the DataFrame in the dictionary
+        DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model] = df
+
+if PRINT_VERBOSE_DATAFRAMES:
+    print(f"\n{'='*100}")
+    print(f"DATAFRAME FOR MP{menu_mp} AFTER CALCULATING PUBLIC NPV ({policy_scenario.upper()})")
+    print(f"{'='*100}")
+    for rcm_model in RCM_MODELS:
+        print(f"\n--- {rcm_model.upper()} ---")
+        print(DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base'][rcm_model])
+    print()
+
+# %%
+print(f"""
+====================================================================================================================================================================
+SCENARIO ANALYSIS ({policy_scenario.upper()}): PRIVATE IMPACT
+====================================================================================================================================================================
+""")
+
+# Process each cost scenario, then discount rate, then RCM model
+print("Calculating Private NPV for all cost scenarios, RCM models, and discount methods ...")
+
+for cost_scenario_key in REMDB_COST_SCENARIO_KEYS:
+    print(f"\n--- Cost Scenario: {cost_scenario_key} ---")
+
+    for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
+        # Create full discount rate column name
+        discount_rate_col_name = f'private_discount_rate_{discount_rate}'
+        print(f"  Discount Rate: {discount_rate}, Column: {discount_rate_col_name}")
+
+        # Process each RCM model for this discount rate
+        for rcm_model in RCM_MODELS:
+            print(f"    RCM Model: {rcm_model.upper()}")
+
+            # Get the specific DataFrame for this discount rate x RCM combination
+            df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model]
+
+            # One call per (cost_scenario, discount_rate, rcm_model) combination.
+            # calculate_private_npv produces all three NPV case columns in a single call.
+            df = calculate_private_npv(
+                df=df,
+                df_fuel_costs=df_mpX_ref2025_fuel_costs,
+                df_baseline_costs=df_baseline_fuel_costs,
+                menu_mp=menu_mp,
+                input_mp=input_mp,
+                policy_scenario=policy_scenario,
+                discount_rate_col_name=discount_rate_col_name,
+                cost_scenario=cost_scenario_key,
+                base_year=2024,
+                verbose=VERBOSE,
+            )
+
+            # Update the DataFrame back in the dictionary
+            DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model] = df
+
+if PRINT_VERBOSE_DATAFRAMES:
+    print(f"\n{'='*100}")
+    print(f"DATAFRAME FOR MP{menu_mp} AFTER CALCULATING PRIVATE NPV ({policy_scenario.upper()})")
+    print(f"{'='*100}")
+    for rcm_model in RCM_MODELS:
+        print(f"\n--- {rcm_model.upper()} ---")
+        print(DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base'][rcm_model])
+    print()
+
+# %%
+print(f"""
+====================================================================================================
+SCENARIO ANALYSIS ({policy_scenario.upper()}): ADOPTION POTENTIAL
+====================================================================================================
+""")
+
+# Process each cost scenario, then discount rate, then RCM model
+print("Determining Economic Adoption Potential for all cost scenarios, RCM models, and discount methods ...")
+
+for cost_scenario_key in REMDB_COST_SCENARIO_KEYS:
+    print(f"\n--- Cost Scenario: {cost_scenario_key} ---")
+
+    for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
+        # Create full discount rate column name
+        discount_rate_col_name = f'private_discount_rate_{discount_rate}'
+        print(f"  Discount Rate: {discount_rate}, Column: {discount_rate_col_name}")
+
+        # Process each RCM model for this discount rate
+        for rcm_model in RCM_MODELS:
+            print(f"    RCM Model: {rcm_model.upper()}")
+
+            # Get the specific DataFrame for this discount rate x RCM combination
+            df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model]
+
+            duplicate_mask = df.columns.duplicated(keep='first')
+            duplicate_count = duplicate_mask.sum()
+
+            # Diagnostic check BEFORE processing
+            if duplicate_count > 0:
+                duplicate_cols = df.columns[duplicate_mask].unique().tolist()
+                print(f"\n{discount_rate}-{rcm_model}: {duplicate_count} duplicates")
+                print(f"  Columns: {duplicate_cols[:5]}")  # Show first 5
+
+            # One call per (cost_scenario, discount_rate, rcm_model) combination.
+            # economic_adoption_decision applies moreWTP >= 0 across all three NPV cases
+            # in a single call. Climate and health damages remain in the DataFrame for
+            # sensitivity analysis but do not enter the adoption decision.
+            df = economic_adoption_decision(
+                df=df,
+                menu_mp=menu_mp,
+                policy_scenario=policy_scenario,
+                discount_rate_col_name=discount_rate_col_name,
+                cost_scenario=cost_scenario_key,
+                verbose=VERBOSE,
+            )
+
+            # Update the DataFrame back in the dictionary
+            DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model] = df
+
+if PRINT_VERBOSE_DATAFRAMES:
+    print(f"\n{'='*100}")
+    print(f"DATAFRAME FOR MP{menu_mp} AFTER DETERMINING ECONOMIC ADOPTION FEASIBILITY")
+    print("Three adopter columns produced per NPV case:")
+    print("  heating_only, heating_and_cooling_savings, heating_and_cooling_full")
+    print(f"{'='*100}")
+    for rcm_model in RCM_MODELS:
+        print(f"\n--- {rcm_model.upper()} ---")
+        print(DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base'][rcm_model])
+    print()
+
+# %% [markdown]
+# # Model Runtime
+
+# %%
+# Flag to prevent excessive output in other scenario files
+individual_scenario_run = False
+
+# Get the current datetime again
+end_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+# Calculate the elapsed time
+elapsed_time = datetime.strptime(end_time, "%Y-%m-%d_%H-%M-%S") - datetime.strptime(start_time, "%Y-%m-%d_%H-%M-%S")
+
+# Format the elapsed time
+elapsed_seconds = elapsed_time.total_seconds()
+elapsed_minutes = int(elapsed_seconds // 60)
+elapsed_seconds = int(elapsed_seconds % 60)
+
+# Print the elapsed time
+print(f"The code took {elapsed_minutes} minutes and {elapsed_seconds} seconds to execute.")
+
+

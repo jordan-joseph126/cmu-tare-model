@@ -1,8 +1,10 @@
+import os
 import pandas as pd
 import numpy as np
 import re
 from typing import Any, Optional
 
+from config import PROJECT_ROOT
 from cmu_tare_model.constants import EQUIPMENT_SPECS, VALID_CATEGORIES, VERBOSE
 
 from cmu_tare_model.utils.validation_framework import get_valid_calculation_mask
@@ -16,6 +18,35 @@ from cmu_tare_model.utils.calculation_utils import (
 LOAD EUSS/RESSTOCK DATA AND APPLY FILTERS
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 """
+
+# ---------------------------------------------------------------------------
+# County --> GEA region crosswalk (Cambium 2023+ geography)
+# ---------------------------------------------------------------------------
+# NREL redefined GEA regions in Cambium 2023+, so a home's GEA can no longer be
+# taken from the ResStock "in.generation_and_emissions_assessment_region" column
+# (those are the retired "*c" codes). This crosswalk maps each county to its new
+# Cambium GEA, and process_euss_data() uses it to set gea_region.
+#
+# Two read guards, both of which fail silently if skipped:
+#   - The file carries a UTF-8 BOM, so it is read with encoding="utf-8-sig";
+#     otherwise the first column name is corrupted and lookups raise KeyError.
+#   - Leading zeros are already dropped in the file, so the 5-digit FIPS key is
+#     rebuilt with zfill and kept as a string; read as an integer the keys
+#     collide and mis-assign counties.
+_COUNTY_GEA_CROSSWALK_PATH = os.path.join(
+    PROJECT_ROOT, "cmu_tare_model", "data", "projections",
+    "county_to_gea_mapping_cambium23.csv")
+
+_df_county_gea = pd.read_csv(_COUNTY_GEA_CROSSWALK_PATH, encoding="utf-8-sig")
+_df_county_gea["county_fips"] = (
+    _df_county_gea["State FIPS"].astype(str).str.zfill(2)
+    + _df_county_gea["County FIPS"].astype(str).str.zfill(3)
+)
+
+# Map a 5-digit county FIPS string to its new Cambium GEA region.
+COUNTY_TO_GEA = dict(
+    zip(_df_county_gea["county_fips"], _df_county_gea["Cambium GEA"])
+)
 
 
 def extract_city_name(row: str) -> str:
@@ -180,7 +211,6 @@ def df_enduse_refactored(
         'census_division_recs': df_baseline['in.census_division_recs'],
         'building_america_climate_zone': df_baseline['in.building_america_climate_zone'],
         'reeds_balancing_area': df_baseline['in.reeds_balancing_area'],
-        'gea_region': df_baseline['in.generation_and_emissions_assessment_region'],
         'state': df_baseline['in.state'],
         'city': df_baseline['in.city'].apply(extract_city_name),
         'urbanicity': df_baseline['in.puma_metro_status'].apply(map_metro_status),
@@ -199,6 +229,26 @@ def df_enduse_refactored(
         'vacancy_status': df_baseline['in.vacancy_status'],
         'vintage': df_baseline['in.vintage']
     })
+
+    # ===== STEP 1b: Assign the new Cambium GEA region from the county crosswalk =====
+    # ResStock's emissions-assessment region uses the retired "*c" codes, so set
+    # gea_region from the county-to-GEA crosswalk instead. county_fips is the
+    # 5-digit string key. Most counties map directly; a few may not if their FIPS
+    # code changed between the crosswalk vintage and ResStock 2022.1.1.
+    df_enduse['gea_region'] = df_enduse['county_fips'].map(COUNTY_TO_GEA)
+
+    # Flag any homes whose county is not in the crosswalk. We leave the data as
+    # is (no remap) for reproducibility; these homes get NaN gea_region and are
+    # excluded from climate damages via NaN masking downstream.
+    unmapped_gea = df_enduse['gea_region'].isna()
+    if unmapped_gea.any():
+        unmapped_fips = sorted(
+            df_enduse.loc[unmapped_gea, 'county_fips'].dropna().unique())
+        print(
+            f"WARNING: {int(unmapped_gea.sum())} home(s) have no Cambium GEA "
+            f"region (county FIPS not in the crosswalk): {unmapped_fips}. "
+            f"Climate damages for these homes will be NaN."
+        )
 
     # ===== STEP 2: Conditionally add category-specific columns =====
     

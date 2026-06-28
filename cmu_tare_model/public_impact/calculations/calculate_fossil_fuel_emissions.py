@@ -2,9 +2,9 @@ import pandas as pd
 from typing import Dict, Optional
 
 from cmu_tare_model.constants import POLLUTANTS, EQUIPMENT_SPECS, VERBOSE
-from cmu_tare_model.utils.hdd_consumption_utils import (
+from cmu_tare_model.utils.degree_day_consumption_utils import (
     get_hdd_factor_for_year,
-    apply_hdd_adjustment
+    apply_degree_day_adjustment
 )
 from cmu_tare_model.utils.validation_framework import (
     get_retrofit_homes_mask,
@@ -63,10 +63,16 @@ def calculate_fossil_fuel_emissions(
         # Prepare HDD factor for the year
         hdd_factor = get_hdd_factor_for_year(df, year_label)
 
-        # Determine applicable fuels for this category
-        fuels = ['naturalGas', 'propane']
-        if category not in ['cooking', 'clothesDrying']:
-            fuels.append('fuelOil')
+        # Determine applicable fuels for this category. Cooling is always
+        # electric, so it has no fossil fuel consumption and contributes zero
+        # fossil emissions (the series stay at their initialized zeros).
+        if category == 'cooling':
+            fuels = []
+        else:
+            fuels = ['naturalGas', 'propane']
+            # Fuel oil is not used for cooking or clothes drying.
+            if category not in ['cooking', 'clothesDrying']:
+                fuels.append('fuelOil')
 
         for fuel in fuels:
             consumption_col = f'base_{fuel}_{category}_consumption'
@@ -77,7 +83,9 @@ def calculate_fossil_fuel_emissions(
             fuel_consumption = df[consumption_col].fillna(0)
 
             # Apply HDD adjustment (only affects 'heating' category)
-            fuel_consumption = apply_hdd_adjustment(fuel_consumption, category, hdd_factor)
+            fuel_consumption = apply_degree_day_adjustment(
+                fuel_consumption, category, hdd_factor=hdd_factor
+            )
 
             # Compute emissions for each pollutant
             for pollutant in POLLUTANTS:
