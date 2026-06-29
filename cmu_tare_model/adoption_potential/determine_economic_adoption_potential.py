@@ -84,7 +84,7 @@ def economic_adoption_decision(
 
     # scenario_prefix converts (menu_mp, policy_scenario) -> the column-name prefix
     # (e.g., 'ref2025_mp3').  Never hardcode 'mp3' or 'ref2025' directly.
-    scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
+    scenario_prefix, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
     method_suffix = PRIVATE_DISCOUNTING_METHOD_SUFFIXES[discount_rate_col_name]
 
     # Every NPV case is a heat-pump retrofit of the heating system, so the

@@ -68,7 +68,7 @@ CLIMATE CHANGE IMPACT SENSITIVITY: SCC LOOKUP
 """)
 
 filename = 'scc_climate_impact_sensitivity.xlsx'
-relative_path = os.path.join("cmu_tare_model", "data", "marginal_social_costs", filename)
+relative_path = os.path.join("cmu_tare_model", "data", "projections", filename)
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 df_climate_impact_scc = pd.read_excel(io=file_path, sheet_name='scc_bounds')
 

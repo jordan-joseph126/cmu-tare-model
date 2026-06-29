@@ -94,7 +94,7 @@ def calculate_lifetime_climate_impacts(
     lifetime_columns_data = {}
 
     # Retrieve scenario-specific params for electricity/fossil-fuel emissions
-    scenario_prefix, cambium_scenario, lookup_emissions_fossil_fuel, lookup_emissions_electricity_climate, _, _ = define_scenario_params(menu_mp, policy_scenario)
+    scenario_prefix, cambium_scenario, lookup_emissions_fossil_fuel, lookup_emissions_electricity_climate, _ = define_scenario_params(menu_mp, policy_scenario)
 
     # Initialize dictionary to track columns for masking verification by category
     all_columns_to_mask = {category: [] for category in EQUIPMENT_SPECS}

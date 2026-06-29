@@ -288,7 +288,7 @@ def create_combined_heating_cooling_col(
 
 
 # =============================================================================
-# PUBLIC IMPACT: CLIMATE & HEALTH NPV COLUMNS
+# PUBLIC IMPACT: CLIMATE NPV COLUMNS
 # =============================================================================
 
 def create_climate_npv_col(
@@ -313,55 +313,55 @@ def create_climate_npv_col(
     return f'{scenario_prefix}{category}_climate_npv_{scc_assumption}'
 
 
-def create_health_npv_col(
-    scenario_prefix: str,
-    category: str,
-    rcm_model: str,
-    cr_function: str) -> str:
-    """Build health NPV column name.
+# def create_health_npv_col(
+#     scenario_prefix: str,
+#     category: str,
+#     rcm_model: str,
+#     cr_function: str) -> str:
+#     """Build health NPV column name.
     
-    Args:
-        scenario_prefix: Scenario prefix (e.g., 'iraRef_mp3_').
-        category: Equipment category (e.g., 'heating').
-        rcm_model: RCM model ('ap2', 'easiur', 'inmap').
-        cr_function: Concentration-response function ('acs', 'h6c').
+#     Args:
+#         scenario_prefix: Scenario prefix (e.g., 'iraRef_mp3_').
+#         category: Equipment category (e.g., 'heating').
+#         rcm_model: RCM model ('ap2', 'easiur', 'inmap').
+#         cr_function: Concentration-response function ('acs', 'h6c').
     
-    Returns:
-        Column name string.
+#     Returns:
+#         Column name string.
     
-    Examples:
-        >>> create_health_npv_col('iraRef_mp3_', 'heating', 'inmap', 'acs')
-        'iraRef_mp3_heating_health_npv_inmap_acs'
-    """
-    return f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
+#     Examples:
+#         >>> create_health_npv_col('iraRef_mp3_', 'heating', 'inmap', 'acs')
+#         'iraRef_mp3_heating_health_npv_inmap_acs'
+#     """
+#     return f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
 
 
-def create_public_npv_col(
-    scenario_prefix: str,
-    category: str,
-    scc_assumption: str,
-    rcm_model: str,
-    cr_function: str) -> str:
-    """Build combined public NPV column name.
+# def create_public_npv_col(
+#     scenario_prefix: str,
+#     category: str,
+#     scc_assumption: str,
+#     rcm_model: str,
+#     cr_function: str) -> str:
+#     """Build combined public NPV column name.
     
-    Combines climate and health NPV with all sensitivity parameters.
+#     Combines climate and health NPV with all sensitivity parameters.
     
-    Args:
-        scenario_prefix: Scenario prefix (e.g., 'iraRef_mp3_').
-        category: Equipment category (e.g., 'heating').
-        scc_assumption: SCC assumption ('lower', 'central', 'upper').
-        rcm_model: RCM model ('ap2', 'easiur', 'inmap').
-        cr_function: Concentration-response function ('acs', 'h6c').
+#     Args:
+#         scenario_prefix: Scenario prefix (e.g., 'iraRef_mp3_').
+#         category: Equipment category (e.g., 'heating').
+#         scc_assumption: SCC assumption ('lower', 'central', 'upper').
+#         rcm_model: RCM model ('ap2', 'easiur', 'inmap').
+#         cr_function: Concentration-response function ('acs', 'h6c').
     
-    Returns:
-        Column name string.
+#     Returns:
+#         Column name string.
     
-    Examples:
-        >>> create_public_npv_col('iraRef_mp3_', 'heating', 'central', 'inmap', 'acs')
-        'iraRef_mp3_heating_public_npv_central_inmap_acs'
-    """
+#     Examples:
+#         >>> create_public_npv_col('iraRef_mp3_', 'heating', 'central', 'inmap', 'acs')
+#         'iraRef_mp3_heating_public_npv_central_inmap_acs'
+#     """
 
-    return f'{scenario_prefix}{category}_public_npv_{scc_assumption}_{rcm_model}_{cr_function}'
+#     return f'{scenario_prefix}{category}_public_npv_{scc_assumption}_{rcm_model}_{cr_function}'
 
 
 def create_lifetime_damages_col(

@@ -1,7 +1,6 @@
 # import functions.tare_setup as tare_setup
 from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_fossil_fuel import lookup_emissions_fossil_fuel
 from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_electricity_climate import lookup_emissions_electricity_climate
-from cmu_tare_model.public_impact.data_processing.create_lookup_emissions_electricity_health import lookup_emissions_electricity_health
 from cmu_tare_model.private_impact.data_processing.create_lookup_fuel_prices import lookup_fuel_prices_aeo2026
 from typing import Tuple, Dict
 
@@ -11,7 +10,7 @@ def define_scenario_params(
     menu_mp: int,
     policy_scenario: str = "2025 Reference Case",
     verbose: bool = VERBOSE
-) -> Tuple[str, str, Dict, Dict, Dict, Dict]:
+) -> Tuple[str, str, Dict, Dict, Dict]:
     """
     Define scenario-specific params based on a measure package.
 
@@ -32,7 +31,6 @@ def define_scenario_params(
             str: cambium_scenario ('MidCase')
             dict: lookup_emissions_fossil_fuel
             dict: lookup_emissions_electricity_climate
-            dict: lookup_emissions_electricity_health
             dict: lookup_fuel_prices_aeo2026
 
     Raises:
@@ -52,7 +50,6 @@ def define_scenario_params(
         "MidCase",
         lookup_emissions_fossil_fuel,
         lookup_emissions_electricity_climate,
-        lookup_emissions_electricity_health,
         lookup_fuel_prices_aeo2026,
     )
 

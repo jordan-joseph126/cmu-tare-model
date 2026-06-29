@@ -170,8 +170,8 @@ def calculate_private_npv(
     all_columns_to_mask = {category: [] for category in EQUIPMENT_SPECS}
 
     # Determine the scenario prefix based on the policy scenario
-    scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
-        
+    scenario_prefix, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
+
     # Calculate the maximum lifetime across all equipment to determine how many years to pre-calculate
     max_lifetime = max(EQUIPMENT_SPECS.values())
 

@@ -41,7 +41,7 @@ def validate_damage_dataframes(
             - Boolean indicating if the DataFrames are valid
             - List of warning/error messages
     """
-    scenario_prefix, _, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
+    scenario_prefix, _, _, _, _ = define_scenario_params(menu_mp, policy_scenario)
     messages = []
     
     # Track column existence for each DataFrame

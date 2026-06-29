@@ -23,7 +23,8 @@ REMDB v3 methodology:
 REMDB v4 methodology:
     - Regression-based: Material_Price = (pm1 * pm1_coef) + (pm2 * pm2_coef) + intercept
     - Installed_Cost = (Material_Price * multiplier) + adder
-    - Costs already in 2023$ (no CPI adjustment needed)
+    - Regression coefficients are published in 2023$; the public API inflates
+      the result to the model reference year (USD2025) via cpi_ratio_2025_2023
     - PREREQUISITE: Call add_remdb_upgrade_metrics() first to prepare pm1/pm2 columns
 
 Consolidates:
@@ -55,6 +56,7 @@ from cmu_tare_model.utils.calculation_utils import (
     filter_valid_tech_homes,
     sample_costs_from_distributions
 )
+from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2025_2023
 
 
 # ========================================================================================================================================================================
@@ -120,6 +122,10 @@ def calculate_upgrade_installed_cost(
     # ===== STEP 3 & 4: Route to appropriate calculation method =====
     if method == 'remdb_v4':
         installed_cost = _calculate_v4_upgrade(df_detailed, end_use, percentile)
+        # The REMDB v4 regression returns costs in 2023 dollars. Inflate to the
+        # model reference year so capital costs share the same USD2025 basis as
+        # the incomes, fuel costs, and rebates used elsewhere in the model.
+        installed_cost = installed_cost * cpi_ratio_2025_2023
     else:
         # REMDB v3 requires cost_dict
         if cost_dict is None:

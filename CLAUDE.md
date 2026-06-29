@@ -206,6 +206,8 @@ add a new row marked "supersedes" and keep the old row.
 | Mean economic adoption rate (heating only) | 20.8% | 20.5% | Pre-AEO2026 | Round 3 |
 | Operating-cost % symmetric norm | ±81.4% | (shared) | Pre-AEO2026 | Round 3 |
 | Demand GWh symmetric norm | ±1038.3 GWh | (shared) | Pre-AEO2026 | Round 3 |
+| LMI eligibility share, single-family (NHGIS-2022 PUMA AMI; bins USD2022->23) | 71.6% | (shared) | Pre-USD2025 | superseded by Session 1e |
+| LMI eligibility share, single-family (ACS-2024 county AMI; bins USD2018->25) | 62.4% | (shared) | USD2025 | Session 1e (28 Jun 2026) |
 
 ---
 
@@ -219,6 +221,7 @@ add a new row marked "supersedes" and keep the old row.
 | Session 2 | 16 Jun 2026 | NPV import fix; three NPV cases; tiered adoption deprecated; econ adopter columns for all three cases |
 | Session 1c | 23 Jun 2026 | EIA fetch functions extracted to `eia_api_utils.py`; notebook has zero inline `def` statements |
 | Session 1d | 23 Jun 2026 | PEP 8 cleanup: E221/E241 padding, E501 long lines, named API dicts, plain-language comments |
+| Session 1e | 28 Jun 2026 | Income/rebate/capital to USD2025: ANCHOR_YEAR centralized; REMDB v4 costs inflated 2023->2025; income source swapped to ACS-2024 B19013 (PUMA dropped, county->state); rebate bins repointed USD2018->2025; BLS CPI read fixed; LMI share 71.6%->62.4% |
 
 ---
 

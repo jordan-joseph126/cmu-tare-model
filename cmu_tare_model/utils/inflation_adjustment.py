@@ -15,22 +15,23 @@ from config import PROJECT_ROOT
 # - Base Period:	1982-84=100
 # ==============================================================================================================================================================================
 
-# C:\Users\14128\Research\cmu-tare-model\cmu_tare_model\data\inflation_data\bls_cpiu_2005-2023.xlsx# Load the BLS Inflation Data
+# Load the BLS Inflation Data
 filename = 'bls_cpiu_2005-2025.xlsx'
 relative_path = os.path.join("cmu_tare_model", "data", "inflation_data", filename)
 file_path = os.path.join(PROJECT_ROOT, relative_path)
 
-print(f"Retrieved data for filename: {filename}")
-print(f"Located at filepath: {file_path}")
-
-# Create a pandas dataframe
-df_bls_cpiu = pd.read_excel(file_path, sheet_name='bls_cpiu')
+# Create a pandas dataframe.
+# The workbook is the raw BLS export: a single sheet named 'BLS Data Series'
+# with 11 rows of series metadata above the 'Year' / 'Annual' table, so the
+# header row is read from position 11.
+df_bls_cpiu = pd.read_excel(
+    file_path, sheet_name='BLS Data Series', header=11
+)
 
 df_bls_cpiu = pd.DataFrame({
     'year': df_bls_cpiu['Year'],
     'cpiu_annual': df_bls_cpiu['Annual']
 })
-print(df_bls_cpiu)
 
 # Obtain the Annual CPIU values for the years of interest
 bls_cpi_annual_2008 = df_bls_cpiu['cpiu_annual'].loc[(df_bls_cpiu['year'] == 2008)].item()

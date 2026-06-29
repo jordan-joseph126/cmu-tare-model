@@ -99,7 +99,7 @@ def calculate_lifetime_fuel_costs(
             raise KeyError(f"Required columns missing from input dataframe: {', '.join(missing_columns)}")
 
         # Determine the scenario prefix and fuel price lookup based on menu_mp and policy_scenario
-        scenario_prefix, _, _, _, _, lookup_fuel_prices = define_scenario_params(
+        scenario_prefix, _, _, _, lookup_fuel_prices = define_scenario_params(
             menu_mp=menu_mp,
             policy_scenario=policy_scenario
         )

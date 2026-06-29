@@ -160,8 +160,12 @@ SCC_ASSUMPTIONS = [
 # =============================================================
 # CONSTANTS: TARE MODEL - PRIVATE PERSPECTIVE CALCULATIONS
 # =============================================================
-# DOLLAR_YEAR = 2023
-# INFLATION_ADJUSTED_USD = f'USD{DOLLAR_YEAR}'
+# Reference dollar year for all private-perspective figures. Income, REMDB
+# capital costs, and fuel prices are each inflated from their own source year
+# to this year so every dollar value is directly comparable. Defined here so
+# the reference year lives in exactly one place rather than as scattered
+# literals.
+ANCHOR_YEAR = 2025
 # FUEL_PRICE_ASSUMPTIONS = ['lower', 'central', 'upper']
 
 # Discount rate constants (centralized for easy modification)

@@ -4,7 +4,7 @@ from scipy.stats import norm
 from typing import Dict, List, Optional, Tuple, Union, Callable
 
 from cmu_tare_model.constants import REBATE_MAPPING, REBATE_ELIGIBLE_HEATING_MPS, VERBOSE
-from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2023_2022
+from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2025_2018
 from cmu_tare_model.utils.column_names import (
     create_cost_col,
     create_rebate_col,
@@ -18,10 +18,8 @@ from cmu_tare_model.utils.validation_framework import (
 )
 
 from cmu_tare_model.private_impact.data_processing.process_income_data_for_rebates import (
-    df_puma_medianIncome,
-    df_county_medianIncome, 
+    df_county_medianIncome,
     df_state_medianIncome,
-    cpi_ratio_2023_2022
 )
 
 """
@@ -32,74 +30,72 @@ FUNCTIONS: AMI AND INCOME GROUP DESIGNATION FOR REBATE ELIGIBILITY
 """
 
 
-def generate_household_medianIncome_2023(row: pd.Series) -> float:
+def generate_household_medianIncome_2025(row: pd.Series) -> float:
     """
-    Generate a household median income value for 2023 using a probabilistic approach.
-    
+    Generate a household median income value in USD2025 using a probabilistic
+    approach.
+
     Samples from a normal distribution based on income range bounds, then
     ensures the final value remains within the valid income range.
-    
+
     Args:
         row: DataFrame row containing income_low, income_high, and income values
-        
+
     Returns:
-        float: Generated median income value in 2023 dollars
+        float: Generated median income value in 2025 dollars
     """
-    # Inflate the income bins to USD 2023 first
-    low = row['income_low'] * cpi_ratio_2023_2022
-    high = row['income_high'] * cpi_ratio_2023_2022
-    mean = row['income'] * cpi_ratio_2023_2022
-    
+    # The ResStock household-income bins are reported in USD2018, so inflate
+    # them to the model reference year (USD2025) before sampling.
+    low = row['income_low'] * cpi_ratio_2025_2018
+    high = row['income_high'] * cpi_ratio_2025_2018
+    mean = row['income'] * cpi_ratio_2025_2018
+
     # Calculate std assuming 10th and 90th percentiles
     std = (high - low) / (norm.ppf(0.90) - norm.ppf(0.10))
-    
+
     # Sample from the normal distribution
-    ami_2023 = np.random.normal(loc=mean, scale=std)
-    
+    ami_2025 = np.random.normal(loc=mean, scale=std)
+
     # Ensure the generated income is within the bounds
-    ami_2023 = max(low, min(high, ami_2023))
-    return ami_2023
+    ami_2025 = max(low, min(high, ami_2025))
+    return ami_2025
 
 
 def fill_na_with_hierarchy(
-        df: pd.DataFrame, 
-        df_puma: pd.DataFrame, 
-        df_county: pd.DataFrame, 
+        df: pd.DataFrame,
+        df_county: pd.DataFrame,
         df_state: pd.DataFrame) -> pd.DataFrame:
     """
-    Fills NaN values in 'census_area_medianIncome' using a hierarchical lookup:
-    first using the Puma level, then county, and finally state level median incomes.
+    Fills 'census_area_medianIncome' using a two-level lookup: county-level
+    median income first, then state-level for any county that does not match.
+
+    Connecticut is the main reason a county can miss the county-level join. The
+    Census switched Connecticut from its legacy counties (FIPS 09001-09015) to
+    nine planning regions (09110-09190), but ResStock still uses the legacy
+    county codes. Those codes do not exist in the current ACS file, so
+    Connecticut homes fall through to the state-level value. This is expected,
+    not a data error.
 
     Args:
-        df: The main DataFrame with NaNs to fill
-        df_puma: DataFrame with median incomes at the Puma level
+        df: The main DataFrame with area median income to fill
         df_county: DataFrame with median incomes at the county level
         df_state: DataFrame with median incomes at the state level
-    
+
     Returns:
-        DataFrame: Modified DataFrame with NaNs filled in 'census_area_medianIncome'
+        DataFrame: Modified DataFrame with 'census_area_medianIncome' filled
     """
-    # First, attempt to fill using Puma-level median incomes
-    df['census_area_medianIncome'] = df['puma'].map(
-        df_puma.set_index('gis_joinID_puma')['median_income_USD2023']
+    # Fill using county-level median incomes first.
+    df['census_area_medianIncome'] = df['county'].map(
+        df_county.set_index('gis_joinID_county')['median_income_USD2025']
     )
 
-    # Find the rows where 'census_area_medianIncome' is NaN
+    # Any county that did not match (notably Connecticut, see above) falls
+    # back to the state-level median income.
     nan_mask = df['census_area_medianIncome'].isna()
-
-    # Attempt to fill NaNs using county-level median incomes
-    df.loc[nan_mask, 'census_area_medianIncome'] = df.loc[nan_mask, 'county'].map(
-        df_county.set_index('gis_joinID_county')['median_income_USD2023']
-    )
-
-    # Update the NaN mask after attempting to fill with county-level data
-    nan_mask = df['census_area_medianIncome'].isna()
-
-    # Attempt to fill remaining NaNs using state-level median incomes
     df.loc[nan_mask, 'census_area_medianIncome'] = df.loc[nan_mask, 'state'].map(
-        df_state.set_index('state_abbrev')['median_income_USD2023']
+        df_state.set_index('state_abbrev')['median_income_USD2025']
     )
-    
+
     return df
 
 
@@ -172,18 +168,17 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame, random_seed: int = 42) -
     # being processed — critical for MP4 vs MP8 result consistency.
     np.random.seed(random_seed)
     
-    # Apply the generate_household_medianIncome_2023 function
-    df_results_IRA['household_income'] = df_results_IRA.apply(generate_household_medianIncome_2023, axis=1)
+    # Apply the generate_household_medianIncome_2025 function
+    df_results_IRA['household_income'] = df_results_IRA.apply(generate_household_medianIncome_2025, axis=1)
 
     # Drop the intermediate columns
     df_results_IRA.drop(['income_low', 'income_high'], axis=1, inplace=True)
 
-    # Fill NaNs in 'census_area_medianIncome' with the hierarchical lookup
-    # Attempt to match median income for puma, then county, then state
+    # Fill 'census_area_medianIncome' with the hierarchical lookup:
+    # match county-level median income first, then state-level.
     df_results_IRA = fill_na_with_hierarchy(
-        df_results_IRA, 
-        df_puma=df_puma_medianIncome, 
-        df_county=df_county_medianIncome, 
+        df_results_IRA,
+        df_county=df_county_medianIncome,
         df_state=df_state_medianIncome
     )
 
