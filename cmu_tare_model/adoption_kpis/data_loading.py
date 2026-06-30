@@ -56,12 +56,12 @@ FUEL_PRICES_PATH: str = os.path.join(
 )
 
 SHAPEFILE_PATH: str = os.path.join(
-    PROJECT_ROOT, "cmu_tare_model", "data", "electricity_ng_price_ratio",
-    "nhgis0011_shapefile_tl2015_us_state_2015", "US_state_2015.shp"
+    PROJECT_ROOT, "cmu_tare_model", "data", "shapefiles",
+    "tl_2025_us_state", "tl_2025_us_state.shp"
 )
 
 COUNTY_SHAPEFILE_PATH: str = os.path.join(
-    PROJECT_ROOT, "cmu_tare_model", "data", "electricity_ng_price_ratio",
+    PROJECT_ROOT, "cmu_tare_model", "data", "shapefiles",
     "tl_2025_us_county", "tl_2025_us_county.shp"
 )
 # Source: US Census Bureau TIGER/Line 2025 county boundaries.

@@ -278,7 +278,7 @@ TEST_FIPS      : {TEST_FIPS}
 # %%
 # County shapefile path (separate from the state-level SHAPEFILE_PATH)
 COUNTY_SHAPEFILE_PATH: str = os.path.join(
-    PROJECT_ROOT, "cmu_tare_model", "data", "electricity_ng_price_ratio",
+    PROJECT_ROOT, "cmu_tare_model", "data", "shapefiles",
     "tl_2025_us_county", "tl_2025_us_county.shp"
 )
 
