@@ -35,7 +35,6 @@ from config import PROJECT_ROOT
 # Model constants - explicit imports for clarity
 from cmu_tare_model.constants import (
     VERBOSE,
-    RCM_MODELS,
     SCC_ASSUMPTIONS,
     REMDB_COST_SCENARIO_KEYS,
     VALID_MENU_MPS,
@@ -92,7 +91,6 @@ Model Run Timestamp: {model_run_date_time}
 Active Measure Packages: {VALID_MENU_MPS}
 Active Capital Cost Scenarios: {REMDB_COST_SCENARIO_KEYS}
 Active SCC Assumptions: {SCC_ASSUMPTIONS}
-Active RCM Models: {RCM_MODELS}
 Active Discount Rates: {PRIVATE_DISCOUNT_RATE_SHORT_KEYS}
 
 Note: DataFrames contain columns for ALL active cost scenarios.
@@ -267,7 +265,6 @@ else:
     mp = 8
     scenario_prefix = f'ref2025_mp{mp}_'
     category = 'heating'
-    rcm_model = 'inmap'
     discount_rate = 'fixed_base'
     cost_scenario = 'v4MID'  # Default cost scenario for visualization
     lower_percentile = 0.5
@@ -284,9 +281,8 @@ else:
 
     print(f"""
 ===== FIGURE 7: CLIMATE BENEFIT IMPACT ON RETROFIT ADOPTION POTENTIAL (TIER 3) =====
-- Retrofit Scenarios: {scenario_prefix} 
+- Retrofit Scenarios: {scenario_prefix}
 - Discount Rate: {discount_rate}
-- RCM Model where the dataframe is stored (not included in climate NPV): {rcm_model}
 - Cost Scenario: {cost_scenario}
 - Categories: {category}
 
@@ -302,13 +298,13 @@ Column names:
     fig_heating_climate_scc_FIXED_BASE = create_subplot_grid_histogram(
         dataframes=[
             # Private NPV
-            DATAFRAMES_BY_MP[8][discount_rate][rcm_model], 
-            # Climate NPV Lower (Total NPV with climate benefits only) 
-            DATAFRAMES_BY_MP[8][discount_rate][rcm_model],
+            DATAFRAMES_BY_MP[8][discount_rate],
+            # Climate NPV Lower (Total NPV with climate benefits only)
+            DATAFRAMES_BY_MP[8][discount_rate],
             # Climate NPV Central (Total NPV with climate benefits only)
-            DATAFRAMES_BY_MP[8][discount_rate][rcm_model],
+            DATAFRAMES_BY_MP[8][discount_rate],
             # Climate NPV Upper (Total NPV with climate benefits only)
-            DATAFRAMES_BY_MP[8][discount_rate][rcm_model]
+            DATAFRAMES_BY_MP[8][discount_rate]
             ],
         subplot_positions=[(0, 0), (0, 1), (0, 2), (0, 3)],  # 1x4 grid
         x_cols=[
@@ -340,7 +336,7 @@ Column names:
     )
 
     print_positive_percentages_complete(
-        df=DATAFRAMES_BY_MP[8][discount_rate][rcm_model], 
+        df=DATAFRAMES_BY_MP[8][discount_rate],
         column_names=[
             private_npv_col,
             climate_npv_lower,

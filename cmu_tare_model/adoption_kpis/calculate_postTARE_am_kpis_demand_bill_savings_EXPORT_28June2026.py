@@ -226,7 +226,7 @@ if PRINT_DEBUG:
 
     for mp in selected_mps:
         print(f"\n===== County sample size distribution - {HEATING_MP_SUBTITLES.get(mp, f'MP{mp}')} =====")
-        df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
+        df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']
 
         county_counts = df_tare.groupby('county').size()
 
@@ -252,7 +252,7 @@ bill_savings_results = {}
 
 for mp in selected_mps:
     print(f"\n===== {HEATING_MP_SUBTITLES.get(mp, f'MP{mp}')} =====")
-    df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
+    df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']
     baseline_col = 'baseline_heating_lifetime_fuel_cost'
     retrofit_col = f'iraRef_mp{mp}_heating_lifetime_fuel_cost'
     # Per-home direct percent change: (retrofit − baseline) / baseline × 100
@@ -436,12 +436,11 @@ print(f"{'='*60}")
 adoption_rate_results = {}
 for mp in selected_mps:
     print(f"===== {HEATING_MP_SUBTITLES.get(mp, f'MP{mp}') } =====")
-    df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
+    df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']
     adoption_col = find_adoption_column(
         df_tare, mp=mp,
         cost_scenario=_ADOPTION_COST_SCENARIO,
         discount_rate_key='fixed_base',
-        rcm_model_key='inmap',
     )
     print(f"  Adoption column: {adoption_col}")
     df_adopt = compute_adoption_rate(
@@ -523,18 +522,18 @@ _DISCOUNT_COL = 'private_discount_rate_fixed_base'
 _COST = 'v4MID'
 
 # Generate economic-adopter columns for both HVAC replacement scenarios AND
-# both policy scenarios. After this cell, all four columns exist in inmap:
+# both policy scenarios. After this cell, all four columns exist in the frame:
 #   preIRA_mp{mp}_heating_econ_adopter_moreWTP_v4MID_fixed_base
 #   preIRA_mp{mp}_heating_and_cooling_econ_adopter_moreWTP_v4MID_fixed_base
 #   iraRef_mp{mp}_heating_econ_adopter_moreWTP_v4MID_fixed_base
 #   iraRef_mp{mp}_heating_and_cooling_econ_adopter_moreWTP_v4MID_fixed_base
 # The dot-plot cell is pure-read — no economic_adoption_decision calls inside it.
 for mp in selected_mps:
-    df_inmap = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
+    df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']
     for policy in ['No Inflation Reduction Act', 'AEO2023 Reference Case']:
         for hvac_scenario in ['heating', 'heating_and_cooling']:
             df_econ = economic_adoption_decision(
-                df_inmap,
+                df_tare,
                 menu_mp=mp,
                 policy_scenario=policy,
                 discount_rate_col_name=_DISCOUNT_COL,
@@ -543,20 +542,20 @@ for mp in selected_mps:
                 verbose=False,
             )
             # Copy only newly created columns back into the canonical frame.
-            new_cols = [c for c in df_econ.columns if c not in df_inmap.columns]
+            new_cols = [c for c in df_econ.columns if c not in df_tare.columns]
             for col in new_cols:
-                DATAFRAMES_BY_MP[mp]['fixed_base']['inmap'][col] = df_econ[col]
+                DATAFRAMES_BY_MP[mp]['fixed_base'][col] = df_econ[col]
             if new_cols:
                 print(f"[OK] MP{mp} | {policy[:6]} | {hvac_scenario}: {new_cols}")
 
-print("\n[DONE] All 4 econ-adopter columns added to inmap for all selected MPs")
+print("\n[DONE] All 4 econ-adopter columns added for all selected MPs")
 
 
 # %%
 # Econ column probe — gated behind PRINT_DEBUG flag.
 if PRINT_DEBUG:
     mp = selected_mps[0]
-    econ_cols = [c for c in DATAFRAMES_BY_MP[mp]['fixed_base']['inmap'].columns if 'econ_adopter' in c]
+    econ_cols = [c for c in DATAFRAMES_BY_MP[mp]['fixed_base'].columns if 'econ_adopter' in c]
     print(econ_cols)
 
 # %%
@@ -576,7 +575,7 @@ for mp in selected_mps:
     # Count homes where the heat pump pays for itself (econ_adopter == 1.0).
     # adopter_tiers=[True] selects 1.0 (adopter) vs 0.0 (non-adopter).
     # NaN rows (excluded homes) are automatically ignored by compute_adoption_rate.
-    df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
+    df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']
     prefix = define_scenario_params(mp, _POLICY)[0]
     adoption_col = f'{prefix}heating_econ_adopter_moreWTP_{_ADOPTION_COST_SCENARIO}_fixed_base'
     print(f'  Adoption column: {adoption_col}')
@@ -634,20 +633,17 @@ else:
 # =============================================================================
 # ADOPTION POTENTIAL PARAMETERS (base-case defaults)
 # =============================================================================
-# These mirror the upstream TARE pipeline settings. The column name convention
-# encodes all parameters: e.g. 'iraRef_mp3_heating_adoption_central_inmap_acs_v4MID_fixed_base'
+# These mirror the upstream TARE pipeline settings. The economic-adopter column
+# name convention encodes these parameters: e.g.
+# 'iraRef_mp3_heating_econ_adopter_moreWTP_v4MID_fixed_base'
 #
 # Only change these if running a sensitivity analysis. For the paper's
 # primary results, these are the correct values.
 
-scc = 'central'                          # Social cost of carbon estimate
-rcm_model = 'inmap'                      # Reduced-complexity model (InMAP)
-cr_function = 'acs'                      # Concentration-response function (ACS)
 cost_scenario = 'v4MID'                  # REMDB v4 midpoint cost scenario
 discount_rate = 'fixed_base'             # 7% fixed discount rate
 hvac_replacement_scenario = 'heating'    # Case A: Heating Only
 
-print(f"  SCC: {scc}, RCM: {rcm_model}, CR: {cr_function}")
 print(f"  Cost: {cost_scenario}, Discount: {discount_rate}")
 print(f"  HVAC scenario: {hvac_replacement_scenario}")
 print(f"  Measure packages: {HEATING_MEASURE_PACKAGES}")
@@ -751,7 +747,7 @@ if not HEATING_MEASURE_PACKAGES:
     print("No active heating measure packages — skipping economic adoption dotplot.")
 else:
     # Compute national fuel counts (same method as tier dotplot)
-    _src = DATAFRAMES_BY_MP[HEATING_MEASURE_PACKAGES[0]][discount_rate][rcm_model]
+    _src = DATAFRAMES_BY_MP[HEATING_MEASURE_PACKAGES[0]][discount_rate]
     fuel_counts_millions = {
         str(fuel): int(n) * 242 / 1_000_000
         for fuel, n in _src.groupby('base_heating_fuel', observed=True).size().items()
@@ -773,7 +769,7 @@ else:
         panel_title = (
             f'{HEATING_MP_SUBTITLES.get(mp, f"MP{mp}")}'
         )
-        source_df = DATAFRAMES_BY_MP[mp][discount_rate][rcm_model]
+        source_df = DATAFRAMES_BY_MP[mp][discount_rate]
 
         plot_df = _build_econ_plot_df(
             source_df, mp,
@@ -865,7 +861,7 @@ else:
 # Verify WTP columns and print summary statistics
 # =============================================================================
 for mp in selected_mps:
-    df_check = DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']
+    df_check = DATAFRAMES_BY_MP[mp]['fixed_base']
     col_pre = f'preIRA_mp{mp}_heating_private_npv_moreWTP_v4MID_fixed_base'
     col_ira = f'iraRef_mp{mp}_heating_private_npv_moreWTP_v4MID_fixed_base'
     assert col_pre in df_check.columns, f"Not found: {col_pre}"
@@ -909,7 +905,7 @@ _npv_titles     = []
 _npv_positions  = []
 
 for _i, _mp in enumerate(selected_mps):
-    _df_mp   = DATAFRAMES_BY_MP[_mp]['fixed_base']['inmap']
+    _df_mp   = DATAFRAMES_BY_MP[_mp]['fixed_base']
     _col_pre = f'preIRA_mp{_mp}_heating_private_npv_moreWTP_v4MID_fixed_base'
     _col_ira = f'iraRef_mp{_mp}_heating_private_npv_moreWTP_v4MID_fixed_base'
     _label   = HEATING_MP_SUBTITLES.get(_mp, f'MP{_mp}')
@@ -952,7 +948,7 @@ for _ax_idx, (_pos, _mp, _col) in enumerate(
             [_mp for _mp in selected_mps for _ in range(2)],
             _npv_cols)):
     _ax    = _ax_list[_ax_idx]
-    _df_mp = DATAFRAMES_BY_MP[_mp]['fixed_base']['inmap']
+    _df_mp = DATAFRAMES_BY_MP[_mp]['fixed_base']
     _df_pa = _df_mp[_df_mp['state'] == 'PA']
 
     _nat_med  = _df_mp[_col].median()

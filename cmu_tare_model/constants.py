@@ -81,19 +81,6 @@ VALID_MENU_MPS = [
     # 10
     ]
 
-# InMAP-ACS is considered our base case
-CR_FUNCTIONS = [
-    'acs',
-    # 'h6c'
-    ]
-
-# InMAP-ACS sensitivity is considered our base case.
-RCM_MODELS = [
-    # 'ap2',
-    # 'easiur',
-    'inmap'
-    ]
-
 # Short key identifiers for discount rates (used in dictionaries and user-facing code)
 PRIVATE_DISCOUNT_RATE_SHORT_KEYS = [
     # 'fixed_low',

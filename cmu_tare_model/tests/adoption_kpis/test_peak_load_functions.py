@@ -67,42 +67,38 @@ class TestFindAdoptionColumn:
     def expected_col_name(self):
         """The column name that find_adoption_column should produce for defaults."""
         return (
-            "iraRef_mp3_heating_adoption_central_inmap_acs_v4MID_fixed_base"
+            "ref2025_mp3_heating_only_econ_adopter_moreWTP_v4MID_fixed_base"
         )
 
     @pytest.fixture()
     def df_with_adoption(self, expected_col_name):
-        """DataFrame containing the expected adoption column."""
-        return pd.DataFrame({expected_col_name: ["Tier 1", "Tier 2"]})
+        """DataFrame containing the expected economic-adopter column."""
+        return pd.DataFrame({expected_col_name: [1.0, 0.0]})
 
     def test_exact_match(self, df_with_adoption, expected_col_name):
         result = find_adoption_column(df_with_adoption, mp=3, cost_scenario="v4MID")
         assert result == expected_col_name
 
     def test_missing_column_with_candidates(self):
-        df = pd.DataFrame({"some_adoption_col": [1]})
-        with pytest.raises(KeyError, match="Candidates containing 'adoption'"):
+        df = pd.DataFrame({"some_econ_adopter_col": [1.0]})
+        with pytest.raises(KeyError, match="Candidates containing 'econ_adopter'"):
             find_adoption_column(df, mp=3, cost_scenario="v4MID")
 
     def test_missing_column_no_candidates(self):
         df = pd.DataFrame({"unrelated_col": [1]})
-        with pytest.raises(KeyError, match="no columns containing 'adoption'"):
+        with pytest.raises(KeyError, match="no columns containing 'econ_adopter'"):
             find_adoption_column(df, mp=3, cost_scenario="v4MID")
 
     def test_custom_mp_and_cost_scenario(self):
         from cmu_tare_model.utils.column_names import create_adoption_col
 
         expected = create_adoption_col(
-            scenario_prefix="iraRef_mp4_",
-            category="heating",
-            column_type="adoption",
+            scenario_prefix="ref2025_mp4_",
+            npv_case="heating_only",
             cost_scenario="v4HIGH",
             method_suffix="_fixed_base",
-            scc_assumption="central",
-            rcm_model="inmap",
-            cr_function="acs",
         )
-        df = pd.DataFrame({expected: [1, 2, 3]})
+        df = pd.DataFrame({expected: [1.0, 0.0, 1.0]})
         result = find_adoption_column(df, mp=4, cost_scenario="v4HIGH")
         assert result == expected
 

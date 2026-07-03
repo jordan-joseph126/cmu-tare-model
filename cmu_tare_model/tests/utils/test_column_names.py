@@ -16,8 +16,6 @@ from cmu_tare_model.utils.column_names import (
     create_installation_premium_col,
     create_combined_heating_cooling_col,
     create_climate_npv_col,
-    create_health_npv_col,
-    create_public_npv_col,
     create_lifetime_damages_col,
     create_avoided_damages_col,
     create_adoption_col,
@@ -142,37 +140,11 @@ def test_climate_npv_col_all_scc():
         assert scc in result
 
 
-# ── Health NPV column ────────────────────────────────────────────────────────
-
-def test_health_npv_col():
-    result = create_health_npv_col('iraRef_mp3_', 'heating', 'inmap', 'acs')
-    assert result == 'iraRef_mp3_heating_health_npv_inmap_acs'
-
-
-def test_health_npv_col_all_combinations():
-    for rcm in ['ap2', 'easiur', 'inmap']:
-        for cr in ['acs', 'h6c']:
-            result = create_health_npv_col('iraRef_mp8_', 'heating', rcm, cr)
-            assert rcm in result and cr in result
-
-
-# ── Public NPV column ────────────────────────────────────────────────────────
-
-def test_public_npv_col():
-    result = create_public_npv_col('iraRef_mp3_', 'heating', 'central', 'inmap', 'acs')
-    assert result == 'iraRef_mp3_heating_public_npv_central_inmap_acs'
-
-
 # ── Lifetime damages column ──────────────────────────────────────────────────
 
 def test_lifetime_damages_col_climate():
     result = create_lifetime_damages_col('baseline_', 'heating', 'climate', 'lrmer', 'central')
     assert result == 'baseline_heating_lifetime_damages_climate_lrmer_central'
-
-
-def test_lifetime_damages_col_health():
-    result = create_lifetime_damages_col('iraRef_mp3_', 'heating', 'health', 'inmap', 'acs')
-    assert result == 'iraRef_mp3_heating_lifetime_damages_health_inmap_acs'
 
 
 # ── Avoided damages column ───────────────────────────────────────────────────
@@ -182,87 +154,52 @@ def test_avoided_damages_col_climate():
     assert result == 'iraRef_mp3_heating_avoided_damages_climate_lrmer_central'
 
 
-def test_avoided_damages_col_health():
-    result = create_avoided_damages_col('iraRef_mp3_', 'heating', 'health', 'inmap', 'acs')
-    assert result == 'iraRef_mp3_heating_avoided_damages_health_inmap_acs'
+# ── Adoption column (economic-adopter, one per NPV case) ──────────────────────
 
-
-# ── Adoption column ──────────────────────────────────────────────────────────
-
-def test_adoption_col_health_sensitivity():
-    result = create_adoption_col('iraRef_mp3_', 'heating', 'health_sensitivity', cost_scenario='v3', method_suffix='')
-    assert result == 'iraRef_mp3_heating_health_sensitivity'
-
-
-def test_adoption_col_benefit():
+def test_adoption_col_heating_only():
     result = create_adoption_col(
-        'iraRef_mp3_', 'heating', 'benefit',
-        cost_scenario='v3', method_suffix='',
-        scc_assumption='central', rcm_model='inmap', cr_function='acs',
+        'ref2025_mp3_', 'heating_only',
+        cost_scenario='v4MID', method_suffix='_fixed_base',
     )
-    assert result == 'iraRef_mp3_heating_benefit_central_inmap_acs_v3'
+    assert result == 'ref2025_mp3_heating_only_econ_adopter_moreWTP_v4MID_fixed_base'
 
 
-def test_adoption_col_adoption():
+def test_adoption_col_heating_and_cooling_full():
     result = create_adoption_col(
-        'iraRef_mp3_', 'heating', 'adoption',
-        cost_scenario='v3', method_suffix='_fixed_low',
-        scc_assumption='central', rcm_model='inmap', cr_function='acs',
+        'ref2025_mp4_', 'heating_and_cooling_full',
+        cost_scenario='v4MID', method_suffix='_fixed_base',
     )
-    assert result == 'iraRef_mp3_heating_adoption_central_inmap_acs_v3_fixed_low'
-
-
-def test_adoption_col_impact():
-    result = create_adoption_col(
-        'iraRef_mp3_', 'heating', 'impact',
-        cost_scenario='v4MID', method_suffix='',
-        scc_assumption='upper', rcm_model='easiur', cr_function='h6c',
+    assert result == (
+        'ref2025_mp4_heating_and_cooling_full_econ_adopter_moreWTP_v4MID_fixed_base'
     )
-    assert result == 'iraRef_mp3_heating_impact_upper_easiur_h6c_v4MID'
 
 
-def test_adoption_col_invalid_type_raises():
-    with pytest.raises(ValueError, match="Invalid column_type"):
-        create_adoption_col('iraRef_mp3_', 'heating', 'invalid_type', cost_scenario='v3', method_suffix='')
+def test_adoption_col_invalid_npv_case_raises():
+    with pytest.raises(ValueError, match="Invalid npv_case"):
+        create_adoption_col(
+            'ref2025_mp3_', 'not_a_case',
+            cost_scenario='v4MID', method_suffix='_fixed_base',
+        )
 
 
-# ── Total NPV column ─────────────────────────────────────────────────────────
-
-def test_total_npv_col_default():
-    result = create_total_npv_col(
-        'iraRef_mp3_', 'heating',
-        cost_scenario='v3', method_suffix='_fixed_low',
-        scc_assumption='central', rcm_model='inmap', cr_function='acs',
-    )
-    assert result == 'iraRef_mp3_heating_total_npv_central_inmap_acs_v3_fixed_low'
-
+# ── Total NPV column (climate-only) ──────────────────────────────────────────
 
 def test_total_npv_col_climate_only():
     result = create_total_npv_col(
-        'iraRef_mp3_', 'heating',
-        cost_scenario='v3', method_suffix='_fixed_base',
+        'ref2025_mp3_', 'heating',
+        cost_scenario='v4MID', method_suffix='_fixed_base',
         scc_assumption='central', climate_only=True,
     )
-    assert result == 'iraRef_mp3_heating_total_npv_climateOnly_central_v3_fixed_base'
+    assert result == 'ref2025_mp3_heating_total_npv_climateOnly_central_v4MID_fixed_base'
 
 
-def test_total_npv_col_health_only():
-    result = create_total_npv_col(
-        'iraRef_mp3_', 'heating',
-        cost_scenario='v3', method_suffix='_fixed_low',
-        scc_assumption='central', rcm_model='inmap', cr_function='acs',
-        health_only=True,
-    )
-    assert result == 'iraRef_mp3_heating_total_npv_healthOnly_inmap_acs_v3_fixed_low'
-
-
-def test_total_npv_col_v4mid():
-    result = create_total_npv_col(
-        'iraRef_mp3_', 'heating',
-        cost_scenario='v4MID', method_suffix='_fixed_low',
-        scc_assumption='central', rcm_model='inmap', cr_function='acs',
-    )
-    assert result == 'iraRef_mp3_heating_total_npv_central_inmap_acs_v4MID_fixed_low'
+def test_total_npv_col_requires_climate_only():
+    with pytest.raises(ValueError, match="climate_only=True"):
+        create_total_npv_col(
+            'ref2025_mp3_', 'heating',
+            cost_scenario='v4MID', method_suffix='_fixed_base',
+            scc_assumption='central', climate_only=False,
+        )
 
 
 # ── Cross-cutting: prefix consistency ─────────────────────────────────────────

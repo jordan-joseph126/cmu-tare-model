@@ -42,20 +42,21 @@ def find_adoption_column(
     mp: int,
     cost_scenario: str,
     discount_rate_key: str = "fixed_base",
-    rcm_model_key: str = "inmap",
+    npv_case: str = "heating_only",
 ) -> str:
-    """Locate the adoption-tier column in a TARE output DataFrame.
+    """Locate the economic-adopter column in a TARE output DataFrame.
 
     Builds the expected column name using ``create_adoption_col`` for the
-    IRA-reference scenario with central SCC, InMAP, ACS, and the specified
-    discount rate.  Falls back to a fuzzy search if the exact column is absent.
+    2025 Reference Case with the given NPV case, cost scenario, and discount
+    rate.  Falls back to listing candidates if the exact column is absent.
 
     Args:
         df: TARE output DataFrame (one row per building).
         mp: Measure-package number (e.g. 3 or 4).
         cost_scenario: REMDB cost scenario key (e.g. ``'v4MID'``).
         discount_rate_key: Discount rate variant key.
-        rcm_model_key: Reduced-complexity model key.
+        npv_case: One of the three NPV cases; the primary heating adoption
+            decision is ``'heating_only'``.
 
     Returns:
         The matched column name string.
@@ -66,29 +67,25 @@ def find_adoption_column(
     from cmu_tare_model.utils.column_names import create_adoption_col
 
     expected = create_adoption_col(
-        scenario_prefix=f"iraRef_mp{mp}_",
-        category="heating",
-        column_type="adoption",
+        scenario_prefix=f"ref2025_mp{mp}_",
+        npv_case=npv_case,
         cost_scenario=cost_scenario,
         method_suffix=f"_{discount_rate_key}",
-        scc_assumption="central",
-        rcm_model=rcm_model_key,
-        cr_function="acs",
     )
     if expected in df.columns:
         return expected
 
-    # Fuzzy fallback
-    adoption_candidates = [c for c in df.columns if "adoption" in c.lower()]
-    if adoption_candidates:
+    # Fallback: list any economic-adopter columns to aid debugging.
+    adopter_candidates = [c for c in df.columns if "econ_adopter" in c.lower()]
+    if adopter_candidates:
         raise KeyError(
             f"Expected adoption column '{expected}' not found.\n"
-            f"  Candidates containing 'adoption' ({len(adoption_candidates)}):\n"
-            + "\n".join(f"    • {c}" for c in adoption_candidates)
+            f"  Candidates containing 'econ_adopter' ({len(adopter_candidates)}):\n"
+            + "\n".join(f"    - {c}" for c in adopter_candidates)
         )
     raise KeyError(
         f"Expected adoption column '{expected}' not found, "
-        f"and no columns containing 'adoption' exist."
+        f"and no columns containing 'econ_adopter' exist."
     )
 
 

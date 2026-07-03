@@ -81,7 +81,7 @@ def compute_bill_savings_ratio(
 
     Args:
         df_tare: TARE model output DataFrame (from
-            ``DATAFRAMES_BY_MP[mp]['fixed_base']['inmap']``).
+            ``DATAFRAMES_BY_MP[mp]['fixed_base']``).
             Must contain ``baseline_heating_lifetime_fuel_cost`` and
             ``{policy_scenario}_mp{mp}_heating_lifetime_fuel_cost``.
             May also contain ``in.state``, ``in.heating_fuel``, ``weight``

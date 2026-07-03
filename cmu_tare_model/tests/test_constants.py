@@ -13,8 +13,6 @@ from cmu_tare_model.constants import (
     POLLUTANTS,
     MER_TYPES,
     SCC_ASSUMPTIONS,
-    CR_FUNCTIONS,
-    RCM_MODELS,
     VALID_MENU_MPS,
     TD_LOSSES,
     TD_LOSSES_MULTIPLIER,
@@ -91,16 +89,6 @@ def test_mer_types_contains_expected():
 
 def test_scc_assumptions_contains_expected():
     assert set(SCC_ASSUMPTIONS) == {'lower', 'central', 'upper'}
-
-
-def test_cr_functions_contains_expected():
-    # h6c retired in constants; acs is the only active CR function.
-    assert set(CR_FUNCTIONS) == {'acs'}
-
-
-def test_rcm_models_contains_expected():
-    # ap2 and easiur retired in constants; inmap is the only active RCM model.
-    assert set(RCM_MODELS) == {'inmap'}
 
 
 # ── VALID_MENU_MPS ───────────────────────────────────────────────────────────

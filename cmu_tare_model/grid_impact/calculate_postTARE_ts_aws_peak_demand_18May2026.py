@@ -40,7 +40,6 @@ from cmu_tare_model.constants import (
     VALID_MENU_MPS,
     VERBOSE,
     REMDB_COST_SCENARIO_KEYS,
-    RCM_MODELS,
     PRIVATE_DISCOUNT_RATE_SHORT_KEYS,
     BLDG_ID_COL,
     TIMESTAMP_COL,
@@ -370,30 +369,17 @@ print(f"✓ gdf_counties CRS: {gdf_counties.crs}")
 
 # ========== Configuration ==========
 DISCOUNT_RATE_KEY: str = "fixed_base"
-RCM_MODEL_KEY: str = "inmap"
 
 print(f"Discount rate key: {DISCOUNT_RATE_KEY}")
-print(f"RCM model key: {RCM_MODEL_KEY}")
 
 # ========== Per-MP loop: build adopter_ids_by_mp and adoption_col_by_mp ==========
 adopter_ids_by_mp: dict[int, dict[str, dict[str, list[int]]]] = {}
 adoption_col_by_mp: dict[int, str] = {}
 
 for mp in selected_mps:
-    df_tare_nested = DATAFRAMES_BY_MP[mp][DISCOUNT_RATE_KEY]
-
-    # Handle nesting: DATAFRAMES_BY_MP[mp][dr_key] may be {rcm_model: DataFrame}
-    if isinstance(df_tare_nested, dict):
-        if RCM_MODEL_KEY not in df_tare_nested:
-            raise KeyError(
-                f"MP{mp}: RCM model '{RCM_MODEL_KEY}' not found. "
-                f"Available: {list(df_tare_nested.keys())}"
-            )
-        df_tare: pd.DataFrame = df_tare_nested[RCM_MODEL_KEY]
-        print(f"\nMP{mp}: DATAFRAMES_BY_MP[{mp}]['{DISCOUNT_RATE_KEY}']['{RCM_MODEL_KEY}']  shape={df_tare.shape}")
-    else:
-        df_tare = df_tare_nested
-        print(f"\nMP{mp}: DATAFRAMES_BY_MP[{mp}]['{DISCOUNT_RATE_KEY}'] (direct DataFrame)  shape={df_tare.shape}")
+    # DATAFRAMES_BY_MP[mp] is keyed by discount rate; each value is a DataFrame.
+    df_tare: pd.DataFrame = DATAFRAMES_BY_MP[mp][DISCOUNT_RATE_KEY]
+    print(f"\nMP{mp}: DATAFRAMES_BY_MP[{mp}]['{DISCOUNT_RATE_KEY}']  shape={df_tare.shape}")
 
     # Find the adoption column — try each cost scenario in priority order
     adoption_col: str | None = None

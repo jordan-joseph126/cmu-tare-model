@@ -17,8 +17,8 @@ def generate_column_patterns(
         categories: List of equipment categories. Defaults to ['heating', 'waterHeating', 
                    'clothesDrying', 'cooking'].
         scenarios: List of scenario types. Defaults to ['baseline', 'preIRA', 'iraRef'].
-        metrics: List of metric types to include. Defaults to ['consumption', 'mt_co2e', 
-                'damages_climate', 'damages_health'].
+        metrics: List of metric types to include. Defaults to ['consumption', 'mt_co2e',
+                'damages_climate'].
         mp_number: Measure package number. Defaults to 8.
         
     Returns:
@@ -45,9 +45,8 @@ def generate_column_patterns(
             'consumption',              # Energy consumption
             'mt_co2e',                  # Emissions
             'damages_climate',          # Climate damages
-            'damages_health'            # Health damages
         ]
-    
+
     # Initialize pattern groups dictionary with empty lists
     patterns = {
         'metadata': [
@@ -58,7 +57,6 @@ def generate_column_patterns(
         'consumption': [],
         'emissions': [],
         'climate_damages': [],
-        'health_damages': [],
         'costs': [],
         'npv': [],
         'adoption': []
@@ -112,18 +110,6 @@ def generate_column_patterns(
                         patterns['climate_damages'].append(
                             f"{prefix}{category}_avoided_damages_climate_{mer}_{scc}")
             
-            # Health damage patterns
-            if 'damages_health' in metrics:
-                # Generate patterns for different health models and concentration-response functions
-                for model in ['ap2', 'easiur', 'inmap']:  # Air pollution models
-                    for cr in ['acs', 'h6c']:  # Concentration-response functions
-                        # Lifetime health damages
-                        patterns['health_damages'].append(
-                            f"{prefix}{category}_lifetime_damages_health_{model}_{cr}")
-                        # Avoided health damages
-                        patterns['health_damages'].append(
-                            f"{prefix}{category}_avoided_damages_health_{model}_{cr}")
-            
             # Cost patterns - various capital, installation, and operational costs
             patterns['costs'].append(f"{prefix}{category}_total_capital_cost")
             patterns['costs'].append(f"{prefix}{category}_net_capital_cost")
@@ -135,17 +121,12 @@ def generate_column_patterns(
             
             # NPV (Net Present Value) patterns for different calculation approaches
             patterns['npv'].append(f"{prefix}{category}_climate_npv_")
-            patterns['npv'].append(f"{prefix}{category}_health_npv_")
-            patterns['npv'].append(f"{prefix}{category}_public_npv_")
             patterns['npv'].append(f"{prefix}{category}_private_npv_")
             patterns['npv'].append(f"{prefix}{category}_total_npv_")
-            
-            # Adoption patterns for benefit, adoption rate, and impact analysis
-            patterns['adoption'].append(f"{prefix}{category}_benefit_upper_")
-            patterns['adoption'].append(f"{prefix}{category}_adoption_upper_")
-            patterns['adoption'].append(f"{prefix}{category}_impact_upper_")
-            patterns['adoption'].append(f"{prefix}{category}_health_sensitivity")
-    
+
+            # Adoption pattern for the economic-adopter columns
+            patterns['adoption'].append(f"{prefix}{category}_econ_adopter_")
+
     return patterns
 
 
@@ -166,11 +147,11 @@ def create_sample_df(
     
     Args:
         df: The DataFrame to filter.
-        include_groups: Groups of columns to include. Options are 'metadata', 
+        include_groups: Groups of columns to include. Options are 'metadata',
                        'base_equipment', 'consumption', 'emissions', 'climate_damages',
-                       'health_damages', 'costs', 'npv', and 'adoption'.
-                       Defaults to ['metadata', 'consumption', 'emissions', 
-                       'climate_damages', 'health_damages'].
+                       'costs', 'npv', and 'adoption'.
+                       Defaults to ['metadata', 'consumption', 'emissions',
+                       'climate_damages'].
         categories: Equipment categories to filter for. See generate_column_patterns()
                    for defaults.
         scenarios: Scenario types to filter for. See generate_column_patterns()
@@ -202,14 +183,14 @@ def create_sample_df(
     
     # Sets default include_groups if none are specified
     if include_groups is None:
-        include_groups = ['metadata', 'consumption', 'emissions', 'climate_damages', 'health_damages']
-    
+        include_groups = ['metadata', 'consumption', 'emissions', 'climate_damages']
+
     # ===================================================================================
     # GROUP VALIDATION:
     # ===================================================================================
     # Verifies that all requested groups are valid options
-    valid_groups = {'metadata', 'base_equipment', 'consumption', 'emissions', 
-                    'climate_damages', 'health_damages', 'costs', 'npv', 'adoption'}
+    valid_groups = {'metadata', 'base_equipment', 'consumption', 'emissions',
+                    'climate_damages', 'costs', 'npv', 'adoption'}
     invalid_groups = set(include_groups) - valid_groups
 
     # Raises KeyError if any invalid groups are requested

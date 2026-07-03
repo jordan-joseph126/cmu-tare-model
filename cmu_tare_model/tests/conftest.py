@@ -15,11 +15,7 @@ from unittest.mock import MagicMock
 
 _DATA_MODULES_TO_MOCK = [
     'cmu_tare_model.public_impact.data_processing.create_lookup_emissions_electricity_climate',
-    'cmu_tare_model.public_impact.data_processing.create_lookup_emissions_electricity_health',
     'cmu_tare_model.public_impact.data_processing.create_lookup_climate_impact_scc',
-    'cmu_tare_model.public_impact.data_processing.create_lookup_health_impact_county',
-    'cmu_tare_model.public_impact.data_processing.create_lookup_health_vsl_adjustment',
-    'cmu_tare_model.public_impact.data_processing.validate_damages_dataframes',
     'cmu_tare_model.private_impact.data_processing.create_lookup_fuel_prices',
     'cmu_tare_model.private_impact.data_processing.process_income_data_for_rebates',
     'cmu_tare_model.utils.precompute_hdd_factors',
@@ -149,20 +145,21 @@ def small_df():
 
 @pytest.fixture
 def mock_scenario_params():
-    """Mock define_scenario_params for predictable test behavior."""
+    """Mock define_scenario_params for predictable test behavior.
+
+    Mirrors the current single-scenario 5-tuple return:
+    (scenario_prefix, cambium_scenario, fossil, elec_climate, fuel_prices).
+    """
     mock_fossil = {'Natural Gas': {'co2e': 0.005}}
     mock_elec_climate = {}
-    mock_elec_health = {}
     mock_fuel_prices = {}
 
-    def mock_define(menu_mp, policy_scenario, verbose=False):
+    def mock_define(menu_mp, policy_scenario='2025 Reference Case', verbose=False):
         if int(menu_mp) == 0:
             prefix = 'baseline_'
-        elif policy_scenario == 'No Inflation Reduction Act':
-            prefix = f'preIRA_mp{menu_mp}_'
         else:
-            prefix = f'iraRef_mp{menu_mp}_'
-        return (prefix, 'MidCase', mock_fossil, mock_elec_climate, mock_elec_health, mock_fuel_prices)
+            prefix = f'ref2025_mp{menu_mp}_'
+        return (prefix, 'MidCase', mock_fossil, mock_elec_climate, mock_fuel_prices)
 
     return mock_define
 

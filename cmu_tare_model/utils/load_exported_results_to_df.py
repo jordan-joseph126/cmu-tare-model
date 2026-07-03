@@ -4,7 +4,7 @@ import pandas as pd
 import gc
 from typing import Optional, Dict, Union
 
-from cmu_tare_model.constants import RCM_MODELS, VERBOSE, VALID_MENU_MPS
+from cmu_tare_model.constants import VERBOSE, VALID_MENU_MPS
 from cmu_tare_model.constants import PRIVATE_DISCOUNT_RATE_SHORT_KEYS
 
 def load_model_run_output(
@@ -13,44 +13,40 @@ def load_model_run_output(
     output_folder_path: str,
     location_id: str,
     results_export_formatted_date: str,
-    rcm_model: Optional[str] = None,
     discount_rate: Optional[str] = None,
     use_chunked_loading: bool = True,
     chunk_size: int = 50000,
     verbose: bool = VERBOSE
 ) -> Optional[pd.DataFrame]:
     """Load model run results from CSV files (reverse of export_model_run_output).
-    
+
     This function loads DataFrame results from CSV files organized by result type.
     It mirrors the export_model_run_output() function exactly, using the same
     parameters to construct the correct file path.
-    
+
     Args:
         results_category: Category of results being loaded. Valid options:
             - 'summary_baseline': Baseline summary results
-            - 'summary': Retrofit summary results (requires rcm_model and discount_rate_col_name)
+            - 'summary': Retrofit summary results (requires discount_rate)
             - 'damages_climate_IRA', 'damages_climate_noIRA': Climate damages
-            - 'damages_health_IRA', 'damages_health_noIRA': Health damages
             - 'fuel_costs_IRA', 'fuel_costs_noIRA': Fuel costs
         menu_mp: Measure package identifier (0 for baseline, VALID_MENU_MPS for retrofits).
         output_folder_path: Base directory where results are stored.
         location_id: Location identifier in the filename (e.g., 'National', 'PA', "Pittsburgh").
         results_export_formatted_date: Date string in the filename (e.g., '2024-01-24_10-30').
-        rcm_model: RCM model used for health damage calculations (e.g., 'ap2', 'easiur', 
-            'inmap'). Required when results_category='summary' and menu_mp != 0.
         discount_rate: Short key for discount rate method (e.g., 'fixed_base', 'variable').
             Required when results_category='summary' and menu_mp != 0.
         use_chunked_loading: Whether to load the file in chunks to reduce memory usage.
         chunk_size: Number of rows to read per chunk when using chunked loading.
-            
+
     Returns:
         DataFrame (df_model_run_output) containing the loaded data, or None if file not found or loading fails.
-        
+
     Raises:
         ValueError: If any required parameter is missing, results_category is invalid,
             or sensitivity parameters are missing when required.
         FileNotFoundError: If the expected directory or file doesn't exist.
-        
+
     Example:
         >>> # Load baseline
         >>> df_output_baseline = load_model_run_output(
@@ -60,15 +56,14 @@ def load_model_run_output(
         ...     location_id='national',
         ...     results_export_formatted_date='2024-01-24_10-30'
         ... )
-        >>> 
-        >>> # Load retrofit summary (with sensitivity parameters)
-        >>> df_output_mp9_ap2_fixed_base = load_model_run_output(
+        >>>
+        >>> # Load retrofit summary (with the discount rate key)
+        >>> df_output_mp9_fixed_base = load_model_run_output(
         ...     results_category='summary',
         ...     menu_mp=9,
         ...     output_folder_path='./output_results',
         ...     location_id='national',
         ...     results_export_formatted_date='2024-01-24_10-30',
-        ...     rcm_model='ap2',
         ...     discount_rate='fixed_base'
         ... )
     """
@@ -92,31 +87,25 @@ def load_model_run_output(
         
     elif results_category == 'summary':
         # Retrofit summary results with sensitivity tracking
-        # Validate that sensitivity parameters are provided
-        if rcm_model is None:
-            raise ValueError("rcm_model is required for retrofit summary results (results_category='summary')")
+        # Validate that the discount rate is provided
         if discount_rate is None:
             raise ValueError("discount_rate is required for retrofit summary results (results_category='summary')")
-        
+
         # Validate measure package (only for summary results)
         if menu_mp_int not in VALID_MENU_MPS:
             raise ValueError(f"menu_mp must be one of {VALID_MENU_MPS}, got {menu_mp_int}")
-        
-        # Validate RCM model is valid
-        if rcm_model not in RCM_MODELS:
-            raise ValueError(f"rcm_model must be one of {RCM_MODELS}, got '{rcm_model}'")
-        
+
         # Validate discount rate is valid
         if discount_rate not in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
             raise ValueError(
                 f"discount_rate must be one of {PRIVATE_DISCOUNT_RATE_SHORT_KEYS}, "
                 f"got '{discount_rate}'"
             )
-                
-        # Build directory path using sensitivity parameters
+
+        # Build directory path using the discount rate key
         directory_path = os.path.join(
             f"retrofit_mp{menu_mp_str}_results",
-            f"summary_mp{menu_mp_str}_{rcm_model}_{discount_rate}"
+            f"summary_mp{menu_mp_str}_{discount_rate}"
         )
         filename = f"mp{menu_mp_str}_results_{location_id}_{results_export_formatted_date}.csv"
         
@@ -202,50 +191,45 @@ def load_measure_package_data(
     output_folder_path: str,
     location_id: str,
     model_run_date_time: str,
-) -> Dict[str, Dict[str, pd.DataFrame]]:
-    """Load all discount rate × RCM combinations for a measure package.
-    
-    Creates a nested dictionary structure using short keys:
-    {discount_rate: {rcm_model: DataFrame}}
-    
+) -> Dict[str, pd.DataFrame]:
+    """Load every discount rate variant for a measure package.
+
+    Creates a dictionary keyed by discount rate short key:
+    {discount_rate: DataFrame}
+
     Args:
         menu_mp: Measure package identifier (VALID_MENU_MPS).
         output_folder_path: Base directory containing exported results.
         location_id: Geographic identifier used in filenames.
         model_run_date_time: Timestamp string from the model run.
-    
+
     Returns:
-        Nested dictionary: {discount_rate: {rcm_model: DataFrame}}
+        Dictionary: {discount_rate: DataFrame}
     """
-    # Initialize nested dictionary with SHORT KEYS and proper level ordering
+    # Initialize dictionary with SHORT KEYS.
     dataframes = {
-        discount_rate: {rcm: None for rcm in RCM_MODELS}
+        discount_rate: None
         for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS
     }
-    
+
     print(f"Loading MP{menu_mp} data...")
-    
-    # Iterate in same order as dictionary structure: discount rate → RCM
+
     for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
         print(f"  {discount_rate}: ", end="")
-        
-        for rcm_model in RCM_MODELS:
-            df = load_model_run_output(
-                results_category='summary',
-                menu_mp=menu_mp,
-                output_folder_path=output_folder_path,
-                location_id=location_id,
-                results_export_formatted_date=model_run_date_time,
-                rcm_model=rcm_model,
-                discount_rate=discount_rate,  # Use short key
-                use_chunked_loading=True,
-                chunk_size=10000
-            )
-            
-            dataframes[discount_rate][rcm_model] = df
-            print("✓" if df is not None else "✗", end=" ")
-        
-        print()  # Newline after each discount rate
-    
+
+        df = load_model_run_output(
+            results_category='summary',
+            menu_mp=menu_mp,
+            output_folder_path=output_folder_path,
+            location_id=location_id,
+            results_export_formatted_date=model_run_date_time,
+            discount_rate=discount_rate,  # Use short key
+            use_chunked_loading=True,
+            chunk_size=10000
+        )
+
+        dataframes[discount_rate] = df
+        print("[OK]" if df is not None else "[!]")
+
     print(f"MP{menu_mp} loading complete!\n")
     return dataframes

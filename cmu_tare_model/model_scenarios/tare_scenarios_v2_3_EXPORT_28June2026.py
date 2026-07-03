@@ -671,19 +671,14 @@ DATAFRAME: df_euss_am_mpX_home AFTER CALCULATING REBATE AMOUNTS
 # ## Climate Impact, Private Impact and Adoption Potential
 
 # %%
-from cmu_tare_model.constants import RCM_MODELS
 from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_private_npv
 from cmu_tare_model.adoption_potential.determine_economic_adoption_potential import (
     economic_adoption_decision
 )
 
-# Create dictionary directly with copies - removed dataframes saved as intermediate variables
-# Structure: [discount_rate][rcm] for consistent level ordering
+# Create one DataFrame copy per discount rate.
 DATAFRAMES_MPX_RCM_DISCOUNT_RATE = {
-    discount_rate: {
-        rcm: df_euss_am_mpX_home.copy()
-        for rcm in RCM_MODELS
-    }
+    discount_rate: df_euss_am_mpX_home.copy()
     for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS
 }
 
@@ -713,11 +708,10 @@ for scenario_key in REMDB_COST_SCENARIO_KEYS:
     new_cols = [col for col in df_v4_source.columns if col not in base_cols]
     v4_cost_columns_added.extend(new_cols)
 
-    # Add these remaining columns to every DataFrame in the dictionary
+    # Add these remaining columns to every DataFrame in the dictionary.
     for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
-        for rcm in RCM_MODELS:
-            for col in new_cols:
-                DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm][col] = df_v4_source[col].values
+        for col in new_cols:
+            DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][col] = df_v4_source[col].values
 
 print(f"  v4 cost columns merged into dictionary: {sorted(set(v4_cost_columns_added))}")
 
@@ -788,49 +782,43 @@ SCENARIO ANALYSIS ({policy_scenario.upper()}): PRIVATE IMPACT
 ====================================================================================================================================================================
 """)
 
-# Process each cost scenario, then discount rate, then RCM model
-print("Calculating Private NPV for all cost scenarios, RCM models, and discount methods ...")
+# Process each cost scenario then discount rate.
+print("Calculating Private NPV for all cost scenarios and discount methods ...")
 
 for cost_scenario_key in REMDB_COST_SCENARIO_KEYS:
     print(f"\n--- Cost Scenario: {cost_scenario_key} ---")
 
     for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
-        # Create full discount rate column name
+        # Create full discount rate column name.
         discount_rate_col_name = f'private_discount_rate_{discount_rate}'
         print(f"  Discount Rate: {discount_rate}, Column: {discount_rate_col_name}")
 
-        # Process each RCM model for this discount rate
-        for rcm_model in RCM_MODELS:
-            print(f"    RCM Model: {rcm_model.upper()}")
+        # Get the DataFrame for this discount rate.
+        df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate]
 
-            # Get the specific DataFrame for this discount rate x RCM combination
-            df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model]
+        # One call per (cost_scenario, discount_rate) combination.
+        # calculate_private_npv produces all three NPV case columns in a single call.
+        df = calculate_private_npv(
+            df=df,
+            df_fuel_costs=df_mpX_ref2025_fuel_costs,
+            df_baseline_costs=df_baseline_fuel_costs,
+            menu_mp=menu_mp,
+            input_mp=input_mp,
+            policy_scenario=policy_scenario,
+            discount_rate_col_name=discount_rate_col_name,
+            cost_scenario=cost_scenario_key,
+            base_year=2024,
+            verbose=VERBOSE,
+        )
 
-            # One call per (cost_scenario, discount_rate, rcm_model) combination.
-            # calculate_private_npv produces all three NPV case columns in a single call.
-            df = calculate_private_npv(
-                df=df,
-                df_fuel_costs=df_mpX_ref2025_fuel_costs,
-                df_baseline_costs=df_baseline_fuel_costs,
-                menu_mp=menu_mp,
-                input_mp=input_mp,
-                policy_scenario=policy_scenario,
-                discount_rate_col_name=discount_rate_col_name,
-                cost_scenario=cost_scenario_key,
-                base_year=2024,
-                verbose=VERBOSE,
-            )
-
-            # Update the DataFrame back in the dictionary
-            DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model] = df
+        # Update the DataFrame back in the dictionary.
+        DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate] = df
 
 if PRINT_VERBOSE_DATAFRAMES:
     print(f"\n{'='*100}")
     print(f"DATAFRAME FOR MP{menu_mp} AFTER CALCULATING PRIVATE NPV ({policy_scenario.upper()})")
     print(f"{'='*100}")
-    for rcm_model in RCM_MODELS:
-        print(f"\n--- {rcm_model.upper()} ---")
-        print(DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base'][rcm_model])
+    print(DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base'])
     print()
 
 # %%
@@ -840,48 +828,44 @@ SCENARIO ANALYSIS ({policy_scenario.upper()}): ADOPTION POTENTIAL
 ====================================================================================================
 """)
 
-# Process each cost scenario, then discount rate, then RCM model
-print("Determining Economic Adoption Potential for all cost scenarios, RCM models, and discount methods ...")
+# Process each cost scenario then discount rate.
+print("Determining Economic Adoption Potential for all cost scenarios and discount methods ...")
 
 for cost_scenario_key in REMDB_COST_SCENARIO_KEYS:
     print(f"\n--- Cost Scenario: {cost_scenario_key} ---")
 
     for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
-        # Create full discount rate column name
+        # Create full discount rate column name.
         discount_rate_col_name = f'private_discount_rate_{discount_rate}'
         print(f"  Discount Rate: {discount_rate}, Column: {discount_rate_col_name}")
 
-        # Process each RCM model for this discount rate
-        for rcm_model in RCM_MODELS:
-            print(f"    RCM Model: {rcm_model.upper()}")
+        # Get the DataFrame for this discount rate.
+        df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate]
 
-            # Get the specific DataFrame for this discount rate x RCM combination
-            df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model]
+        duplicate_mask = df.columns.duplicated(keep='first')
+        duplicate_count = duplicate_mask.sum()
 
-            duplicate_mask = df.columns.duplicated(keep='first')
-            duplicate_count = duplicate_mask.sum()
+        # Diagnostic check BEFORE processing.
+        if duplicate_count > 0:
+            duplicate_cols = df.columns[duplicate_mask].unique().tolist()
+            print(f"\n{discount_rate}: {duplicate_count} duplicates")
+            print(f"  Columns: {duplicate_cols[:5]}")
 
-            # Diagnostic check BEFORE processing
-            if duplicate_count > 0:
-                duplicate_cols = df.columns[duplicate_mask].unique().tolist()
-                print(f"\n{discount_rate}-{rcm_model}: {duplicate_count} duplicates")
-                print(f"  Columns: {duplicate_cols[:5]}")  # Show first 5
+        # One call per (cost_scenario, discount_rate) combination.
+        # economic_adoption_decision applies moreWTP >= 0 across all three NPV cases
+        # in a single call. Climate damages remain in the DataFrame for sensitivity
+        # analysis but do not enter the adoption decision.
+        df = economic_adoption_decision(
+            df=df,
+            menu_mp=menu_mp,
+            policy_scenario=policy_scenario,
+            discount_rate_col_name=discount_rate_col_name,
+            cost_scenario=cost_scenario_key,
+            verbose=VERBOSE,
+        )
 
-            # One call per (cost_scenario, discount_rate, rcm_model) combination.
-            # economic_adoption_decision applies moreWTP >= 0 across all three NPV cases
-            # in a single call. Climate and health damages remain in the DataFrame for
-            # sensitivity analysis but do not enter the adoption decision.
-            df = economic_adoption_decision(
-                df=df,
-                menu_mp=menu_mp,
-                policy_scenario=policy_scenario,
-                discount_rate_col_name=discount_rate_col_name,
-                cost_scenario=cost_scenario_key,
-                verbose=VERBOSE,
-            )
-
-            # Update the DataFrame back in the dictionary
-            DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate][rcm_model] = df
+        # Update the DataFrame back in the dictionary.
+        DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate] = df
 
 if PRINT_VERBOSE_DATAFRAMES:
     print(f"\n{'='*100}")
@@ -889,9 +873,7 @@ if PRINT_VERBOSE_DATAFRAMES:
     print("Three adopter columns produced per NPV case:")
     print("  heating_only, heating_and_cooling_savings, heating_and_cooling_full")
     print(f"{'='*100}")
-    for rcm_model in RCM_MODELS:
-        print(f"\n--- {rcm_model.upper()} ---")
-        print(DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base'][rcm_model])
+    print(DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base'])
     print()
 
 # %% [markdown]

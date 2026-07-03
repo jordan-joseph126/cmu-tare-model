@@ -611,7 +611,7 @@ print_adoption_decision_percentages(
         build_adoption_scenario_names(menu_mp, npv_case, cost_scenario, discount_rate)[0],
     ],
     source_dataframes=[
-        DATAFRAMES_BY_MP[menu_mp][discount_rate][RCM_MODELS[0]],
+        DATAFRAMES_BY_MP[menu_mp][discount_rate],
     ],
     category='heating',
     title="SPACE HEATING ADOPTION POTENTIAL: ECONOMIC ADOPTERS (moreWTP >= 0)",

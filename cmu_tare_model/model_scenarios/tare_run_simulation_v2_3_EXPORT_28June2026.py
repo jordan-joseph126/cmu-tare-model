@@ -14,7 +14,7 @@ result_export_time = datetime.now()
 model_run_date_time = result_export_time.strftime("%Y-%m-%d_%H-%M")
 
 from config import PROJECT_ROOT
-from cmu_tare_model.constants import RCM_MODELS, REMDB_COST_SCENARIO_KEYS, VALID_MENU_MPS
+from cmu_tare_model.constants import REMDB_COST_SCENARIO_KEYS, VALID_MENU_MPS
 from cmu_tare_model.constants import PRIVATE_DISCOUNT_RATE_COLS, PRIVATE_DISCOUNT_RATE_SHORT_KEYS
 from cmu_tare_model.utils.export_model_run_results import export_model_run_output
 from cmu_tare_model.utils.column_names import (
@@ -169,14 +169,10 @@ if 3 in VALID_MENU_MPS:
     df_mp3_ref2025_damages_climate = df_mpX_ref2025_damages_climate.copy()
     df_mp3_ref2025_fuel_costs = df_mpX_ref2025_fuel_costs.copy()
 
-    # Summary results dictionary (nested: discount rate -> RCM model -> DataFrame)
-    # Structure matches new organization: [discount_rate][rcm_model]
+    # Summary results dictionary keyed by discount rate: [discount_rate] -> DataFrame
     DATAFRAMES_MP3_RCM_DISCOUNT_RATE_RESULTS = {
-        discount_rate: {
-            rcm_model: df.copy()
-            for rcm_model, df in rcm_dict.items()
-        }
-        for discount_rate, rcm_dict in DATAFRAMES_MPX_RCM_DISCOUNT_RATE.items()
+        discount_rate: df.copy()
+        for discount_rate, df in DATAFRAMES_MPX_RCM_DISCOUNT_RATE.items()
     }
 
     # Clear the batch mode trigger
@@ -214,31 +210,26 @@ if 3 in VALID_MENU_MPS:
     )
 
     # =========================================================================================================
-    # EXPORT RESULTS TO CSV - SUMMARY RESULTS FOR RCM MODELS AND DISCOUNT RATES SENSITIVITY ANALYSIS
+    # EXPORT RESULTS TO CSV - SUMMARY RESULTS FOR DISCOUNT RATE SENSITIVITY ANALYSIS
     # =========================================================================================================
 
-    # Process each discount rate, then each RCM model (matches dictionary structure)
+    # Process each discount rate (matches dictionary structure)
     for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
         print(f"Exporting SUMMARY RESULTS for discount rate: {discount_rate}")
-        
-        # Process each RCM model for this discount rate
-        for rcm_model in RCM_MODELS:
-            print(f"  RCM Model: {rcm_model.upper()}")
-            
-            # Get the specific DataFrame for this discount rate × RCM combination
-            df_results_export = DATAFRAMES_MP3_RCM_DISCOUNT_RATE_RESULTS[discount_rate][rcm_model]
-            
-            # Export summary results with explicit sensitivity parameters (using short keys)
-            export_model_run_output(
-                df_results_export=df_results_export,
-                results_category='summary',
-                menu_mp=menu_mp,
-                output_folder_path=output_folder_path,
-                location_id=location_id,
-                results_export_formatted_date=model_run_date_time,
-                rcm_model=rcm_model,
-                discount_rate=discount_rate
-            )
+
+        # Get the DataFrame for this discount rate
+        df_results_export = DATAFRAMES_MP3_RCM_DISCOUNT_RATE_RESULTS[discount_rate]
+
+        # Export summary results with the discount rate key (short key)
+        export_model_run_output(
+            df_results_export=df_results_export,
+            results_category='summary',
+            menu_mp=menu_mp,
+            output_folder_path=output_folder_path,
+            location_id=location_id,
+            results_export_formatted_date=model_run_date_time,
+            discount_rate=discount_rate
+        )
 
 # %%
 if 3 in VALID_MENU_MPS:
@@ -252,7 +243,7 @@ if 3 in VALID_MENU_MPS:
     print(f"Active cost scenarios: {REMDB_COST_SCENARIO_KEYS}\n")
 
     scenario_prefix = f'ref2025_mp{menu_mp}_'
-    df_check = DATAFRAMES_MP3_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][RCM_MODELS[0]]
+    df_check = DATAFRAMES_MP3_RCM_DISCOUNT_RATE_RESULTS['fixed_base']
 
     for cost_scenario in REMDB_COST_SCENARIO_KEYS:
         # Check installed cost columns
@@ -326,14 +317,10 @@ if 4 in VALID_MENU_MPS:
     df_mp4_ref2025_damages_climate = df_mpX_ref2025_damages_climate.copy()
     df_mp4_ref2025_fuel_costs = df_mpX_ref2025_fuel_costs.copy()
 
-    # Summary results dictionary (nested: discount rate -> RCM model -> DataFrame)
-    # Structure matches new organization: [discount_rate][rcm_model]
+    # Summary results dictionary keyed by discount rate: [discount_rate] -> DataFrame
     DATAFRAMES_MP4_RCM_DISCOUNT_RATE_RESULTS = {
-        discount_rate: {
-            rcm_model: df.copy()
-            for rcm_model, df in rcm_dict.items()
-        }
-        for discount_rate, rcm_dict in DATAFRAMES_MPX_RCM_DISCOUNT_RATE.items()
+        discount_rate: df.copy()
+        for discount_rate, df in DATAFRAMES_MPX_RCM_DISCOUNT_RATE.items()
     }
 
     # Clear the batch mode trigger
@@ -371,31 +358,26 @@ if 4 in VALID_MENU_MPS:
     )
 
     # =========================================================================================================
-    # EXPORT RESULTS TO CSV - SUMMARY RESULTS FOR RCM MODELS AND DISCOUNT RATES SENSITIVITY ANALYSIS
+    # EXPORT RESULTS TO CSV - SUMMARY RESULTS FOR DISCOUNT RATE SENSITIVITY ANALYSIS
     # =========================================================================================================
 
-    # Process each discount rate, then each RCM model (matches dictionary structure)
+    # Process each discount rate (matches dictionary structure)
     for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
         print(f"Exporting SUMMARY RESULTS for discount rate: {discount_rate}")
-        
-        # Process each RCM model for this discount rate
-        for rcm_model in RCM_MODELS:
-            print(f"  RCM Model: {rcm_model.upper()}")
-            
-            # Get the specific DataFrame for this discount rate × RCM combination
-            df_results_export = DATAFRAMES_MP4_RCM_DISCOUNT_RATE_RESULTS[discount_rate][rcm_model]
-            
-            # Export summary results with explicit sensitivity parameters (using short keys)
-            export_model_run_output(
-                df_results_export=df_results_export,
-                results_category='summary',
-                menu_mp=menu_mp,
-                output_folder_path=output_folder_path,
-                location_id=location_id,
-                results_export_formatted_date=model_run_date_time,
-                rcm_model=rcm_model,
-                discount_rate=discount_rate
-            )
+
+        # Get the DataFrame for this discount rate
+        df_results_export = DATAFRAMES_MP4_RCM_DISCOUNT_RATE_RESULTS[discount_rate]
+
+        # Export summary results with the discount rate key (short key)
+        export_model_run_output(
+            df_results_export=df_results_export,
+            results_category='summary',
+            menu_mp=menu_mp,
+            output_folder_path=output_folder_path,
+            location_id=location_id,
+            results_export_formatted_date=model_run_date_time,
+            discount_rate=discount_rate
+        )
 
 
 # %%
@@ -410,7 +392,7 @@ if 4 in VALID_MENU_MPS:
     print(f"Active cost scenarios: {REMDB_COST_SCENARIO_KEYS}\n")
 
     scenario_prefix = f'ref2025_mp{menu_mp}_'
-    df_check = DATAFRAMES_MP4_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][RCM_MODELS[0]]
+    df_check = DATAFRAMES_MP4_RCM_DISCOUNT_RATE_RESULTS['fixed_base']
 
     for cost_scenario in REMDB_COST_SCENARIO_KEYS:
         cost_col = create_cost_col(
@@ -479,14 +461,10 @@ if 8 in VALID_MENU_MPS:
     df_mp8_ref2025_damages_climate = df_mpX_ref2025_damages_climate.copy()
     df_mp8_ref2025_fuel_costs = df_mpX_ref2025_fuel_costs.copy()
 
-    # Summary results dictionary (nested: discount rate -> RCM model -> DataFrame)
-    # Structure matches new organization: [discount_rate][rcm_model]
+    # Summary results dictionary keyed by discount rate: [discount_rate] -> DataFrame
     DATAFRAMES_MP8_RCM_DISCOUNT_RATE_RESULTS = {
-        discount_rate: {
-            rcm_model: df.copy()
-            for rcm_model, df in rcm_dict.items()
-        }
-        for discount_rate, rcm_dict in DATAFRAMES_MPX_RCM_DISCOUNT_RATE.items()
+        discount_rate: df.copy()
+        for discount_rate, df in DATAFRAMES_MPX_RCM_DISCOUNT_RATE.items()
     }
 
     # Clear the batch mode trigger
@@ -524,31 +502,26 @@ if 8 in VALID_MENU_MPS:
     )
 
     # =========================================================================================================
-    # EXPORT RESULTS TO CSV - SUMMARY RESULTS FOR RCM MODELS AND DISCOUNT RATES SENSITIVITY ANALYSIS
+    # EXPORT RESULTS TO CSV - SUMMARY RESULTS FOR DISCOUNT RATE SENSITIVITY ANALYSIS
     # =========================================================================================================
 
-    # Process each discount rate, then each RCM model (matches dictionary structure)
+    # Process each discount rate (matches dictionary structure)
     for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
         print(f"Exporting SUMMARY RESULTS for discount rate: {discount_rate}")
-        
-        # Process each RCM model for this discount rate
-        for rcm_model in RCM_MODELS:
-            print(f"  RCM Model: {rcm_model.upper()}")
-            
-            # Get the specific DataFrame for this discount rate × RCM combination
-            df_results_export = DATAFRAMES_MP8_RCM_DISCOUNT_RATE_RESULTS[discount_rate][rcm_model]
-            
-            # Export summary results with explicit sensitivity parameters (using short keys)
-            export_model_run_output(
-                df_results_export=df_results_export,
-                results_category='summary',
-                menu_mp=menu_mp,
-                output_folder_path=output_folder_path,
-                location_id=location_id,
-                results_export_formatted_date=model_run_date_time,
-                rcm_model=rcm_model,
-                discount_rate=discount_rate
-            )
+
+        # Get the DataFrame for this discount rate
+        df_results_export = DATAFRAMES_MP8_RCM_DISCOUNT_RATE_RESULTS[discount_rate]
+
+        # Export summary results with the discount rate key (short key)
+        export_model_run_output(
+            df_results_export=df_results_export,
+            results_category='summary',
+            menu_mp=menu_mp,
+            output_folder_path=output_folder_path,
+            location_id=location_id,
+            results_export_formatted_date=model_run_date_time,
+            discount_rate=discount_rate
+        )
 
 # %%
 if 8 in VALID_MENU_MPS:
@@ -562,7 +535,7 @@ if 8 in VALID_MENU_MPS:
     print(f"Active cost scenarios: {REMDB_COST_SCENARIO_KEYS}\n")
 
     scenario_prefix = f'ref2025_mp{menu_mp}_'
-    df_check = DATAFRAMES_MP8_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][RCM_MODELS[0]]
+    df_check = DATAFRAMES_MP8_RCM_DISCOUNT_RATE_RESULTS['fixed_base']
 
     for cost_scenario in REMDB_COST_SCENARIO_KEYS:
         cost_col = create_cost_col(
@@ -632,14 +605,10 @@ if 9 in VALID_MENU_MPS:
     df_mp9_ref2025_damages_climate = df_mpX_ref2025_damages_climate.copy()
     df_mp9_ref2025_fuel_costs = df_mpX_ref2025_fuel_costs.copy()
 
-    # Summary results dictionary (nested: discount rate -> RCM model -> DataFrame)
-    # Structure matches new organization: [discount_rate][rcm_model]
+    # Summary results dictionary keyed by discount rate: [discount_rate] -> DataFrame
     DATAFRAMES_MP9_RCM_DISCOUNT_RATE_RESULTS = {
-        discount_rate: {
-            rcm_model: df.copy()
-            for rcm_model, df in rcm_dict.items()
-        }
-        for discount_rate, rcm_dict in DATAFRAMES_MPX_RCM_DISCOUNT_RATE.items()
+        discount_rate: df.copy()
+        for discount_rate, df in DATAFRAMES_MPX_RCM_DISCOUNT_RATE.items()
     }
 
     # Clear the batch mode trigger
@@ -676,31 +645,26 @@ if 9 in VALID_MENU_MPS:
     )
 
     # =========================================================================================================
-    # EXPORT RESULTS TO CSV - SUMMARY RESULTS FOR RCM MODELS AND DISCOUNT RATES SENSITIVITY ANALYSIS
+    # EXPORT RESULTS TO CSV - SUMMARY RESULTS FOR DISCOUNT RATE SENSITIVITY ANALYSIS
     # =========================================================================================================
 
-    # Process each discount rate, then each RCM model (matches dictionary structure)
+    # Process each discount rate (matches dictionary structure)
     for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
         print(f"Exporting SUMMARY RESULTS for discount rate: {discount_rate}")
-        
-        # Process each RCM model for this discount rate
-        for rcm_model in RCM_MODELS:
-            print(f"  RCM Model: {rcm_model.upper()}")
-            
-            # Get the specific DataFrame for this discount rate × RCM combination
-            df_results_export = DATAFRAMES_MP9_RCM_DISCOUNT_RATE_RESULTS[discount_rate][rcm_model]
-            
-            # Export summary results with explicit sensitivity parameters (using short keys)
-            export_model_run_output(
-                df_results_export=df_results_export,
-                results_category='summary',
-                menu_mp=menu_mp,
-                output_folder_path=output_folder_path,
-                location_id=location_id,
-                results_export_formatted_date=model_run_date_time,
-                rcm_model=rcm_model,
-                discount_rate=discount_rate
-            )
+
+        # Get the DataFrame for this discount rate
+        df_results_export = DATAFRAMES_MP9_RCM_DISCOUNT_RATE_RESULTS[discount_rate]
+
+        # Export summary results with the discount rate key (short key)
+        export_model_run_output(
+            df_results_export=df_results_export,
+            results_category='summary',
+            menu_mp=menu_mp,
+            output_folder_path=output_folder_path,
+            location_id=location_id,
+            results_export_formatted_date=model_run_date_time,
+            discount_rate=discount_rate
+        )
 
 # %%
 if 9 in VALID_MENU_MPS:
@@ -714,7 +678,7 @@ if 9 in VALID_MENU_MPS:
     print(f"Active cost scenarios: {REMDB_COST_SCENARIO_KEYS}\n")
 
     scenario_prefix = f'ref2025_mp{menu_mp}_'
-    df_check = DATAFRAMES_MP9_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][RCM_MODELS[0]]
+    df_check = DATAFRAMES_MP9_RCM_DISCOUNT_RATE_RESULTS['fixed_base']
 
     for cost_scenario in REMDB_COST_SCENARIO_KEYS:
         cost_col = create_cost_col(
@@ -785,14 +749,10 @@ if 10 in VALID_MENU_MPS:
     df_mp10_ref2025_damages_climate = df_mpX_ref2025_damages_climate.copy()
     df_mp10_ref2025_fuel_costs = df_mpX_ref2025_fuel_costs.copy()
 
-    # Summary results dictionary (nested: discount rate -> RCM model -> DataFrame)
-    # Structure matches new organization: [discount_rate][rcm_model]
+    # Summary results dictionary keyed by discount rate: [discount_rate] -> DataFrame
     DATAFRAMES_MP10_RCM_DISCOUNT_RATE_RESULTS = {
-        discount_rate: {
-            rcm_model: df.copy()
-            for rcm_model, df in rcm_dict.items()
-        }
-        for discount_rate, rcm_dict in DATAFRAMES_MPX_RCM_DISCOUNT_RATE.items()
+        discount_rate: df.copy()
+        for discount_rate, df in DATAFRAMES_MPX_RCM_DISCOUNT_RATE.items()
     }
 
     # Clear the batch mode trigger
@@ -830,31 +790,26 @@ if 10 in VALID_MENU_MPS:
     )
 
     # =========================================================================================================
-    # EXPORT RESULTS TO CSV - SUMMARY RESULTS FOR RCM MODELS AND DISCOUNT RATES SENSITIVITY ANALYSIS
+    # EXPORT RESULTS TO CSV - SUMMARY RESULTS FOR DISCOUNT RATE SENSITIVITY ANALYSIS
     # =========================================================================================================
 
-    # Process each discount rate, then each RCM model (matches dictionary structure)
+    # Process each discount rate (matches dictionary structure)
     for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
         print(f"Exporting SUMMARY RESULTS for discount rate: {discount_rate}")
-        
-        # Process each RCM model for this discount rate
-        for rcm_model in RCM_MODELS:
-            print(f"  RCM Model: {rcm_model.upper()}")
-            
-            # Get the specific DataFrame for this discount rate × RCM combination
-            df_results_export = DATAFRAMES_MP10_RCM_DISCOUNT_RATE_RESULTS[discount_rate][rcm_model]
-            
-            # Export summary results with explicit sensitivity parameters (using short keys)
-            export_model_run_output(
-                df_results_export=df_results_export,
-                results_category='summary',
-                menu_mp=menu_mp,
-                output_folder_path=output_folder_path,
-                location_id=location_id,
-                results_export_formatted_date=model_run_date_time,
-                rcm_model=rcm_model,
-                discount_rate=discount_rate
-            )
+
+        # Get the DataFrame for this discount rate
+        df_results_export = DATAFRAMES_MP10_RCM_DISCOUNT_RATE_RESULTS[discount_rate]
+
+        # Export summary results with the discount rate key (short key)
+        export_model_run_output(
+            df_results_export=df_results_export,
+            results_category='summary',
+            menu_mp=menu_mp,
+            output_folder_path=output_folder_path,
+            location_id=location_id,
+            results_export_formatted_date=model_run_date_time,
+            discount_rate=discount_rate
+        )
 
 # %%
 if 10 in VALID_MENU_MPS:
@@ -868,7 +823,7 @@ if 10 in VALID_MENU_MPS:
     print(f"Active cost scenarios: {REMDB_COST_SCENARIO_KEYS}\n")
 
     scenario_prefix = f'ref2025_mp{menu_mp}_'
-    df_check = DATAFRAMES_MP10_RCM_DISCOUNT_RATE_RESULTS['fixed_base'][RCM_MODELS[0]]
+    df_check = DATAFRAMES_MP10_RCM_DISCOUNT_RATE_RESULTS['fixed_base']
 
     for cost_scenario in REMDB_COST_SCENARIO_KEYS:
         cost_col = create_cost_col(
@@ -906,9 +861,8 @@ if 10 in VALID_MENU_MPS:
     print(f"{'='*80}")
     print(f"Cost scenarios exported: {REMDB_COST_SCENARIO_KEYS}")
     print(f"Discount rates: {PRIVATE_DISCOUNT_RATE_SHORT_KEYS}")
-    print(f"RCM models: {RCM_MODELS}")
-    print(f"CSVs per MP: {len(PRIVATE_DISCOUNT_RATE_SHORT_KEYS)} × {len(RCM_MODELS)} = {len(PRIVATE_DISCOUNT_RATE_SHORT_KEYS) * len(RCM_MODELS)}")
-    print(f"Total CSVs: 3 MPs × {len(PRIVATE_DISCOUNT_RATE_SHORT_KEYS) * len(RCM_MODELS)} = {3 * len(PRIVATE_DISCOUNT_RATE_SHORT_KEYS) * len(RCM_MODELS)}")
+    print(f"CSVs per MP: {len(PRIVATE_DISCOUNT_RATE_SHORT_KEYS)}")
+    print(f"Total CSVs: 3 MPs x {len(PRIVATE_DISCOUNT_RATE_SHORT_KEYS)} = {3 * len(PRIVATE_DISCOUNT_RATE_SHORT_KEYS)}")
     print(f"{'='*80}")
 
 

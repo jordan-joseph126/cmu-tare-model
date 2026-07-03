@@ -1,16 +1,17 @@
 """
 Adoption rate computation functions for the TARE model KPIs.
 
-Computes the weighted adoption rate — the share of homes (by EUSS sampling
-weight) that are classified as Tier 1 or Tier 2 adopters — aggregated to
-county or state level.
+Computes the weighted adoption rate -- the share of homes (by EUSS sampling
+weight) that are economic adopters -- aggregated to county or state level.
 
 Adoption rate definition:
-    adoption_rate = Σ(w × is_adopter) / Σ(w) × 100  (percent)
+    adoption_rate = sum(w x is_adopter) / sum(w) x 100  (percent)
 
-    is_adopter = True  if tier in {'Tier 1: Feasible',
-                                    'Tier 2: Feasible vs. Alternative'}
-    is_adopter = False otherwise (Tier 3 or no-adoption)
+    is_adopter = True  if the economic-adopter column equals 1.0
+    is_adopter = False otherwise (0.0 non-adopter; NaN excluded homes)
+
+For legacy tiered-adoption columns (string values), is_adopter is True when
+the tier is in adopter_tiers (Tier 1 or Tier 2 by default).
 
 Location: cmu_tare_model/adoption_kpis/compute_adoption_rate.py
 """
@@ -86,9 +87,11 @@ def compute_adoption_rate(
             Must contain ``county_col`` (GISJOIN format), ``weight_col``, and
             ``adoption_col``.  If ``state_col`` is present it is included in
             the output; otherwise the ``state`` column is omitted.
-        adoption_col: Column name containing adoption tier strings
-            (e.g. ``'iraRef_mp3_heating_adoption_central_inmap_acs_v4MID_fixed_base'``).
-        adopter_tiers: Tier string values counted as adopters.  Defaults to
+        adoption_col: Economic-adopter column name (numeric 1.0/0.0/NaN), e.g.
+            ``'ref2025_mp3_heating_only_econ_adopter_moreWTP_v4MID_fixed_base'``.
+            A legacy tier-string column is also accepted.
+        adopter_tiers: Tier string values counted as adopters for legacy
+            tier-string columns.  Defaults to
             ``['Tier 1: Feasible', 'Tier 2: Feasible vs. Alternative']``.
         geo_level: ``'county'`` (default) or ``'state'``.
         min_home_count: Minimum **sample** buildings per county/state.
@@ -172,8 +175,17 @@ def compute_adoption_rate(
     # --- Adopter flag ---
     # ResStock uses uniform sampling weight (~242) for all buildings.
     # Rates and percentages use simple counts (weight cancels in ratios).
-    # home_count uses Σ(weight) for scaling to national population totals.
-    df_work["_is_adopter"] = df_work[adoption_col].isin(adopter_tiers).astype(int)
+    # home_count uses the sum of weights for scaling to national population totals.
+    #
+    # The economic-adopter columns are numeric (1.0 = adopter, 0.0 = non-adopter,
+    # NaN = excluded home). Legacy tiered-adoption columns instead store tier
+    # strings, so match those against adopter_tiers when the column is not
+    # numeric.
+    adoption_values = df_work[adoption_col]
+    if pd.api.types.is_numeric_dtype(adoption_values):
+        df_work["_is_adopter"] = (adoption_values == 1.0).astype(int)
+    else:
+        df_work["_is_adopter"] = adoption_values.isin(adopter_tiers).astype(int)
 
     # --- Aggregate ---
     grouped = df_work.groupby(group_col).agg(

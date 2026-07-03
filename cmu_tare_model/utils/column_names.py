@@ -313,57 +313,6 @@ def create_climate_npv_col(
     return f'{scenario_prefix}{category}_climate_npv_{scc_assumption}'
 
 
-# def create_health_npv_col(
-#     scenario_prefix: str,
-#     category: str,
-#     rcm_model: str,
-#     cr_function: str) -> str:
-#     """Build health NPV column name.
-    
-#     Args:
-#         scenario_prefix: Scenario prefix (e.g., 'iraRef_mp3_').
-#         category: Equipment category (e.g., 'heating').
-#         rcm_model: RCM model ('ap2', 'easiur', 'inmap').
-#         cr_function: Concentration-response function ('acs', 'h6c').
-    
-#     Returns:
-#         Column name string.
-    
-#     Examples:
-#         >>> create_health_npv_col('iraRef_mp3_', 'heating', 'inmap', 'acs')
-#         'iraRef_mp3_heating_health_npv_inmap_acs'
-#     """
-#     return f'{scenario_prefix}{category}_health_npv_{rcm_model}_{cr_function}'
-
-
-# def create_public_npv_col(
-#     scenario_prefix: str,
-#     category: str,
-#     scc_assumption: str,
-#     rcm_model: str,
-#     cr_function: str) -> str:
-#     """Build combined public NPV column name.
-    
-#     Combines climate and health NPV with all sensitivity parameters.
-    
-#     Args:
-#         scenario_prefix: Scenario prefix (e.g., 'iraRef_mp3_').
-#         category: Equipment category (e.g., 'heating').
-#         scc_assumption: SCC assumption ('lower', 'central', 'upper').
-#         rcm_model: RCM model ('ap2', 'easiur', 'inmap').
-#         cr_function: Concentration-response function ('acs', 'h6c').
-    
-#     Returns:
-#         Column name string.
-    
-#     Examples:
-#         >>> create_public_npv_col('iraRef_mp3_', 'heating', 'central', 'inmap', 'acs')
-#         'iraRef_mp3_heating_public_npv_central_inmap_acs'
-#     """
-
-#     return f'{scenario_prefix}{category}_public_npv_{scc_assumption}_{rcm_model}_{cr_function}'
-
-
 def create_lifetime_damages_col(
     scenario_prefix: str,
     category: str,
@@ -424,51 +373,48 @@ def create_avoided_damages_col(
 
 def create_adoption_col(
     scenario_prefix: str,
-    category: str,
-    column_type: str,
+    npv_case: str,
     cost_scenario: str,
     method_suffix: str,
-    scc_assumption: str = None,
-    rcm_model: str = None,
-    cr_function: str = None,) -> str:
-    """Build adoption potential column name.
-    
+    wtp: str = 'moreWTP',
+) -> str:
+    """Build an economic-adopter column name for one NPV case.
+
+    The economic-adopter columns flag homes where the heat-pump retrofit pays
+    for itself (private moreWTP NPV >= 0). One column exists per NPV case, and
+    the adoption decision uses only private economics -- no climate or health
+    terms appear in the name. The name mirrors the private NPV column with
+    ``private_npv_moreWTP`` swapped for ``econ_adopter_moreWTP``.
+
     Args:
-        scenario_prefix: Scenario prefix (e.g., 'iraRef_mp3_').
-        category: Equipment category (e.g., 'heating').
-        column_type: Type of column ('benefit', 'adoption', 'impact', 'health_sensitivity',
-                     'total_npv_climateOnly', 'total_npv_healthOnly').
-        cost_scenario: 'v3' or 'v4LOW/MID/HIGH'.
-        method_suffix: Discount method suffix (e.g., '_fixed_low'), used for adoption only.
-        scc_assumption: SCC assumption (required for benefit/adoption/impact).
-        rcm_model: RCM model (required for benefit/adoption/impact).
-        cr_function: CR function (required for benefit/adoption/impact).
-    
+        scenario_prefix: Scenario prefix ending in an underscore
+            (e.g. 'ref2025_mp3_').
+        npv_case: One of NPV_CASE_CATEGORIES ('heating_only',
+            'heating_and_cooling_savings', 'heating_and_cooling_full').
+        cost_scenario: REMDB cost scenario key (e.g. 'v4MID').
+        method_suffix: Discount-method suffix (e.g. '_fixed_base').
+        wtp: Willingness-to-pay variant; the model uses 'moreWTP'.
+
     Returns:
         Column name string.
-    
-    Examples:
-        >>> create_adoption_col('iraRef_mp3_', 'heating', 'benefit', 'central', 'inmap', 'acs', cost_scenario='v3')
-        'iraRef_mp3_heating_benefit_central_inmap_acs_v3'
-        >>> create_adoption_col('iraRef_mp3_', 'heating', 'adoption', 'central', 'inmap', 'acs', '_fixed_low', cost_scenario='v3')
-        'iraRef_mp3_heating_adoption_central_inmap_acs_fixed_low_v3'
-        >>> create_adoption_col('iraRef_mp3_', 'heating', 'adoption', 'central', 'inmap', 'acs', '_fixed_low', cost_scenario='v4MID')
-        'iraRef_mp3_heating_adoption_central_inmap_acs_fixed_low_v4MID'
-        >>> create_adoption_col('iraRef_mp3_', 'heating', 'health_sensitivity', cost_scenario='v3')
-        'iraRef_mp3_heating_health_sensitivity'
-    """
 
-    if column_type == 'health_sensitivity':
-        return f'{scenario_prefix}{category}_health_sensitivity'
-    elif column_type == 'benefit':
-        return f'{scenario_prefix}{category}_benefit_{scc_assumption}_{rcm_model}_{cr_function}_{cost_scenario}'
-    elif column_type == 'adoption':
-        return f'{scenario_prefix}{category}_adoption_{scc_assumption}_{rcm_model}_{cr_function}_{cost_scenario}{method_suffix}'
-    elif column_type == 'impact':
-        return f'{scenario_prefix}{category}_impact_{scc_assumption}_{rcm_model}_{cr_function}_{cost_scenario}'
-    else:
-        raise ValueError(f"Invalid column_type '{column_type}'. Must be one of: "
-                        "'benefit', 'adoption', 'impact', 'health_sensitivity', ")
+    Raises:
+        ValueError: If npv_case is not one of NPV_CASE_CATEGORIES.
+
+    Examples:
+        >>> create_adoption_col('ref2025_mp3_', 'heating_only',
+        ...                     cost_scenario='v4MID', method_suffix='_fixed_base')
+        'ref2025_mp3_heating_only_econ_adopter_moreWTP_v4MID_fixed_base'
+    """
+    if npv_case not in NPV_CASE_CATEGORIES:
+        raise ValueError(
+            f"Invalid npv_case: '{npv_case}'. "
+            f"Must be one of {NPV_CASE_CATEGORIES}")
+
+    return (
+        f'{scenario_prefix}{npv_case}_econ_adopter_{wtp}_'
+        f'{cost_scenario}{method_suffix}'
+    )
 
 
 def create_total_npv_col(
@@ -477,41 +423,36 @@ def create_total_npv_col(
     cost_scenario: str,
     method_suffix: str,
     scc_assumption: str = None,
-    rcm_model: str = None,
-    cr_function: str = None,
-    climate_only: bool = False,
-    health_only: bool = False) -> str:
-    """Build total NPV column name (private + public).
-    
+    climate_only: bool = True) -> str:
+    """Build a climate-only total NPV column name (private + climate benefit).
+
+    Combines the private NPV with the social cost of carbon benefit. Health
+    damages are not part of the adoption model, so only the climate-only column
+    is produced.
+
     Args:
-        scenario_prefix: Scenario prefix (e.g., 'iraRef_mp3_').
+        scenario_prefix: Scenario prefix (e.g., 'ref2025_mp3_').
         category: Equipment category (e.g., 'heating').
         cost_scenario: 'v3' or 'v4LOW/MID/HIGH'.
-        method_suffix: Method suffix for discount variations (e.g. '_fixed_low').
+        method_suffix: Method suffix for discount variations (e.g. '_fixed_base').
         scc_assumption: SCC assumption ('lower', 'central', 'upper').
-        rcm_model: RCM model (required for default and health_only modes).
-        cr_function: CR function (required for default and health_only modes).
-        climate_only: If True, builds climate-only total NPV column.
-        health_only: If True, builds health-only total NPV column.
-    
+        climate_only: Retained for call-site compatibility; must be True.
+
     Returns:
         Column name string.
-    
+
+    Raises:
+        ValueError: If climate_only is not True.
+
     Examples:
-        >>> create_total_npv_col('iraRef_mp3_', 'heating', 'central', 'inmap', 'acs', cost_scenario='v3', method_suffix='_fixed_low')
-        'iraRef_mp3_heating_total_npv_central_inmap_acs_fixed_low_v3'
-        >>> create_total_npv_col('iraRef_mp3_', 'heating', 'central', 'inmap', 'acs', cost_scenario='v4MID', method_suffix='_fixed_low')
-        'iraRef_mp3_heating_total_npv_central_inmap_acs_fixed_low_v4MID'
-        >>> create_total_npv_col('iraRef_mp3_', 'heating', 'central', climate_only=True, cost_scenario='v3', method_suffix='_fixed_base')
-        'iraRef_mp3_heating_total_npv_climateOnly_central_fixed_base_v3'
-        >>> create_total_npv_col('iraRef_mp3_', 'heating', 'central', 'inmap', 'acs', health_only=True, cost_scenario='v3', method_suffix='_fixed_low')
-        'iraRef_mp3_heating_total_npv_healthOnly_inmap_acs_fixed_low_v3'
+        >>> create_total_npv_col('ref2025_mp3_', 'heating', scc_assumption='central',
+        ...                      climate_only=True, cost_scenario='v4MID',
+        ...                      method_suffix='_fixed_base')
+        'ref2025_mp3_heating_total_npv_climateOnly_central_v4MID_fixed_base'
     """
+    if not climate_only:
+        raise ValueError(
+            "create_total_npv_col builds only climate-only columns; "
+            "pass climate_only=True.")
 
-    if climate_only:
-        return f'{scenario_prefix}{category}_total_npv_climateOnly_{scc_assumption}_{cost_scenario}{method_suffix}'
-    
-    if health_only:
-        return f'{scenario_prefix}{category}_total_npv_healthOnly_{rcm_model}_{cr_function}_{cost_scenario}{method_suffix}'
-
-    return f'{scenario_prefix}{category}_total_npv_{scc_assumption}_{rcm_model}_{cr_function}_{cost_scenario}{method_suffix}'
+    return f'{scenario_prefix}{category}_total_npv_climateOnly_{scc_assumption}_{cost_scenario}{method_suffix}'
