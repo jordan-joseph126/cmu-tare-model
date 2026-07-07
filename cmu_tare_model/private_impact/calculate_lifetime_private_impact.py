@@ -543,6 +543,19 @@ def calculate_capital_costs(
             f"Ensure installation costs are calculated before calling calculate_private_npv()."
         )
 
+    # The .fillna(0) on each cost/rebate column below runs BEFORE the valid_mask
+    # is applied at the end of this function. That ordering is safe only if no
+    # home inside valid_mask can carry a NaN in a required cost/rebate column --
+    # otherwise a valid home would silently read as cost 0 (or an un-rebated
+    # cost). By construction the upgrade/replacement/rebate columns are written
+    # for exactly the valid homes and NaN'd for the rest, so a valid home should
+    # always have a real value here. That guarantee has NOT been confirmed
+    # empirically on the full EUSS stock in this session (the stock and income
+    # data are offline), so the audit is recorded but the silent fill is left
+    # unchanged. TODO (researcher): on a full run, count valid_mask homes with a
+    # NaN in any required column; if that count is zero, replace these .fillna(0)
+    # calls with a fail-loud check per the fail-fast standard.
+    #
     # Single policy scenario ('2025 Reference Case'): IRA rebates always apply.
     if category == 'heating':
         if input_mp in ('upgrade09', 'upgrade10'):
