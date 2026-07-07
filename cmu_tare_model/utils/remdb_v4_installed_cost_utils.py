@@ -12,12 +12,15 @@ What the pipeline does, in order (see add_remdb_metrics):
   3. Map the REMDB regression coefficients and unit specs onto each home.
   4. Convert capacity (pm1) and efficiency (pm2) into the units the regression
      expects.
-  5a. Replacement only: raise below-floor efficiencies (pm2) up to the minimum
-      efficiency equipment sold today, preserving the raw value in a
-      ``{pm2_col}_original`` column.
-  5b. Replacement only: clamp capacity (pm1) toward the REMDB training bounds
-      when a value is within a fixed tolerance of a bound.
-  6. Report diagnostics and return a summary frame plus a detailed frame.
+  5. Replacement only: raise below-floor efficiencies (pm2) up to the minimum
+     efficiency equipment sold today, preserving the raw value in a
+     ``{pm2_col}_original`` column.
+  6. Report diagnostics (including any capacity values outside the REMDB
+     training bounds) and return a summary frame plus a detailed frame.
+
+Capacity outliers are reported but never modified: pm1 is used as converted.
+Homes far outside the training range are handled by the upstream percentile
+filter and by NaN propagation, not by clamping.
 
 NaN handling: homes with invalid fuel/technology types resolve to row_id
 'unknown' and carry NaN metrics, which propagate to NaN costs downstream. This
@@ -38,7 +41,6 @@ from config import PROJECT_ROOT
 from cmu_tare_model.constants import (
     EQUIPMENT_SPECS,
     EFFICIENCY_FLOORS_PM2,
-    CAPACITY_BOUND_CLAMPING_TOLERANCE,
 )
 
 # =============================================================================
@@ -398,126 +400,6 @@ def _apply_efficiency_floor(
         else:
             print(f"    Total clamped: {total_clamped:,} homes")
             print(f"    Original values preserved in: {original_col}")
-
-    return df_out
-
-
-def _log_capacity_clamp(
-    mask: pd.Series,
-    df: pd.DataFrame,
-    row_id_col: str,
-    pm1: pd.Series,
-    bound: pd.Series,
-    was_clamped: bool,
-    direction: str,
-    tolerance: float,
-) -> None:
-    """Print per-row_id diagnostics for capacity clamping.
-
-    Args:
-        mask: Boolean mask of affected homes.
-        df: DataFrame for row_id lookup.
-        row_id_col: Column with REMDB row_id.
-        pm1: Original pm1 values (before clamping).
-        bound: Bound values aligned to pm1.
-        was_clamped: True if homes were clamped, False if left unchanged.
-        direction: 'below' or 'above' (relative to bound).
-        tolerance: Tolerance fraction for context in message.
-    """
-    for rid in df.loc[mask, row_id_col].unique():
-        m = mask & (df[row_id_col] == rid)
-        n = int(m.sum())
-        vals = pm1[m]
-        bnd = bound[m].iloc[0]
-        pcts = ((vals - bnd).abs() / bnd * 100)
-
-        if was_clamped:
-            clamp_dir = "UP" if direction == "below" else "DOWN"
-            print(f"    {rid}: clamped {n:,} homes {clamp_dir} to bound "
-                  f"{bnd:.2f} (from [{vals.min():.2f}\u2013{vals.max():.2f}])")
-        else:
-            print(f"    {rid}: {n:,} homes NOT clamped "
-                  f"(>{tolerance*100:.0f}% {direction} bound {bnd:.2f}; "
-                  f"range [{vals.min():.2f}\u2013{vals.max():.2f}], "
-                  f"{pcts.min():.0f}%\u2013{pcts.max():.0f}% away)")
-
-
-def _apply_capacity_clamping(
-    df: pd.DataFrame,
-    row_id_col: str,
-    pm1_col: str,
-    pm1_lower_bound_col: str,
-    pm1_upper_bound_col: str,
-    tolerance: float = CAPACITY_BOUND_CLAMPING_TOLERANCE,
-    verbose: bool = False
-) -> pd.DataFrame:
-    """Clamp pm1 (capacity) to REMDB training bounds where within tolerance.
-
-    For replacement cost estimation, some EUSS capacity values fall slightly
-    outside the REMDB v4 regression's training range.  This function clamps
-    pm1 values to the nearest training bound, but ONLY when the value is
-    within *tolerance* (fractional) of that bound.
-
-    Values far outside the bounds (> tolerance) are left unchanged so they
-    can be handled separately (e.g., sq-ft-based NaN-masking per protocol).
-
-    Args:
-        df: DataFrame with pm1 values already converted by _convert_pm1().
-        row_id_col: Column containing the REMDB row_id.
-        pm1_col: Column containing the converted pm1 values.
-        pm1_lower_bound_col: Column with REMDB lower training bound.
-        pm1_upper_bound_col: Column with REMDB upper training bound.
-        tolerance: Maximum fractional distance from bound for clamping.
-        verbose: If True, print diagnostic info about clamped homes.
-
-    Returns:
-        DataFrame with pm1 values clamped where applicable.
-    """
-    df_out = df.copy()
-
-    pm1 = pd.to_numeric(df_out[pm1_col], errors='coerce')
-    lower = pd.to_numeric(df_out[pm1_lower_bound_col], errors='coerce')
-    upper = pd.to_numeric(df_out[pm1_upper_bound_col], errors='coerce')
-
-    valid = pm1.notna()
-    total_clamped = 0
-
-    # --- Lower-bound clamping ---
-    below_lower = valid & lower.notna() & (pm1 < lower)
-    if below_lower.any():
-        frac_below = (lower - pm1) / lower
-        within_tol = below_lower & (frac_below <= tolerance)
-        beyond_tol = below_lower & (frac_below > tolerance)
-
-        if within_tol.any():
-            df_out.loc[within_tol, pm1_col] = lower[within_tol]
-            total_clamped += int(within_tol.sum())
-            if verbose:
-                _log_capacity_clamp(within_tol, df_out, row_id_col, pm1, lower,
-                                    was_clamped=True, direction="below", tolerance=tolerance)
-        if verbose and beyond_tol.any():
-            _log_capacity_clamp(beyond_tol, df_out, row_id_col, pm1, lower,
-                                was_clamped=False, direction="below", tolerance=tolerance)
-
-    # --- Upper-bound clamping ---
-    above_upper = valid & upper.notna() & (pm1 > upper)
-    if above_upper.any():
-        frac_above = (pm1 - upper) / upper
-        within_tol = above_upper & (frac_above <= tolerance)
-        beyond_tol = above_upper & (frac_above > tolerance)
-
-        if within_tol.any():
-            df_out.loc[within_tol, pm1_col] = upper[within_tol]
-            total_clamped += int(within_tol.sum())
-            if verbose:
-                _log_capacity_clamp(within_tol, df_out, row_id_col, pm1, upper,
-                                    was_clamped=True, direction="above", tolerance=tolerance)
-        if verbose and beyond_tol.any():
-            _log_capacity_clamp(beyond_tol, df_out, row_id_col, pm1, upper,
-                                was_clamped=False, direction="above", tolerance=tolerance)
-
-    if verbose and total_clamped == 0:
-        print(f"    No homes required capacity bound clamping.")
 
     return df_out
 
@@ -884,27 +766,9 @@ def add_remdb_metrics(
             verbose=verbose
         )
 
-    # =========================================================================
-    # STEP 4.5b: Clamp capacity to REMDB training bounds (replacement only)
-    # =========================================================================
-    # For replacement costs only: clamp pm1 toward the REMDB training-data
-    # bounds when the value is within TOLERANCE (default 10%) of a bound.
-    #   - Slightly below lower bound  → clamp UP   to the lower bound
-    #   - Slightly above upper bound  → clamp DOWN to the upper bound
-    #   - Far outside bounds           → leave unchanged
-    if metric_type == 'replacement':
-        if verbose:
-            print(f"\n  Step 4.5b: Clamping pm1 (capacity) to REMDB bounds "
-                  f"(±{CAPACITY_BOUND_CLAMPING_TOLERANCE*100:.0f}% tolerance, replacement only)")
-        df_copy = _apply_capacity_clamping(
-            df=df_copy,
-            row_id_col=row_id_col,
-            pm1_col=pm1_col,
-            pm1_lower_bound_col=f'{prefix}pm1_lower_bound',
-            pm1_upper_bound_col=f'{prefix}pm1_upper_bound',
-            tolerance=CAPACITY_BOUND_CLAMPING_TOLERANCE,
-            verbose=verbose
-        )
+    # Capacity (pm1) is used exactly as converted. Values outside the REMDB
+    # training bounds are reported in Step 5 but never modified; the upstream
+    # percentile filter and NaN propagation handle genuine outliers.
 
     # =========================================================================
     # STEP 5: Report bounds comparison (diagnostic only - no data modification)

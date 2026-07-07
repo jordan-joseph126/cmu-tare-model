@@ -257,25 +257,17 @@ EFFICIENCY_FLOORS_PM2 = {
 }
 
 # =============================================================
-# CONSTANTS: CAPACITY BOUND CLAMPING FOR REPLACEMENT COSTS
+# CONSTANTS: CAPACITY BOUNDS FOR REPLACEMENT COSTS
 # =============================================================
-# Applied to pm1 (capacity) values BEFORE the REMDB v4 regression,
-# only for replacement costs.
-#
-# Approach: Use the REMDB v4 training-data lower/upper bounds and
-# only clamp values that are within TOLERANCE of a bound.
-#
-#   - Values slightly below the lower bound (within TOLERANCE) are
-#     clamped UP to the lower bound.
-#   - Values slightly above the upper bound (within TOLERANCE) are
-#     clamped DOWN to the upper bound.
-#   - Values far outside the bounds (> TOLERANCE) are left unchanged.
-#
-# Example (lower bound = 1.5 tons, tolerance = 0.10):
-#   1.4 tons → clamp to 1.5  (6.7% below, within 10%)
-#   1.0 tons → leave as 1.0  (33% below, beyond 10%)
-# =============================================================
-CAPACITY_BOUND_CLAMPING_TOLERANCE = 0.10  # 10%
+# Capacity (pm1) is fed to the REMDB v4 regression exactly as converted from
+# the EUSS size fields -- it is never clamped to the training bounds. Values
+# outside the bounds are reported for diagnostics only (see
+# _report_bounds_comparison in remdb_v4_installed_cost_utils.py); genuine
+# outliers are handled by the upstream capacity percentile filter and by NaN
+# propagation. The former CAPACITY_BOUND_CLAMPING_TOLERANCE and the tolerance-
+# based clamping step were removed on 07 July 2026 because clamping silently
+# moved a small number of homes' capacities (and therefore their capital
+# costs) with no methodological basis over the plain converted value.
 
 # =============================================================
 # CONSTANTS: BSQ / EUSS TIMESERIES COLUMN NAMES

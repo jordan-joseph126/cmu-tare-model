@@ -49,10 +49,7 @@ import numpy as np
 import pandas as pd
 
 from config import PROJECT_ROOT
-from cmu_tare_model.constants import (
-    CAPACITY_BOUND_CLAMPING_TOLERANCE,
-    EFFICIENCY_FLOORS_PM2,
-)
+from cmu_tare_model.constants import EFFICIENCY_FLOORS_PM2
 from cmu_tare_model.utils.remdb_v4_installed_cost_utils import (
     add_remdb_metrics,
     load_remdb_v4_data,
@@ -301,7 +298,6 @@ def main() -> None:
     manifest: Dict[str, object] = {
         "n_homes": int(len(df_homes)),
         "efficiency_floors": EFFICIENCY_FLOORS_PM2,
-        "capacity_clamp_tolerance": CAPACITY_BOUND_CLAMPING_TOLERANCE,
         "files": {},
     }
 
