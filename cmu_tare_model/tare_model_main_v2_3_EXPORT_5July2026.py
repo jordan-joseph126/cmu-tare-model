@@ -100,6 +100,18 @@ Visualizations default to 'v4MID' with comparative sections for other scenarios.
 """)
 
 # %%
+# =============================================================================
+# ANALYSIS RUN CONTROLS
+# =============================================================================
+# GRID_IMPACT_ANALYSIS gates the grid-impact section further down. That section
+# runs the peak-demand notebook via %run and needs live model outputs plus AWS
+# access, so it is off by default; set it to True only in an environment that
+# has those. It is defined here (rather than inline) so the toggle lives with
+# the other run controls and the `if GRID_IMPACT_ANALYSIS:` gates below always
+# resolve to a defined name.
+GRID_IMPACT_ANALYSIS = False
+
+# %%
 # Select whether to begin new run or visualize existing model outputs
 while True:
     try:
