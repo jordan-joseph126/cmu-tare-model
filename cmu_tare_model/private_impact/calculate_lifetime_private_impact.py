@@ -469,8 +469,8 @@ def calculate_capital_costs(
     IRA rebates are applied.
 
     Net capital cost depends on hvac_replacement_scenario:
-    - 'heating': net = total − heating replacement cost  (Case A)
-    - 'heating_and_cooling': net = total − (heating + cooling replacement cost)  (Case B)
+    - 'heating': net = total - heating replacement cost  (Case A)
+    - 'heating_and_cooling': net = total - (heating + cooling replacement cost)  (Case B)
 
     Args:
         df_copy: DataFrame containing cost data.
@@ -483,8 +483,8 @@ def calculate_capital_costs(
         cost_scenario: Cost scenario identifier used for column naming (e.g., 'v4MID').
         valid_mask: Series indicating which rows have valid data for the category.
         hvac_replacement_scenario: Which incumbent equipment costs offset the upgrade.
-            'heating' (default, Case A) — only heating replacement cost subtracted.
-            'heating_and_cooling' (Case B) — heating + cooling replacement cost subtracted.
+            'heating' (default, Case A) -- only heating replacement cost subtracted.
+            'heating_and_cooling' (Case B) -- heating + cooling replacement cost subtracted.
         verbose: Whether to print detailed processing information. Default is False.
 
     Returns:

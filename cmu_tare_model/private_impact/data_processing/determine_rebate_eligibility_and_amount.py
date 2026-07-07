@@ -165,7 +165,7 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame, random_seed: int = 42) -
     # Set random seed for reproducible income sampling across MP runs.
     # This ensures identical income classifications (and thus identical rebate
     # eligibility) for the same homes regardless of which measure package is
-    # being processed — critical for MP4 vs MP8 result consistency.
+    # being processed -- critical for MP4 vs MP8 result consistency.
     np.random.seed(random_seed)
     
     # Apply the generate_household_medianIncome_2025 function

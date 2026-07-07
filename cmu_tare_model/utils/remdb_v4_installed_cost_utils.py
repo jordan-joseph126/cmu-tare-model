@@ -1,42 +1,37 @@
-"""
-========================================================================================================================================================================
-REMDB v4 Installed Cost Utilities (SIMPLIFIED)
-========================================================================================================================================================================
+"""REMDB v4 installed-cost metric preparation.
 
-This module prepares equipment metrics for REMDB v4 cost calculations.
+This module turns raw EUSS equipment fields into the performance metrics that
+the REMDB v4 cost regression consumes. The single public entry point is
+add_remdb_metrics(), which handles both replacement (counterfactual, like-for-
+like) and upgrade (heat pump) metrics.
 
-Key Functions:
-- add_remdb_metrics(): Unified function for both replacement and upgrade metrics
+What the pipeline does, in order (see add_remdb_metrics):
+  1. Optional percentile filtering of capacity outliers.
+  2. Assign a REMDB row_id from the baseline (replacement) or heat-pump
+     (upgrade) equipment type.
+  3. Map the REMDB regression coefficients and unit specs onto each home.
+  4. Convert capacity (pm1) and efficiency (pm2) into the units the regression
+     expects.
+  5a. Replacement only: raise below-floor efficiencies (pm2) up to the minimum
+      efficiency equipment sold today, preserving the raw value in a
+      ``{pm2_col}_original`` column.
+  5b. Replacement only: clamp capacity (pm1) toward the REMDB training bounds
+      when a value is within a fixed tolerance of a bound.
+  6. Report diagnostics and return a summary frame plus a detailed frame.
 
-Features:
-- Percentile-based filtering to exclude capacity outliers before processing
-- Unit conversion based on REMDB specifications
-- NaN values propagate naturally for homes with invalid fuel/technology types
+NaN handling: homes with invalid fuel/technology types resolve to row_id
+'unknown' and carry NaN metrics, which propagate to NaN costs downstream. This
+is intentional and matches the validation framework's masking.
 
-Refactored: January 2026
-- Combined duplicate replacement/upgrade logic into single function
-- Added percentile filtering for capacity values
-- Removed dead/commented code
-- Simplified column management
-
-UPDATED: January 12, 2026
-- Fixed argument order in _convert_pm1() call (pm1_metric_col and pm1_unit_col were swapped)
-- Added defensive df.copy() at start of all functions to prevent mutation on re-execution
-- Fixed duplicate column issue in output concatenation
-- Removed _fill_missing_from_bounds() - NaN values propagate naturally per validation framework
-- Removed _check_out_of_bounds() - 95% CI percentile filter handles outliers
-- Removed out_of_bound_method parameter - no longer needed
-- Removed legacy code for clamping and keeping as is - now handled via filtering
-
-NO LONGER USING THE SUM OF THE HEATING AND COOLING LOADS FOR SYSTEM SIZE AND COST ESTIMATION
-- The supplemental heating (electric strip heat) is implicitly included in the REMDB v4 costs
-- Also, the primary system size is the same for both heating and cooling. You wouldn't have two different ASHP tonnages.
+System sizing: a single primary system size drives both the heating and cooling
+cost; supplemental electric-strip heat is already priced into the REMDB v4
+figures, so heating and cooling loads are not summed into one larger system.
 """
 
 import os
 import pandas as pd
 import numpy as np
-from typing import Optional, Tuple, Literal
+from typing import Dict, Optional, Tuple, Literal
 
 from config import PROJECT_ROOT
 
@@ -141,14 +136,6 @@ def _assign_replacement_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
 
         df_copy[row_id_col] = np.select(conditions, choices, default='unknown')
 
-    # =========================================
-    # DELETE FOR NOW - NON-HVAC END USES
-    # =========================================
-
-    # else:
-    #     # raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking'")
-    #     raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling'")
-
     return df_copy
 
 
@@ -183,15 +170,9 @@ def _assign_upgrade_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
 
         df_copy[row_id_col] = np.select(conditions, choices, default='unknown')
 
-    # Cooling only considered as replacement cost because heat pumps are the upgrade option for both heating and cooling
-
-    # =========================================
-    # DELETE FOR NOW - NON-HVAC END USES
-    # =========================================
-
-    # else:
-    #     # raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling', 'waterHeating', 'clothesDrying', 'cooking'")
-    #     raise ValueError(f"Invalid end_use: '{end_use}'. Must be one of: 'heating', 'cooling'")
+    # Cooling is priced only as a replacement cost: the heat pump upgrade already
+    # serves both the heating and the cooling load, so there is no separate
+    # cooling upgrade row_id.
 
     return df_copy
 
@@ -244,8 +225,8 @@ def _convert_pm1(
     """Convert PM1 (capacity) to REMDB-expected units.
     
     Conversion rules based on pm1_remdb_col:
-    - "Tons": kBtu/h ÷ 12 (heat pumps, central ACs)
-    - "BTU/hr": kBtu/h × 1000 (furnaces, boilers, baseboard)
+    - "Tons": kBtu/h / 12 (heat pumps, central ACs)
+    - "BTU/hr": kBtu/h x 1000 (furnaces, boilers, baseboard)
     - Other: keep as-is (R-value, volume, etc.)
     
     Args:
@@ -272,13 +253,13 @@ def _convert_pm1(
 
     result = pd.Series(np.nan, index=df_copy.index)
     
-    # Tons (heat pumps, ACs): kBtu/h → Tons (÷12)
+    # Tons (heat pumps, ACs): kBtu/h -> Tons (/12)
     # mask_tons = (pm1_remdb_col == 'tons')
     mask_tons = pm1_remdb_col.str.contains('ton', na=False)
     if mask_tons.any():
         result.loc[mask_tons] = numeric_value.loc[mask_tons] / 12.0
     
-    # BTU/hr (furnaces, boilers, baseboard): kBtu/h → BTU/hr (×1000)
+    # BTU/hr (furnaces, boilers, baseboard): kBtu/h -> BTU/hr (x1000)
     mask_btu = pm1_remdb_col.str.contains('btu', na=False)
     if mask_btu.any():
         result.loc[mask_btu] = numeric_value.loc[mask_btu] * 1000.0
@@ -307,7 +288,7 @@ def _convert_pm2(
     """Convert PM2 (efficiency) to REMDB-expected format.
     
     Conversion rules based on pm2_metric:
-    - AFUE: Extract numeric, divide by 100 (e.g., "80% AFUE" → 0.80)
+    - AFUE: Extract numeric, divide by 100 (e.g., "80% AFUE" -> 0.80)
     - Other (SEER, HSPF, EER, UEF, CEF): Extract numeric, keep as-is
     
     Args:
@@ -360,7 +341,7 @@ def _apply_efficiency_floor(
     df: pd.DataFrame,
     row_id_col: str,
     pm2_col: str,
-    efficiency_floors: dict,
+    efficiency_floors: Dict[str, float],
     verbose: bool = False
 ) -> pd.DataFrame:
     """Clamp pm2 (efficiency) upward to a hard minimum floor per equipment type.
@@ -391,35 +372,29 @@ def _apply_efficiency_floor(
           - ``{pm2_col}_original`` preserving pre-clamping values (used by validation)
     """
     df_out = df.copy()
-    
-    # Preserve the raw EUSS efficiency before any modification
+
+    # Preserve the raw EUSS efficiency before any flooring is applied.
     original_col = f'{pm2_col}_original'
     df_out[original_col] = df_out[pm2_col].copy()
-    
-    total_clamped = 0
 
-    for row_id, floor in efficiency_floors.items():
-        mask = (df_out[row_id_col] == row_id) & df_out[pm2_col].notna()
-        if not mask.any():
-            continue
-
-        below_floor = mask & (df_out[pm2_col] < floor)
-        n_below = below_floor.sum()
-
-        if n_below > 0:
-            original_values = df_out.loc[below_floor, pm2_col]
-            df_out.loc[below_floor, pm2_col] = floor
-            total_clamped += n_below
-
-            if verbose:
-                n_total = mask.sum()
-                print(f"    {row_id}: clamped {n_below:,}/{n_total:,} homes "
-                      f"from [{original_values.min():.2f}\u2013{original_values.max():.2f}] "
-                      f"\u2192 floor {floor}")
+    # Map each home's row_id to its floor. Rows whose row_id is not in the
+    # floors dict get NaN; Series.clip treats a NaN lower bound as "do not
+    # clip", so those rows (and rows whose pm2 is NaN) pass through unchanged.
+    # This raises every below-floor value up to its floor in one vectorized
+    # step, exactly as the previous per-row_id loop did.
+    floor_by_row = df_out[row_id_col].map(efficiency_floors)
+    df_out[pm2_col] = df_out[pm2_col].clip(lower=floor_by_row)
 
     if verbose:
+        # A home was raised when its floored pm2 differs from the original and
+        # the original was present (NaN originals are never touched).
+        raised = (
+            (df_out[pm2_col] != df_out[original_col])
+            & df_out[original_col].notna()
+        )
+        total_clamped = int(raised.sum())
         if total_clamped == 0:
-            print(f"    No homes required efficiency floor clamping.")
+            print("    No homes required efficiency floor clamping.")
         else:
             print(f"    Total clamped: {total_clamped:,} homes")
             print(f"    Original values preserved in: {original_col}")
@@ -692,7 +667,7 @@ def filter_by_percentile(
         print(f"   Percentile range: {lower_percentile or 0:.1f}% - {upper_percentile or 100:.1f}%")
         print(f"   Value bounds: {lower_bound:.2f} - {upper_bound:.2f}")
         print(f"   Original range: {values.min():.2f} - {values.max():.2f}")
-        print(f"   Rows: {n_original:,} → {n_filtered:,} (removed {n_removed:,}, {pct_removed:.2f}%)")
+        print(f"   Rows: {n_original:,} -> {n_filtered:,} (removed {n_removed:,}, {pct_removed:.2f}%)")
     
     return df_filtered
 
@@ -710,7 +685,7 @@ def add_remdb_metrics(
     capacity_lower_percentile: Optional[float] = None,
     capacity_upper_percentile: Optional[float] = None,
     verbose: bool = True
-) -> Tuple[pd.DataFrame, pd.DataFrame]:  # ← Always return tuple
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Prepare REMDB v4 metrics for cost calculations.
     
     This function handles both replacement and upgrade metrics with optional
@@ -895,7 +870,7 @@ def add_remdb_metrics(
     # =========================================================================
     # For replacement costs only: clamp ALL pm2 values below the floor UP
     # to the minimum efficiency equipment available today.
-    #   SEER 8 → SEER 15, AFUE 60% → AFUE 80%, etc.
+    #   SEER 8 -> SEER 15, AFUE 60% -> AFUE 80%, etc.
     # Upgrade efficiencies are set by the measure package definition, so
     # no clamping is needed for upgrades.
     if metric_type == 'replacement':
@@ -1002,4 +977,4 @@ def add_remdb_metrics(
     detailed_existing = [c for c in detailed_cols if c in df_copy.columns]
     df_detailed = df_copy[detailed_existing].copy()
     
-    return df_main, df_detailed  # ← Always return both
+    return df_main, df_detailed
