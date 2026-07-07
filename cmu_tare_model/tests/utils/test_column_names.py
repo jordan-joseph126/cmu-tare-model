@@ -156,29 +156,43 @@ def test_avoided_damages_col_climate():
 
 # ── Adoption column (economic-adopter, one per NPV case) ──────────────────────
 
-def test_adoption_col_heating_only():
+def test_adoption_col_heatingSavings_coolingLCC_sub():
     result = create_adoption_col(
-        'ref2025_mp3_', 'heating_only',
-        cost_scenario='v4MID', method_suffix='_fixed_base',
+        'ref2025_mp3_', 'heatingSavings_coolingLCC_sub',
+        method_suffix='_fixed_base',
     )
-    assert result == 'ref2025_mp3_heating_only_econ_adopter_moreWTP_v4MID_fixed_base'
+    assert result == 'ref2025_mp3_heatingSavings_coolingLCC_sub_econ_adopter_fixed_base'
 
 
-def test_adoption_col_heating_and_cooling_full():
+def test_adoption_col_heatingSavings_coolingLCC_unsub():
     result = create_adoption_col(
-        'ref2025_mp4_', 'heating_and_cooling_full',
-        cost_scenario='v4MID', method_suffix='_fixed_base',
+        'ref2025_mp3_', 'heatingSavings_coolingLCC_unsub',
+        method_suffix='_fixed_base',
     )
-    assert result == (
-        'ref2025_mp4_heating_and_cooling_full_econ_adopter_moreWTP_v4MID_fixed_base'
+    assert result == 'ref2025_mp3_heatingSavings_coolingLCC_unsub_econ_adopter_fixed_base'
+
+
+def test_adoption_col_heatingLCC_coolingLCC_sub():
+    result = create_adoption_col(
+        'ref2025_mp4_', 'heatingLCC_coolingLCC_sub',
+        method_suffix='_fixed_base',
     )
+    assert result == 'ref2025_mp4_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base'
+
+
+def test_adoption_col_heatingLCC_coolingLCC_unsub():
+    result = create_adoption_col(
+        'ref2025_mp4_', 'heatingLCC_coolingLCC_unsub',
+        method_suffix='_fixed_base',
+    )
+    assert result == 'ref2025_mp4_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base'
 
 
 def test_adoption_col_invalid_npv_case_raises():
     with pytest.raises(ValueError, match="Invalid npv_case"):
         create_adoption_col(
             'ref2025_mp3_', 'not_a_case',
-            cost_scenario='v4MID', method_suffix='_fixed_base',
+            method_suffix='_fixed_base',
         )
 
 

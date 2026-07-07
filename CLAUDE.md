@@ -14,7 +14,7 @@
 **Data:** ~331,531 baseline homes | 331,526 applicable | 3,098 counties (ResStock 2022.1.1 EUSS)
 **Heat-pump models:** MP3 (standard ASHP, 15 SEER1, 9 HSPF1) | MP4 (high-efficiency ASHP, 24–29.3 SEER1, 13–14 HSPF1)
 **Policy scenario:** Single — `'2025 Reference Case'` (see Canonical Values below)
-**Adoption metric:** `moreWTP >= 0` — economic payback only; no climate/health damages in the adoption decision
+**Adoption metric:** `NPV >= 0` — economic payback only; no climate/health damages in the adoption decision
 
 ---
 
@@ -121,22 +121,25 @@ col_base = define_scenario_params(mp, policy)[0]   # → 'ref2025_mp3_'
 mp_str   = f'mp{mp}'                               # '3' or '4' — never 'mp3' literal
 ```
 
-**NPV cases (three per MP, as of Session 2):**
+**NPV cases (three per MP, as of Session A refactor):**
 ```
-ref2025_mp{mp}_npv_heating_only
-ref2025_mp{mp}_npv_heating_and_cooling_savings
-ref2025_mp{mp}_npv_heating_and_cooling_full
+ref2025_mp{mp}_heatingSavings_coolingLCC_private_npv_{method_suffix}
+ref2025_mp{mp}_heatingLCC_coolingSavings_private_npv_{method_suffix}
+ref2025_mp{mp}_heatingLCC_coolingLCC_private_npv_{method_suffix}
+```
+- `LCC` = that end-use's avoided-replacement capital is credited in the NPV
+- `Savings` = only operating savings credited for that end-use
+- All three cases include BOTH heating and cooling operating savings
+
+**Economic adopter columns (three per MP, as of Session A refactor):**
+```
+ref2025_mp{mp}_heatingSavings_coolingLCC_econ_adopter_{method_suffix}
+ref2025_mp{mp}_heatingLCC_coolingSavings_econ_adopter_{method_suffix}
+ref2025_mp{mp}_heatingLCC_coolingLCC_econ_adopter_{method_suffix}
 ```
 
-**Economic adopter columns (three per MP, as of Session 2):**
-```
-ref2025_mp{mp}_heating_only_econ_adopter_moreWTP_v4MID_fixed_base
-ref2025_mp{mp}_heating_and_cooling_savings_econ_adopter_moreWTP_v4MID_fixed_base
-ref2025_mp{mp}_heating_and_cooling_full_econ_adopter_moreWTP_v4MID_fixed_base
-```
-
-**Canonical variable suffixes:** `v4MID` | `moreWTP` | `fixed_base` | `central`
-Never use: `v3`, `lessWTP`, `iraRef_mp{mp}_`, `preIRA_mp{mp}_`, `aeo2026_mp{mp}_`
+**Canonical variable suffixes:** `fixed_base` | `central`
+Never use: `v3`, `v4MID`, `moreWTP`, `lessWTP`, `iraRef_mp{mp}_`, `preIRA_mp{mp}_`, `aeo2026_mp{mp}_`
 
 > **Note:** The `CODEBASE_MASTER_REFERENCE.md` documents older column naming with `preIRA`/`iraRef`
 > prefixes and four columns per MP. That predates the Session 1 scenario consolidation.
@@ -152,7 +155,7 @@ Never use: `v3`, `lessWTP`, `iraRef_mp{mp}_`, `preIRA_mp{mp}_`, `aeo2026_mp{mp}_
 | RCM models (health damage) | `ap2`, `easiur`, `inmap` |
 | Private discount rates | `fixed_low` (3%) \| `fixed_base` (7%) \| `fixed_high` (10%) \| `variable` (Ramsey) |
 | Policy scenario | Single: `'2025 Reference Case'` — no IRA/pre-IRA split |
-| NPV scope | `heating_only` \| `heating_and_cooling_savings` \| `heating_and_cooling_full` |
+| NPV scope | `heatingSavings_coolingLCC` \| `heatingLCC_coolingSavings` \| `heatingLCC_coolingLCC` |
 
 ---
 
@@ -170,7 +173,8 @@ Never use: `v3`, `lessWTP`, `iraRef_mp{mp}_`, `preIRA_mp{mp}_`, `aeo2026_mp{mp}_
 
 **Cooling in NPV:**
 For homes where `include_cooling = False`: cooling savings = 0, cooling capital = 0.
-The NPV ordering checks still hold: NPV2 = NPV1 and NPV3 = NPV1 for these homes.
+For these homes: `heatingLCC_coolingLCC` == `heatingLCC_coolingSavings` (cooling LCC credit = 0),
+and both exceed `heatingSavings_coolingLCC` (heating LCC credit is the only differentiation).
 
 **Existing-ASHP homes — RESOLVED: exclude.**
 `'Electricity ASHP'` (and any variant) must NOT appear in `EQUIPMENT_SPECS` or
@@ -182,13 +186,19 @@ If an existing-ASHP entry is found in `constants.py`, flag it and remove it.
 
 ## NPV Ordering Checks (enforce in verification)
 
-Per home:
-- `NPV2 ≥ NPV1` (Case 2 adds cooling savings ≥ 0)
-- `NPV3 ≥ NPV2` (Case 3 credits the avoided cooling replacement, raising NPV)
+Per home (for homes with AC, `include_cooling = True`):
+- `heatingLCC_coolingLCC >= heatingLCC_coolingSavings` (adds avoided cooling replacement >= 0)
+- `heatingLCC_coolingLCC >= heatingSavings_coolingLCC` (adds avoided heating replacement >= 0)
+- No general ordering between `heatingLCC_coolingSavings` and `heatingSavings_coolingLCC`
+  (depends on relative magnitude of heating vs cooling replacement costs)
+
+Per home (no AC, `include_cooling = False`):
+- `heatingLCC_coolingLCC` == `heatingLCC_coolingSavings` (cooling LCC credit = 0)
+- Both exceed `heatingSavings_coolingLCC` (heating LCC credit is non-zero)
 
 Per county (means):
-- Adoption rate Case 2 ≥ Case 1
-- Adoption rate Case 3 ≥ Case 2
+- Adoption rate `heatingLCC_coolingLCC` >= `heatingLCC_coolingSavings`
+- Adoption rate `heatingLCC_coolingLCC` >= `heatingSavings_coolingLCC`
 
 ---
 
@@ -203,7 +213,7 @@ add a new row marked "supersedes" and keep the old row.
 | Operating-cost % change, county median | −38.5% | −60.6% | Pre-AEO2026 | Round 3 |
 | Total electricity demand change (GWh) | +427,043.7 | +30,618.4 | Pre-AEO2026 | Round 3 |
 | Median demand % change | +22.5% | −8.1% | Pre-AEO2026 | Round 3 |
-| Mean economic adoption rate (heating only) | 20.8% | 20.5% | Pre-AEO2026 | Round 3 |
+| Mean economic adoption rate (heating only) | 20.8% | 20.5% | Pre-AEO2026 | Round 3 -- superseded by Session A (case retired) |
 | Operating-cost % symmetric norm | ±81.4% | (shared) | Pre-AEO2026 | Round 3 |
 | Demand GWh symmetric norm | ±1038.3 GWh | (shared) | Pre-AEO2026 | Round 3 |
 | LMI eligibility share, single-family (NHGIS-2022 PUMA AMI; bins USD2022->23) | 71.6% | (shared) | Pre-USD2025 | superseded by Session 1e |
@@ -222,6 +232,7 @@ add a new row marked "supersedes" and keep the old row.
 | Session 1c | 23 Jun 2026 | EIA fetch functions extracted to `eia_api_utils.py`; notebook has zero inline `def` statements |
 | Session 1d | 23 Jun 2026 | PEP 8 cleanup: E221/E241 padding, E501 long lines, named API dicts, plain-language comments |
 | Session 1e | 28 Jun 2026 | Income/rebate/capital to USD2025: ANCHOR_YEAR centralized; REMDB v4 costs inflated 2023->2025; income source swapped to ACS-2024 B19013 (PUMA dropped, county->state); rebate bins repointed USD2018->2025; BLS CPI read fixed; LMI share 71.6%->62.4% |
+| Session A | Jul 2026 | NPV-case rename refactor: `heating_only`/`heating_and_cooling_*` retired; new tokens `heatingSavings_coolingLCC`, `heatingLCC_coolingSavings`, `heatingLCC_coolingLCC`; `moreWTP`/`v4MID` removed from column names; column-name builders updated; all downstream consumers migrated; tests updated |
 
 ---
 
@@ -313,7 +324,10 @@ Do not suggest any of these:
 
 ```
 ❌ Import from hdd_consumption_utils — use degree_day_consumption_utils instead
-❌ Use lessWTP or strict > 0 for adoption decision — always moreWTP >= 0
+❌ Use strict > 0 for adoption decision -- the threshold is NPV >= 0
+❌ Use old WTP framing: moreWTP, lessWTP -- NPV >= 0 is the only threshold; no WTP token in column names
+❌ Use old NPV case tokens: heating_only, heating_and_cooling_savings, heating_and_cooling_full -- retired in Session A
+❌ Embed v4MID in NPV or adopter column names -- cost scenario is no longer a column-name token
 ❌ Let climate/health damages enter the adoption decision
 ❌ Hardcode 'mp3', 'ref2025_mp3_', 'aeo2026_mp3_', 'iraRef_mp3_', or any scenario prefix
 ❌ Use old scenario strings: 'AEO2023 Reference Case', 'No Inflation Reduction Act', preIRA, iraRef, aeo2026_mp{mp}_

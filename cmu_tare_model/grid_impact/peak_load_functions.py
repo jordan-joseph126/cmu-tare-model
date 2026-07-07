@@ -42,21 +42,25 @@ def find_adoption_column(
     mp: int,
     cost_scenario: str,
     discount_rate_key: str = "fixed_base",
-    npv_case: str = "heating_only",
+    npv_case: str = "heatingLCC_coolingSavings_sub",
 ) -> str:
     """Locate the economic-adopter column in a TARE output DataFrame.
 
     Builds the expected column name using ``create_adoption_col`` for the
-    2025 Reference Case with the given NPV case, cost scenario, and discount
-    rate.  Falls back to listing candidates if the exact column is absent.
+    2025 Reference Case with the given NPV case and discount rate, then
+    checks whether that column exists in the DataFrame.  Falls back to
+    listing candidates if the exact column is absent.
 
     Args:
         df: TARE output DataFrame (one row per building).
         mp: Measure-package number (e.g. 3 or 4).
-        cost_scenario: REMDB cost scenario key (e.g. ``'v4MID'``).
-        discount_rate_key: Discount rate variant key.
-        npv_case: One of the three NPV cases; the primary heating adoption
-            decision is ``'heating_only'``.
+        cost_scenario: Retained for caller compatibility; not used to build
+            the column name (the cost-scenario token was removed from
+            output column names in the July 2026 refactor).
+        discount_rate_key: Discount rate variant key (e.g. ``'fixed_base'``).
+        npv_case: One of the NPV cases in NPV_CASE_CATEGORIES.
+            Default ``'heatingLCC_coolingSavings_sub'`` (subsidized, heating
+            replacement credit only).
 
     Returns:
         The matched column name string.
@@ -69,7 +73,6 @@ def find_adoption_column(
     expected = create_adoption_col(
         scenario_prefix=f"ref2025_mp{mp}_",
         npv_case=npv_case,
-        cost_scenario=cost_scenario,
         method_suffix=f"_{discount_rate_key}",
     )
     if expected in df.columns:

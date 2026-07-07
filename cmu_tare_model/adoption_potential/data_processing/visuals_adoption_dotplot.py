@@ -1,10 +1,13 @@
-"""Horizontal dot-plot visualization for heat pump adoption potential.
+﻿"""Horizontal dot-plot visualization for heat pump economic adoption potential.
 
-Plots adoption tiers (Already Upgraded, T1, T1+T2, T1+T2+T3) for the
-IRA-Reference scenario with delta annotations relative to Pre-IRA,
-disaggregated by incumbent fuel type and income group.
+Plots economic adoption rates for the two Option-A NPV cases:
+  left  = heatingLCC_coolingSavings (heating replacement credited only)
+  right = heatingLCC_coolingLCC     (both heating + cooling replacements credited)
 
-Layout: 2x2 grid — MP rows x Case A / Case B columns.
+Delta annotation: right - left = gain from also crediting the avoided AC replacement.
+
+Disaggregated by incumbent heating fuel and income group.
+Layout: one panel per measure package (MP rows).
 """
 
 import os
@@ -50,7 +53,7 @@ TIER_MARKERS: Dict[str, str] = {
 }
 
 TIER_LABELS_SHORT: Dict[str, str] = {
-    'Economic Adopter': 'Economic Adopter (moreWTP >= 0)',
+    'Economic Adopter': 'Economic Adopter (NPV >= 0)',
     'Total Adoption Potential': 'Total Adoption Potential',
 }
 
@@ -70,15 +73,15 @@ ALL_TIER_NAMES: List[str] = [
 # Y-AXIS GROUPING ORDER  (top -> bottom)
 # ===========================================================================
 GROUPING_ORDER: List[str] = [
-    'National \u2014 Overall',
-    'Electricity \u2014 Overall',
-    'Electricity \u2014 LMI',
-    'Natural Gas \u2014 Overall',
-    'Natural Gas \u2014 LMI',
-    'Fuel Oil \u2014 Overall',
-    'Fuel Oil \u2014 LMI',
-    'Propane \u2014 Overall',
-    'Propane \u2014 LMI',
+    'National -- Overall',
+    'Electricity -- Overall',
+    'Electricity -- LMI',
+    'Natural Gas -- Overall',
+    'Natural Gas -- LMI',
+    'Fuel Oil -- Overall',
+    'Fuel Oil -- LMI',
+    'Propane -- Overall',
+    'Propane -- LMI',
 ]
 
 
@@ -100,25 +103,29 @@ def prepare_plot_data(
 ) -> pd.DataFrame:
     """Flatten two MultiIndex adoption DataFrames into plot-ready long format.
 
-    Returns one row per (grouping, tier) with Case B adoption %,
-    Case A adoption %, and the delta (B - A).  Also computes "Already Upgraded"
-    percentages directly from *source_df*.
+    Returns one row per (grouping, tier) with right-case adoption %,
+    left-case adoption %, and delta (right - left).
+
+    For Option A: pass the same DataFrame as both mi_df_a and mi_df_b, with
+    case_a_col = heatingLCC_coolingSavings adopter column (left/reference)
+    and case_b_col = heatingLCC_coolingLCC adopter column (right/comparison).
 
     Parameters
     ----------
     mi_df_a : pd.DataFrame
-        MultiIndex DataFrame for Case A (e.g., heating_only) from
+        MultiIndex DataFrame for the left/reference case from
         ``create_multiIndex_adoption_df()``.
     source_df : pd.DataFrame
-        Raw per-dwelling DataFrame used for population weights and
-        "Already Upgraded" calculation.
+        Raw per-dwelling DataFrame used for population weights.
     case_a_col : str
-        Adopter column name in *mi_df_a* (Case A -- reference case).
+        Adopter column name for the left/reference case
+        (e.g., heatingLCC_coolingSavings adopter column).
     case_b_col : str
-        Adopter column name in *mi_df_b* (Case B -- comparison case).
+        Adopter column name for the right/comparison case
+        (e.g., heatingLCC_coolingLCC adopter column).
     mi_df_b : pd.DataFrame, optional
-        MultiIndex DataFrame for Case B. If None, uses *mi_df_a* for both
-        cases (delta will be zero -- for single-case display).
+        MultiIndex DataFrame for the right/comparison case. If None, uses
+        mi_df_a for both (delta will be zero -- for single-case display).
     fuel_col, income_col : str
         Column names in *source_df*.
     income_groups : list of str, optional
@@ -262,18 +269,19 @@ def plot_adoption_panel(
     annotation_y_offset_pts: float = 8.0,
     annotation_x_offset_pts: float = 14.0,
     xlim_margin: float = 12.0,
+    show_delta_annotation: bool = False,
     show_homes_annotation: bool = True,
     fuel_counts_millions: Optional[Dict[str, float]] = None,
     ytick_label_style: str = 'detailed',
     custom_tier_markers: Optional[Dict[str, str]] = None,
     homes_unit: str = 'M',
 ) -> plt.Axes:
-    """Draw a horizontal dot plot showing IRA-Reference adoption with deltas.
+    """Draw a horizontal dot plot showing adoption rates and deltas between cases.
 
-    Each y-axis row displays 4 markers (Already Upgraded + 3 tiers),
-    colour-coded by fuel type.  Above each marker a text annotation
-    shows ``X (+Y)`` where X = IRA-Ref % and Y = change from Pre-IRA.
-    For Already Upgraded, just the percentage is shown (no delta).
+    Each y-axis row displays one marker per NPV case, colour-coded by fuel type.
+    Above each marker a text annotation shows ``X% (+Y%)`` where X is the adoption
+    rate and Y is the subsidy delta (subsidized vs unsubsidized) when enabled.
+    By default the plot shows only the adoption rate, not the delta.
 
     Parameters
     ----------
@@ -298,13 +306,13 @@ def plot_adoption_panel(
     ytick_label_style : str
         Controls y-axis tick label verbosity.  Two options:
 
-        ``'detailed'`` (default) — multi-line labels including home counts
-        and percentage breakdowns (e.g. ``"Electricity — LMI\n12.5/25.6 M
+        ``'detailed'`` (default)  --  multi-line labels including home counts
+        and percentage breakdowns (e.g. ``"Electricity  --  LMI\n12.5/25.6 M
         Homes (48.8% Fuel)"``).  Preserves prior behavior; all existing
         callers that omit this argument are unaffected.
 
-        ``'simple'`` — bare ``fuel — grouping`` strings only (e.g.
-        ``"Electricity — LMI"``), with no ``\n`` or counts.  Useful for
+        ``'simple'``  --  bare ``fuel  --  grouping`` strings only (e.g.
+        ``"Electricity  --  LMI"``), with no ``\n`` or counts.  Useful for
         manuscript figures where home counts appear in a separate table.
 
         Any other value raises ``ValueError``.
@@ -374,7 +382,7 @@ def plot_adoption_panel(
 
         for cluster in clusters:
             if len(cluster) == 2:
-                # Any 2-marker cluster — push leftmost label LEFT, rightmost
+                # Any 2-marker cluster  --  push leftmost label LEFT, rightmost
                 # label RIGHT. Position-independent: works for edge clusters
                 # ([0%, 2%], [100%, 100%]), middle clusters ([33%, 67%]),
                 # AND clusters that straddle the x=10 or x=90 boundary
@@ -418,11 +426,11 @@ def plot_adoption_panel(
 
             # Choose horizontal alignment and x-offset.
             if item.get('shift') == 'cluster_left':
-                # Leftmost marker of any 2-marker cluster — label goes LEFT.
+                # Leftmost marker of any 2-marker cluster  --  label goes LEFT.
                 ha = 'right'
                 x_text = -annotation_x_offset_pts
             elif item.get('shift') == 'cluster_right':
-                # Rightmost marker of any 2-marker cluster — label goes RIGHT.
+                # Rightmost marker of any 2-marker cluster  --  label goes RIGHT.
                 ha = 'left'
                 x_text = annotation_x_offset_pts
             elif x_val < 10:
@@ -435,10 +443,13 @@ def plot_adoption_panel(
                 ha = 'center'
                 x_text = 0
 
-            # Annotation above: "X% (+Y%)"
+            # Annotation above: always show adoption rate; show delta only when enabled.
             ira_val = x_val
-            sign = '+' if delta >= 0 else ''
-            ann_text = f'{ira_val:.0f}% ({sign}{delta:.0f}%)'
+            if show_delta_annotation and delta != 0:
+                sign = '+' if delta >= 0 else ''
+                ann_text = f'{ira_val:.0f}% ({sign}{delta:.0f}%)'
+            else:
+                ann_text = f'{ira_val:.0f}%'
             top_offset = annotation_y_offset_pts
             ax.annotate(
                 ann_text,
@@ -452,15 +463,20 @@ def plot_adoption_panel(
                 clip_on=True,
             )
 
-            # Annotation below: "X.XM (+Y.YM)" absolute homes count.
-            # Optional — disable via ``show_homes_annotation=False`` for
+            # Annotation below: "X.XM" absolute homes count; optionally show subsidy delta.
+            # Optional  --  disable via ``show_homes_annotation=False`` for
             # tight manuscript figures. The homes count is also in the
             # y-axis label, so this is informationally redundant.
             if show_homes_annotation:
                 ira_homes = ira_val / 100.0 * homes_m
-                delta_homes = delta / 100.0 * homes_m
-                sign_h = '+' if delta_homes >= 0 else ''
-                ann_homes = f'{ira_homes:.1f}{homes_unit} ({sign_h}{delta_homes:.1f}{homes_unit})'
+                ann_homes = f'{ira_homes:.1f}{homes_unit}'
+                if show_delta_annotation and delta != 0:
+                    delta_homes = delta / 100.0 * homes_m
+                    sign_h = '+' if delta_homes >= 0 else ''
+                    ann_homes = (
+                        f'{ira_homes:.1f}{homes_unit} '
+                        f'({sign_h}{delta_homes:.1f}{homes_unit})'
+                    )
                 bottom_offset = -annotation_y_offset_pts
                 ax.annotate(
                     ann_homes,
@@ -515,7 +531,7 @@ def plot_adoption_panel(
                 label = f'{grouping}\n{national_total:.1f} {homes_unit} Homes (100%)'
                 # label = rf'$\mathbf{{National - Overall}}$\n{national_total:.1f} M Homes (100%)'
             elif income_level == 'Overall':
-                # e.g. "Electricity — Overall\n25.6/80.0 M Homes\n(32.0% Total)"
+                # e.g. "Electricity  --  Overall\n25.6/80.0 M Homes\n(32.0% Total)"
                 pct_total = (fuel_total_m / national_total * 100) if national_total else 0.0
                 label = (
                     f'{fuel} \u2014 Overall\n'
@@ -525,7 +541,7 @@ def plot_adoption_panel(
                 )
                 
             else:
-                # LMI row — e.g. "Electricity \u2014 LMI\n12.5/25.6 M Homes\n(48.8% Fuel)"
+                # LMI row  --  e.g. "Electricity \u2014 LMI\n12.5/25.6 M Homes\n(48.8% Fuel)"
                 pct_fuel = (homes_m / fuel_total_m * 100) if fuel_total_m else 0.0
                 label = (
                     f'{fuel} \u2014 LMI\n'
@@ -558,7 +574,7 @@ def plot_adoption_panel(
     ax.grid(axis='x', alpha=grid_alpha, linewidth=0.5)
 
     # Separator below the top row (works for any geo label, not just 'National')
-    _top_grouping = grouping_order[0] if grouping_order else 'National \u2014 Overall'
+    _top_grouping = grouping_order[0] if grouping_order else 'National -- Overall'
     national_y = y_positions.get(_top_grouping)
     if national_y is not None:
         ax.axhline(
@@ -604,7 +620,7 @@ def plot_adoption_dotplot(
         labels.  Applied identically to every panel.  Include
         ``'National'`` key for the national total.
     grouping_order : list of str, optional
-        Y-axis row order (top → bottom).  Defaults to :data:`GROUPING_ORDER`.
+        Y-axis row order (top -> bottom).  Defaults to :data:`GROUPING_ORDER`.
     panel_height : float
         Height (inches) per row panel.  Default 7.
     panel_width : float

@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 
 from typing import List, Optional, Tuple, Dict, Any, Union
 
+from cmu_tare_model.utils.column_names import create_adoption_col
+
 # =========================================================================
 # FUNCTIONS: VISUALIZATION USING DATAFRAMES AND SUBPLOTS
 # =========================================================================
@@ -22,17 +24,22 @@ def build_adoption_scenario_names(
 
     Args:
         mp: Measure package number (e.g., 3 or 4).
-        npv_case: One of 'heating_only', 'heating_and_cooling_savings',
-            'heating_and_cooling_full'. Corresponds to NPV_CASE_CATEGORIES.
-        cost_scenario: Capital cost key (e.g., 'v4MID', 'v3').
+        npv_case: One of NPV_CASE_CATEGORIES: 'heatingSavings_coolingLCC',
+            'heatingLCC_coolingSavings', or 'heatingLCC_coolingLCC'.
+        cost_scenario: Retained for caller compatibility; not embedded in the
+            output column name (cost-scenario token removed July 2026).
         discount_rate: Short discount rate key (e.g., 'fixed_base').
 
     Returns:
         Single-item list with the economic-adopter column name.
-        Pattern: ref2025_mp{mp}_{npv_case}_econ_adopter_moreWTP_{cost_scenario}_{discount_rate}
+        Pattern: ref2025_mp{mp}_{npv_case}_econ_adopter_{discount_rate}
     """
     return [
-        f'ref2025_mp{mp}_{npv_case}_econ_adopter_moreWTP_{cost_scenario}_{discount_rate}'
+        create_adoption_col(
+            scenario_prefix=f'ref2025_mp{mp}_',
+            npv_case=npv_case,
+            method_suffix=f'_{discount_rate}',
+        )
     ]
 
 
@@ -55,9 +62,10 @@ def create_multiIndex_adoption_df(
         df: DataFrame with the economic-adopter column and the columns
             'base_heating_fuel' and 'lmi_or_mui'.
         menu_mp: Measure package identifier.
-        npv_case: One of 'heating_only', 'heating_and_cooling_savings',
-            'heating_and_cooling_full'.
-        cost_scenario: Capital cost key (e.g., 'v4MID', 'v3').
+        npv_case: One of NPV_CASE_CATEGORIES: 'heatingSavings_coolingLCC',
+            'heatingLCC_coolingSavings', or 'heatingLCC_coolingLCC'.
+        cost_scenario: Retained for caller compatibility; not embedded in the
+            output column name (cost-scenario token removed July 2026).
         discount_rate: Short discount rate key (e.g., 'fixed_base').
 
     Returns:
@@ -74,9 +82,10 @@ def create_multiIndex_adoption_df(
             "Ensure the DataFrame has been processed with calculate_percent_AMI."
         )
 
-    adoption_col = (
-        f'ref2025_mp{menu_mp}_{npv_case}_econ_adopter_moreWTP_'
-        f'{cost_scenario}_{discount_rate}'
+    adoption_col = create_adoption_col(
+        scenario_prefix=f'ref2025_mp{menu_mp}_',
+        npv_case=npv_case,
+        method_suffix=f'_{discount_rate}',
     )
 
     if adoption_col not in df.columns:
@@ -495,11 +504,11 @@ def print_adoption_decision_percentages(
                 f"Source DataFrame at index {idx} is missing required columns: {missing_cols}."
             )
 
-    # Single metric: Economic Adopter (moreWTP >= 0).
+    # Single metric: Economic Adopter (NPV >= 0).
     header_key = """
 (Base Fuel, Income Level):
     Economic Adopter (%): Homes where the incremental heat-pump cost is
-        recovered from energy-bill savings (moreWTP private NPV >= 0).
+        recovered from energy-bill savings (private NPV >= 0).
     Overall is population-weighted (each home counted equally).
 """
     
@@ -600,7 +609,7 @@ def print_adoption_decision_percentages(
 """
 discount_rate = 'fixed_base'
 cost_scenario = 'v4MID'
-npv_case = 'heating_only'
+npv_case = 'heatingLCC_coolingLCC'
 menu_mp = 3
 
 print_adoption_decision_percentages(
@@ -614,7 +623,7 @@ print_adoption_decision_percentages(
         DATAFRAMES_BY_MP[menu_mp][discount_rate],
     ],
     category='heating',
-    title="SPACE HEATING ADOPTION POTENTIAL: ECONOMIC ADOPTERS (moreWTP >= 0)",
+    title="SPACE HEATING ADOPTION POTENTIAL: ECONOMIC ADOPTERS (NPV >= 0)",
     subtitle=f"MP{menu_mp}: {npv_case}",
     print_header_key=True,
 )

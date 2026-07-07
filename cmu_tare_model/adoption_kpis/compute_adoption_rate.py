@@ -88,7 +88,7 @@ def compute_adoption_rate(
             ``adoption_col``.  If ``state_col`` is present it is included in
             the output; otherwise the ``state`` column is omitted.
         adoption_col: Economic-adopter column name (numeric 1.0/0.0/NaN), e.g.
-            ``'ref2025_mp3_heating_only_econ_adopter_moreWTP_v4MID_fixed_base'``.
+            ``'ref2025_mp3_heatingLCC_coolingLCC_econ_adopter_fixed_base'``.
             A legacy tier-string column is also accepted.
         adopter_tiers: Tier string values counted as adopters for legacy
             tier-string columns.  Defaults to

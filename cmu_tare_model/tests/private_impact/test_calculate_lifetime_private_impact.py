@@ -362,12 +362,12 @@ def heating_cooling_specs(mock_constants, monkeypatch):
 @patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.define_scenario_params')
 @patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.calculate_discount_factors')
 def test_private_npv_three_cases_columns_and_dtype(mock_discount, mock_params, npv_cases_df, npv_cases_fuel_costs, heating_cooling_specs):
-    """Produces moreWTP + lessWTP NPV columns for all three cases as float64."""
+    """Produces one private NPV column per case (no WTP/cost-scenario token) as float64."""
     from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_private_npv
     from cmu_tare_model.utils.column_names import NPV_CASE_CATEGORIES
 
     df_baseline, df_measure = npv_cases_fuel_costs
-    mock_params.return_value = ('ref2025_mp3_', 'MidCase', {}, {}, {}, {})
+    mock_params.return_value = ('ref2025_mp3_', 'MidCase', {}, {}, {})
     mock_discount.return_value = pd.Series(0.95, index=npv_cases_df.index)
 
     result = calculate_private_npv(
@@ -384,10 +384,9 @@ def test_private_npv_three_cases_columns_and_dtype(mock_discount, mock_params, n
     )
 
     for npv_case in NPV_CASE_CATEGORIES:
-        for wtp in ['moreWTP', 'lessWTP']:
-            col = f'ref2025_mp3_{npv_case}_private_npv_{wtp}_v4MID_fixed_base'
-            assert col in result.columns, f"Missing {col}"
-            assert result[col].dtype == 'float64'
+        col = f'ref2025_mp3_{npv_case}_private_npv_fixed_base'
+        assert col in result.columns, f"Missing {col}"
+        assert result[col].dtype == 'float64'
 
 
 @patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.define_scenario_params')
@@ -397,7 +396,7 @@ def test_private_npv_three_cases_ordering(mock_discount, mock_params, npv_cases_
     from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_private_npv
 
     df_baseline, df_measure = npv_cases_fuel_costs
-    mock_params.return_value = ('ref2025_mp3_', 'MidCase', {}, {}, {}, {})
+    mock_params.return_value = ('ref2025_mp3_', 'MidCase', {}, {}, {})
     mock_discount.return_value = pd.Series(0.95, index=npv_cases_df.index)
 
     result = calculate_private_npv(
@@ -413,29 +412,30 @@ def test_private_npv_three_cases_ordering(mock_discount, mock_params, npv_cases_
         verbose=False,
     )
 
-    base = 'ref2025_mp3_{case}_private_npv_moreWTP_v4MID_fixed_base'
-    npv1 = result[base.format(case='heating_only')]
-    npv2 = result[base.format(case='heating_and_cooling_savings')]
-    npv3 = result[base.format(case='heating_and_cooling_full')]
+    base = 'ref2025_mp3_{case}_private_npv_fixed_base'
+    npv_sav_lcc = result[base.format(case='heatingSavings_coolingLCC_sub')]
+    npv_lcc_sav = result[base.format(case='heatingLCC_coolingSavings_sub')]
+    npv_lcc_lcc = result[base.format(case='heatingLCC_coolingLCC_sub')]
 
     valid = npv_cases_df['include_heating'] & \
         npv_cases_df['upgrade_hvac_heating_efficiency'].notna()
 
-    # Cooling savings >= 0 and cooling replacement credit >= 0 by construction.
-    assert (npv2[valid] >= npv1[valid]).all()
-    assert (npv3[valid] >= npv2[valid]).all()
+    # heatingLCC_coolingLCC credits both replacements -- always the highest.
+    assert (npv_lcc_lcc[valid] >= npv_lcc_sav[valid]).all()
+    assert (npv_lcc_lcc[valid] >= npv_sav_lcc[valid]).all()
 
-    # Home 2 has no AC: all three cases collapse to the heating-only value.
-    assert npv1.iloc[2] == npv2.iloc[2] == npv3.iloc[2]
+    # Home 2 has no AC: cooling savings = 0, cooling replacement credit = 0.
+    # heatingLCC_coolingLCC collapses to heatingLCC_coolingSavings.
+    assert npv_lcc_lcc.iloc[2] == npv_lcc_sav.iloc[2]
 
-    # Exact arithmetic spot-check on an AC home (home 0):
+    # Exact arithmetic spot-check on AC home 0:
     #   heating savings = 600 * 0.95 * 15 = 8550
     #   cooling savings = 200 * 0.95 * 15 = 2850
-    #   total capital   = 12000 (installation premium removed) ; net heating = 7000
-    #   net heat+cool   = 7000 - 4000 = 3000
-    assert npv1.iloc[0] == pytest.approx(8550 - 7000)           # 1550
-    assert npv2.iloc[0] == pytest.approx(8550 + 2850 - 7000)    # 4400
-    assert npv3.iloc[0] == pytest.approx(8550 + 2850 - 3000)    # 8400
+    #   total capital = 12000; net_capital_heating = 7000; net_capital_heating_and_cooling = 3000
+    #   net_capital_cooling_only = 12000 - 4000 = 8000
+    assert npv_sav_lcc.iloc[0] == pytest.approx(8550 + 2850 - 8000)   # 3400
+    assert npv_lcc_sav.iloc[0] == pytest.approx(8550 + 2850 - 7000)   # 4400
+    assert npv_lcc_lcc.iloc[0] == pytest.approx(8550 + 2850 - 3000)   # 8400
 
 
 @patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.define_scenario_params')
@@ -446,7 +446,7 @@ def test_private_npv_three_cases_invalid_homes_masked(mock_discount, mock_params
     from cmu_tare_model.utils.column_names import NPV_CASE_CATEGORIES
 
     df_baseline, df_measure = npv_cases_fuel_costs
-    mock_params.return_value = ('ref2025_mp3_', 'MidCase', {}, {}, {}, {})
+    mock_params.return_value = ('ref2025_mp3_', 'MidCase', {}, {}, {})
     mock_discount.return_value = pd.Series(0.95, index=npv_cases_df.index)
 
     result = calculate_private_npv(
@@ -465,5 +465,5 @@ def test_private_npv_three_cases_invalid_homes_masked(mock_discount, mock_params
     excluded = ~(npv_cases_df['include_heating']
                  & npv_cases_df['upgrade_hvac_heating_efficiency'].notna())
     for npv_case in NPV_CASE_CATEGORIES:
-        col = f'ref2025_mp3_{npv_case}_private_npv_moreWTP_v4MID_fixed_base'
+        col = f'ref2025_mp3_{npv_case}_private_npv_fixed_base'
         assert result.loc[excluded, col].isna().all()

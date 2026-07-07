@@ -67,7 +67,7 @@ class TestFindAdoptionColumn:
     def expected_col_name(self):
         """The column name that find_adoption_column should produce for defaults."""
         return (
-            "ref2025_mp3_heating_only_econ_adopter_moreWTP_v4MID_fixed_base"
+            "ref2025_mp3_heatingLCC_coolingSavings_sub_econ_adopter_fixed_base"
         )
 
     @pytest.fixture()
@@ -94,8 +94,7 @@ class TestFindAdoptionColumn:
 
         expected = create_adoption_col(
             scenario_prefix="ref2025_mp4_",
-            npv_case="heating_only",
-            cost_scenario="v4HIGH",
+            npv_case="heatingLCC_coolingSavings_sub",
             method_suffix="_fixed_base",
         )
         df = pd.DataFrame({expected: [1.0, 0.0, 1.0]})

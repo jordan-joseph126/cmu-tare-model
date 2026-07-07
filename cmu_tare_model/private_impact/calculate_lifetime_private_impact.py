@@ -91,22 +91,22 @@ def calculate_private_npv(
     Calculate private net present value (NPV) for the three heat-pump NPV cases.
 
     A single heat pump replaces the home's heating system and also serves the
-    cooling load, so all three cases share the same heating retrofit and differ
-    only in whether cooling savings and the avoided cooling-system replacement
-    are counted:
+    cooling load. All three cases count both the heating and cooling operating
+    (energy-bill) savings; they differ only in which avoided-replacement credit
+    reduces the net capital cost (see NPV_CASE_CATEGORIES):
 
-      - heating_only:                heating capital;           heating savings
-      - heating_and_cooling_savings: heating capital;           heating + cooling savings
-      - heating_and_cooling_full:    heating + cooling capital; heating + cooling savings
+      - heatingSavings_coolingLCC: credit avoided cooling replacement only
+      - heatingLCC_coolingSavings: credit avoided heating replacement only
+      - heatingLCC_coolingLCC:     credit both avoided replacements
 
     Cooling savings and the cooling replacement credit are zero for homes with
-    no AC (include_cooling = False), so for those homes Case 2 == Case 1 and
-    Case 3 == Case 1.
+    no AC (include_cooling = False). For those homes heatingLCC_coolingLCC ==
+    heatingLCC_coolingSavings, and heatingSavings_coolingLCC carries no credit.
 
-    The adoption-relevant output is the moreWTP NPV (savings minus the net
-    capital cost, i.e. the incremental cost over a like-for-like replacement).
-    A lessWTP NPV (savings minus the full gross capital cost) is also retained
-    for backward compatibility but is not used by the adoption decision.
+    The NPV is the lifetime savings minus the incremental (net) capital cost of
+    the heat pump over a like-for-like replacement. A single willingness-to-pay
+    framing is modeled, so the NPV column name carries no WTP token, and the
+    economic adoption decision adopts when this NPV >= 0.
 
     Args:
         df: Input DataFrame with installation costs and validation flags.
@@ -125,9 +125,9 @@ def calculate_private_npv(
         verbose: Whether to print detailed processing information. Default is True.
 
     Returns:
-        DataFrame with, per measure package, moreWTP and lessWTP NPV columns and
-        capital cost columns for each of the three NPV cases (see
-        NPV_CASE_CATEGORIES).
+        DataFrame with, per measure package, one private NPV column and a net
+        capital cost column for each of the three NPV cases, plus the shared
+        gross capital cost column (see NPV_CASE_CATEGORIES).
 
     Raises:
         ValueError: If policy_scenario, menu_mp, or cost_scenario is invalid.
@@ -257,23 +257,50 @@ def calculate_private_npv(
         verbose=verbose,
     )
 
-    # Case 3 also credits the avoided cooling-system replacement, but only for
-    # homes that actually have AC (include_cooling = True).
+    # Two of the three cases credit the avoided cooling-system replacement, but
+    # only for homes that actually have AC (include_cooling = True).
     cooling_replacement_col = create_cost_col(
         menu_mp=menu_mp, category='cooling',
         cost_type='replacement', cost_scenario=cost_scenario)
+    
     cooling_replacement_cost = (
         df_copy[cooling_replacement_col].fillna(0).where(include_cooling, other=0.0))
+    
     net_capital_heating_and_cooling = net_capital_heating - cooling_replacement_cost
+    
+    # Cooling-only credit: heat-pump capital (net of rebate) credited against
+    # the avoided AC replacement but NOT against the heating system it replaces.
+    net_capital_cooling_only = total_capital - cooling_replacement_cost
 
-    # ===== Assemble the three NPV cases =====
-    # Each entry maps an NPV case to its (savings, net capital cost) pair.
+    # ===== Subsidy handling =====
+    # Compute the raw unsubsidized net capital first, then subtract the rebate
+    # to obtain the subsidized values. This is more intuitive than adding the
+    # rebate back to an already-subsidized number.
+    if menu_mp in REBATE_ELIGIBLE_HEATING_MPS:
+        rebate_col = create_rebate_col(menu_mp=menu_mp, category='heating', cost_scenario=cost_scenario)
+        rebate_amount = df_copy[rebate_col].fillna(0.0).where(heating_valid_mask, other=0.0)
+    else:
+        rebate_amount = pd.Series(0.0, index=df_copy.index)
+
+    net_capital_cooling_only_unsub = net_capital_cooling_only + rebate_amount
+    net_capital_heating_unsub = net_capital_heating + rebate_amount
+    net_capital_heating_and_cooling_unsub = net_capital_heating_and_cooling + rebate_amount
+
+    net_capital_cooling_only_sub = net_capital_cooling_only_unsub - rebate_amount
+    net_capital_heating_sub = net_capital_heating_unsub - rebate_amount
+    net_capital_heating_and_cooling_sub = net_capital_heating_and_cooling_unsub - rebate_amount
+
+    # ===== Assemble the six NPV cases =====
+    # Every case counts both heating and cooling operating savings; the cases
+    # differ only in which avoided-replacement credit reduces the net capital
+    # cost, and each case has a subsidized and unsubsidized variant.
     npv_case_inputs = {
-        'heating_only': (heating_savings, net_capital_heating),
-        'heating_and_cooling_savings': (
-            heating_and_cooling_savings, net_capital_heating),
-        'heating_and_cooling_full': (
-            heating_and_cooling_savings, net_capital_heating_and_cooling),
+        'heatingSavings_coolingLCC_unsub': (heating_and_cooling_savings, net_capital_cooling_only_unsub),
+        'heatingSavings_coolingLCC_sub': (heating_and_cooling_savings, net_capital_cooling_only_sub),
+        'heatingLCC_coolingSavings_unsub': (heating_and_cooling_savings, net_capital_heating_unsub),
+        'heatingLCC_coolingSavings_sub': (heating_and_cooling_savings, net_capital_heating_sub),
+        'heatingLCC_coolingLCC_unsub': (heating_and_cooling_savings, net_capital_heating_and_cooling_unsub),
+        'heatingLCC_coolingLCC_sub': (heating_and_cooling_savings, net_capital_heating_and_cooling_sub),
     }
 
     # The shared gross capital is stored once under the heating category.
@@ -284,28 +311,23 @@ def calculate_private_npv(
     all_columns_to_mask['heating'].append(total_capital_col)
 
     for npv_case, (case_savings, case_net_capital) in npv_case_inputs.items():
-        # moreWTP NPV: savings minus the incremental (net) capital cost. This is
-        # the value the economic adoption decision uses (moreWTP >= 0).
-        npv_more_wtp = round(case_savings - case_net_capital, 2)
-        # lessWTP NPV: savings minus the full (gross) capital cost. Retained for
-        # backward compatibility; not used by the economic adoption decision.
-        npv_less_wtp = round(case_savings - total_capital, 2)
+        # Private NPV: lifetime energy-bill savings minus the incremental (net)
+        # capital cost of the heat pump over a like-for-like baseline
+        # replacement. This is the value the economic adoption decision uses
+        # (NPV >= 0). A single willingness-to-pay framing is modeled, so the
+        # column name carries no WTP token.
+        npv_case_value = round(case_savings - case_net_capital, 2)
 
-        more_wtp_col = create_npv_case_col(
-            scenario_prefix=scenario_prefix, npv_case=npv_case, wtp='moreWTP',
-            cost_scenario=cost_scenario, method_suffix=method_suffix)
-        less_wtp_col = create_npv_case_col(
-            scenario_prefix=scenario_prefix, npv_case=npv_case, wtp='lessWTP',
-            cost_scenario=cost_scenario, method_suffix=method_suffix)
+        npv_col = create_npv_case_col(
+            scenario_prefix=scenario_prefix, npv_case=npv_case,
+            method_suffix=method_suffix)
         net_capital_col = create_capital_col(
             scenario_prefix=scenario_prefix, category=npv_case,
             net=True, cost_scenario=cost_scenario)
 
-        df_new_columns[more_wtp_col] = npv_more_wtp
-        df_new_columns[less_wtp_col] = npv_less_wtp
+        df_new_columns[npv_col] = npv_case_value
         df_new_columns[net_capital_col] = case_net_capital
-        all_columns_to_mask['heating'].extend(
-            [more_wtp_col, less_wtp_col, net_capital_col])
+        all_columns_to_mask['heating'].extend([npv_col, net_capital_col])
 
     # ===== STEP 5: Apply final verification masking for consistency =====
     df_result = apply_temporary_validation_and_mask(df_copy, df_new_columns, all_columns_to_mask, verbose=verbose)

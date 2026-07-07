@@ -419,7 +419,7 @@ else:
 # from energy-bill savings alone — no climate or health benefit is needed to justify the
 # investment.
 # 
-# **The rule:** a home is an economic adopter if its incremental private NPV (`moreWTP`) ≥ 0.
+# **The rule:** a home is an economic adopter if its incremental private NPV >= 0.
 # Break-even counts as adoption.
 # 
 # | Value | Meaning |
@@ -438,38 +438,34 @@ else:
 from cmu_tare_model.adoption_potential.determine_economic_adoption_potential import economic_adoption_decision
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 
-_POLICY = 'AEO2023 Reference Case'
+_POLICY = '2025 Reference Case'
 _DISCOUNT_COL = 'private_discount_rate_fixed_base'
 _COST = 'v4MID'
 
-# Generate economic-adopter columns for both HVAC replacement scenarios AND
-# both policy scenarios. After this cell, all four columns exist in the frame:
-#   preIRA_mp{mp}_heating_econ_adopter_moreWTP_v4MID_fixed_base
-#   preIRA_mp{mp}_heating_and_cooling_econ_adopter_moreWTP_v4MID_fixed_base
-#   iraRef_mp{mp}_heating_econ_adopter_moreWTP_v4MID_fixed_base
-#   iraRef_mp{mp}_heating_and_cooling_econ_adopter_moreWTP_v4MID_fixed_base
-# The dot-plot cell is pure-read — no economic_adoption_decision calls inside it.
+# Generate the SIX economic-adopter columns (one per NPV case) for each
+# measure package. After this cell, all SIX columns exist in the frame:
+#   ref2025_mp{mp}_heatingSavings_coolingLCC_econ_adopter_fixed_base
+#   ref2025_mp{mp}_heatingLCC_coolingSavings_econ_adopter_fixed_base
+#   ref2025_mp{mp}_heatingLCC_coolingLCC_econ_adopter_fixed_base
+# The dot-plot cell is pure-read -- no economic_adoption_decision calls inside it.
 for mp in selected_mps:
     df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']
-    for policy in ['No Inflation Reduction Act', 'AEO2023 Reference Case']:
-        for hvac_scenario in ['heating', 'heating_and_cooling']:
-            df_econ = economic_adoption_decision(
-                df_tare,
-                menu_mp=mp,
-                policy_scenario=policy,
-                discount_rate_col_name=_DISCOUNT_COL,
-                cost_scenario=_COST,
-                hvac_replacement_scenario=hvac_scenario,
-                verbose=False,
-            )
-            # Copy only newly created columns back into the canonical frame.
-            new_cols = [c for c in df_econ.columns if c not in df_tare.columns]
-            for col in new_cols:
-                DATAFRAMES_BY_MP[mp]['fixed_base'][col] = df_econ[col]
-            if new_cols:
-                print(f"[OK] MP{mp} | {policy[:6]} | {hvac_scenario}: {new_cols}")
+    df_econ = economic_adoption_decision(
+        df_tare,
+        menu_mp=mp,
+        policy_scenario=_POLICY,
+        discount_rate_col_name=_DISCOUNT_COL,
+        cost_scenario=_COST,
+        verbose=False,
+    )
+    # Copy only newly created columns back into the canonical frame.
+    new_cols = [c for c in df_econ.columns if c not in df_tare.columns]
+    for col in new_cols:
+        DATAFRAMES_BY_MP[mp]['fixed_base'][col] = df_econ[col]
+    if new_cols:
+        print(f"[OK] MP{mp}: {new_cols}")
 
-print("\n[DONE] All 4 econ-adopter columns added for all selected MPs")
+print("\n[DONE] Economic-adopter columns added for all selected MPs")
 
 # %%
 # Econ column probe — gated behind PRINT_DEBUG flag.
@@ -483,10 +479,15 @@ from cmu_tare_model.utils.modeling_params import define_scenario_params
 
 _ADOPTION_COST_SCENARIO = 'v4MID'
 _ADOPTION_GEO_LEVEL = 'county'
-_POLICY = 'AEO2023 Reference Case'
+_POLICY = '2025 Reference Case'
+
+# Use heatingLCC_coolingLCC (both avoided replacements credited) as the
+# primary adoption metric for the choropleth. All three cases are in the
+# frame after the adoption-decision cell above.
+from cmu_tare_model.utils.column_names import create_adoption_col
 
 print(f"\n{'='*60}")
-print(f"Economic Adoption Rate — IRA-Ref)")
+print(f"Economic Adoption Rate -- 2025 Reference Case")
 print(f"{'='*60}")
 
 econ_adoption_rate_results = {}
@@ -497,7 +498,11 @@ for mp in selected_mps:
     # NaN rows (excluded homes) are automatically ignored by compute_adoption_rate.
     df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']
     prefix = define_scenario_params(mp, _POLICY)[0]
-    adoption_col = f'{prefix}heating_econ_adopter_moreWTP_{_ADOPTION_COST_SCENARIO}_fixed_base'
+    adoption_col = create_adoption_col(
+        scenario_prefix=prefix,
+        npv_case='heatingLCC_coolingLCC_sub',
+        method_suffix='_fixed_base',
+    )
     print(f'  Adoption column: {adoption_col}')
     df_adopt = compute_adoption_rate(
         df_tare,
@@ -554,24 +559,23 @@ else:
 # =============================================================================
 # These mirror the upstream TARE pipeline settings. The economic-adopter column
 # name convention encodes these parameters: e.g.
-# 'iraRef_mp3_heating_econ_adopter_moreWTP_v4MID_fixed_base'
+# 'ref2025_mp3_heatingLCC_coolingLCC_econ_adopter_fixed_base'
 #
 # Only change these if running a sensitivity analysis. For the paper's
 # primary results, these are the correct values.
 
-cost_scenario = 'v4MID'                  # REMDB v4 midpoint cost scenario
+cost_scenario = 'v4MID'    # REMDB v4 midpoint cost scenario (retained for API compat)
 discount_rate = 'fixed_base'             # 7% fixed discount rate
-hvac_replacement_scenario = 'heating'    # Case A: Heating Only
 
 print(f"  Cost: {cost_scenario}, Discount: {discount_rate}")
-print(f"  HVAC scenario: {hvac_replacement_scenario}")
 print(f"  Measure packages: {HEATING_MEASURE_PACKAGES}")
 
 # %%
 # -----------------------------------------------------------------
 # Economic adoption potential dot plot
 # Two markers per row: Heating Only (Case A) | Heating & Cooling (Case B)
-# Annotation: same X% (+Y%) format as tier dotplot, Y = IRA-Ref − Pre-IRA
+# Annotation: same X% (+Y%) format as tier dotplot, Y = subsidized minus
+# unsubsidized adoption rate for the same case.
 # -----------------------------------------------------------------
 import importlib
 import matplotlib.lines as mlines
@@ -584,13 +588,17 @@ from cmu_tare_model.adoption_potential.data_processing.visuals_adoption_dotplot 
 )
 
 _ECON_CASE_MARKERS = {
-    'Heating Only':       'o',   # circle  — Case A: heating replacement only
-    'Heating & Cooling':  's',   # square  — Case B: heating + cooling replacement
+    'Heating Repl. Credit':           'o',   # circle  -- left:  heatingLCC_coolingSavings
+    'Heating + Cooling Repl. Credit': 's',   # square  -- right: heatingLCC_coolingLCC
 }
-_ECON_CASES = {
-    'heating':             'Heating Only',
-    'heating_and_cooling': 'Heating & Cooling',
-}
+_ECON_CASES = [
+    'Heating Repl. Credit',
+    'Heating + Cooling Repl. Credit',
+]
+
+# Option A: two cases to compare. Left = heatingLCC_coolingSavings_sub;
+# right = heatingLCC_coolingLCC_sub. Delta = subsidized minus unsubsidized
+# adoption rate for the same case label.
 
 
 def _build_econ_plot_df(
@@ -598,31 +606,64 @@ def _build_econ_plot_df(
     fuel_col='base_heating_fuel', income_col='lmi_or_mui',
     income_groups=None, scaling_factor=242.0,
 ):
-    """Per-(fuel x income) pooled-home mean economic adoption rate for both HVAC cases.
+    """Per-(fuel x income) mean economic adoption rate for the two Option-A NPV cases.
 
-    Returns a DataFrame in the same format as prepare_plot_data() so
+    Option A (both cases include heating + cooling operating savings):
+      left  = heatingLCC_coolingSavings_sub   -- subsidized, heating replacement credited only
+      right = heatingLCC_coolingLCC_sub       -- subsidized, both replacements credited
+      delta = right - left                    -- subsidy-dependent gain in adoption rate
+
+    The unsubsidized companion columns are computed upstream and are used only
+    in the output delta calculation; the plot itself shows only adoption rates
+    unless show_delta_annotation=True.
+
+    Returns a DataFrame matching prepare_plot_data() output format so
     plot_adoption_panel() can render it without modification.
+    Columns: grouping, fuel_type, income_level, tier_label,
+             case_b_pct, case_a_pct, delta_pct,
+             sample_n, pct_of_sample, weighted_homes_millions.
     """
+    from cmu_tare_model.utils.column_names import create_adoption_col
+    from cmu_tare_model.utils.modeling_params import define_scenario_params
+
     if income_groups is None:
         income_groups = ['LMI']
 
+    # cost_scenario is not embedded in column names post-Session-A refactor
+    # but is retained as a parameter for caller compatibility.
+    scenario_prefix = define_scenario_params(mp)[0]
+    method_suffix = f'_{discount_rate}'
+    left_col_sub = create_adoption_col(
+        scenario_prefix, 'heatingLCC_coolingSavings_sub', method_suffix)
+    left_col_unsub = create_adoption_col(
+        scenario_prefix, 'heatingLCC_coolingSavings_unsub', method_suffix)
+    right_col_sub = create_adoption_col(
+        scenario_prefix, 'heatingLCC_coolingLCC_sub', method_suffix)
+    right_col_unsub = create_adoption_col(
+        scenario_prefix, 'heatingLCC_coolingLCC_unsub', method_suffix)
+
     sample_total = len(source_df)
     group_counts = source_df.groupby([fuel_col, income_col], observed=True).size()
-    fuel_counts  = source_df.groupby(fuel_col, observed=True).size()
-    total_homes  = int(group_counts.sum())
+    fuel_counts = source_df.groupby(fuel_col, observed=True).size()
+    total_homes = int(group_counts.sum())
     fuels_in_data = list(source_df[fuel_col].dropna().unique())
 
-    def _col(hvac_s, policy_pfx):
-        return f'{policy_pfx}_mp{mp}_{hvac_s}_econ_adopter_moreWTP_{cost_scenario}_{discount_rate}'
-
-    def _mean_rate(df_sub, col):
+    def _rate(df_sub, col):
+        # Mean adoption rate as a percentage; NaN if column not yet in frame.
         return df_sub[col].mean() * 100.0 if col in df_sub.columns else np.nan
 
-    def _row(grouping, fuel, income_level, case_label, ira_pct, pre_pct, n):
+    def _row(grouping, fuel, income_level, case_label, right_pct, left_pct, n):
+        # Left-case rows pass right_pct == left_pct so delta == 0 (reference).
+        # Right-case rows pass right_pct = heatingLCC_coolingLCC rate so
+        # delta shows the gain from crediting the avoided AC replacement.
         return dict(
-            grouping=grouping, fuel_type=fuel, income_level=income_level,
+            grouping=grouping,
+            fuel_type=fuel,
+            income_level=income_level,
             tier_label=case_label,
-            iraref_pct=ira_pct, preira_pct=pre_pct, delta_pct=ira_pct - pre_pct,
+            case_b_pct=right_pct,
+            case_a_pct=left_pct,
+            delta_pct=right_pct - left_pct,
             sample_n=n,
             pct_of_sample=100.0 * n / sample_total if sample_total else 0.0,
             weighted_homes_millions=n * scaling_factor / 1_000_000,
@@ -630,33 +671,46 @@ def _build_econ_plot_df(
 
     rows = []
 
-    # --- per fuel x income subgroup (show only selected income groups) ---
+    # -- Per fuel x selected income group (e.g. LMI only) --
     for (fuel, income), n in group_counts.items():
         if income not in income_groups:
             continue
-        sub = source_df[(source_df[fuel_col] == fuel) & (source_df[income_col] == income)]
-        grouping = f'{fuel} \u2014 {income}'
-        for hvac_s, case_label in _ECON_CASES.items():
-            ira_pct = _mean_rate(sub, _col(hvac_s, 'iraRef'))
-            pre_pct = _mean_rate(sub, _col(hvac_s, 'preIRA'))
-            rows.append(_row(grouping, fuel, income, case_label, ira_pct, pre_pct, int(n)))
+        sub = source_df[
+            (source_df[fuel_col] == fuel) & (source_df[income_col] == income)
+        ]
+        grouping = f'{fuel} -- {income}'
+        l_sub = _rate(sub, left_col_sub)
+        l_unsub = _rate(sub, left_col_unsub)
+        r_sub = _rate(sub, right_col_sub)
+        r_unsub = _rate(sub, right_col_unsub)
+        rows.append(_row(grouping, fuel, income, 'Heating Repl. Credit',
+                         l_sub, l_unsub, int(n)))
+        rows.append(_row(grouping, fuel, income, 'Heating + Cooling Repl. Credit',
+                         r_sub, r_unsub, int(n)))
 
-    # --- per fuel - Overall (pooled across ALL income groups) ---
+    # -- Per fuel -- Overall (pooled across all income groups) --
     for fuel in fuels_in_data:
         fuel_n = int(fuel_counts.get(fuel, 0))
         fuel_sub = source_df[source_df[fuel_col] == fuel]
-        grouping = f'{fuel} \u2014 Overall'
-        for hvac_s, case_label in _ECON_CASES.items():
-            ira_pct = _mean_rate(fuel_sub, _col(hvac_s, 'iraRef'))
-            pre_pct = _mean_rate(fuel_sub, _col(hvac_s, 'preIRA'))
-            rows.append(_row(grouping, fuel, 'Overall', case_label, ira_pct, pre_pct, fuel_n))
+        grouping = f'{fuel} -- Overall'
+        l_sub = _rate(fuel_sub, left_col_sub)
+        l_unsub = _rate(fuel_sub, left_col_unsub)
+        r_sub = _rate(fuel_sub, right_col_sub)
+        r_unsub = _rate(fuel_sub, right_col_unsub)
+        rows.append(_row(grouping, fuel, 'Overall', 'Heating Repl. Credit',
+                         l_sub, l_unsub, fuel_n))
+        rows.append(_row(grouping, fuel, 'Overall', 'Heating + Cooling Repl. Credit',
+                         r_sub, r_unsub, fuel_n))
 
-    # --- National - Overall ---
-    for hvac_s, case_label in _ECON_CASES.items():
-        ira_pct = _mean_rate(source_df, _col(hvac_s, 'iraRef'))
-        pre_pct = _mean_rate(source_df, _col(hvac_s, 'preIRA'))
-        rows.append(_row('National \u2014 Overall', 'National', 'Overall',
-                         case_label, ira_pct, pre_pct, total_homes))
+    # -- National -- Overall --
+    l_sub = _rate(source_df, left_col_sub)
+    l_unsub = _rate(source_df, left_col_unsub)
+    r_sub = _rate(source_df, right_col_sub)
+    r_unsub = _rate(source_df, right_col_unsub)
+    rows.append(_row('National -- Overall', 'National', 'Overall',
+                     'Heating Repl. Credit', l_sub, l_unsub, total_homes))
+    rows.append(_row('National -- Overall', 'National', 'Overall',
+                     'Heating + Cooling Repl. Credit', r_sub, r_unsub, total_homes))
 
     return pd.DataFrame(rows)
 
@@ -697,24 +751,30 @@ else:
 
         # Print panel summary
         print(f"--- MP{mp} economic adoption summary ---")
-        for case_label in _ECON_CASES.values():
+        for case_label in _ECON_CASES:
             nat_row = plot_df[
-                (plot_df['grouping'] == 'National \u2014 Overall') &
+                (plot_df['grouping'] == 'National -- Overall') &
                 (plot_df['tier_label'] == case_label)
             ]
             if not nat_row.empty:
-                ira = nat_row.iloc[0]['iraref_pct']
+                rate = nat_row.iloc[0]['case_b_pct']
                 delta = nat_row.iloc[0]['delta_pct']
-                sign = '+' if delta >= 0 else ''
-                print(f"  {case_label}: {ira:.1f}% ({sign}{delta:.1f}% IRA delta)")
+                if delta == 0:
+                    print(f"  {case_label}: {rate:.1f}%")
+                else:
+                    sign = '+' if delta >= 0 else ''
+                    print(
+                        f"  {case_label}: {rate:.1f}%"
+                        f" ({sign}{delta:.1f}% vs unsubsidized)"
+                    )
         print()
 
         _ECON_GROUPING_ORDER = [
-            'National \u2014 Overall',
-            'Electricity \u2014 Overall',
-            'Natural Gas \u2014 Overall',
-            'Fuel Oil \u2014 Overall',
-            'Propane \u2014 Overall',
+            'National -- Overall',
+            'Electricity -- Overall',
+            'Natural Gas -- Overall',
+            'Fuel Oil -- Overall',
+            'Propane -- Overall',
         ]
 
         plot_adoption_panel(
@@ -732,16 +792,16 @@ else:
         )
         ax.tick_params(axis='both', labelsize=14)
 
-        # Legend: circle = Case A, square = Case B
+        # Legend: circle = Heating Repl. Credit (left), square = Heating + Cooling Repl. Credit (right)
         legend_handles = [
             mlines.Line2D([], [], marker='o', color='none',
                           markerfacecolor='gray', markeredgecolor='gray',
                           markersize=8, linestyle='None',
-                          label='Heating Replacement Cost'),
+                          label='Heating Repl. Credit Only'),
             mlines.Line2D([], [], marker='s', color='none',
                           markerfacecolor='gray', markeredgecolor='gray',
                           markersize=8, linestyle='None',
-                          label='Heating + Cooling Replacement Cost'),
+                          label='Heating + Cooling Repl. Credit'),
         ]
         ax.legend(handles=legend_handles, loc='upper right', fontsize=14, frameon=True)
 

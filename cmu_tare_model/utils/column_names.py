@@ -135,40 +135,49 @@ def create_npv_col(
     return f'{scenario_prefix}{category}_private_npv_{wtp}_{cost_scenario}{method_suffix}'
 
 
-# The private NPV is computed under three distinct cost/savings cases. Each case
-# label is carried as the "category" segment of the NPV and economic-adopter
-# column names, so the existing builders and the econ-adopter name swap
-# (private_npv_moreWTP -> econ_adopter_moreWTP) work without special-casing.
+# The private NPV is computed under three cases. All three count BOTH the
+# heating and cooling operating (energy-bill) savings from the heat pump; the
+# cases differ only in which capital costs enter the lifecycle calculation.
+# In each case label, "LCC" means that end use's capital is included -- the
+# avoided replacement of that end use's incumbent equipment is credited --
+# while "Savings" means that end use contributes operating savings only.
 #
-#   heating_only                 -> heating capital;          heating savings only
-#   heating_and_cooling_savings  -> heating capital;          heating + cooling savings
-#   heating_and_cooling_full     -> heating + cooling capital; heating + cooling savings
+#   heatingSavings_coolingLCC_sub      -> subsidized cost; heating replacement only
+#   heatingSavings_coolingLCC_unsub    -> unsubsidized cost; heating replacement only
+#   heatingLCC_coolingSavings_sub      -> subsidized cost; cooling replacement only
+#   heatingLCC_coolingSavings_unsub    -> unsubsidized cost; cooling replacement only
+#   heatingLCC_coolingLCC_sub          -> subsidized cost; both replacements
+#   heatingLCC_coolingLCC_unsub        -> unsubsidized cost; both replacements
 #
-# Defined here as the single source of truth so no module hardcodes the strings.
+# The case label is carried as the "category" segment of the NPV and
+# economic-adopter column names. Defined here as the single source of truth so
+# no module hardcodes the strings.
 NPV_CASE_CATEGORIES = (
-    "heating_only",
-    "heating_and_cooling_savings",
-    "heating_and_cooling_full",
+    "heatingSavings_coolingLCC_sub",
+    "heatingSavings_coolingLCC_unsub",
+    "heatingLCC_coolingSavings_sub",
+    "heatingLCC_coolingSavings_unsub",
+    "heatingLCC_coolingLCC_sub",
+    "heatingLCC_coolingLCC_unsub",
 )
 
 
 def create_npv_case_col(
     scenario_prefix: str,
     npv_case: str,
-    wtp: str,
-    cost_scenario: str,
     method_suffix: str) -> str:
     """Build a private NPV column name for one of the three NPV cases.
 
-    Thin wrapper over create_npv_col that validates npv_case so the three-case
-    names stay consistent across the NPV, capital-cost, and economic-adopter
-    modules. The npv_case value is used directly as the category segment.
+    The heat pump is the only heating technology, and the adoption decision uses
+    a single willingness-to-pay framing and a single capital-cost scenario, so
+    the NPV column name carries neither a WTP token nor a cost-scenario token.
+    Validates npv_case so the three-case names stay consistent across the NPV,
+    capital-cost, and economic-adopter modules. The npv_case value is used
+    directly as the category segment.
 
     Args:
         scenario_prefix: Scenario prefix (e.g., 'ref2025_mp3_').
         npv_case: One of NPV_CASE_CATEGORIES.
-        wtp: 'lessWTP' or 'moreWTP'.
-        cost_scenario: 'v3' or 'v4LOW/MID/HIGH'.
         method_suffix: Discount method suffix (e.g., '_fixed_base').
 
     Returns:
@@ -178,22 +187,16 @@ def create_npv_case_col(
         ValueError: If npv_case is not one of NPV_CASE_CATEGORIES.
 
     Examples:
-        >>> create_npv_case_col('ref2025_mp3_', 'heating_only', 'moreWTP',
-        ...                     cost_scenario='v4MID', method_suffix='_fixed_base')
-        'ref2025_mp3_heating_only_private_npv_moreWTP_v4MID_fixed_base'
+        >>> create_npv_case_col('ref2025_mp3_', 'heatingLCC_coolingLCC_sub',
+        ...                     method_suffix='_fixed_base')
+        'ref2025_mp3_heatingLCC_coolingLCC_sub_private_npv_fixed_base'
     """
     if npv_case not in NPV_CASE_CATEGORIES:
         raise ValueError(
             f"Invalid npv_case: '{npv_case}'. "
             f"Must be one of {NPV_CASE_CATEGORIES}")
 
-    return create_npv_col(
-        scenario_prefix=scenario_prefix,
-        category=npv_case,
-        wtp=wtp,
-        cost_scenario=cost_scenario,
-        method_suffix=method_suffix,
-    )
+    return f'{scenario_prefix}{npv_case}_private_npv{method_suffix}'
 
 
 def create_enclosure_cost_col(
@@ -374,26 +377,24 @@ def create_avoided_damages_col(
 def create_adoption_col(
     scenario_prefix: str,
     npv_case: str,
-    cost_scenario: str,
     method_suffix: str,
-    wtp: str = 'moreWTP',
 ) -> str:
     """Build an economic-adopter column name for one NPV case.
 
     The economic-adopter columns flag homes where the heat-pump retrofit pays
-    for itself (private moreWTP NPV >= 0). One column exists per NPV case, and
-    the adoption decision uses only private economics -- no climate or health
-    terms appear in the name. The name mirrors the private NPV column with
-    ``private_npv_moreWTP`` swapped for ``econ_adopter_moreWTP``.
+    for itself (private NPV >= 0). One column exists per NPV case, and the
+    adoption decision uses only private economics -- no climate or health terms
+    appear in the name. A single willingness-to-pay framing and a single
+    capital-cost scenario are modeled, so the name carries neither a WTP token
+    nor a cost-scenario token. The name mirrors the private NPV column with
+    ``private_npv`` swapped for ``econ_adopter``.
 
     Args:
         scenario_prefix: Scenario prefix ending in an underscore
             (e.g. 'ref2025_mp3_').
-        npv_case: One of NPV_CASE_CATEGORIES ('heating_only',
-            'heating_and_cooling_savings', 'heating_and_cooling_full').
-        cost_scenario: REMDB cost scenario key (e.g. 'v4MID').
+        npv_case: One of NPV_CASE_CATEGORIES, including both subsidized and
+            unsubsidized variants (e.g. 'heatingLCC_coolingLCC_sub').
         method_suffix: Discount-method suffix (e.g. '_fixed_base').
-        wtp: Willingness-to-pay variant; the model uses 'moreWTP'.
 
     Returns:
         Column name string.
@@ -402,19 +403,16 @@ def create_adoption_col(
         ValueError: If npv_case is not one of NPV_CASE_CATEGORIES.
 
     Examples:
-        >>> create_adoption_col('ref2025_mp3_', 'heating_only',
-        ...                     cost_scenario='v4MID', method_suffix='_fixed_base')
-        'ref2025_mp3_heating_only_econ_adopter_moreWTP_v4MID_fixed_base'
+        >>> create_adoption_col('ref2025_mp3_', 'heatingLCC_coolingLCC_sub',
+        ...                     method_suffix='_fixed_base')
+        'ref2025_mp3_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base'
     """
     if npv_case not in NPV_CASE_CATEGORIES:
         raise ValueError(
             f"Invalid npv_case: '{npv_case}'. "
             f"Must be one of {NPV_CASE_CATEGORIES}")
 
-    return (
-        f'{scenario_prefix}{npv_case}_econ_adopter_{wtp}_'
-        f'{cost_scenario}{method_suffix}'
-    )
+    return f'{scenario_prefix}{npv_case}_econ_adopter{method_suffix}'
 
 
 def create_total_npv_col(

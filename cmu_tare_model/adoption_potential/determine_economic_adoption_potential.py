@@ -7,6 +7,7 @@ from cmu_tare_model.constants import (
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.column_names import (
     create_npv_case_col,
+    create_adoption_col,
     NPV_CASE_CATEGORIES,
 )
 from cmu_tare_model.utils.validation_framework import (
@@ -35,16 +36,16 @@ def economic_adoption_decision(
     verbose: bool = VERBOSE,
 ) -> pd.DataFrame:
     """
-    Flag economic adopters for each of the three heat-pump NPV cases.
+    Flag economic adopters for each of the six heat-pump NPV cases.
 
     A home is an "economic adopter" for a given NPV case if that case's private
-    incremental NPV (moreWTP framing) is >= 0: the extra upfront cost of the heat
-    pump over a like-for-like baseline replacement is recovered from energy-bill
-    savings over the equipment lifetime, with no help from monetized climate or
-    health damages. Break-even (NPV exactly 0) counts as adoption.
+    incremental NPV is >= 0: the extra upfront cost of the heat pump over a
+    like-for-like baseline replacement is recovered from energy-bill savings over
+    the equipment lifetime, with no help from monetized climate or health damages.
+    Break-even (NPV exactly 0) counts as adoption.
 
-    One adopter column is produced per NPV case (see NPV_CASE_CATEGORIES):
-    heating_only, heating_and_cooling_savings, and heating_and_cooling_full.
+    One adopter column is produced per NPV case (see NPV_CASE_CATEGORIES),
+    including both subsidized and unsubsidized variants.
 
     Homes with invalid heating data or not scheduled for this measure package
     receive NaN -- not 0.0 -- so they are excluded from both numerator and
@@ -52,23 +53,25 @@ def economic_adoption_decision(
     upstream metrics.
 
     Args:
-        df: DataFrame with the per-case moreWTP private NPV columns.
+        df: DataFrame with the per-case private NPV columns.
         menu_mp: Measure package identifier.
         policy_scenario: Policy scenario for electricity grid projections.
             Accepted value: '2025 Reference Case'.
         discount_rate_col_name: Discount rate column name for private discounting.
-        cost_scenario: Cost methodology key ('v3' or 'v4LOW/MID/HIGH'). Determines
-            the REMDB suffix on column names (default 'v4MID').
+        cost_scenario: Cost methodology key ('v4LOW', 'v4MID' (default), 'v4HIGH').
+            Used for capital cost data lookup. Only using v4MID per NLR guidance, 
+            cost_scenario no longer embedded in output column names.
         verbose: Enable detailed output (default: False).
 
     Returns:
-        DataFrame with three economic-adopter columns appended and masked, one per
-        NPV case. 1.0 = recovers incremental cost; 0.0 = valid home that does not;
-        NaN = excluded home (invalid heating data or not in this package).
+        DataFrame with six economic-adopter columns appended and masked, one per
+        NPV case (including subsidized and unsubsidized variants). 1.0 = recovers
+        incremental cost; 0.0 = valid home that does not; NaN = excluded home
+        (invalid heating data or not in this package).
 
     Raises:
         ValueError: If policy_scenario is invalid.
-        KeyError: If any required moreWTP private NPV column is missing.
+        KeyError: If any required private NPV column is missing.
     """
     # --- Input validation: fail fast with a clear message ---
     # Single-scenario design: only the 2025 Reference Case is modeled.
@@ -93,22 +96,20 @@ def economic_adoption_decision(
         df_copy, 'heating', menu_mp, verbose=verbose, copy=False
     )
 
-    # Build the moreWTP NPV column name for each of the three NPV cases.
-    moreWTP_cols = {
+    # Build the private NPV column name for each NPV case.
+    npv_cols = {
         npv_case: create_npv_case_col(
             scenario_prefix=scenario_prefix,
             npv_case=npv_case,
-            wtp='moreWTP',
-            cost_scenario=cost_scenario,
             method_suffix=method_suffix,
         )
         for npv_case in NPV_CASE_CATEGORIES
     }
 
-    # Verify all three required NPV columns exist before doing any work.
+    # Verify all required NPV columns exist before doing any work.
     _validate_required_columns(
         df=df_copy,
-        required_columns=list(moreWTP_cols.values()),
+        required_columns=list(npv_cols.values()),
         context_params={
             'Analysis': 'Economic Adopter',
             'Method': method_suffix,
@@ -117,23 +118,24 @@ def economic_adoption_decision(
     )
 
     if verbose:
-        print(f"\nEconomic Adopter Analysis: {policy_scenario} | three NPV cases")
+        print(f"\nEconomic Adopter Analysis: {policy_scenario} | {len(NPV_CASE_CATEGORIES)} NPV cases")
 
     # --- Generate all three case adopter columns in one block ---
     # Climate/health damages are deliberately absent from this decision: only
-    # the private moreWTP NPV enters the >= 0 test.
+    # the private NPV enters the >= 0 test.
     all_columns_to_mask = {'heating': []}
     df_new_columns = pd.DataFrame(index=df_copy.index)
     econ_adopter_cols = []
 
-    for npv_case, moreWTP_col in moreWTP_cols.items():
-        # Output name: swap 'private_npv_moreWTP' -> 'econ_adopter_moreWTP'.
-        econ_adopter_col = moreWTP_col.replace(
-            'private_npv_moreWTP', 'econ_adopter_moreWTP'
+    for npv_case, npv_col in npv_cols.items():
+        econ_adopter_col = create_adoption_col(
+            scenario_prefix=scenario_prefix,
+            npv_case=npv_case,
+            method_suffix=method_suffix,
         )
 
         # Coerce stray strings to NaN so the comparison is numeric.
-        df_copy[moreWTP_col] = pd.to_numeric(df_copy[moreWTP_col], errors='coerce')
+        df_copy[npv_col] = pd.to_numeric(df_copy[npv_col], errors='coerce')
 
         # Valid homes start at 0.0 (non-adopter); excluded homes stay NaN.
         # float64 (0.0/1.0) avoids a pandas FutureWarning and lets adoption-rate
@@ -143,11 +145,11 @@ def economic_adoption_decision(
         )
         df_new_columns.loc[valid_mask, econ_adopter_col] = 0.0
 
-        # THE RULE: economic adopter if moreWTP NPV >= 0 (break-even counts).
+        # THE RULE: economic adopter if private NPV >= 0 (break-even counts).
         economic_adopter_mask = (
             valid_mask
-            & df_copy[moreWTP_col].notna()
-            & (df_copy[moreWTP_col] >= 0)
+            & df_copy[npv_col].notna()
+            & (df_copy[npv_col] >= 0)
         )
         df_new_columns.loc[economic_adopter_mask, econ_adopter_col] = 1.0
 
