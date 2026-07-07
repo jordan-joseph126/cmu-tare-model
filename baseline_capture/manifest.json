@@ -1,0 +1,20 @@
+{
+  "n_homes": 17,
+  "efficiency_floors": {
+    "air_source_heat_pump_centrally_ducted": 15.0,
+    "air_source_heat_pump_non_ducted_multi_zone": 15.0,
+    "air_conditioner_centrally_ducted": 15.0,
+    "furnaces_gas_furnace": 0.8
+  },
+  "capacity_clamp_tolerance": 0.1,
+  "files": {
+    "homes_input.parquet": "975b474e51b17f8936bf1cf5ad100fea9d8cd00eb7c9bf181ac8f0e1e44c5cf9",
+    "heating_replacement_main.parquet": "8704c6cad9f6f3c28baf8563adba9cee1891e5480d2d06ebaac9059d286b529c",
+    "heating_replacement_detailed.parquet": "675d5ccd844482dabb0bd4e5dfdb3f1745ec1a3f2ce4c5f52d43b7227566029e",
+    "heating_upgrade_main.parquet": "0184f1a6ebee1a9f13cab25f0758ccc81c375bf3f74246b7cd852edfde29768a",
+    "heating_upgrade_detailed.parquet": "2949064f0108247d97162e9026294b65ba6f8c2b688f502273359b2d23a38f95",
+    "cooling_replacement_main.parquet": "41f43d85155f81439780ecff564ba0f362f83cb9b5c9c2bfee3af6ebe805a970",
+    "cooling_replacement_detailed.parquet": "8b07595c547a40e89adbf07618a9783ffddb21335c46af29e4aeefa2208ec3d0",
+    "v4_regression_costs.parquet": "3dc0b0ece1adfaf5a646fd071f61c4a1f90d8988835bccc4f576114395c31721"
+  }
+}
