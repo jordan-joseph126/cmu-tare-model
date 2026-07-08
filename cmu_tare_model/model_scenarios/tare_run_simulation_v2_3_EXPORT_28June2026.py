@@ -257,8 +257,7 @@ if 3 in VALID_MENU_MPS:
         npv_results = {}
         for npv_case in NPV_CASE_CATEGORIES:
             npv_col = create_npv_case_col(
-                scenario_prefix, npv_case, wtp='moreWTP',
-                cost_scenario=cost_scenario,
+                scenario_prefix, npv_case,
                 method_suffix='_fixed_base',
             )
             npv_results[npv_case] = (npv_col, npv_col in df_check.columns)
@@ -404,8 +403,7 @@ if 4 in VALID_MENU_MPS:
         npv_results = {}
         for npv_case in NPV_CASE_CATEGORIES:
             npv_col = create_npv_case_col(
-                scenario_prefix, npv_case, wtp='moreWTP',
-                cost_scenario=cost_scenario,
+                scenario_prefix, npv_case,
                 method_suffix='_fixed_base',
             )
             npv_results[npv_case] = (npv_col, npv_col in df_check.columns)
@@ -547,8 +545,7 @@ if 8 in VALID_MENU_MPS:
         npv_results = {}
         for npv_case in NPV_CASE_CATEGORIES:
             npv_col = create_npv_case_col(
-                scenario_prefix, npv_case, wtp='moreWTP',
-                cost_scenario=cost_scenario,
+                scenario_prefix, npv_case,
                 method_suffix='_fixed_base',
             )
             npv_results[npv_case] = (npv_col, npv_col in df_check.columns)
@@ -690,8 +687,7 @@ if 9 in VALID_MENU_MPS:
         npv_results = {}
         for npv_case in NPV_CASE_CATEGORIES:
             npv_col = create_npv_case_col(
-                scenario_prefix, npv_case, wtp='moreWTP',
-                cost_scenario=cost_scenario,
+                scenario_prefix, npv_case,
                 method_suffix='_fixed_base',
             )
             npv_results[npv_case] = (npv_col, npv_col in df_check.columns)
@@ -835,8 +831,7 @@ if 10 in VALID_MENU_MPS:
         npv_results = {}
         for npv_case in NPV_CASE_CATEGORIES:
             npv_col = create_npv_case_col(
-                scenario_prefix, npv_case, wtp='moreWTP',
-                cost_scenario=cost_scenario,
+                scenario_prefix, npv_case,
                 method_suffix='_fixed_base',
             )
             npv_results[npv_case] = (npv_col, npv_col in df_check.columns)

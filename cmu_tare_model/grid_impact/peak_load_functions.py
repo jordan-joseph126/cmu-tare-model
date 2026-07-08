@@ -8,6 +8,7 @@ Author: Jordan M. Joseph, PhD — Carnegie Mellon University
 
 from typing import Any
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -225,3 +226,62 @@ def compute_county_scenario_profile(
     }
 
     return df_profile, peak_dict
+
+
+def plot_demand_panel(
+    ax: Any,
+    df_profile: pd.DataFrame,
+    peak_result: dict[str, Any],
+    mp: int,
+    scenario_label: str,
+    county_name: str = "Allegheny County, PA",
+) -> None:
+    """Plot baseline and scenario demand timeseries on a single axes panel.
+
+    Args:
+        ax: Matplotlib Axes to draw on.
+        df_profile: DataFrame output of ``compute_county_scenario_profile``.
+        peak_result: Dict output of ``compute_county_scenario_profile``.
+        mp: Measure-package number.
+        scenario_label: Human-readable scenario name.
+        county_name: County name shown in the title.
+    """
+    ax.plot(df_profile["hour"], df_profile["baseline_mw"],
+            color="tab:red", linewidth=0.8, alpha=0.5)
+    ax.plot(df_profile["hour"], df_profile["scenario_mw"],
+            color="tab:blue", linewidth=0.8, alpha=0.5)
+
+    peak_hr_base = peak_result["peak_hour_baseline"]
+    peak_mw_base = peak_result["baseline_peak_mw"]
+    peak_hr_scen = peak_result["peak_hour_scenario"]
+    peak_mw_scen = peak_result["scenario_peak_mw"]
+
+    ax.axvline(x=peak_hr_base, color="tab:red", linestyle="--", linewidth=2.0,
+               alpha=0.85)
+    ax.axvline(x=peak_hr_scen, color="tab:blue", linestyle="--", linewidth=2.0,
+               alpha=0.85)
+
+    ax.annotate(
+        f"Base peak\n{peak_mw_base:.1f} MW\n(hr {peak_hr_base})",
+        xy=(peak_hr_base, 0.95),
+        xycoords=("data", "axes fraction"),
+        xytext=(peak_hr_base + 180, 0.95),
+        textcoords=("data", "axes fraction"),
+        fontsize=14, color="tab:red",
+        ha="left", va="top",
+        bbox={"boxstyle": "round,pad=0.2", "fc": "white", "ec": "tab:red", "alpha": 0.7},
+    )
+    ax.annotate(
+        f"Scenario peak\n{peak_mw_scen:.1f} MW\n(hr {peak_hr_scen})",
+        xy=(peak_hr_scen, 0.95),
+        xycoords=("data", "axes fraction"),
+        xytext=(peak_hr_scen + 180, 0.95),
+        textcoords=("data", "axes fraction"),
+        fontsize=14, color="tab:blue",
+        ha="left", va="top",
+        bbox={"boxstyle": "round,pad=0.2", "fc": "white", "ec": "tab:blue", "alpha": 0.7},
+    )
+
+    ax.set_xlabel("Hour of Year", fontsize=14)
+    ax.set_ylabel("Demand (MW)", fontsize=14)
+    ax.tick_params(labelsize=12)

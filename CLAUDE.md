@@ -121,22 +121,30 @@ col_base = define_scenario_params(mp, policy)[0]   # → 'ref2025_mp3_'
 mp_str   = f'mp{mp}'                               # '3' or '4' — never 'mp3' literal
 ```
 
-**NPV cases (three per MP, as of Session A refactor):**
+**NPV cases (six per MP, as of the 6 July 2026 session):**
 ```
-ref2025_mp{mp}_heatingSavings_coolingLCC_private_npv_{method_suffix}
-ref2025_mp{mp}_heatingLCC_coolingSavings_private_npv_{method_suffix}
-ref2025_mp{mp}_heatingLCC_coolingLCC_private_npv_{method_suffix}
+ref2025_mp{mp}_heatingSavings_coolingLCC_sub_private_npv{method_suffix}
+ref2025_mp{mp}_heatingSavings_coolingLCC_unsub_private_npv{method_suffix}
+ref2025_mp{mp}_heatingLCC_coolingSavings_sub_private_npv{method_suffix}
+ref2025_mp{mp}_heatingLCC_coolingSavings_unsub_private_npv{method_suffix}
+ref2025_mp{mp}_heatingLCC_coolingLCC_sub_private_npv{method_suffix}
+ref2025_mp{mp}_heatingLCC_coolingLCC_unsub_private_npv{method_suffix}
 ```
+- Build with `create_npv_case_col(scenario_prefix, npv_case, method_suffix)`;
+  `npv_case` must be one of `NPV_CASE_CATEGORIES` (column_names.py). Note there is
+  no cost-scenario token and no WTP token in these names.
 - `LCC` = that end-use's avoided-replacement capital is credited in the NPV
 - `Savings` = only operating savings credited for that end-use
-- All three cases include BOTH heating and cooling operating savings
+- `_sub` = subsidized (IRA rebate applied); `_unsub` = unsubsidized companion
+- All six cases include BOTH heating and cooling operating savings
+- `{method_suffix}` already carries its own leading underscore (e.g. `_fixed_base`)
 
-**Economic adopter columns (three per MP, as of Session A refactor):**
+**Economic adopter columns (six per MP, as of the 6 July 2026 session):**
 ```
-ref2025_mp{mp}_heatingSavings_coolingLCC_econ_adopter_{method_suffix}
-ref2025_mp{mp}_heatingLCC_coolingSavings_econ_adopter_{method_suffix}
-ref2025_mp{mp}_heatingLCC_coolingLCC_econ_adopter_{method_suffix}
+ref2025_mp{mp}_{npv_case}_econ_adopter{method_suffix}
 ```
+one per `npv_case` in `NPV_CASE_CATEGORIES` (the same six tokens listed above,
+including `_sub`/`_unsub`).
 
 **Canonical variable suffixes:** `fixed_base` | `central`
 Never use: `v3`, `v4MID`, `moreWTP`, `lessWTP`, `iraRef_mp{mp}_`, `preIRA_mp{mp}_`, `aeo2026_mp{mp}_`
@@ -155,8 +163,8 @@ Never use: `v3`, `v4MID`, `moreWTP`, `lessWTP`, `iraRef_mp{mp}_`, `preIRA_mp{mp}
 | RCM models (health damage) | `ap2`, `easiur`, `inmap` |
 | Private discount rates | `fixed_low` (3%) \| `fixed_base` (7%) \| `fixed_high` (10%) \| `variable` (Ramsey) |
 | Policy scenario | Single: `'2025 Reference Case'` — no IRA/pre-IRA split |
-| NPV scope | `heatingSavings_coolingLCC` \| `heatingLCC_coolingSavings` \| `heatingLCC_coolingLCC` |
-
+| NPV scope | `heatingSavings_coolingLCC` \| `heatingLCC_coolingSavings` \| `heatingLCC_coolingLCC`, each x `_sub` / `_unsub` (six cases; see `NPV_CASE_CATEGORIES`) |
+| Subsidy split | `_sub` (IRA rebate applied) \| `_unsub` (unsubsidized companion) |
 ---
 
 ## Masking and Validation Rules
@@ -218,6 +226,7 @@ add a new row marked "supersedes" and keep the old row.
 | Demand GWh symmetric norm | ±1038.3 GWh | (shared) | Pre-AEO2026 | Round 3 |
 | LMI eligibility share, single-family (NHGIS-2022 PUMA AMI; bins USD2022->23) | 71.6% | (shared) | Pre-USD2025 | superseded by Session 1e |
 | LMI eligibility share, single-family (ACS-2024 county AMI; bins USD2018->25) | 62.4% | (shared) | USD2025 | Session 1e (28 Jun 2026) |
+| Mean economic adoption rate (six NPV cases, `_sub`/`_unsub`) | PENDING | PENDING | AEO2026/Cambium2024 | To be re-derived; the six-case scheme replaced the retired heating-only case, so no golden value exists yet. Do not backfill without a full model run. |
 
 ---
 
@@ -233,6 +242,8 @@ add a new row marked "supersedes" and keep the old row.
 | Session 1d | 23 Jun 2026 | PEP 8 cleanup: E221/E241 padding, E501 long lines, named API dicts, plain-language comments |
 | Session 1e | 28 Jun 2026 | Income/rebate/capital to USD2025: ANCHOR_YEAR centralized; REMDB v4 costs inflated 2023->2025; income source swapped to ACS-2024 B19013 (PUMA dropped, county->state); rebate bins repointed USD2018->2025; BLS CPI read fixed; LMI share 71.6%->62.4% |
 | Session A | Jul 2026 | NPV-case rename refactor: `heating_only`/`heating_and_cooling_*` retired; new tokens `heatingSavings_coolingLCC`, `heatingLCC_coolingSavings`, `heatingLCC_coolingLCC`; `moreWTP`/`v4MID` removed from column names; column-name builders updated; all downstream consumers migrated; tests updated |
+| 6 July 2026 | 6 Jul 2026 | Six NPV/adopter cases: each of the three scope tokens split into `_sub`/`_unsub`; `create_npv_case_col` added; `peak_load_functions` defaults to `heatingLCC_coolingSavings_sub`; Option A dotplot plots subsidized adoption with unsubsidized deltas. Loose ends closed in Session B below. |
+| Session B | 7 Jul 2026 | Capital-cost refactor + baseline oracle (`scripts/capture_capital_cost_baseline.py`). CLAUDE.md updated to six-case naming. Old-token sweep: `create_npv_col` (moreWTP/lessWTP) still coexists with `create_npv_case_col`; notebook exports carry `moreWTP`/`iraRef`/`preIRA` stragglers plus half-migrated `create_npv_case_col(..., wtp=..., cost_scenario=...)` calls that raise `TypeError`. Flagged for hand-migration. Propagation verified PASS for `compute_adoption_rate`, `visuals_adoption_potential`, `visuals_adoption_dotplot`. See `REFACTORING_GUIDE_07July2026.md`. |
 
 ---
 

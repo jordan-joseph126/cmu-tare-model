@@ -20,6 +20,8 @@ import numpy as np
 import pandas as pd
 
 from cmu_tare_model.constants import FIGURE_DPI
+from cmu_tare_model.utils.column_names import create_adoption_col
+from cmu_tare_model.utils.modeling_params import define_scenario_params
 
 # ===========================================================================
 # APPEARANCE CONFIGURATION
@@ -83,6 +85,114 @@ GROUPING_ORDER: List[str] = [
     'Propane -- Overall',
     'Propane -- LMI',
 ]
+
+
+# ===================================================================
+# build_econ_plot_df
+# ===================================================================
+
+def build_econ_plot_df(
+    source_df: pd.DataFrame,
+    mp: int,
+    cost_scenario: str = 'v4MID',
+    discount_rate: str = 'fixed_base',
+    fuel_col: str = 'base_heating_fuel',
+    income_col: str = 'lmi_or_mui',
+    income_groups: Optional[List[str]] = None,
+    scaling_factor: float = 242.0,
+) -> pd.DataFrame:
+    """Build a DataFrame for the economic adoption dotplot.
+
+    Args:
+        source_df: TARE output frame for one measure package.
+        mp: Measure-package number.
+        cost_scenario: Retained for caller compatibility; not embedded in
+            column names post-refactor.
+        discount_rate: Discount-rate key used to build the method suffix.
+        fuel_col: Column holding the baseline heating fuel.
+        income_col: Column holding the income group.
+        income_groups: Income groups to break out (default ['LMI']).
+        scaling_factor: Homes-per-sample weight for the weighted-homes column.
+
+    Returns:
+        DataFrame formatted for ``plot_adoption_panel()``.
+    """
+    if income_groups is None:
+        income_groups = ['LMI']
+
+    scenario_prefix = define_scenario_params(mp)[0]
+    method_suffix = f'_{discount_rate}'
+    left_col_sub = create_adoption_col(
+        scenario_prefix, 'heatingLCC_coolingSavings_sub', method_suffix)
+    left_col_unsub = create_adoption_col(
+        scenario_prefix, 'heatingLCC_coolingSavings_unsub', method_suffix)
+    right_col_sub = create_adoption_col(
+        scenario_prefix, 'heatingLCC_coolingLCC_sub', method_suffix)
+    right_col_unsub = create_adoption_col(
+        scenario_prefix, 'heatingLCC_coolingLCC_unsub', method_suffix)
+
+    def _rate(df_sub: pd.DataFrame, col: str) -> float:
+        return df_sub[col].mean() * 100.0 if col in df_sub.columns else np.nan
+
+    def _row(
+        grouping: str,
+        fuel: str,
+        income_level: str,
+        case_label: str,
+        right_pct: float,
+        left_pct: float,
+        n: int,
+    ) -> dict:
+        return {
+            'grouping': grouping,
+            'fuel_type': fuel,
+            'income_level': income_level,
+            'tier_label': case_label,
+            'case_b_pct': right_pct,
+            'case_a_pct': left_pct,
+            'delta_pct': right_pct - left_pct,
+            'sample_n': n,
+            'pct_of_sample': 100.0 * n / len(source_df) if len(source_df) else 0.0,
+            'weighted_homes_millions': n * scaling_factor / 1_000_000,
+        }
+
+    sample_total = len(source_df)
+    group_counts = source_df.groupby([fuel_col, income_col], observed=True).size()
+    fuel_counts = source_df.groupby(fuel_col, observed=True).size()
+    fuels_in_data = list(source_df[fuel_col].dropna().unique())
+
+    rows = []
+    for (fuel, income), n in group_counts.items():
+        if income not in income_groups:
+            continue
+        sub = source_df[(source_df[fuel_col] == fuel) & (source_df[income_col] == income)]
+        grouping = f'{fuel} -- {income}'
+        rows.append(_row(
+            grouping, fuel, income, 'Heating Repl. Credit',
+            _rate(sub, left_col_sub), _rate(sub, left_col_unsub), int(n)))
+        rows.append(_row(
+            grouping, fuel, income, 'Heating + Cooling Repl. Credit',
+            _rate(sub, right_col_sub), _rate(sub, right_col_unsub), int(n)))
+
+    for fuel in fuels_in_data:
+        fuel_n = int(fuel_counts.get(fuel, 0))
+        fuel_sub = source_df[source_df[fuel_col] == fuel]
+        grouping = f'{fuel} -- Overall'
+        rows.append(_row(
+            grouping, fuel, 'Overall', 'Heating Repl. Credit',
+            _rate(fuel_sub, left_col_sub), _rate(fuel_sub, left_col_unsub), fuel_n))
+        rows.append(_row(
+            grouping, fuel, 'Overall', 'Heating + Cooling Repl. Credit',
+            _rate(fuel_sub, right_col_sub), _rate(fuel_sub, right_col_unsub), fuel_n))
+
+    rows.append(_row(
+        'National -- Overall', 'National', 'Overall', 'Heating Repl. Credit',
+        _rate(source_df, left_col_sub), _rate(source_df, left_col_unsub), sample_total))
+    rows.append(_row(
+        'National -- Overall', 'National', 'Overall', 'Heating + Cooling Repl. Credit',
+        _rate(source_df, right_col_sub), _rate(source_df, right_col_unsub), sample_total))
+
+    return pd.DataFrame(rows)
 
 
 # ===================================================================

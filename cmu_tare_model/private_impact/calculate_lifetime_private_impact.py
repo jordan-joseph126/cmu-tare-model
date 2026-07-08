@@ -8,7 +8,6 @@ from cmu_tare_model.constants import (
     PRIVATE_DISCOUNTING_METHOD_SUFFIXES,
     REBATE_ELIGIBLE_HEATING_MPS,
     REMDB_COST_SCENARIO_KEYS,
-    VALID_HVAC_REPLACEMENT_SCENARIOS,
 )
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.discounting import calculate_discount_factors
@@ -27,7 +26,6 @@ from cmu_tare_model.utils.column_names import (
     create_cost_col,
     create_rebate_col,
     create_capital_col,
-    create_npv_col,
     create_npv_case_col,
     create_enclosure_cost_col,
     create_weatherization_rebate_col,
@@ -49,9 +47,6 @@ considering different cost assumptions and potential IRA rebates.
         - Applied final verification masking to ensure data consistency before returning the result.
     def calculate_capital_costs:
         - Modified the function to accept a validation mask and applying masking to costs so that only valid homes have values.
-    def calculate_and_update_npv:
-        - Modified this function to accept a validation mask, initialize with valid values only, update only valid homes 
-          during calculations, and return a dictionary of columns instead of directly updating the DataFrame.
 # UPDATED JANUARY 23, 2026
     1.Add defensive column validation in calculate_capital_costs().
     2. Add _validate_required_columns() helper function and early column existence
@@ -253,7 +248,6 @@ def calculate_private_npv(
         policy_scenario=policy_scenario,
         cost_scenario=cost_scenario,
         valid_mask=heating_valid_mask,
-        hvac_replacement_scenario='heating',
         verbose=verbose,
     )
 
@@ -458,7 +452,6 @@ def calculate_capital_costs(
     policy_scenario: str,
     cost_scenario: str,
     valid_mask: pd.Series,
-    hvac_replacement_scenario: str = 'heating',
     verbose: bool = False,
 ) -> Tuple[pd.Series, pd.Series]:
     """
@@ -466,11 +459,8 @@ def calculate_capital_costs(
 
     This function computes the total capital cost and net capital cost (after accounting
     for replacement costs) based on the equipment category, measure package, and whether
-    IRA rebates are applied.
-
-    Net capital cost depends on hvac_replacement_scenario:
-    - 'heating': net = total − heating replacement cost  (Case A)
-    - 'heating_and_cooling': net = total − (heating + cooling replacement cost)  (Case B)
+    IRA rebates are applied. Net capital cost is the total capital cost minus
+    the avoided heating-system replacement cost.
 
     Args:
         df_copy: DataFrame containing cost data.
@@ -482,9 +472,6 @@ def calculate_capital_costs(
             rebate-eligible measure packages.
         cost_scenario: Cost scenario identifier used for column naming (e.g., 'v4MID').
         valid_mask: Series indicating which rows have valid data for the category.
-        hvac_replacement_scenario: Which incumbent equipment costs offset the upgrade.
-            'heating' (default, Case A) — only heating replacement cost subtracted.
-            'heating_and_cooling' (Case B) — heating + cooling replacement cost subtracted.
         verbose: Whether to print detailed processing information. Default is False.
 
     Returns:
@@ -494,20 +481,14 @@ def calculate_capital_costs(
 
     Raises:
         KeyError: If required installation cost columns are missing from the DataFrame.
-        ValueError: If hvac_replacement_scenario is not a valid option.
 
     Notes:
         Single policy scenario ('2025 Reference Case'); IRA rebates are always
         applied for rebate-eligible measure packages.
 
     """
-    if hvac_replacement_scenario not in VALID_HVAC_REPLACEMENT_SCENARIOS:
-        raise ValueError(
-            f"Invalid hvac_replacement_scenario: '{hvac_replacement_scenario}'. "
-            f"Must be one of {VALID_HVAC_REPLACEMENT_SCENARIOS}")
-
     if verbose:
-        print(f"\nCalculating costs for {category} (hvac_replacement_scenario='{hvac_replacement_scenario}')... ")
+        print(f"\nCalculating costs for {category}... ")
 
     # Build list of required columns based on category and policy scenario
     upgrade_cost_col_name = create_cost_col(menu_mp=menu_mp, category=category, cost_type='upgrade', cost_scenario=cost_scenario)
@@ -527,11 +508,6 @@ def calculate_capital_costs(
     else:
         required_cols.append(create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario))
 
-    # Case B: also require cooling replacement cost column
-    if hvac_replacement_scenario == 'heating_and_cooling':
-        cooling_replacement_col = create_cost_col(menu_mp=menu_mp, category='cooling', cost_type='replacement', cost_scenario=cost_scenario)
-        required_cols.append(cooling_replacement_col)
-
     # Validate required columns exist
     missing_cols = _validate_required_columns(df_copy, required_cols,
         f"{category} capital cost calculation for MP{menu_mp}")
@@ -543,7 +519,7 @@ def calculate_capital_costs(
             f"Ensure installation costs are calculated before calling calculate_private_npv()."
         )
 
-    # Single policy scenario ('2025 Reference Case'): IRA rebates always apply.
+    # '2025 Reference Case' policy scenario has both a subsidized and unsubsidized sensitivity case.
     if category == 'heating':
         if input_mp in ('upgrade09', 'upgrade10'):
             # MP9/MP10 add a weatherization (enclosure) cost, net of its rebate.
@@ -574,11 +550,6 @@ def calculate_capital_costs(
         total_capital_cost = installation_cost - rebate_amount
         net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='replacement', cost_scenario=cost_scenario)].fillna(0)
 
-    # Case B: also subtract cooling replacement cost from net capital cost
-    if hvac_replacement_scenario == 'heating_and_cooling':
-        cooling_replacement_cost = df_copy[create_cost_col(menu_mp=menu_mp, category='cooling', cost_type='replacement', cost_scenario=cost_scenario)].fillna(0)
-        net_capital_cost = net_capital_cost - cooling_replacement_cost
-
     # Apply masking to costs based on valid_mask. Valid homes keep their values, invalid homes get NaN
     total_capital_cost_masked = pd.Series(np.nan, index=df_copy.index)
     net_capital_cost_masked = pd.Series(np.nan, index=df_copy.index)
@@ -587,141 +558,3 @@ def calculate_capital_costs(
     net_capital_cost_masked.loc[valid_mask] = net_capital_cost.loc[valid_mask]
 
     return total_capital_cost_masked, net_capital_cost_masked
-
-
-def calculate_and_update_npv(
-    df_measure_costs: pd.DataFrame,
-    df_baseline_costs: pd.DataFrame,
-    category: str,
-    lifetime: int,
-    total_capital_cost: pd.Series,
-    net_capital_cost: pd.Series,
-    policy_scenario: str,
-    scenario_prefix: str,
-    discount_factors: Dict[int, pd.Series],
-    method_suffix: str,
-    valid_mask: pd.Series,
-    menu_mp: int,
-    base_year: int = 2024,
-    cost_scenario: str = 'v4MID',
-    verbose: bool = False,
-    output_category: Optional[str] = None
-) -> Dict[str, pd.Series]:
-    """Calculate and update NPV values for fuel cost savings.
-    
-    This function computes the NPV for two willingness-to-pay (WTP) scenarios:
-    - Less WTP: Using total capital cost in calculations
-    - More WTP: Using net capital cost (total - replacement) in calculations
-    
-    The NPV is based on discounted lifetime fuel cost savings minus the applicable capital cost.
-    Uses list-based collection of yearly values rather than incremental updates.
-    
-    Args:
-        df_measure_costs: DataFrame containing measure package fuel costs.
-        df_baseline_costs: DataFrame containing baseline fuel costs.
-        category: Equipment category used for fuel cost column lookups.
-        lifetime: Expected lifetime of the equipment in years.
-        total_capital_cost: Series with total capital costs.
-        net_capital_cost: Series with net capital costs.
-        policy_scenario: Policy scenario that determines column naming.
-        scenario_prefix: Prefix for column names based on policy scenario.
-        discount_factors: Dictionary mapping years to discount factors.
-        method_suffix: Suffix indicating discounting method 
-            - Comes from DISCOUNTING_METHOD_SUFFIXES values ('_fixed_low', '_fixed_base', '_fixed_high', or '_variable')
-        valid_mask: Series indicating which rows have valid data for the category.
-        menu_mp: Measure package identifier (integer) used for column naming.
-        base_year: Base year for calculations.
-        cost_scenario: Cost methodology key ('v4LOW', 'v4MID', or 'v4HIGH').
-            Determines the REMDB suffix on output capital/NPV column names
-            (e.g., '_v3', '_v4MID').
-        verbose: Whether to print detailed progress messages.
-        output_category: Category label used in output column names. Defaults to
-            ``category`` when None. Set to ``'heating_and_cooling'`` for Case B
-            so output columns carry the replacement scenario distinction.
-
-    Returns:
-        A dictionary with new columns (keys are column names, values are Series).
-
-    Raises:
-        ValueError: If the category is not recognized or if the DataFrame is empty.
-    """    
-    # Default output_category to category when not specified
-    if output_category is None:
-        output_category = category
-
-    # ===== STEP 2: Initialize result series with template =====
-    # Use create_retrofit_only_series to properly initialize with zeros for valid homes, NaN for others
-    discounted_savings_template = create_retrofit_only_series(df_measure_costs, valid_mask)
-    
-    # Create lists to store yearly avoided costs
-    yearly_avoided_costs = []
-    
-    # Track successful years processed
-    years_processed = 0
-    
-    # ===== STEP 3 & 4: Valid-Only Calculation and Updates =====
-    # Loop over each year in the equipment's lifetime
-    for year in range(1, lifetime + 1):
-        year_label = year + (base_year - 1)
-        discount_factor = discount_factors[year_label]
-        
-        # Get column names for baseline and measure package fuel costs
-        base_cost_col_name = create_fuel_cost_col('baseline_', year_label, category)
-        measure_cost_col_name = create_fuel_cost_col(scenario_prefix, year_label, category)
-        
-        # Check if columns exist before calculation
-        cols_exist = (base_cost_col_name in df_baseline_costs.columns and 
-                      measure_cost_col_name in df_measure_costs.columns)
-        
-        if cols_exist:
-            # Use calculate_avoided_values function for consistency
-            avoided_costs = calculate_avoided_values(
-            baseline_values=df_baseline_costs[base_cost_col_name],
-            measure_values=df_measure_costs[measure_cost_col_name],
-            retrofit_mask=(valid_mask if menu_mp != 0 else None)
-            ) * discount_factor
-            
-            yearly_avoided_costs.append(avoided_costs)
-            years_processed += 1
-            
-        else:
-            raise ValueError(f"  Warning: Fuel cost data missing for year {year_label}")
-    
-    # Sum up all yearly avoided costs using pandas operations
-    if yearly_avoided_costs:
-        # Convert list of Series to DataFrame and sum
-        avoided_costs_df = pd.concat(yearly_avoided_costs, axis=1)
-        total_discounted_savings = avoided_costs_df.sum(axis=1, skipna=False)  # Use skipna=False to propagate NaN values
-
-        # Apply validation mask for measure packages
-        if menu_mp != 0:
-            total_discounted_savings = pd.Series(
-                np.where(valid_mask, total_discounted_savings, np.nan),
-                index=total_discounted_savings.index
-            )
-    else:
-        total_discounted_savings = discounted_savings_template
-    
-    # Replace tiny values with NaN to avoid numerical artifacts
-    total_discounted_savings = replace_small_values_with_nan(total_discounted_savings)
-    
-    # Check if any data was processed
-    if verbose:
-        if years_processed == 0:
-            raise ValueError(f"  Warning: No fuel cost data found for {category}")
-        elif years_processed < lifetime:
-            raise ValueError(f"  Warning: Only processed {years_processed}/{lifetime} years for fuel costs")
-    
-    # Calculate NPV for less WTP and more WTP scenarios
-    npv_less_wtp = round(total_discounted_savings - total_capital_cost, 2)
-    npv_more_wtp = round(total_discounted_savings - net_capital_cost, 2)
-    
-    # Create a dictionary to hold the results
-    result_columns = {
-        create_capital_col(scenario_prefix=scenario_prefix, category=output_category, net=False, cost_scenario=cost_scenario): total_capital_cost,
-        create_capital_col(scenario_prefix=scenario_prefix, category=output_category, net=True, cost_scenario=cost_scenario): net_capital_cost,
-        create_npv_col(scenario_prefix=scenario_prefix, category=output_category, wtp='lessWTP', cost_scenario=cost_scenario, method_suffix=method_suffix): npv_less_wtp,
-        create_npv_col(scenario_prefix=scenario_prefix, category=output_category, wtp='moreWTP', cost_scenario=cost_scenario, method_suffix=method_suffix): npv_more_wtp
-    }
-
-    return result_columns

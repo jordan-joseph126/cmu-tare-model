@@ -82,7 +82,7 @@ from cmu_tare_model.utils.load_exported_results_to_df import load_model_run_outp
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.close('all')
-# %matplotlib inline
+%matplotlib inline
 
 sns.set_theme(font='sans-serif', style='darkgrid')
 
@@ -269,20 +269,20 @@ if VERBOSE:
 
 # %% [markdown]
 # ## Does the heat pump pay for itself?
-#
+# 
 # An **economic adopter** is a home where the heat pump's extra upfront cost is
 # recovered from energy-bill savings alone -- no climate or health benefit is
 # needed to justify the investment.
-#
+# 
 # **The rule:** a home is an economic adopter if its incremental private
 # NPV >= 0. Break-even counts as adoption.
-#
+# 
 # | Value | Meaning |
 # |-------|---------|
 # | `True`  | Heat pump covers its incremental cost (or better) from bill savings |
 # | `False` | Valid home that cannot recover the incremental cost from savings alone |
 # | `NaN`   | Excluded: invalid baseline fuel/tech or not in this measure package |
-#
+# 
 # Climate and health damages are computed elsewhere and reported as outcomes,
 # not as inputs to this decision.
 
@@ -319,7 +319,7 @@ _DISCOUNT_COL = 'private_discount_rate_fixed_base'
 _COST = 'v4MID'                 # REMDB v4 midpoint (retained for API compat)
 discount_rate = 'fixed_base'    # 7% fixed discount rate
 SAVE_FIGURES = False            # Set True to write figure files to disk
-GRID_IMPACT_ANALYSIS = False     # Set True to run BSQ-based grid impact analysis
+GRID_IMPACT_ANALYSIS = True     # Set True to run BSQ-based grid impact analysis
 
 # The adoption analysis runs on every loaded non-baseline measure package.
 selected_mps = NON_BASELINE_MPS
@@ -445,11 +445,14 @@ else:
 
 # %% [markdown]
 # ## Economic Adoption Potential Dotplot
-#
-# Two markers per row: circle = heating replacement credit only
-# (`heatingLCC_coolingSavings_sub`); square = heating + cooling replacement
-# credit (`heatingLCC_coolingLCC_sub`). The annotation shows the subsidized
-# minus unsubsidized adoption-rate delta for the same case.
+# 
+# Two markers per row: 
+# - circle = heating replacement credit only
+# (`heatingLCC_coolingSavings_sub`)
+# - square = heating + cooling replacement
+# credit (`heatingLCC_coolingLCC_sub`). 
+# 
+# The annotation shows the subsidized minus unsubsidized adoption-rate delta for the same case.
 
 # %%
 _ECON_CASE_MARKERS = {
@@ -553,6 +556,37 @@ else:
 
 # %% [markdown]
 # # GRID IMPACT ANALYSIS
+
+# %%
+# # PLACEHOLDER: Run the cleaned up calculate_postTARE_ts_aws_peak_demand.ipynb file here
+# # UPDATES NEEDED TO ENSURE ONLY THE RELEVANT SCENARIOS ARE LOADED
+
+# if GRID_IMPACT_ANALYSIS:
+    
+#     # ===== UPDATES NEEDED TO ENSURE ONLY THE RELEVANT SCENARIOS ARE LOADED =====
+#     # EITHER UPDATE HERE OR UPDATE THE calculate_postTARE_ts_aws_peak_demand.ipynb FILE 
+
+#     # Relative path to the file from the project root
+#     relative_path = os.path.join("cmu_tare_model", "model_scenarios", "calculate_postTARE_ts_aws_peak_demand.ipynb")
+
+#     # Construct the absolute path to the file
+#     file_path = os.path.join(PROJECT_ROOT, relative_path)
+#     print(f"File path: {file_path}")
+
+#     # On Windows, to avoid any path-escape quirks, convert backslashes to forward slashes
+#     file_path = file_path.replace("\\", "/")
+
+#     print(f"Running file: {file_path}")
+
+#     # iPthon magic command to run a .py file and import variables into the current IPython session
+#     if os.path.exists(file_path):
+#         get_ipython().run_line_magic('run', f'-i {file_path}')  # If your path has NO spaces, no quotes needed.
+#     else:
+#         print(f"File not found: {file_path}")
+
+# %%
+GRID_IMPACT_ANALYSIS = True     # Set True to run BSQ-based grid impact analysis
+
 
 # %%
 if GRID_IMPACT_ANALYSIS:
@@ -725,6 +759,18 @@ if GRID_IMPACT_ANALYSIS:
 
     print("✓ Step 6 PASSED")
 
+# %% [markdown]
+# ### Visuals - Retrofit Impact on Electricity Demand
+
+# %%
+
+
+# %% [markdown]
+# ### Visuals - Retrofit Impact on County Peak Load  
+
+# %%
+if GRID_IMPACT_ANALYSIS: 
+       
     # ---------- Step 7: Compute scenario profiles ----------
     peak_results_allegheny_by_mp = {}
     df_profiles_by_mp = {}
@@ -795,16 +841,6 @@ if GRID_IMPACT_ANALYSIS:
         print(f"✓ Figure saved: {out_path}")
     plt.show()
 
-# %% [markdown]
-# ### Visuals - Retrofit Impact on Electricity Demand
-
-# %%
-# PLACEHOLDER: Add the 2 county level map comparisons for both magnitude and 
-# percent change for the 2025 Reference Case (MP3, MP4) vs. Baseline (MP0)
-
-
-# %% [markdown]
-# ### Visuals - Retrofit Impact on County Peak Load  
 
 # %%
 # PLACEHOLDER: Add the subplot grid comparison for one measure package at a time
