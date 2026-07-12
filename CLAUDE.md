@@ -121,30 +121,35 @@ col_base = define_scenario_params(mp, policy)[0]   # → 'ref2025_mp3_'
 mp_str   = f'mp{mp}'                               # '3' or '4' — never 'mp3' literal
 ```
 
-**NPV cases (six per MP, as of the 6 July 2026 session):**
+**NPV cases (nine per MP: three scopes x three rebate policy scenarios, as of the 11 July 2026 session):**
 ```
 ref2025_mp{mp}_heatingSavings_coolingLCC_sub_private_npv{method_suffix}
 ref2025_mp{mp}_heatingSavings_coolingLCC_unsub_private_npv{method_suffix}
+ref2025_mp{mp}_heatingSavings_coolingLCC_sub_june2026_private_npv{method_suffix}
 ref2025_mp{mp}_heatingLCC_coolingSavings_sub_private_npv{method_suffix}
 ref2025_mp{mp}_heatingLCC_coolingSavings_unsub_private_npv{method_suffix}
+ref2025_mp{mp}_heatingLCC_coolingSavings_sub_june2026_private_npv{method_suffix}
 ref2025_mp{mp}_heatingLCC_coolingLCC_sub_private_npv{method_suffix}
 ref2025_mp{mp}_heatingLCC_coolingLCC_unsub_private_npv{method_suffix}
+ref2025_mp{mp}_heatingLCC_coolingLCC_sub_june2026_private_npv{method_suffix}
 ```
 - Build with `create_npv_case_col(scenario_prefix, npv_case, method_suffix)`;
   `npv_case` must be one of `NPV_CASE_CATEGORIES` (column_names.py). Note there is
   no cost-scenario token and no WTP token in these names.
 - `LCC` = that end-use's avoided-replacement capital is credited in the NPV
 - `Savings` = only operating savings credited for that end-use
-- `_sub` = subsidized (IRA rebate applied); `_unsub` = unsubsidized companion
-- All six cases include BOTH heating and cooling operating savings
+- `_unsub` = unsubsidized; `_sub` = subsidized under 2024 guidance (current HEEHR);
+  `_sub_june2026` = subsidized under June 2026 DOE guidance (HEEHR + HOMES + fuel gate).
+  These three are the rebate-policy-scenario sensitivity axis (see Rebate Policy Scenarios below).
+- All nine cases include BOTH heating and cooling operating savings
 - `{method_suffix}` already carries its own leading underscore (e.g. `_fixed_base`)
 
-**Economic adopter columns (six per MP, as of the 6 July 2026 session):**
+**Economic adopter columns (nine per MP, as of the 11 July 2026 session):**
 ```
 ref2025_mp{mp}_{npv_case}_econ_adopter{method_suffix}
 ```
-one per `npv_case` in `NPV_CASE_CATEGORIES` (the same six tokens listed above,
-including `_sub`/`_unsub`).
+one per `npv_case` in `NPV_CASE_CATEGORIES` (the same nine tokens listed above:
+`_unsub`, `_sub`, `_sub_june2026` for each scope).
 
 **Canonical variable suffixes:** `fixed_base` | `central`
 Never use: `v3`, `v4MID`, `moreWTP`, `lessWTP`, `iraRef_mp{mp}_`, `preIRA_mp{mp}_`, `aeo2026_mp{mp}_`
@@ -163,8 +168,60 @@ Never use: `v3`, `v4MID`, `moreWTP`, `lessWTP`, `iraRef_mp{mp}_`, `preIRA_mp{mp}
 | RCM models (health damage) | `ap2`, `easiur`, `inmap` |
 | Private discount rates | `fixed_low` (3%) \| `fixed_base` (7%) \| `fixed_high` (10%) \| `variable` (Ramsey) |
 | Policy scenario | Single: `'2025 Reference Case'` — no IRA/pre-IRA split |
-| NPV scope | `heatingSavings_coolingLCC` \| `heatingLCC_coolingSavings` \| `heatingLCC_coolingLCC`, each x `_sub` / `_unsub` (six cases; see `NPV_CASE_CATEGORIES`) |
-| Subsidy split | `_sub` (IRA rebate applied) \| `_unsub` (unsubsidized companion) |
+| NPV scope | `heatingSavings_coolingLCC` \| `heatingLCC_coolingSavings` \| `heatingLCC_coolingLCC`, each x the three rebate policy scenarios (nine cases; see `NPV_CASE_CATEGORIES`) |
+| Rebate policy scenario | `_unsub` (no rebate) \| `_sub` (2024 HEEHR) \| `_sub_june2026` (June 2026 HEEHR + HOMES + fuel gate). Column axis under one scenario, like the discount-rate axis; see `REBATE_POLICY_SCENARIOS` |
+---
+
+## Rebate Policy Scenarios (2024 vs June 2026 DOE guidance)
+
+Modeled as a sensitivity axis in one dataframe (no second `policy_scenario`), like
+the discount-rate axis. Three rebate policy scenarios per scope: `_unsub`, `_sub`
+(2024 HEEHR, unchanged), `_sub_june2026`. Constants live in `constants.py`
+(`REBATE_POLICY_SCENARIOS` and the HEEHR/HOMES rule constants); the June 2026
+amounts are computed in `calculate_rebate_june2026`
+(determine_rebate_eligibility_and_amount.py) into
+`mp{mp}_heating_rebate_amount_june2026_{cost_scenario}` plus a
+`mp{mp}_rebate_eligibility_june2026` label (`'HEEHR'`/`'HOMES'`/`'None'`).
+
+**State-participation gate (ALL rebate policy scenarios, incl. 2024 `_sub`):** homes in a state
+that never participated in the federal rebate programs get 0 under every rebate policy scenario.
+`NON_PARTICIPATING_REBATE_STATES = {'SD'}` (South Dakota). This is applied in both
+`calculate_rebateIRA` (2024) and `calculate_rebate_june2026`, so `_sub` is no longer
+byte-identical for South Dakota homes (they now correctly receive no 2024 rebate).
+
+**June 2026 rules (both programs gated by `REBATE_ELIGIBLE_HEATING_MPS` = MP4 in,
+MP3 out):**
+- **Fuel gate (both programs):** only existing electric-resistance heating
+  (`base_heating_fuel == 'Electricity'`) qualifies. Any fossil baseline -> 0, `'None'`.
+- **HEEHR (`percent_AMI <= 150%`):** $8,000 heat-pump cap; income sets the cost
+  share (100% at <=80% AMI, 50% at 80-150%). Unchanged from 2024.
+- **HOMES (`percent_AMI > 150%`):** savings-based on whole-home modeled savings
+  (`mp{mp}_modeled_savings_frac`): >=20% -> $2,000 cap, >=35% -> $4,000 cap; 50%
+  of project cost. Non-LMI amounts only.
+
+**Whole-home savings fraction:** numerator is TARE's degree-day-adjusted heating +
+cooling energy delta; denominator is ResStock `baseline_total_site_consumption`
+(propagated from `out.site_energy.total.energy_consumption.kwh`). The
+adjusted-vs-raw mix is an accepted approximation, only consumed for
+electric-resistance HOMES homes (all-electric kWh).
+
+**Reporting / verification helpers** (in `determine_rebate_eligibility_and_amount.py`):
+`summarize_june2026_rebate_totals` (weighted HEEHR/HOMES dollars, national + per
+state) and `summarize_rebate_funding` (weighted funding by program and by baseline
+fuel; `total_eligible` vs `adopters_only`). The by-fuel table is the fossil-gate
+check: under `guidance='june2026'` every non-electric baseline must be $0; under
+`guidance=None` (2024) fossil baselines receive HEEHR by design. `total_eligible`
+is uncapped potential (no funding cap modeled), NOT a disbursement.
+
+**Documented limitations (carry into the manuscript):**
+1. Weatherization prerequisite not enforced (state criteria not finalized).
+2. Dual-fuel systems not modeled -> every fossil-baseline home loses the rebate.
+3. One program per home (HEEHR or HOMES, never both).
+4. State-level funding caps not applied (allocations not finalized; Atlas
+   Buildings Hub tracker).
+5. ENERGY STAR spec assumed for both programs, so the MP gate applies to both and
+   MP3 qualifies for neither.
+6. HOMES LMI tier unreachable by construction (HOMES only consulted above 150% AMI).
 ---
 
 ## Masking and Validation Rules
@@ -227,6 +284,8 @@ add a new row marked "supersedes" and keep the old row.
 | LMI eligibility share, single-family (NHGIS-2022 PUMA AMI; bins USD2022->23) | 71.6% | (shared) | Pre-USD2025 | superseded by Session 1e |
 | LMI eligibility share, single-family (ACS-2024 county AMI; bins USD2018->25) | 62.4% | (shared) | USD2025 | Session 1e (28 Jun 2026) |
 | Mean economic adoption rate (six NPV cases, `_sub`/`_unsub`) | PENDING | PENDING | AEO2026/Cambium2024 | To be re-derived; the six-case scheme replaced the retired heating-only case, so no golden value exists yet. Do not backfill without a full model run. |
+| Mean economic adoption rate, `_sub_june2026` cases | PENDING | PENDING | AEO2026/Cambium2024 | 11 Jul 2026 session; new rebate regime. Requires a full model run to derive. |
+| June 2026 rebate movement vs `_sub`: fossil MP4 lose rebate; electric MP4 >150% AMI gain HOMES | PENDING | PENDING | AEO2026/Cambium2024 | Directions (a)-(d) to confirm in the movement cross-tab. |
 
 ---
 
@@ -244,6 +303,7 @@ add a new row marked "supersedes" and keep the old row.
 | Session A | Jul 2026 | NPV-case rename refactor: `heating_only`/`heating_and_cooling_*` retired; new tokens `heatingSavings_coolingLCC`, `heatingLCC_coolingSavings`, `heatingLCC_coolingLCC`; `moreWTP`/`v4MID` removed from column names; column-name builders updated; all downstream consumers migrated; tests updated |
 | 6 July 2026 | 6 Jul 2026 | Six NPV/adopter cases: each of the three scope tokens split into `_sub`/`_unsub`; `create_npv_case_col` added; `peak_load_functions` defaults to `heatingLCC_coolingSavings_sub`; Option A dotplot plots subsidized adoption with unsubsidized deltas. Loose ends closed in Session B below. |
 | Session B | 7 Jul 2026 | Capital-cost refactor + baseline oracle (`scripts/capture_capital_cost_baseline.py`). CLAUDE.md updated to six-case naming. Old-token sweep: `create_npv_col` (moreWTP/lessWTP) still coexists with `create_npv_case_col`; notebook exports carry `moreWTP`/`iraRef`/`preIRA` stragglers plus half-migrated `create_npv_case_col(..., wtp=..., cost_scenario=...)` calls that raise `TypeError`. Flagged for hand-migration. Propagation verified PASS for `compute_adoption_rate`, `visuals_adoption_potential`, `visuals_adoption_dotplot`. See `REFACTORING_GUIDE_07July2026.md`. |
+| 11 July 2026 | 11 Jul 2026 | Rebate-regime axis: added `_sub_june2026` NPV/adopter cases (`NPV_CASE_CATEGORIES` 6->9); `calculate_rebate_june2026` (HEEHR + HOMES, fuel gate) writes `mp{mp}_heating_rebate_amount_june2026_*` + `mp{mp}_rebate_eligibility_june2026`; `create_rebate_col` gained a `guidance` token; whole-home `baseline_total_site_consumption` + `mp{mp}_modeled_savings_frac` added in `process_euss_data.py`. Existing `_sub`/`_unsub` left byte-identical EXCEPT South Dakota homes: `NON_PARTICIPATING_REBATE_STATES = {'SD'}` now zeroes rebates in ALL regimes (2024 and June 2026), since SD never participated. Added `summarize_june2026_rebate_totals` (weighted HEEHR/HOMES dollars, national + per state). 8 rebate tests pass; 0 new suite failures (11 pre-existing). Full-run verification (byte-identity numbers, movement cross-tab, golden values, visuals) and `.ipynb` backport deferred to the researcher's environment. |
 
 ---
 

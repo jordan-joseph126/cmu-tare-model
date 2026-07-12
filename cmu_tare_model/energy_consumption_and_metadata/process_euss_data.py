@@ -291,7 +291,17 @@ def df_enduse_refactored(
         df_enduse['base_electricity_cooking_consumption'] = df_baseline['out.electricity.range_oven.energy_consumption.kwh']
         df_enduse['base_naturalGas_cooking_consumption'] = df_baseline['out.natural_gas.range_oven.energy_consumption.kwh']
         df_enduse['base_propane_cooking_consumption'] = df_baseline['out.propane.range_oven.energy_consumption.kwh']
-   
+
+    # ===== Whole-home baseline site energy (HOMES savings-fraction denominator) =====
+    # The June 2026 HOMES rebate tiers key on the modeled whole-home percent
+    # savings. TARE only changes heating and cooling, but the savings fraction
+    # must be expressed against the WHOLE home, so carry ResStock's total site
+    # energy through as the denominator. Home-level total (not category-specific),
+    # so it is not masked by heating/cooling validity.
+    df_enduse['baseline_total_site_consumption'] = (
+        df_baseline['out.site_energy.total.energy_consumption.kwh']
+    )
+
     # ===== STEP 3: Calculate total consumption for each category in scope =====
     for category in VALID_CATEGORIES:
         # Get consumption columns for this category
@@ -521,5 +531,38 @@ def df_enduse_compare(
             masked_count = non_nan_before - non_nan_after
             if masked_count > 0:
                 print(f"  {col}: Masked {masked_count} values")
+
+    # ===== STEP 7: Whole-home modeled savings fraction (HOMES rebate tiers) =====
+    # Whole-home percent savings = (HVAC energy delta) / whole-home baseline site
+    # energy. Only heating and cooling change under a retrofit, so the numerator
+    # is the heating+cooling consumption drop; the denominator is the unchanged
+    # whole-home baseline total. Consumed only for electric-resistance homes in
+    # the June 2026 HOMES rebate, where every quantity is electric kWh.
+    #
+    # NOTE: the heating/cooling terms are TARE's degree-day-adjusted consumption
+    # while the denominator is raw ResStock site energy; this small
+    # adjusted-vs-raw mismatch is an accepted approximation.
+    heating_col = f'mp{menu_mp}_heating_consumption'
+    cooling_col = f'mp{menu_mp}_cooling_consumption'
+    savings_frac_col = f'mp{menu_mp}_modeled_savings_frac'
+
+    # Heating delta propagates NaN for homes without valid heating (which are
+    # excluded from any rebate anyway). Cooling delta is 0 when a home has no
+    # cooling, so a heating-only home still gets a heating-based fraction.
+    heating_delta = (
+        df_compare['baseline_heating_consumption'] - df_compare[heating_col]
+    )
+    if cooling_col in df_compare.columns:
+        cooling_delta = (
+            df_compare['baseline_cooling_consumption'].fillna(0.0)
+            - df_compare[cooling_col].fillna(0.0)
+        )
+    else:
+        cooling_delta = 0.0
+
+    df_compare[savings_frac_col] = (
+        (heating_delta + cooling_delta)
+        / df_compare['baseline_total_site_consumption']
+    ).astype('float64')
 
     return df_compare

@@ -27,6 +27,7 @@ Usage:
 """
 
 from cmu_tare_model.constants import REMDB_COST_SCENARIO_KEYS
+from typing import Optional
 
 # =============================================================================
 # PRIVATE IMPACT: COST COLUMNS
@@ -73,10 +74,31 @@ def create_cost_col(
 def create_rebate_col(
     menu_mp: int,
     category: str,
-    cost_scenario: str) -> str:
-    """Build rebate amount column name."""
+    cost_scenario: str,
+    guidance: Optional[str] = None) -> str:
+    """Build rebate amount column name.
 
-    return f'mp{menu_mp}_{category}_rebate_amount_{cost_scenario}'
+    Args:
+        menu_mp: Measure package number.
+        category: Equipment category (e.g. 'heating').
+        cost_scenario: 'v3' or 'v4LOW/MID/HIGH'.
+        guidance: Rebate-guidance token for the rebate-policy-scenario axis. When None,
+            returns the original (guidance-less) name so the 2024-guidance
+            columns stay byte-identical. When set (e.g. 'june2026'), the token
+            is inserted so each guidance has its own rebate column.
+
+    Returns:
+        Column name string.
+
+    Examples:
+        >>> create_rebate_col(4, 'heating', 'v4MID')
+        'mp4_heating_rebate_amount_v4MID'
+        >>> create_rebate_col(4, 'heating', 'v4MID', guidance='june2026')
+        'mp4_heating_rebate_amount_june2026_v4MID'
+    """
+    if guidance is None:
+        return f'mp{menu_mp}_{category}_rebate_amount_{cost_scenario}'
+    return f'mp{menu_mp}_{category}_rebate_amount_{guidance}_{cost_scenario}'
 
 
 def create_capital_col(
@@ -142,12 +164,22 @@ def create_npv_col(
 # avoided replacement of that end use's incumbent equipment is credited --
 # while "Savings" means that end use contributes operating savings only.
 #
-#   heatingSavings_coolingLCC_sub      -> subsidized cost; heating replacement only
-#   heatingSavings_coolingLCC_unsub    -> unsubsidized cost; heating replacement only
-#   heatingLCC_coolingSavings_sub      -> subsidized cost; cooling replacement only
-#   heatingLCC_coolingSavings_unsub    -> unsubsidized cost; cooling replacement only
-#   heatingLCC_coolingLCC_sub          -> subsidized cost; both replacements
-#   heatingLCC_coolingLCC_unsub        -> unsubsidized cost; both replacements
+# Each scope has three rebate-policy-scenario variants (the
+# rebate-policy-scenario sensitivity axis): "_sub" is subsidized under 2024
+# guidance (current HEEHR), "_unsub" is unsubsidized, and "_sub_june2026" is
+# subsidized under June 2026 DOE guidance (adds the fuel gate and the HOMES
+# pathway). The "_sub" and "_unsub" cases are unchanged; "_sub_june2026" is the
+# new case added for the rebate-policy-scenario comparison.
+#
+#   heatingSavings_coolingLCC_sub          -> 2024 subsidized; heating replacement only
+#   heatingSavings_coolingLCC_unsub        -> unsubsidized; heating replacement only
+#   heatingSavings_coolingLCC_sub_june2026 -> June 2026 subsidized; heating replacement only
+#   heatingLCC_coolingSavings_sub          -> 2024 subsidized; cooling replacement only
+#   heatingLCC_coolingSavings_unsub        -> unsubsidized; cooling replacement only
+#   heatingLCC_coolingSavings_sub_june2026 -> June 2026 subsidized; cooling replacement only
+#   heatingLCC_coolingLCC_sub              -> 2024 subsidized; both replacements
+#   heatingLCC_coolingLCC_unsub            -> unsubsidized; both replacements
+#   heatingLCC_coolingLCC_sub_june2026     -> June 2026 subsidized; both replacements
 #
 # The case label is carried as the "category" segment of the NPV and
 # economic-adopter column names. Defined here as the single source of truth so
@@ -155,10 +187,13 @@ def create_npv_col(
 NPV_CASE_CATEGORIES = (
     "heatingSavings_coolingLCC_sub",
     "heatingSavings_coolingLCC_unsub",
+    "heatingSavings_coolingLCC_sub_june2026",
     "heatingLCC_coolingSavings_sub",
     "heatingLCC_coolingSavings_unsub",
+    "heatingLCC_coolingSavings_sub_june2026",
     "heatingLCC_coolingLCC_sub",
     "heatingLCC_coolingLCC_unsub",
+    "heatingLCC_coolingLCC_sub_june2026",
 )
 
 

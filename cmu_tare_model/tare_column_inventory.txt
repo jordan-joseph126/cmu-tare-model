@@ -355,7 +355,7 @@ STAGE: raw_euss_mp3  (345 entries)
       out.unmet_hours.heating.hour.savings  <float64>
 
 ==========================================================================================
-STAGE: baseline_home  (66 entries)
+STAGE: baseline_home  (67 entries)
 ==========================================================================================
   [building] (8)
       square_footage  <float64>
@@ -366,10 +366,11 @@ STAGE: baseline_home  (66 entries)
       tenure  <object>
       vacancy_status  <object>
       vintage  <object>
-  [consumption] (5)
+  [consumption] (6)
       base_fuelOil_heating_consumption  <float64>
       base_naturalGas_heating_consumption  <float64>
       base_propane_heating_consumption  <float64>
+      baseline_total_site_consumption  <float64>
       baseline_heating_consumption  <float64>
       baseline_cooling_consumption  <float64>
   [emissions_damages] (16)
@@ -433,7 +434,7 @@ STAGE: baseline_home  (66 entries)
       include_cooling  <bool>
 
 ==========================================================================================
-STAGE: mp3_home_renamed  (125 entries)
+STAGE: mp3_home_renamed  (127 entries)
 ==========================================================================================
   [building] (11)
       square_footage  <float64>
@@ -451,10 +452,11 @@ STAGE: mp3_home_renamed  (125 entries)
       mp4_heating_replacement_installed_cost_v4MID  <float64>
       mp4_heating_upgrade_installed_cost_v4MID  <float64>
       mp4_cooling_replacement_installed_cost_v4MID  <float64>
-  [consumption] (7)
+  [consumption] (8)
       base_fuelOil_heating_consumption  <float64>
       base_naturalGas_heating_consumption  <float64>
       base_propane_heating_consumption  <float64>
+      baseline_total_site_consumption  <float64>
       baseline_heating_consumption  <float64>
       baseline_cooling_consumption  <float64>
       mp4_heating_consumption  <float64>
@@ -555,7 +557,7 @@ STAGE: mp3_home_renamed  (125 entries)
       county_fips  <object>
       puma  <object>
       county_and_puma  <object>
-  [other] (12)
+  [other] (13)
       include_all  <bool>
       valid_fuel_heating  <bool>
       valid_tech_heating  <bool>
@@ -563,6 +565,7 @@ STAGE: mp3_home_renamed  (125 entries)
       valid_fuel_cooling  <bool>
       valid_tech_cooling  <bool>
       include_cooling  <bool>
+      mp4_modeled_savings_frac  <float64>
       percent_AMI  <float64>
       lmi_or_mui  <object>
       public_discount_rate  <float64>
@@ -572,15 +575,18 @@ STAGE: mp3_home_renamed  (125 entries)
       mp4_heating_rebate_amount_v4MID  <float64>
 
 ==========================================================================================
-STAGE: loaded_mp3_fixed  (155 entries)
+STAGE: loaded_mp3_fixed  (166 entries)
 ==========================================================================================
-  [adopter_flag] (6)
+  [adopter_flag] (9)
       ref2025_mp3_heatingSavings_coolingLCC_sub_econ_adopter_fixed_base  <float64>
       ref2025_mp3_heatingSavings_coolingLCC_unsub_econ_adopter_fixed_base  <float64>
+      ref2025_mp3_heatingSavings_coolingLCC_sub_june2026_econ_adopter_fixed_base  <float64>
       ref2025_mp3_heatingLCC_coolingSavings_sub_econ_adopter_fixed_base  <float64>
       ref2025_mp3_heatingLCC_coolingSavings_unsub_econ_adopter_fixed_base  <float64>
+      ref2025_mp3_heatingLCC_coolingSavings_sub_june2026_econ_adopter_fixed_base  <float64>
       ref2025_mp3_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base  <float64>
       ref2025_mp3_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base  <float64>
+      ref2025_mp3_heatingLCC_coolingLCC_sub_june2026_econ_adopter_fixed_base  <float64>
   [building] (11)
       square_footage  <float64>
       building_type  <object>
@@ -606,10 +612,11 @@ STAGE: loaded_mp3_fixed  (155 entries)
       cooling_replacement_pm2_euss  <float64>
       cooling_replacement_pm2_euss_original  <float64>
       ref2025_mp3_heating_total_capital_cost_v4MID  <float64>
-  [consumption] (7)
+  [consumption] (8)
       base_fuelOil_heating_consumption  <float64>
       base_naturalGas_heating_consumption  <float64>
       base_propane_heating_consumption  <float64>
+      baseline_total_site_consumption  <float64>
       baseline_heating_consumption  <float64>
       baseline_cooling_consumption  <float64>
       mp3_heating_consumption  <float64>
@@ -710,20 +717,26 @@ STAGE: loaded_mp3_fixed  (155 entries)
       county_fips  <int64>
       puma  <object>
       county_and_puma  <object>
-  [npv_case] (12)
+  [npv_case] (18)
       ref2025_mp3_heatingSavings_coolingLCC_unsub_private_npv_fixed_base  <float64>
       ref2025_mp3_heatingSavings_coolingLCC_unsub_net_capital_cost_v4MID  <float64>
       ref2025_mp3_heatingSavings_coolingLCC_sub_private_npv_fixed_base  <float64>
       ref2025_mp3_heatingSavings_coolingLCC_sub_net_capital_cost_v4MID  <float64>
+      ref2025_mp3_heatingSavings_coolingLCC_sub_june2026_private_npv_fixed_base  <float64>
+      ref2025_mp3_heatingSavings_coolingLCC_sub_june2026_net_capital_cost_v4MID  <float64>
       ref2025_mp3_heatingLCC_coolingSavings_unsub_private_npv_fixed_base  <float64>
       ref2025_mp3_heatingLCC_coolingSavings_unsub_net_capital_cost_v4MID  <float64>
       ref2025_mp3_heatingLCC_coolingSavings_sub_private_npv_fixed_base  <float64>
       ref2025_mp3_heatingLCC_coolingSavings_sub_net_capital_cost_v4MID  <float64>
+      ref2025_mp3_heatingLCC_coolingSavings_sub_june2026_private_npv_fixed_base  <float64>
+      ref2025_mp3_heatingLCC_coolingSavings_sub_june2026_net_capital_cost_v4MID  <float64>
       ref2025_mp3_heatingLCC_coolingLCC_unsub_private_npv_fixed_base  <float64>
       ref2025_mp3_heatingLCC_coolingLCC_unsub_net_capital_cost_v4MID  <float64>
       ref2025_mp3_heatingLCC_coolingLCC_sub_private_npv_fixed_base  <float64>
       ref2025_mp3_heatingLCC_coolingLCC_sub_net_capital_cost_v4MID  <float64>
-  [other] (15)
+      ref2025_mp3_heatingLCC_coolingLCC_sub_june2026_private_npv_fixed_base  <float64>
+      ref2025_mp3_heatingLCC_coolingLCC_sub_june2026_net_capital_cost_v4MID  <float64>
+  [other] (16)
       include_all  <bool>
       valid_fuel_heating  <bool>
       valid_tech_heating  <bool>
@@ -731,6 +744,7 @@ STAGE: loaded_mp3_fixed  (155 entries)
       valid_fuel_cooling  <bool>
       valid_tech_cooling  <bool>
       include_cooling  <bool>
+      mp3_modeled_savings_frac  <float64>
       percent_AMI  <float64>
       lmi_or_mui  <object>
       public_discount_rate  <float64>
@@ -743,15 +757,18 @@ STAGE: loaded_mp3_fixed  (155 entries)
       mp3_heating_rebate_amount_v4MID  <float64>
 
 ==========================================================================================
-STAGE: loaded_mp4_fixed  (155 entries)
+STAGE: loaded_mp4_fixed  (166 entries)
 ==========================================================================================
-  [adopter_flag] (6)
+  [adopter_flag] (9)
       ref2025_mp4_heatingSavings_coolingLCC_sub_econ_adopter_fixed_base  <float64>
       ref2025_mp4_heatingSavings_coolingLCC_unsub_econ_adopter_fixed_base  <float64>
+      ref2025_mp4_heatingSavings_coolingLCC_sub_june2026_econ_adopter_fixed_base  <float64>
       ref2025_mp4_heatingLCC_coolingSavings_sub_econ_adopter_fixed_base  <float64>
       ref2025_mp4_heatingLCC_coolingSavings_unsub_econ_adopter_fixed_base  <float64>
+      ref2025_mp4_heatingLCC_coolingSavings_sub_june2026_econ_adopter_fixed_base  <float64>
       ref2025_mp4_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base  <float64>
       ref2025_mp4_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base  <float64>
+      ref2025_mp4_heatingLCC_coolingLCC_sub_june2026_econ_adopter_fixed_base  <float64>
   [building] (11)
       square_footage  <float64>
       building_type  <object>
@@ -777,10 +794,11 @@ STAGE: loaded_mp4_fixed  (155 entries)
       cooling_replacement_pm2_euss  <float64>
       cooling_replacement_pm2_euss_original  <float64>
       ref2025_mp4_heating_total_capital_cost_v4MID  <float64>
-  [consumption] (7)
+  [consumption] (8)
       base_fuelOil_heating_consumption  <float64>
       base_naturalGas_heating_consumption  <float64>
       base_propane_heating_consumption  <float64>
+      baseline_total_site_consumption  <float64>
       baseline_heating_consumption  <float64>
       baseline_cooling_consumption  <float64>
       mp4_heating_consumption  <float64>
@@ -881,20 +899,26 @@ STAGE: loaded_mp4_fixed  (155 entries)
       county_fips  <int64>
       puma  <object>
       county_and_puma  <object>
-  [npv_case] (12)
+  [npv_case] (18)
       ref2025_mp4_heatingSavings_coolingLCC_unsub_private_npv_fixed_base  <float64>
       ref2025_mp4_heatingSavings_coolingLCC_unsub_net_capital_cost_v4MID  <float64>
       ref2025_mp4_heatingSavings_coolingLCC_sub_private_npv_fixed_base  <float64>
       ref2025_mp4_heatingSavings_coolingLCC_sub_net_capital_cost_v4MID  <float64>
+      ref2025_mp4_heatingSavings_coolingLCC_sub_june2026_private_npv_fixed_base  <float64>
+      ref2025_mp4_heatingSavings_coolingLCC_sub_june2026_net_capital_cost_v4MID  <float64>
       ref2025_mp4_heatingLCC_coolingSavings_unsub_private_npv_fixed_base  <float64>
       ref2025_mp4_heatingLCC_coolingSavings_unsub_net_capital_cost_v4MID  <float64>
       ref2025_mp4_heatingLCC_coolingSavings_sub_private_npv_fixed_base  <float64>
       ref2025_mp4_heatingLCC_coolingSavings_sub_net_capital_cost_v4MID  <float64>
+      ref2025_mp4_heatingLCC_coolingSavings_sub_june2026_private_npv_fixed_base  <float64>
+      ref2025_mp4_heatingLCC_coolingSavings_sub_june2026_net_capital_cost_v4MID  <float64>
       ref2025_mp4_heatingLCC_coolingLCC_unsub_private_npv_fixed_base  <float64>
       ref2025_mp4_heatingLCC_coolingLCC_unsub_net_capital_cost_v4MID  <float64>
       ref2025_mp4_heatingLCC_coolingLCC_sub_private_npv_fixed_base  <float64>
       ref2025_mp4_heatingLCC_coolingLCC_sub_net_capital_cost_v4MID  <float64>
-  [other] (15)
+      ref2025_mp4_heatingLCC_coolingLCC_sub_june2026_private_npv_fixed_base  <float64>
+      ref2025_mp4_heatingLCC_coolingLCC_sub_june2026_net_capital_cost_v4MID  <float64>
+  [other] (16)
       include_all  <bool>
       valid_fuel_heating  <bool>
       valid_tech_heating  <bool>
@@ -902,6 +926,7 @@ STAGE: loaded_mp4_fixed  (155 entries)
       valid_fuel_cooling  <bool>
       valid_tech_cooling  <bool>
       include_cooling  <bool>
+      mp4_modeled_savings_frac  <float64>
       percent_AMI  <float64>
       lmi_or_mui  <object>
       public_discount_rate  <float64>

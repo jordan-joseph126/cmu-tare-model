@@ -196,6 +196,61 @@ REBATE_MAPPING = {
 REBATE_ELIGIBLE_HEATING_MPS = [4, 8, 9, 10]
 
 # =============================================================
+# CONSTANTS: REBATE-POLICY-SCENARIO SENSITIVITY AXIS (2024 vs June 2026 DOE guidance)
+# =============================================================
+# The rebate program is a sensitivity axis, handled like the discount-rate axis:
+# each rebate policy scenario produces its own parallel net-capital -> NPV ->
+# adopter columns in one dataframe. Two rebate policy scenarios already exist
+# implicitly in the six NPV cases:
+#   - unsubsidized              -> the existing '_unsub' cases (no rebate)
+#   - subsidized, 2024 guidance -> the existing '_sub' cases (current HEEHR)
+# This constant names the subsidized guidances that carry a rebate column. The
+# 2024 guidance keeps the original (guidance-less) rebate column names so those
+# results stay byte-identical; June 2026 adds a distinct token.
+REBATE_GUIDANCE_IRA2024 = "ira2024"
+REBATE_GUIDANCE_JUNE2026 = "june2026"
+REBATE_POLICY_SCENARIOS = [REBATE_GUIDANCE_IRA2024, REBATE_GUIDANCE_JUNE2026]
+
+# --- June 2026 DOE guidance rule constants ---
+# Income cutoffs are AMI ratios. The percent_AMI column is on a 0-150+ percent
+# scale, so the call site compares percent_AMI against these values x 100
+# (or divides percent_AMI by 100). Kept as ratios to match the ratified rule.
+AMI_LOW_CUTOFF = 0.80        # <=80% AMI -> HEEHR full cost-share
+AMI_MODERATE_CUTOFF = 1.50   # 80-150% AMI -> HEEHR half cost-share; >150% -> HOMES
+
+# HEEHR: a fixed per-measure cap; income varies the SHARE OF PROJECT COST covered,
+# not the cap. This matches the existing 100%/50% HEEHR behavior.
+HEEHR_COVERAGE_LOW = 1.00    # <=80% AMI covers 100% of project cost, up to the cap
+HEEHR_COVERAGE_MOD = 0.50    # 80-150% AMI covers 50% of project cost, up to the cap
+HEEHR_CAP_HEAT_PUMP = 8_000  # dollars; per-heat-pump cap, fixed across income
+
+# HOMES: savings-based, consulted only above 150% AMI. Because every HOMES home
+# is >150% AMI, the <=80% AMI doubling is unreachable by construction, so only
+# the non-LMI amounts are implemented.
+HOMES_MIN_SAVINGS_FRAC = 0.20    # >=20% whole-home savings -> tier 1
+HOMES_TIER2_SAVINGS_FRAC = 0.35  # >=35% whole-home savings -> tier 2
+HOMES_CAP_TIER1 = 2_000          # dollars; 20-34% savings, non-LMI
+HOMES_CAP_TIER2 = 4_000          # dollars; >=35% savings, non-LMI
+HOMES_COVERAGE_NON_LMI = 0.50    # covers 50% of project cost, up to the tier cap
+
+# June 2026 fuel gate: rebates may no longer fund removing a fossil heating
+# system. TARE models only full electrification, so only homes whose existing
+# heating is electric resistance qualify. Value matches the base_heating_fuel
+# label for electric-resistance heating.
+ELECTRIC_RESISTANCE_BASELINE = {"Electricity"}
+
+# States that never participated in the federal rebate programs are ineligible
+# under every rebate policy scenario (2024 HEEHR and June 2026 HEEHR + HOMES).
+# South Dakota never participated. Two-letter USPS abbreviations, matching the
+# `state` column.
+NON_PARTICIPATING_REBATE_STATES = {"SD"}
+
+# Program labels recorded in the June 2026 rebate_eligibility output column.
+REBATE_NONE = "None"
+REBATE_HEEHR = "HEEHR"
+REBATE_HOMES = "HOMES"
+
+# =============================================================
 # CONSTANTS: CAPITAL COST SCENARIOS (REMDB v3 + v4)
 # =============================================================
 

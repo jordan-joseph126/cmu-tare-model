@@ -3,6 +3,10 @@ import pandas as pd
 from typing import Union, Optional
 import pathlib
 from cmu_tare_model.constants import PRIVATE_DISCOUNT_RATE_SHORT_KEYS
+from cmu_tare_model.utils.export_tepper_csv import (
+    export_tepper_household,
+    export_tepper_county,
+)
 
 def export_model_run_output(
     df_results_export: pd.DataFrame,
@@ -11,7 +15,8 @@ def export_model_run_output(
     output_folder_path: str,
     location_id: str,
     results_export_formatted_date: str,
-    discount_rate: Optional[str] = None
+    discount_rate: Optional[str] = None,
+    county_tables: Optional[dict] = None
 ) -> None:
     """Export model run results to CSV files with sensitivity tracking.
 
@@ -35,12 +40,19 @@ def export_model_run_output(
             - 'summary': Retrofit summary results (requires discount_rate)
             - 'damages_climate_IRA', 'damages_climate_noIRA': Climate damages
             - 'fuel_costs_IRA', 'fuel_costs_noIRA': Fuel costs
+            - 'tepper_household': One-time Tepper household CSV (delegates to
+              export_tepper_household; uses df_results_export as the frame)
+            - 'tepper_county': One-time Tepper county CSV (delegates to
+              export_tepper_county; requires county_tables)
         menu_mp: Measure package identifier (0 for baseline, 8/9/10 for retrofits).
         output_folder_path: Base directory for all exports.
         location_id: Location identifier for the filename (e.g., 'NYC', 'LA').
         results_export_formatted_date: Date string for the filename (e.g., '2024_01_15').
         discount_rate: Short key for discount rate method (e.g., 'fixed_base', 'variable').
             Required when results_category='summary' and menu_mp != 0.
+        county_tables: Mapping with keys 'adoption', 'bill_savings', and
+            'demand' holding the three per-MP county result frames. Required
+            only when results_category='tepper_county'.
 
     Raises:
         ValueError: If any required parameter is missing, results_category is invalid,
@@ -57,6 +69,38 @@ def export_model_run_output(
     if results_export_formatted_date is None:
         raise ValueError("results_export_formatted_date is required")
     
+    # One-time additive Tepper exports. These delegate to dedicated writers in
+    # export_tepper_csv and return before the shared single-frame CSV path,
+    # because each applies its own list of included columns or multi-table
+    # assembly.
+    if results_category == 'tepper_household':
+        export_tepper_household(
+            df_household=df_results_export,
+            menu_mp=menu_mp,
+            output_folder_path=output_folder_path,
+            location_id=location_id,
+            results_export_formatted_date=results_export_formatted_date,
+        )
+        print("---" * 35, "\n")
+        return
+    if results_category == 'tepper_county':
+        if county_tables is None:
+            raise ValueError(
+                "results_category='tepper_county' requires county_tables with "
+                "keys 'adoption', 'bill_savings', and 'demand'"
+            )
+        export_tepper_county(
+            df_adoption=county_tables['adoption'],
+            df_bill_savings=county_tables['bill_savings'],
+            df_demand=county_tables['demand'],
+            menu_mp=menu_mp,
+            output_folder_path=output_folder_path,
+            location_id=location_id,
+            results_export_formatted_date=results_export_formatted_date,
+        )
+        print("---" * 35, "\n")
+        return
+
     # Standardize menu_mp to string
     menu_mp = str(menu_mp)
     

@@ -7,6 +7,7 @@ from cmu_tare_model.constants import (
     EQUIPMENT_SPECS,
     PRIVATE_DISCOUNTING_METHOD_SUFFIXES,
     REBATE_ELIGIBLE_HEATING_MPS,
+    REBATE_GUIDANCE_JUNE2026,
     REMDB_COST_SCENARIO_KEYS,
 )
 from cmu_tare_model.utils.modeling_params import define_scenario_params
@@ -284,17 +285,44 @@ def calculate_private_npv(
     net_capital_heating_sub = net_capital_heating_unsub - rebate_amount
     net_capital_heating_and_cooling_sub = net_capital_heating_and_cooling_unsub - rebate_amount
 
-    # ===== Assemble the six NPV cases =====
+    # June 2026 guidance: a third rebate policy scenario on the same NPV scopes. The
+    # june2026 rebate column already encodes the efficiency (MP) and fuel gates,
+    # so it is simply netted against the unsubsidized capital -- no second gate.
+    # A missing column (rebate policy scenario not computed for this run) degrades
+    # safely to the unsubsidized outcome.
+    rebate_june2026_col = create_rebate_col(
+        menu_mp=menu_mp, category='heating', cost_scenario=cost_scenario,
+        guidance=REBATE_GUIDANCE_JUNE2026)
+    if rebate_june2026_col in df_copy.columns:
+        rebate_june2026_amount = (
+            df_copy[rebate_june2026_col].fillna(0.0)
+            .where(heating_valid_mask, other=0.0))
+    else:
+        rebate_june2026_amount = pd.Series(0.0, index=df_copy.index)
+
+    net_capital_cooling_only_sub_june2026 = (
+        net_capital_cooling_only_unsub - rebate_june2026_amount)
+    net_capital_heating_sub_june2026 = (
+        net_capital_heating_unsub - rebate_june2026_amount)
+    net_capital_heating_and_cooling_sub_june2026 = (
+        net_capital_heating_and_cooling_unsub - rebate_june2026_amount)
+
+    # ===== Assemble the nine NPV cases =====
     # Every case counts both heating and cooling operating savings; the cases
     # differ only in which avoided-replacement credit reduces the net capital
-    # cost, and each case has a subsidized and unsubsidized variant.
+    # cost, and each scope has three rebate-policy-scenario variants:
+    # unsubsidized, subsidized under 2024 guidance (_sub), and subsidized under
+    # June 2026 guidance (_sub_june2026).
     npv_case_inputs = {
         'heatingSavings_coolingLCC_unsub': (heating_and_cooling_savings, net_capital_cooling_only_unsub),
         'heatingSavings_coolingLCC_sub': (heating_and_cooling_savings, net_capital_cooling_only_sub),
+        'heatingSavings_coolingLCC_sub_june2026': (heating_and_cooling_savings, net_capital_cooling_only_sub_june2026),
         'heatingLCC_coolingSavings_unsub': (heating_and_cooling_savings, net_capital_heating_unsub),
         'heatingLCC_coolingSavings_sub': (heating_and_cooling_savings, net_capital_heating_sub),
+        'heatingLCC_coolingSavings_sub_june2026': (heating_and_cooling_savings, net_capital_heating_sub_june2026),
         'heatingLCC_coolingLCC_unsub': (heating_and_cooling_savings, net_capital_heating_and_cooling_unsub),
         'heatingLCC_coolingLCC_sub': (heating_and_cooling_savings, net_capital_heating_and_cooling_sub),
+        'heatingLCC_coolingLCC_sub_june2026': (heating_and_cooling_savings, net_capital_heating_and_cooling_sub_june2026),
     }
 
     # The shared gross capital is stored once under the heating category.

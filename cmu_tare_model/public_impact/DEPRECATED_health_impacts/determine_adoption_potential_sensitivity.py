@@ -5,6 +5,10 @@
 # Adoption decision is now: moreWTP >= 0 (economic payback only).
 # Climate / health damages are computed and stored but excluded from adoption.
 # Do not import from this module in new code.
+# Note: the `hvac_replacement_scenario` parameter here ('heating' /
+# 'heating_and_cooling') belongs to the retired category-token scheme. The live
+# axis is the replacement_credit_scenario, expressed through the NPV case tokens
+# heatingLCC_coolingSavings / heatingLCC_coolingLCC -- not a parameter by this name.
 # =============================================================================
 import pandas as pd
 import numpy as np

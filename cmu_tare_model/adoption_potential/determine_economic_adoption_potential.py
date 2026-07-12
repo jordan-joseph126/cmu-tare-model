@@ -36,7 +36,7 @@ def economic_adoption_decision(
     verbose: bool = VERBOSE,
 ) -> pd.DataFrame:
     """
-    Flag economic adopters for each of the six heat-pump NPV cases.
+    Flag economic adopters for each of the nine heat-pump NPV cases.
 
     A home is an "economic adopter" for a given NPV case if that case's private
     incremental NPV is >= 0: the extra upfront cost of the heat pump over a
@@ -45,7 +45,8 @@ def economic_adoption_decision(
     Break-even (NPV exactly 0) counts as adoption.
 
     One adopter column is produced per NPV case (see NPV_CASE_CATEGORIES),
-    including both subsidized and unsubsidized variants.
+    including the unsubsidized, 2024-subsidized, and June 2026-subsidized
+    rebate-policy-scenario variants.
 
     Homes with invalid heating data or not scheduled for this measure package
     receive NaN -- not 0.0 -- so they are excluded from both numerator and
@@ -64,8 +65,8 @@ def economic_adoption_decision(
         verbose: Enable detailed output (default: False).
 
     Returns:
-        DataFrame with six economic-adopter columns appended and masked, one per
-        NPV case (including subsidized and unsubsidized variants). 1.0 = recovers
+        DataFrame with nine economic-adopter columns appended and masked, one per
+        NPV case (unsubsidized, 2024-subsidized, June 2026-subsidized). 1.0 = recovers
         incremental cost; 0.0 = valid home that does not; NaN = excluded home
         (invalid heating data or not in this package).
 

@@ -1,45 +1,43 @@
 # %%
-import os
+# import os
 
-# import from cmu-tare-model package
-from config import PROJECT_ROOT
+# # import from cmu-tare-model package
+# from config import PROJECT_ROOT
 
-# Measure Package 0: Baseline
-menu_mp = 0
-input_mp = 'baseline'
+# # Measure Package 0: Baseline
+# menu_mp = 0
+# input_mp = 'baseline'
 
-print(f"PROJECT_ROOT (from config.py): {PROJECT_ROOT}")
+# print(f"PROJECT_ROOT (from config.py): {PROJECT_ROOT}")
 
-# Construct the absolute path to the .py file
-relative_path = os.path.join("cmu_tare_model", "model_scenarios", "tare_baseline_v2_3.ipynb")
-file_path = os.path.join(PROJECT_ROOT, relative_path)
+# # Construct the absolute path to the .py file
+# relative_path = os.path.join("cmu_tare_model", "model_scenarios", "tare_baseline_v2_3.ipynb")
+# file_path = os.path.join(PROJECT_ROOT, relative_path)
 
-# On Windows, to avoid any path-escape quirks, convert backslashes to forward slashes
-file_path = file_path.replace("\\", "/")
+# # On Windows, to avoid any path-escape quirks, convert backslashes to forward slashes
+# file_path = file_path.replace("\\", "/")
 
-print(f"Running file: {file_path}")
+# print(f"Running file: {file_path}")
 
-# %run magic command to run a .py file and import variables into the current IPython session
-# # If your path has spaces, wrap it in quotes:
-%run -i {file_path} # If your path has NO spaces, no quotes needed.
+# # %run magic command to run a .py file and import variables into the current IPython session
+# # # If your path has spaces, wrap it in quotes:
+# %run -i {file_path} # If your path has NO spaces, no quotes needed.
 
-print("Baseline Scenario - Model Run Complete")
+# print("Baseline Scenario - Model Run Complete")
 
-# Flag to prevent excessive output in other scenario files
-individual_scenario_run = True
+# # Flag to prevent excessive output in other scenario files
+# individual_scenario_run = True
 
-# %%
-na = df_euss_am_baseline_home['gea_region'].isna()
-print("homes with no GEA region:", int(na.sum()))
-print("states affected:", sorted(df_euss_am_baseline_home.loc[na, 'state'].dropna().unique()))
-print(
-    df_euss_am_baseline_home.loc[na, ['state', 'county', 'county_fips']]
-    .drop_duplicates()
-    .sort_values('county_fips')
-    .head(40)
-    .to_string(index=False)
-)
-
+# na = df_euss_am_baseline_home['gea_region'].isna()
+# print("homes with no GEA region:", int(na.sum()))
+# print("states affected:", sorted(df_euss_am_baseline_home.loc[na, 'state'].dropna().unique()))
+# print(
+#     df_euss_am_baseline_home.loc[na, ['state', 'county', 'county_fips']]
+#     .drop_duplicates()
+#     .sort_values('county_fips')
+#     .head(40)
+#     .to_string(index=False)
+# )
 
 # %% [markdown]
 # # LOAD EUSS DATA: Annual Energy Consumption and Metadata
@@ -221,7 +219,6 @@ else:
         df_euss_am_mpX = df_euss_am_mpX.loc[city_filter]
 
 # Display the filtered dataframe
-# Display the filtered dataframe
 print(f"DATAFRAME SIZE after applying geographic filter: {df_euss_am_mpX.shape}")
 print(df_euss_am_mpX)
 
@@ -256,7 +253,7 @@ df_euss_am_mpX_home = df_enduse_compare(
 
 
 # %% [markdown]
-# # CLIMATE IMPACTS: Climate Damages
+# # PUBLIC IMPACTS: Climate Damages
 # ## Scenario: 2025 Reference Case
 
 # %%
@@ -264,13 +261,14 @@ from cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity
 
 print(f"""
 ====================================================================================================================================================================
-CLIMATE IMPACTS: DAMAGES FROM CLIMATE-RELATED EMISSIONS
+PUBLIC IMPACTS: DAMAGES FROM CLIMATE-RELATED EMISSIONS
 ====================================================================================================================================================================
 
 """)
 
 # Make copies from scenario consumption to keep df smaller
 print("\n", "Creating dataframe to store marginal damages calculations ...")
+
 # Damage DataFrames: 2025 Reference Case
 df_mpX_ref2025_damages_climate = df_euss_am_mpX_home.copy()
 
@@ -619,7 +617,7 @@ print(f"\ndf_euss_am_mpX_home shape: {df_euss_am_mpX_home.shape}")
 print("=" * 80)
 
 # %% [markdown]
-#  ## Calculate Rebate Amounts (Applicable to IRA-Reference)
+#  ## Calculate Rebate Amounts
 
 # %%
 from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import (
@@ -657,12 +655,13 @@ for end_use in VALID_CATEGORIES:
     print(VALID_CATEGORIES)
     for cost_scenario in REMDB_COST_SCENARIO_KEYS:
         print(f"\nCalculating rebate amounts for {end_use} ({cost_scenario}) ...")
+        # Home energy rebate guidance in December 2024
         df_euss_am_mpX_home = calculate_rebateIRA(df_results_IRA=df_euss_am_mpX_home,
                                                   category=end_use,
                                                   menu_mp=menu_mp,
                                                   cost_scenario=cost_scenario)
-        # June 2026 guidance rebate (parallel column + rebate_eligibility). The
-        # 2024-guidance call above is unchanged; this adds the new rebate policy scenario.
+
+        # Updated Home Energy Rebate Program guidance (from June 2026 Program notices)        
         df_euss_am_mpX_home = calculate_rebate_june2026(df_results_IRA=df_euss_am_mpX_home,
                                                         category=end_use,
                                                         menu_mp=menu_mp,
@@ -678,7 +677,7 @@ DATAFRAME: df_euss_am_mpX_home AFTER CALCULATING REBATE AMOUNTS
 
 # %% [markdown]
 # # SCENARIO ANALYSIS: 2025 Reference Case
-# ## Climate Impact, Private Impact and Adoption Potential
+# ## Public Impact, Private Impact and Adoption Potential
 
 # %%
 from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_private_npv
@@ -993,6 +992,130 @@ county_rate_series = {}
 for col in adopter_cols:
     county_rate_series[col] = county_adoption_rates(df, col)
     print()
+
+
+# %%
+"""Copy-paste verification cell: June 2026 rebate fossil gate (MP4).
+
+NOT run automatically and NOT part of the .ipynb. Paste the CELL block below
+into the main notebook AFTER the June 2026 rebate path and its downstream
+economic-adopter step have run, so the frame carries:
+  - mp4_heating_rebate_amount_june2026_v4MID
+  - mp4_rebate_eligibility_june2026
+  - ref2025_mp4_heatingLCC_coolingSavings_sub_june2026_econ_adopter_fixed_base
+
+Pass rule:
+  - by_fuel: every NON-electric baseline row must be $0 in BOTH 'total_eligible'
+    and 'adopters_only'. A nonzero fossil row means the fuel gate has a real bug.
+  - 'adopters_only' national total is the figure to compare against the ~$8-9B
+    appropriation; 'total_eligible' is the uncapped potential (no funding cap
+    is modeled).
+"""
+
+# ===== CELL (paste into the notebook) =====
+from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import (
+    summarize_rebate_funding,
+)
+from cmu_tare_model.utils.column_names import create_adoption_col
+from cmu_tare_model.utils.modeling_params import define_scenario_params
+
+_MP = 4
+_COST = 'v4MID'
+_METHOD_SUFFIX = '_fixed_base'
+_WEIGHT_COL = 'weight'  # adjust if the frame's household-weight column differs
+
+# Hold the heating-replacement-credit scenario fixed; use its June 2026 adopter.
+_prefix = define_scenario_params(_MP)[0]
+_adopter_col = create_adoption_col(
+    _prefix, 'heatingLCC_coolingSavings_sub_june2026', _METHOD_SUFFIX)
+
+_df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base']  # the canonical MP4 frame in the notebook
+
+by_program, by_fuel = summarize_rebate_funding(
+    _df,
+    menu_mp=_MP,
+    cost_scenario=_COST,
+    guidance='june2026',
+    weight_col=_WEIGHT_COL,
+    adopter_col=_adopter_col,
+)
+
+print('Adopter column:', _adopter_col)
+print('\n--- June 2026 rebate funding by program (weighted $) ---')
+print(by_program.round(0))
+print('\n--- June 2026 rebate funding by baseline fuel (weighted $) ---')
+print(by_fuel.round(0))
+
+# Fossil-gate assertion: non-electric fuels must be exactly $0 under June 2026.
+_fossil = by_fuel.drop(index='Electricity', errors='ignore')
+_nonzero = _fossil[(_fossil != 0).any(axis=1)]
+if len(_nonzero):
+    print('\n[FAIL] Non-electric fuels received June 2026 rebate dollars:')
+    print(_nonzero.round(2))
+else:
+    print('\n[PASS] Every non-electric baseline fuel is $0 under June 2026.')
+
+
+# %%
+"""Copy-paste verification cell: June 2026 rebate fossil gate (MP4).
+
+NOT run automatically and NOT part of the .ipynb. Paste the CELL block below
+into the main notebook AFTER the June 2026 rebate path and its downstream
+economic-adopter step have run, so the frame carries:
+  - mp4_heating_rebate_amount_june2026_v4MID
+  - mp4_rebate_eligibility_june2026
+  - ref2025_mp4_heatingLCC_coolingLCC_sub_june2026_econ_adopter_fixed_base
+
+Pass rule:
+  - by_fuel: every NON-electric baseline row must be $0 in BOTH 'total_eligible'
+    and 'adopters_only'. A nonzero fossil row means the fuel gate has a real bug.
+  - 'adopters_only' national total is the figure to compare against the ~$8-9B
+    appropriation; 'total_eligible' is the uncapped potential (no funding cap
+    is modeled).
+"""
+
+# ===== CELL (paste into the notebook) =====
+from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import (
+    summarize_rebate_funding,
+)
+from cmu_tare_model.utils.column_names import create_adoption_col
+from cmu_tare_model.utils.modeling_params import define_scenario_params
+
+_MP = 4
+_COST = 'v4MID'
+_METHOD_SUFFIX = '_fixed_base'
+_WEIGHT_COL = 'weight'  # adjust if the frame's household-weight column differs
+
+# Hold the heating-replacement-credit scenario fixed; use its June 2026 adopter.
+_prefix = define_scenario_params(_MP)[0]
+_adopter_col = create_adoption_col(
+    _prefix, 'heatingLCC_coolingLCC_sub_june2026', _METHOD_SUFFIX)
+
+_df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base']  # the canonical MP4 frame in the notebook
+
+by_program, by_fuel = summarize_rebate_funding(
+    _df,
+    menu_mp=_MP,
+    cost_scenario=_COST,
+    guidance='june2026',
+    weight_col=_WEIGHT_COL,
+    adopter_col=_adopter_col,
+)
+
+print('Adopter column:', _adopter_col)
+print('\n--- June 2026 rebate funding by program (weighted $) ---')
+print(by_program.round(0))
+print('\n--- June 2026 rebate funding by baseline fuel (weighted $) ---')
+print(by_fuel.round(0))
+
+# Fossil-gate assertion: non-electric fuels must be exactly $0 under June 2026.
+_fossil = by_fuel.drop(index='Electricity', errors='ignore')
+_nonzero = _fossil[(_fossil != 0).any(axis=1)]
+if len(_nonzero):
+    print('\n[FAIL] Non-electric fuels received June 2026 rebate dollars:')
+    print(_nonzero.round(2))
+else:
+    print('\n[PASS] Every non-electric baseline fuel is $0 under June 2026.')
 
 
 # %%

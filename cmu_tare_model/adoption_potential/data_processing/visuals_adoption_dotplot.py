@@ -1,10 +1,19 @@
 ﻿"""Horizontal dot-plot visualization for heat pump economic adoption potential.
 
-Plots economic adoption rates for the two Option-A NPV cases:
-  left  = heatingLCC_coolingSavings (heating replacement credited only)
-  right = heatingLCC_coolingLCC     (both heating + cooling replacements credited)
+``build_econ_plot_df`` supports two marker modes via ``shape_by``:
 
-Delta annotation: right - left = gain from also crediting the avoided AC replacement.
+  'replacement_credit_scenario' (default) -- two markers per row, one per
+    replacement-credit scope:
+      left  = heatingLCC_coolingSavings (heating replacement credited only)
+      right = heatingLCC_coolingLCC     (both heating + cooling replacements)
+    Each marker plots the subsidized rate; the delta annotation (right - left)
+    is the gain from also crediting the avoided AC replacement.
+
+  'rebate_policy_scenario' -- three markers per row, one per rebate policy
+    scenario (unsubsidized, 2024 HEEHR, June 2026 Guidance), for a single fixed
+    replacement-credit scope. Each marker plots that scenario's own adoption
+    rate. Pair with REBATE_POLICY_SCENARIO_MARKERS and
+    build_rebate_policy_scenario_legend_handles().
 
 Disaggregated by incumbent heating fuel and income group.
 Layout: one panel per measure package (MP rows).
@@ -72,6 +81,31 @@ ALL_TIER_NAMES: List[str] = [
 ]
 
 # ===========================================================================
+# REBATE-POLICY-SCENARIO MODE  (three markers: unsub / 2024 / June 2026)
+# ===========================================================================
+# Used when build_econ_plot_df(shape_by='rebate_policy_scenario'). Each token is
+# the trailing segment of the NPV-case column name ('_unsub', '_sub',
+# '_sub_june2026'); the label is what appears on the marker legend. This is the
+# rebate policy scenario axis (which rebate policy applies), a different axis
+# from the replacement_credit_scenario (which replacement cost the NPV credits).
+REBATE_POLICY_SCENARIO_ORDER: List[str] = ['unsub', 'sub', 'sub_june2026']
+REBATE_POLICY_SCENARIO_LABELS: Dict[str, str] = {
+    'unsub': 'Unsubsidized',
+    'sub': '2024 HEEHR',
+    'sub_june2026': 'June 2026 Guidance',
+}
+
+# Marker shape per rebate policy scenario, keyed by the label that
+# build_econ_plot_df writes into 'tier_label' so plot_adoption_panel can look it
+# up via custom_tier_markers. Distinct from the two-shape TIER_MARKERS used by
+# the default replacement_credit_scenario mode.
+REBATE_POLICY_SCENARIO_MARKERS: Dict[str, str] = {
+    'Unsubsidized': 'o',        # circle
+    '2024 HEEHR': 's',          # square
+    'June 2026 Guidance': '^',  # triangle
+}
+
+# ===========================================================================
 # Y-AXIS GROUPING ORDER  (top -> bottom)
 # ===========================================================================
 GROUPING_ORDER: List[str] = [
@@ -100,6 +134,8 @@ def build_econ_plot_df(
     income_col: str = 'lmi_or_mui',
     income_groups: Optional[List[str]] = None,
     scaling_factor: float = 242.0,
+    shape_by: str = 'replacement_credit_scenario',
+    fixed_replacement_credit_scenario: str = 'heatingLCC_coolingSavings',
 ) -> pd.DataFrame:
     """Build a DataFrame for the economic adoption dotplot.
 
@@ -113,15 +149,44 @@ def build_econ_plot_df(
         income_col: Column holding the income group.
         income_groups: Income groups to break out (default ['LMI']).
         scaling_factor: Homes-per-sample weight for the weighted-homes column.
+        shape_by: Which axis the marker shape encodes.
+            'replacement_credit_scenario' (default) emits two rows per grouping --
+            one per replacement-credit scope (heating replacement only vs heating
+            + cooling replacement) -- each plotting its subsidized rate with the
+            unsubsidized delta. 'rebate_policy_scenario' emits three rows per
+            grouping -- one per rebate policy scenario (unsubsidized, 2024, June
+            2026) -- for a single fixed replacement-credit scope.
+        fixed_replacement_credit_scenario: The replacement-credit scope held fixed
+            when shape_by='rebate_policy_scenario'. One of
+            'heatingLCC_coolingSavings' or 'heatingLCC_coolingLCC'. Ignored in the
+            default mode.
 
     Returns:
         DataFrame formatted for ``plot_adoption_panel()``.
+
+    Raises:
+        ValueError: If shape_by or fixed_replacement_credit_scenario is invalid.
     """
+    valid_shape_by = ('replacement_credit_scenario', 'rebate_policy_scenario')
+    if shape_by not in valid_shape_by:
+        raise ValueError(
+            f"shape_by={shape_by!r} is not valid. Choose one of {valid_shape_by}.")
+    valid_fixed = ('heatingLCC_coolingSavings', 'heatingLCC_coolingLCC')
+    if (shape_by == 'rebate_policy_scenario'
+            and fixed_replacement_credit_scenario not in valid_fixed):
+        raise ValueError(
+            f"fixed_replacement_credit_scenario="
+            f"{fixed_replacement_credit_scenario!r} is not valid. "
+            f"Choose one of {valid_fixed}.")
+
     if income_groups is None:
         income_groups = ['LMI']
 
     scenario_prefix = define_scenario_params(mp)[0]
     method_suffix = f'_{discount_rate}'
+
+    # replacement_credit_scenario mode: two markers, one per credit scope, each
+    # plotting its subsidized rate with the unsubsidized delta.
     left_col_sub = create_adoption_col(
         scenario_prefix, 'heatingLCC_coolingSavings_sub', method_suffix)
     left_col_unsub = create_adoption_col(
@@ -130,6 +195,17 @@ def build_econ_plot_df(
         scenario_prefix, 'heatingLCC_coolingLCC_sub', method_suffix)
     right_col_unsub = create_adoption_col(
         scenario_prefix, 'heatingLCC_coolingLCC_unsub', method_suffix)
+
+    # rebate_policy_scenario mode: three markers, one per rebate policy scenario,
+    # for the single fixed replacement-credit scope. Each marker plots that
+    # scenario's own adoption rate (no subsidized/unsubsidized delta pairing).
+    rps_cols = {
+        token: create_adoption_col(
+            scenario_prefix,
+            f'{fixed_replacement_credit_scenario}_{token}',
+            method_suffix)
+        for token in REBATE_POLICY_SCENARIO_ORDER
+    }
 
     def _rate(df_sub: pd.DataFrame, col: str) -> float:
         return df_sub[col].mean() * 100.0 if col in df_sub.columns else np.nan
@@ -156,41 +232,51 @@ def build_econ_plot_df(
             'weighted_homes_millions': n * scaling_factor / 1_000_000,
         }
 
+    rows: List[dict] = []
+
+    def _append_group(
+        grouping: str,
+        fuel: str,
+        income_level: str,
+        sub_df: pd.DataFrame,
+        n: int,
+    ) -> None:
+        """Append this grouping's rows for the active shape_by mode."""
+        if shape_by == 'replacement_credit_scenario':
+            rows.append(_row(
+                grouping, fuel, income_level, 'Heating Repl. Credit',
+                _rate(sub_df, left_col_sub), _rate(sub_df, left_col_unsub), n))
+            rows.append(_row(
+                grouping, fuel, income_level, 'Heating + Cooling Repl. Credit',
+                _rate(sub_df, right_col_sub), _rate(sub_df, right_col_unsub), n))
+        else:
+            # One row per rebate policy scenario. The marker value is that
+            # scenario's own adoption rate, so left and right pct are equal
+            # (delta 0 -- there is no subsidized/unsubsidized pairing here).
+            for token in REBATE_POLICY_SCENARIO_ORDER:
+                rate = _rate(sub_df, rps_cols[token])
+                rows.append(_row(
+                    grouping, fuel, income_level,
+                    REBATE_POLICY_SCENARIO_LABELS[token], rate, rate, n))
+
     sample_total = len(source_df)
     group_counts = source_df.groupby([fuel_col, income_col], observed=True).size()
     fuel_counts = source_df.groupby(fuel_col, observed=True).size()
     fuels_in_data = list(source_df[fuel_col].dropna().unique())
 
-    rows = []
     for (fuel, income), n in group_counts.items():
         if income not in income_groups:
             continue
         sub = source_df[(source_df[fuel_col] == fuel) & (source_df[income_col] == income)]
-        grouping = f'{fuel} -- {income}'
-        rows.append(_row(
-            grouping, fuel, income, 'Heating Repl. Credit',
-            _rate(sub, left_col_sub), _rate(sub, left_col_unsub), int(n)))
-        rows.append(_row(
-            grouping, fuel, income, 'Heating + Cooling Repl. Credit',
-            _rate(sub, right_col_sub), _rate(sub, right_col_unsub), int(n)))
+        _append_group(f'{fuel} -- {income}', fuel, income, sub, int(n))
 
     for fuel in fuels_in_data:
         fuel_n = int(fuel_counts.get(fuel, 0))
         fuel_sub = source_df[source_df[fuel_col] == fuel]
-        grouping = f'{fuel} -- Overall'
-        rows.append(_row(
-            grouping, fuel, 'Overall', 'Heating Repl. Credit',
-            _rate(fuel_sub, left_col_sub), _rate(fuel_sub, left_col_unsub), fuel_n))
-        rows.append(_row(
-            grouping, fuel, 'Overall', 'Heating + Cooling Repl. Credit',
-            _rate(fuel_sub, right_col_sub), _rate(fuel_sub, right_col_unsub), fuel_n))
+        _append_group(f'{fuel} -- Overall', fuel, 'Overall', fuel_sub, fuel_n)
 
-    rows.append(_row(
-        'National -- Overall', 'National', 'Overall', 'Heating Repl. Credit',
-        _rate(source_df, left_col_sub), _rate(source_df, left_col_unsub), sample_total))
-    rows.append(_row(
-        'National -- Overall', 'National', 'Overall', 'Heating + Cooling Repl. Credit',
-        _rate(source_df, right_col_sub), _rate(source_df, right_col_unsub), sample_total))
+    _append_group(
+        'National -- Overall', 'National', 'Overall', source_df, sample_total)
 
     return pd.DataFrame(rows)
 
@@ -352,6 +438,36 @@ def _build_legend_handles() -> List[mlines.Line2D]:
                 markersize=8,
                 linestyle='None',
                 label=TIER_LABELS_SHORT[tier],
+            )
+        )
+    return handles
+
+
+def build_rebate_policy_scenario_legend_handles() -> List[mlines.Line2D]:
+    """Create legend handles for the three rebate policy scenario markers.
+
+    Companion to _build_legend_handles for build_econ_plot_df's
+    shape_by='rebate_policy_scenario' mode: one gray handle per rebate policy
+    scenario (unsubsidized, 2024, June 2026) in plot order, using
+    REBATE_POLICY_SCENARIO_MARKERS so the shapes on the plot match the legend.
+    The notebook cell passes these handles to ax.legend.
+
+    Returns:
+        List of matplotlib Line2D legend handles, one per rebate policy scenario.
+    """
+    handles: List[mlines.Line2D] = []
+    for token in REBATE_POLICY_SCENARIO_ORDER:
+        label = REBATE_POLICY_SCENARIO_LABELS[token]
+        handles.append(
+            mlines.Line2D(
+                [], [],
+                marker=REBATE_POLICY_SCENARIO_MARKERS[label],
+                color='none',
+                markerfacecolor='gray',
+                markeredgecolor='gray',
+                markersize=8,
+                linestyle='None',
+                label=label,
             )
         )
     return handles
