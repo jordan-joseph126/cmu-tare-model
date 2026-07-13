@@ -299,8 +299,9 @@ def export_tepper_county(
     it recomputes nothing. 'state' and 'home_count' appear in both the adoption
     and demand tables, so they are taken from the adoption table and dropped
     from the demand table before the merge -- pandas therefore never emits
-    _x/_y suffixes. The two home_count values are compared first and any
-    disagreement is reported.
+    _x/_y suffixes. Per-county home_count reconciliation between the two tables
+    is done upstream in the notebook, with a one-home tolerance from the
+    sampling weight.
 
     Args:
         df_adoption: econ_adoption_rate_results[mp] with columns county, state,
@@ -345,32 +346,13 @@ def export_tepper_county(
     _require(df_demand, ["county", "state", "home_count"]
              + COUNTY_DEMAND_METRIC_COLS, "df_demand (demand table)")
 
-    # Step 2 -- reconcile home_count between the adoption and demand tables.
-    # home_count is the per-county home tally each KPI grouped over; a mismatch
-    # means the two tables saw different home sets and is worth surfacing, but
-    # it does not block the export.
-    hc_check = df_adoption[["county", "home_count"]].merge(
-        df_demand[["county", "home_count"]], on="county", how="outer",
-        suffixes=("_adoption", "_demand"),
-    )
-    disagree = hc_check[
-        hc_check["home_count_adoption"] != hc_check["home_count_demand"]
-    ]
-    if len(disagree):
-        print(f"[WARN] home_count disagrees for {len(disagree)} county(ies) "
-              f"between the adoption and demand tables:")
-        for _, row in disagree.iterrows():
-            print(f"       {row['county']}: adoption="
-                  f"{row['home_count_adoption']} demand="
-                  f"{row['home_count_demand']}")
-    else:
-        print("[OK] home_count agrees across the adoption and demand tables.")
-
-    # Step 3 -- drop the duplicated state/home_count from demand so the merge
-    # keys on county alone and emits no _x/_y suffixes.
+    # Step 2 -- drop the duplicated state/home_count from demand so the merge
+    # keys on county alone and emits no _x/_y suffixes. (Per-county home_count
+    # reconciliation is done upstream in the notebook, with a one-home tolerance
+    # from the sampling weight, so it is not repeated here.)
     df_demand_metrics = df_demand[["county"] + COUNTY_DEMAND_METRIC_COLS]
 
-    # Step 4 -- outer-join the three tables on county. validate='one_to_one'
+    # Step 3 -- outer-join the three tables on county. validate='one_to_one'
     # raises if any table has a duplicate county key.
     merged = (
         df_adoption[COUNTY_ADOPTION_COLS]
@@ -380,11 +362,11 @@ def export_tepper_county(
                how="outer", validate="one_to_one")
     )
 
-    # Step 5 -- order to the eleven-column schema. county stays a GISJOIN-style
+    # Step 4 -- order to the eleven-column schema. county stays a GISJOIN-style
     # string; it is neither cast to int nor zero-stripped.
     merged = merged.loc[:, list(COUNTY_OUTPUT_ORDER)]
 
-    # Step 6 -- write. county is a plain column, so do not write the index.
+    # Step 5 -- write. county is a plain column, so do not write the index.
     directory = os.path.join(output_folder_path, TEPPER_SUBDIR)
     pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
     filename = (

@@ -189,10 +189,18 @@ that never participated in the federal rebate programs get 0 under every rebate 
 `calculate_rebateIRA` (2024) and `calculate_rebate_june2026`, so `_sub` is no longer
 byte-identical for South Dakota homes (they now correctly receive no 2024 rebate).
 
-**June 2026 rules (both programs gated by `REBATE_ELIGIBLE_HEATING_MPS` = MP4 in,
-MP3 out):**
-- **Fuel gate (both programs):** only existing electric-resistance heating
-  (`base_heating_fuel == 'Electricity'`) qualifies. Any fossil baseline -> 0, `'None'`.
+**June 2026 rules (both programs gated by `REBATE_ELIGIBLE_HEATING_MPS`; since the
+12 Jul 2026 ENERGY STAR override this is MP3 and MP4 in):**
+- **Fuel gate (both programs) -- adjudicated KEEP (13 Jul 2026):** only existing
+  electric-resistance heating (`base_heating_fuel == 'Electricity'`) qualifies. Any
+  fossil baseline -> 0, `'None'`. This was audited against the June 2026 DOE
+  guidance and deliberately kept: the guidance forbids using a rebate to fund
+  removing a fossil heating system, so a fossil baseline has no eligible pathway
+  under EITHER HEEHR or HOMES. This is intended, NOT an inversion of the 2024
+  HEEHR/HOMES statute -- do NOT "fix" it. Consequence: June 2026 adoption sits
+  ~10-14 pp below 2024 across MPs (fossil homes lose the rebate), which is
+  expected. The verification test asserts this spec (fossil = $0 AND
+  electric-resistance funded).
 - **HEEHR (`percent_AMI <= 150%`):** $8,000 heat-pump cap; income sets the cost
   share (100% at <=80% AMI, 50% at 80-150%). Unchanged from 2024.
 - **HOMES (`percent_AMI > 150%`):** savings-based on whole-home modeled savings
@@ -219,8 +227,9 @@ is uncapped potential (no funding cap modeled), NOT a disbursement.
 3. One program per home (HEEHR or HOMES, never both).
 4. State-level funding caps not applied (allocations not finalized; Atlas
    Buildings Hub tracker).
-5. ENERGY STAR spec assumed for both programs, so the MP gate applies to both and
-   MP3 qualifies for neither.
+5. ENERGY STAR spec assumed for both programs, so the MP gate applies to both.
+   (Since the 12 Jul 2026 ENERGY STAR override, MP3 is respecified to meet the
+   spec and now qualifies for both programs, alongside MP4.)
 6. HOMES LMI tier unreachable by construction (HOMES only consulted above 150% AMI).
 ---
 
@@ -240,6 +249,21 @@ is uncapped potential (no funding cap modeled), NOT a disbursement.
 For homes where `include_cooling = False`: cooling savings = 0, cooling capital = 0.
 For these homes: `heatingLCC_coolingLCC` == `heatingLCC_coolingSavings` (cooling LCC credit = 0),
 and both exceed `heatingSavings_coolingLCC` (heating LCC credit is the only differentiation).
+
+**Negative cooling savings -- ACCEPTED as real (12 Jul 2026 session).**
+For some homes the heat pump's cooling energy exceeds the baseline air conditioner's, so
+`ref2025_mp{mp}_cooling_lifetime_savings_fuel_cost` is negative. This is a genuine ResStock
+base-year result, not a projection artifact: baseline and retrofit cooling are scaled by the
+SAME CDD factor and electricity price each year, so the sign is fixed by the raw base-year
+kWh delta. It is overwhelmingly a service-level change -- about 54% of Room AC baselines go
+negative vs 2.5% of Central AC, because the baseline room AC cools one room while the
+whole-home heat pump cools the entire house. Decision: keep the negative savings in the NPV
+as a real operating cost (consistent with the dollars-only, no-WTP adoption threshold); do
+NOT floor or exclude. A non-NPV boolean flag
+`ref2025_mp{mp}_cooling_lifetime_savings_negative` marks the affected homes for reporting.
+No golden value moves. Manuscript limitation: MP4 delivers whole-home cooling the room AC
+never did, and the dollars-only NPV counts the added cooling cost with no offsetting
+comfort credit.
 
 **Existing-ASHP homes — RESOLVED: exclude.**
 `'Electricity ASHP'` (and any variant) must NOT appear in `EQUIPMENT_SPECS` or
@@ -283,9 +307,10 @@ add a new row marked "supersedes" and keep the old row.
 | Demand GWh symmetric norm | ±1038.3 GWh | (shared) | Pre-AEO2026 | Round 3 |
 | LMI eligibility share, single-family (NHGIS-2022 PUMA AMI; bins USD2022->23) | 71.6% | (shared) | Pre-USD2025 | superseded by Session 1e |
 | LMI eligibility share, single-family (ACS-2024 county AMI; bins USD2018->25) | 62.4% | (shared) | USD2025 | Session 1e (28 Jun 2026) |
-| Mean economic adoption rate (six NPV cases, `_sub`/`_unsub`) | PENDING | PENDING | AEO2026/Cambium2024 | To be re-derived; the six-case scheme replaced the retired heating-only case, so no golden value exists yet. Do not backfill without a full model run. |
-| Mean economic adoption rate, `_sub_june2026` cases | PENDING | PENDING | AEO2026/Cambium2024 | 11 Jul 2026 session; new rebate regime. Requires a full model run to derive. |
+| Mean economic adoption rate (six NPV cases, `_sub`/`_unsub`) | PENDING | PENDING | AEO2026/Cambium2024 | To be re-derived; the six-case scheme replaced the retired heating-only case, so no golden value exists yet. Do not backfill without a full model run. NOTE (12 Jul 2026): MP3 is now ENERGY STAR-respecified and rebate-eligible, so MP3 '_sub' adoption is no longer equal to '_unsub'. |
+| Mean economic adoption rate, `_sub_june2026` cases | PENDING | PENDING | AEO2026/Cambium2024 | 11 Jul 2026 session; new rebate regime. Requires a full model run to derive. NOTE (12 Jul 2026): MP3 now passes the rebate MP gate, so MP3 june2026 adoption moves. |
 | June 2026 rebate movement vs `_sub`: fossil MP4 lose rebate; electric MP4 >150% AMI gain HOMES | PENDING | PENDING | AEO2026/Cambium2024 | Directions (a)-(d) to confirm in the movement cross-tab. |
+| MP3 ENERGY STAR override: heating-upgrade capital-cost increase (SEER 15->16, weighted) | +$796.83/home | n/a (MP4 unchanged) | AEO2026/Cambium2024 | 12 Jul 2026 session. Ducted +$942.59 (n=432,164); non-ducted +$254.24 (n=116,096). Additive: pm2_coef x 1 x mult(1.5) x cpi(1.0566). MP3 is now rebate-eligible, so the `_sub`/`_sub_june2026` adoption rows above also move for MP3 -- re-derive on a full run. |
 
 ---
 
@@ -304,6 +329,8 @@ add a new row marked "supersedes" and keep the old row.
 | 6 July 2026 | 6 Jul 2026 | Six NPV/adopter cases: each of the three scope tokens split into `_sub`/`_unsub`; `create_npv_case_col` added; `peak_load_functions` defaults to `heatingLCC_coolingSavings_sub`; Option A dotplot plots subsidized adoption with unsubsidized deltas. Loose ends closed in Session B below. |
 | Session B | 7 Jul 2026 | Capital-cost refactor + baseline oracle (`scripts/capture_capital_cost_baseline.py`). CLAUDE.md updated to six-case naming. Old-token sweep: `create_npv_col` (moreWTP/lessWTP) still coexists with `create_npv_case_col`; notebook exports carry `moreWTP`/`iraRef`/`preIRA` stragglers plus half-migrated `create_npv_case_col(..., wtp=..., cost_scenario=...)` calls that raise `TypeError`. Flagged for hand-migration. Propagation verified PASS for `compute_adoption_rate`, `visuals_adoption_potential`, `visuals_adoption_dotplot`. See `REFACTORING_GUIDE_07July2026.md`. |
 | 11 July 2026 | 11 Jul 2026 | Rebate-regime axis: added `_sub_june2026` NPV/adopter cases (`NPV_CASE_CATEGORIES` 6->9); `calculate_rebate_june2026` (HEEHR + HOMES, fuel gate) writes `mp{mp}_heating_rebate_amount_june2026_*` + `mp{mp}_rebate_eligibility_june2026`; `create_rebate_col` gained a `guidance` token; whole-home `baseline_total_site_consumption` + `mp{mp}_modeled_savings_frac` added in `process_euss_data.py`. Existing `_sub`/`_unsub` left byte-identical EXCEPT South Dakota homes: `NON_PARTICIPATING_REBATE_STATES = {'SD'}` now zeroes rebates in ALL regimes (2024 and June 2026), since SD never participated. Added `summarize_june2026_rebate_totals` (weighted HEEHR/HOMES dollars, national + per state). 8 rebate tests pass; 0 new suite failures (11 pre-existing). Full-run verification (byte-identity numbers, movement cross-tab, golden values, visuals) and `.ipynb` backport deferred to the researcher's environment. |
+| 12 July 2026 | 12 Jul 2026 | v3 dead-code removed from the scenarios export + nine-case/no-WTP doc-string refresh (zero output change). ENERGY STAR MP3 override: `process_euss_data.df_enduse_compare` rewrites MP3's `upgrade_hvac_heating_efficiency` SEER 15->16 / 9.0->9.5 HSPF (gated `menu_mp == 3`; cooling column rewritten in parallel, no-op today); only SEER1 (pm2) feeds the REMDB v4 upgrade cost, raising MP3 heating-upgrade capital cost +$796.83/home weighted. MP3 added to `REBATE_ELIGIBLE_HEATING_MPS`. Nothing outside MP3 moves. Task 3 (re-enable v4LOW/v4HIGH) SKIPPED -- NPV/adopter columns carry no cost-scenario token, so a multi-scenario loop would overwrite (last-wins); real NPV sensitivity needs a builder+consumer refactor, deferred. Full-run golden re-derivation + `.ipynb` backport deferred to the researcher. |
+| 13 July 2026 | 13 Jul 2026 | Post-12-Jul audit fixes. Rebate fuel gate ADJUDICATED KEEP (electric-resistance-only; June 2026 guidance forbids funding fossil-system removal) -- NOT an inversion; two twin scenarios-tail verification cells consolidated into ONE spec-driven test (asserts fossil=$0 AND electric-resistance funded; false ".ipynb" docstring removed); zero value move. Tepper home_count WARN moved into the main notebook with a one-home tolerance read from `df_baseline['weight'].median()` (not hardcoded); in-function exact-match WARN removed; exported values unchanged. Fresh-run 'N'-path fixes: funding cell rebuilt on `DATAFRAMES_BY_MP[mp]['fixed_base']` via helpers, `importlib.reload` cell deleted, inventory cell guarded, `FIGURE_DPI=600` defined. Cleanup: choropleth deduped (vmax=100 kept), SIX->NINE adopter comment, `fuel_counts_millions` de-hardcoded (`* 242` -> `['weight'].sum()`, ~0.05% annotation nudge), dead `.columns` cells removed, `less/more WTP` string + mid-notebook `VERBOSE=True` removed, MP3 header ENERGY STAR parity with `.ipynb`. `.py` exports only; `.ipynb` backport + full-run verification deferred to the researcher. |
 
 ---
 

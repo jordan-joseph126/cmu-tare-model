@@ -2,7 +2,7 @@
 # -------------------------------------------------------------------------------------------------------
 # # EUSS Post-Retrofit Measure Packages: MP3, MP4, MP8, MP9, MP10
 # -------------------------------------------------------------------------------------------------------
-# - MP3: Min-efficiency, single-stage ASHP (15 SEER1, 9 HSPF1)
+# - MP3: Min-efficiency, single-stage ASHP (15 SEER1, 9 HSPF1) --> (16 SEER1, 9.5 HSPF1) for ENERGY STAR
 # - MP4: High-efficiency, variable-speed ASHP (24-29.3 SEER1, 14 HSPF1)
 # - MP8: Whole Home Electrification (MP4 + High Efficiency End-uses)
 # - MP9: Whole-Home Electrification (MP8) + Basic Enclosure Upgrade (MP1)
@@ -291,7 +291,7 @@ if VERBOSE:
 # ECONOMIC ADOPTION -- setup: imports, parameters, and shared inputs
 # =============================================================================
 # Transported from calculate_postTARE_am_kpis_demand_bill_savings. Column names
-# use the six-case NPV_CASE_CATEGORIES scheme; there is no WTP or cost-scenario
+# use the nine-case NPV_CASE_CATEGORIES scheme; there is no WTP or cost-scenario
 # token in adopter column names.
 import geopandas as gpd
 import matplotlib.lines as mlines
@@ -319,6 +319,7 @@ _DISCOUNT_COL = 'private_discount_rate_fixed_base'
 _COST = 'v4MID'                 # REMDB v4 midpoint (retained for API compat)
 discount_rate = 'fixed_base'    # 7% fixed discount rate
 SAVE_FIGURES = False            # Set True to write figure files to disk
+FIGURE_DPI = 600                # Resolution for saved figures (matches other savefig calls)
 GRID_IMPACT_ANALYSIS = True     # Set True to run BSQ-based grid impact analysis
 
 # The adoption analysis runs on every loaded non-baseline measure package.
@@ -348,11 +349,12 @@ except Exception as e:
     print(f"[WARN] County shapefile not loaded: {e}")
 
 # %%
-# Generate the SIX economic-adopter columns (one per NPV case) for each measure
-# package. After this cell, every case column exists in the 'fixed_base' frame:
-#   ref2025_mp{mp}_heatingSavings_coolingLCC_{sub,unsub}_econ_adopter_fixed_base
-#   ref2025_mp{mp}_heatingLCC_coolingSavings_{sub,unsub}_econ_adopter_fixed_base
-#   ref2025_mp{mp}_heatingLCC_coolingLCC_{sub,unsub}_econ_adopter_fixed_base
+# Generate the NINE economic-adopter columns (one per NPV case) for each measure
+# package. After this cell, every case column exists in the 'fixed_base' frame
+# (three scopes x three rebate policy scenarios: unsub, sub, sub_june2026):
+#   ref2025_mp{mp}_heatingSavings_coolingLCC_{unsub,sub,sub_june2026}_econ_adopter_fixed_base
+#   ref2025_mp{mp}_heatingLCC_coolingSavings_{unsub,sub,sub_june2026}_econ_adopter_fixed_base
+#   ref2025_mp{mp}_heatingLCC_coolingLCC_{unsub,sub,sub_june2026}_econ_adopter_fixed_base
 for mp in selected_mps:
     df_tare = DATAFRAMES_BY_MP[mp]['fixed_base']
     scenario_prefix = define_scenario_params(mp, _POLICY)[0]
@@ -416,36 +418,6 @@ print("\n[OK] Economic adoption rate complete (county-level)")
 # %%
 if gdf_counties_raw is not None:
     _adopt_cmap = 'Greens'
-    _adopt_norm = Normalize(vmin=0, vmax=50)
-
-    print("\n--- Summary: adoption_rate_pct ---")
-    for mp in selected_mps:
-        _v = econ_adoption_rate_results[mp]['adoption_rate_pct'].dropna()
-        _pct_high = (_v >= 50).mean() * 100
-        print(f"  MP{mp}: n={len(_v):,} counties | "
-              f"min={_v.min():.1f}% | med={_v.median():.1f}% | "
-              f"mean={_v.mean():.1f}% | max={_v.max():.1f}% | "
-              f"{_pct_high:.1f}% of counties >= 50% adoption potential")
-
-    plot_combined_choropleth(
-        gdf_counties_raw, econ_adoption_rate_results,
-        column='adoption_rate_pct',
-        title_template=HEATING_MP_SUBTITLES,
-        cbar_label='Share of households recovering incremental costs\n'
-                   'through discounted operational savings (%)',
-        cmap=_adopt_cmap, norm=_adopt_norm,
-        selected_mps=selected_mps,
-        geo_level='county',
-        save_figure=SAVE_FIGURES,
-        output_path=os.path.join(PROJECT_ROOT, 'county_econ_adoption_rate_combined.png'),
-    )
-    print("[OK] Economic adoption choropleth generated")
-else:
-    print("[WARN] Adoption choropleth skipped -- county shapefile not available")
-
-# %%
-if gdf_counties_raw is not None:
-    _adopt_cmap = 'Greens'
     _adopt_norm = Normalize(vmin=0, vmax=100)
 
     print("\n--- Summary: adoption_rate_pct ---")
@@ -504,8 +476,9 @@ else:
     # National fuel counts, weighted to homes (same method as the tier dotplot).
     _src = DATAFRAMES_BY_MP[HEATING_MEASURE_PACKAGES[0]][discount_rate]
     fuel_counts_millions = {
-        str(fuel): int(n) * 242 / 1_000_000
-        for fuel, n in _src.groupby('base_heating_fuel', observed=True).size().items()
+        str(fuel): weighted_homes / 1_000_000
+        for fuel, weighted_homes in _src.groupby(
+            'base_heating_fuel', observed=True)['weight'].sum().items()
     }
 
     n_mps = len(HEATING_MEASURE_PACKAGES)
@@ -612,8 +585,9 @@ if not HEATING_MEASURE_PACKAGES:
 else:
     _src = DATAFRAMES_BY_MP[HEATING_MEASURE_PACKAGES[0]][discount_rate]
     fuel_counts_millions = {
-        str(fuel): int(n) * 242 / 1_000_000
-        for fuel, n in _src.groupby('base_heating_fuel', observed=True).size().items()
+        str(fuel): weighted_homes / 1_000_000
+        for fuel, weighted_homes in _src.groupby(
+            'base_heating_fuel', observed=True)['weight'].sum().items()
     }
 
     n_mps = len(HEATING_MEASURE_PACKAGES)
@@ -900,6 +874,34 @@ else:
 
 from cmu_tare_model.utils.export_model_run_results import export_model_run_output
 
+# Reconcile the per-county home tallies before exporting. The adoption and
+# demand tables sum household weights independently, so their totals drift by a
+# hair (float precision) for almost every county. One home's weight -- read from
+# the data, not hardcoded -- is the tolerance: a gap smaller than a single home
+# is that precision noise (or a lone edge-case building only one path counts)
+# and is ignored; a larger gap means the two tables saw a different home set.
+one_home_weight = df_baseline["weight"].median()  # ~242, from the weight column
+
+for mp in selected_mps:
+    _hc = econ_adoption_rate_results[mp][["county", "home_count"]].merge(
+        demand_results[mp][["county", "home_count"]], on="county",
+        how="outer", suffixes=("_adoption", "_demand"),
+    )
+    _hc["delta"] = (_hc["home_count_adoption"] - _hc["home_count_demand"]).abs()
+    _disagree = _hc[_hc["delta"] > one_home_weight]
+    if len(_disagree):
+        print(f"[WARN] MP{mp}: home_count differs by more than one home "
+              f"({one_home_weight:,.2f} weighted) for {len(_disagree)} "
+              f"county(ies):")
+        for _, _row in _disagree.iterrows():
+            print(f"       {_row['county']}: adoption="
+                  f"{_row['home_count_adoption']} demand="
+                  f"{_row['home_count_demand']} (delta={_row['delta']:.2f})")
+    else:
+        print(f"[OK] MP{mp}: home_count agrees within one home "
+              f"({one_home_weight:,.2f} weighted).")
+
+
 for mp in selected_mps:
     # Household CSV (one row per home).
     export_model_run_output(
@@ -930,34 +932,44 @@ print(f"\nTepper exports written to: {os.path.join(output_folder_path, 'tepper_e
 
 
 # %%
-# Reload the edited modules in-place (keeps your 40-min results in memory).
-# Order matters: constants must reload BEFORE the modules that import from it.
-import importlib
-import cmu_tare_model.constants
-import cmu_tare_model.utils.column_names
-import cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount as _rebate_mod
-
-importlib.reload(cmu_tare_model.constants)
-importlib.reload(cmu_tare_model.utils.column_names)
-importlib.reload(_rebate_mod)
-
-print("Reloaded. NON_PARTICIPATING_REBATE_STATES =",
-      cmu_tare_model.constants.NON_PARTICIPATING_REBATE_STATES)
+# Rebate funding summary: weighted dollars by program and by baseline fuel, for
+# each measure package. Runs on the canonical per-MP frame and derives the
+# adopter column via the helpers, so it works on a fresh load-from-disk ('N')
+# session -- it does not rely on names left in memory by the scenario run.
+from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import (
+    summarize_rebate_funding,
+)
+from cmu_tare_model.utils.column_names import create_adoption_col
+from cmu_tare_model.utils.modeling_params import define_scenario_params
 
 
-# %%
-from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import summarize_rebate_funding
-fmt = lambda d: d.round(0).astype('int64')
+def _fmt_dollars(summary_frame):
+    """Round a weighted-dollar summary frame to whole dollars for display."""
+    return summary_frame.round(0).astype('int64')
 
-# 2024 (current data) — HEEHR only:
-by_prog, by_fuel = summarize_rebate_funding(df, 4, 'v4MID', guidance=None)
-print(fmt(by_prog)); print(fmt(by_fuel))   # confirm Natural Gas/Propane/Fuel Oil are non-zero (2024 has no fuel gate)
 
-# June 2026 (after re-run) — with adopters-only:
-adopter_col = 'ref2025_mp4_heatingLCC_coolingSavings_sub_june2026_econ_adopter_fixed_base'
-by_prog, by_fuel = summarize_rebate_funding(df, 4, 'v4MID', guidance='june2026', adopter_col=adopter_col)
-print(fmt(by_prog))                         # HEEHR/HOMES: total_eligible vs adopters_only
-print(fmt(by_fuel))                         # CORRECTNESS: fossil rows MUST be 0
+for mp in selected_mps:
+    df_mp = DATAFRAMES_BY_MP[mp]['fixed_base']
+    prefix = define_scenario_params(mp, _POLICY)[0]
+    adopter_col = create_adoption_col(
+        prefix, 'heatingLCC_coolingSavings_sub_june2026', '_fixed_base')
+
+    print(f"\n===== {HEATING_MP_SUBTITLES.get(mp, f'MP{mp}')} =====")
+
+    # 2024 guidance: HEEHR only, no fuel gate -- fossil baselines DO receive it.
+    by_prog, by_fuel = summarize_rebate_funding(df_mp, mp, _COST, guidance=None)
+    print("2024 guidance -- by program:")
+    print(_fmt_dollars(by_prog))
+    print("2024 guidance -- by baseline fuel (fossil is nonzero here):")
+    print(_fmt_dollars(by_fuel))
+
+    # June 2026 guidance: HEEHR + HOMES, electric-only fuel gate, with adopters.
+    by_prog, by_fuel = summarize_rebate_funding(
+        df_mp, mp, _COST, guidance='june2026', adopter_col=adopter_col)
+    print("\nJune 2026 guidance -- by program (total_eligible vs adopters_only):")
+    print(_fmt_dollars(by_prog))
+    print("June 2026 guidance -- by baseline fuel (fossil MUST be 0):")
+    print(_fmt_dollars(by_fuel))
 
 
 # %% [markdown]
@@ -1465,43 +1477,30 @@ print(f"The code took {elapsed_minutes} minutes and {elapsed_seconds} seconds to
 
 
 # %%
-from cmu_tare_model.utils.inventory_tare_columns import inventory_many, diff_stages, write_report
+# Column-inventory diagnostic. The intermediate frames it inspects
+# (df_euss_am_mpX etc.) only exist when this notebook shares a kernel with the
+# scenario pipeline (%run -i). On a fresh load-from-disk run those names are
+# absent, so skip rather than NameError.
+_inventory_frames = ("df_euss_am_mpX", "df_euss_am_baseline_home",
+                     "df_euss_am_mpX_home")
+if all(name in globals() for name in _inventory_frames):
+    from cmu_tare_model.utils.inventory_tare_columns import (
+        inventory_many, diff_stages, write_report,
+    )
+    frames = {
+        "raw_euss_mp3": df_euss_am_mpX,
+        "baseline_home": df_euss_am_baseline_home,
+        "mp3_home_renamed": df_euss_am_mpX_home,
+        "loaded_mp3_fixed": DATAFRAMES_BY_MP[3]["fixed_base"],
+        "loaded_mp4_fixed": DATAFRAMES_BY_MP[4]["fixed_base"],
+    }
+    inv = inventory_many(frames)
+    diff_stages(inv, "raw_euss_mp3", "mp3_home_renamed")
+    write_report(inv, "tare_column_inventory")
+else:
+    print("[SKIP] Column inventory: scenario-run intermediate frames not in "
+          "memory (fresh load-from-disk run).")
 
-frames = {
-    "raw_euss_mp3":     df_euss_am_mpX,            # initial loaded (raw ResStock, bldg_id index)
-    "baseline_home":    df_euss_am_baseline_home,  # after df_enduse_refactored
-    "mp3_home_renamed": df_euss_am_mpX_home,       # after df_enduse_compare
-    "loaded_mp3_fixed": DATAFRAMES_BY_MP[3]["fixed_base"],  # final household frame used by analysis
-    "loaded_mp4_fixed": DATAFRAMES_BY_MP[4]["fixed_base"],
-}
-inv = inventory_many(frames)
-diff_stages(inv, "raw_euss_mp3", "mp3_home_renamed")   # what the rename step drops/adds
-write_report(inv, "tare_column_inventory")             # -> .csv + .txt
-
-# %%
-econ_adoption_rate_results[3].columns
-econ_adoption_rate_results[4].columns
-
-bill_savings_results[3].columns
-bill_savings_results[4].columns
-
-demand_results[3].columns
-demand_results[4].columns
-
-# %%
-econ_adoption_rate_results[3].columns
-econ_adoption_rate_results[4].columns
-
-# %%
-bill_savings_results[3].columns
-bill_savings_results[4].columns
-
-
-# %%
-demand_results[3].columns
-demand_results[4].columns
-
-# %%
 
 
 

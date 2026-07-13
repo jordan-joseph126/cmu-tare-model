@@ -189,11 +189,13 @@ REBATE_MAPPING = {
 # =============================================================
 # CONSTANTS: IRA REBATE ELIGIBILITY BY MEASURE PACKAGE
 # =============================================================
-# Only high-efficiency equipment qualifies for IRA HOMES rebates.
-# MP3 uses standard-efficiency ASHP (SEER 15) which does NOT meet
-# Energy Star certification requirements for rebate eligibility.
-# MP4/MP8/MP9/MP10 use high-efficiency ASHP (SEER 24+) and qualify.
-REBATE_ELIGIBLE_HEATING_MPS = [4, 8, 9, 10]
+# Only ENERGY STAR-certified heat pumps qualify for the federal rebates.
+# MP3's modeled heat pump (SEER 15 / 9.0 HSPF) sits just below the ENERGY STAR
+# minimum, but is re-specified to the ENERGY STAR floor (>= 16.0 SEER1 /
+# >= 9.5 HSPF1) in process_euss_data.df_enduse_compare so it qualifies -- and
+# its capital cost reflects that ENERGY STAR install. MP4/MP8/MP9/MP10 use
+# high-efficiency ASHP (SEER 24+) and qualify as modeled.
+REBATE_ELIGIBLE_HEATING_MPS = [3, 4, 8, 9, 10]
 
 # =============================================================
 # CONSTANTS: REBATE-POLICY-SCENARIO SENSITIVITY AXIS (2024 vs June 2026 DOE guidance)

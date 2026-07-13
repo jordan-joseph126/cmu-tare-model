@@ -273,9 +273,30 @@ def calculate_lifetime_fuel_costs(
                     
                     # Add baseline column to results for reference
                     lifetime_dict[baseline_costs_col] = df_baseline_costs[baseline_costs_col]
-                    
+
                     # Track columns for masking
                     category_columns_to_mask.extend([baseline_costs_col, savings_cost_col])
+
+                    # Cooling-only diagnostic flag (does NOT enter NPV or masking).
+                    # For some homes the heat pump's cooling energy exceeds the
+                    # baseline air conditioner's, so cooling operating savings go
+                    # negative. This is a real ResStock result: most such homes
+                    # have a baseline room AC that cools one room, while the heat
+                    # pump cools the whole house, so cooling kWh legitimately
+                    # rises. The negative savings stay in the NPV as a real
+                    # operating cost; this boolean only marks the affected homes
+                    # so the phenomenon can be reported. True means a valid
+                    # cooling home whose lifetime cooling savings is below zero.
+                    # Excluded homes have NaN savings, which compare False here,
+                    # so they stay False. Left out of category_columns_to_mask on
+                    # purpose so it is never masked to NaN and stays boolean.
+                    if category == 'cooling':
+                        negative_flag_col = (
+                            f'{scenario_prefix}{category}_lifetime_savings_negative'
+                        )
+                        lifetime_dict[negative_flag_col] = (
+                            lifetime_dict[savings_cost_col] < 0
+                        )
                 elif verbose:
                     raise ValueError(f"Warning: Baseline costs column '{baseline_costs_col}' not found. Skipping avoided cost calculation.")
 

@@ -434,7 +434,7 @@ STAGE: baseline_home  (67 entries)
       include_cooling  <bool>
 
 ==========================================================================================
-STAGE: mp3_home_renamed  (127 entries)
+STAGE: mp3_home_renamed  (130 entries)
 ==========================================================================================
   [building] (11)
       square_footage  <float64>
@@ -557,7 +557,7 @@ STAGE: mp3_home_renamed  (127 entries)
       county_fips  <object>
       puma  <object>
       county_and_puma  <object>
-  [other] (13)
+  [other] (14)
       include_all  <bool>
       valid_fuel_heating  <bool>
       valid_tech_heating  <bool>
@@ -566,16 +566,19 @@ STAGE: mp3_home_renamed  (127 entries)
       valid_tech_cooling  <bool>
       include_cooling  <bool>
       mp4_modeled_savings_frac  <float64>
+      ref2025_mp4_cooling_lifetime_savings_negative  <bool>
       percent_AMI  <float64>
       lmi_or_mui  <object>
       public_discount_rate  <float64>
       private_discount_rate_fixed_base  <float64>
       private_discount_rate_variable  <float64>
-  [rebate_policy] (1)
+  [rebate_policy] (3)
       mp4_heating_rebate_amount_v4MID  <float64>
+      mp4_heating_rebate_amount_june2026_v4MID  <float64>
+      mp4_rebate_eligibility_june2026  <object>
 
 ==========================================================================================
-STAGE: loaded_mp3_fixed  (166 entries)
+STAGE: loaded_mp3_fixed  (169 entries)
 ==========================================================================================
   [adopter_flag] (9)
       ref2025_mp3_heatingSavings_coolingLCC_sub_econ_adopter_fixed_base  <float64>
@@ -736,7 +739,7 @@ STAGE: loaded_mp3_fixed  (166 entries)
       ref2025_mp3_heatingLCC_coolingLCC_sub_net_capital_cost_v4MID  <float64>
       ref2025_mp3_heatingLCC_coolingLCC_sub_june2026_private_npv_fixed_base  <float64>
       ref2025_mp3_heatingLCC_coolingLCC_sub_june2026_net_capital_cost_v4MID  <float64>
-  [other] (16)
+  [other] (17)
       include_all  <bool>
       valid_fuel_heating  <bool>
       valid_tech_heating  <bool>
@@ -745,6 +748,7 @@ STAGE: loaded_mp3_fixed  (166 entries)
       valid_tech_cooling  <bool>
       include_cooling  <bool>
       mp3_modeled_savings_frac  <float64>
+      ref2025_mp3_cooling_lifetime_savings_negative  <bool>
       percent_AMI  <float64>
       lmi_or_mui  <object>
       public_discount_rate  <float64>
@@ -753,11 +757,13 @@ STAGE: loaded_mp3_fixed  (166 entries)
       row_id_heating_upgrade  <object>
       heating_upgrade_pm1_euss  <float64>
       heating_upgrade_pm2_euss  <float64>
-  [rebate_policy] (1)
+  [rebate_policy] (3)
       mp3_heating_rebate_amount_v4MID  <float64>
+      mp3_heating_rebate_amount_june2026_v4MID  <float64>
+      mp3_rebate_eligibility_june2026  <object>
 
 ==========================================================================================
-STAGE: loaded_mp4_fixed  (166 entries)
+STAGE: loaded_mp4_fixed  (169 entries)
 ==========================================================================================
   [adopter_flag] (9)
       ref2025_mp4_heatingSavings_coolingLCC_sub_econ_adopter_fixed_base  <float64>
@@ -918,7 +924,7 @@ STAGE: loaded_mp4_fixed  (166 entries)
       ref2025_mp4_heatingLCC_coolingLCC_sub_net_capital_cost_v4MID  <float64>
       ref2025_mp4_heatingLCC_coolingLCC_sub_june2026_private_npv_fixed_base  <float64>
       ref2025_mp4_heatingLCC_coolingLCC_sub_june2026_net_capital_cost_v4MID  <float64>
-  [other] (16)
+  [other] (17)
       include_all  <bool>
       valid_fuel_heating  <bool>
       valid_tech_heating  <bool>
@@ -927,6 +933,7 @@ STAGE: loaded_mp4_fixed  (166 entries)
       valid_tech_cooling  <bool>
       include_cooling  <bool>
       mp4_modeled_savings_frac  <float64>
+      ref2025_mp4_cooling_lifetime_savings_negative  <bool>
       percent_AMI  <float64>
       lmi_or_mui  <object>
       public_discount_rate  <float64>
@@ -935,5 +942,7 @@ STAGE: loaded_mp4_fixed  (166 entries)
       row_id_heating_upgrade  <object>
       heating_upgrade_pm1_euss  <float64>
       heating_upgrade_pm2_euss  <float64>
-  [rebate_policy] (1)
+  [rebate_policy] (3)
       mp4_heating_rebate_amount_v4MID  <float64>
+      mp4_heating_rebate_amount_june2026_v4MID  <float64>
+      mp4_rebate_eligibility_june2026  <object>

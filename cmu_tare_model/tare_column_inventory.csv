@@ -526,6 +526,7 @@ mp3_home_renamed,column,baseline_heating_lifetime_fuel_cost,fuel_cost,float64,26
 mp3_home_renamed,column,ref2025_mp4_cooling_lifetime_fuel_cost,fuel_cost,float64,250576,75.6,331531
 mp3_home_renamed,column,ref2025_mp4_cooling_lifetime_savings_fuel_cost,fuel_cost,float64,250576,75.6,331531
 mp3_home_renamed,column,baseline_cooling_lifetime_fuel_cost,fuel_cost,float64,250576,75.6,331531
+mp3_home_renamed,column,ref2025_mp4_cooling_lifetime_savings_negative,other,bool,331531,100.0,331531
 mp3_home_renamed,column,mp4_heating_replacement_installed_cost_v4MID,capital_cost,float64,260211,78.5,331531
 mp3_home_renamed,column,mp4_heating_upgrade_installed_cost_v4MID,capital_cost,float64,260211,78.5,331531
 mp3_home_renamed,column,mp4_cooling_replacement_installed_cost_v4MID,capital_cost,float64,250307,75.5,331531
@@ -538,6 +539,8 @@ mp3_home_renamed,column,public_discount_rate,other,float64,331531,100.0,331531
 mp3_home_renamed,column,private_discount_rate_fixed_base,other,float64,331531,100.0,331531
 mp3_home_renamed,column,private_discount_rate_variable,other,float64,331531,100.0,331531
 mp3_home_renamed,column,mp4_heating_rebate_amount_v4MID,rebate_policy,float64,260211,78.5,331531
+mp3_home_renamed,column,mp4_heating_rebate_amount_june2026_v4MID,rebate_policy,float64,260211,78.5,331531
+mp3_home_renamed,column,mp4_rebate_eligibility_june2026,rebate_policy,object,260211,78.5,331531
 loaded_mp3_fixed,index,bldg_id,identifier,int64,331531,100.0,331531
 loaded_mp3_fixed,column,weight,identifier,float64,331531,100.0,331531
 loaded_mp3_fixed,column,square_footage,building,float64,331531,100.0,331531
@@ -653,6 +656,7 @@ loaded_mp3_fixed,column,baseline_heating_lifetime_fuel_cost,fuel_cost,float64,26
 loaded_mp3_fixed,column,ref2025_mp3_cooling_lifetime_fuel_cost,fuel_cost,float64,250576,75.6,331531
 loaded_mp3_fixed,column,ref2025_mp3_cooling_lifetime_savings_fuel_cost,fuel_cost,float64,250576,75.6,331531
 loaded_mp3_fixed,column,baseline_cooling_lifetime_fuel_cost,fuel_cost,float64,250576,75.6,331531
+loaded_mp3_fixed,column,ref2025_mp3_cooling_lifetime_savings_negative,other,bool,331531,100.0,331531
 loaded_mp3_fixed,column,mp3_heating_replacement_installed_cost_v4MID,capital_cost,float64,260211,78.5,331531
 loaded_mp3_fixed,column,mp3_heating_upgrade_installed_cost_v4MID,capital_cost,float64,260211,78.5,331531
 loaded_mp3_fixed,column,mp3_cooling_replacement_installed_cost_v4MID,capital_cost,float64,250307,75.5,331531
@@ -665,6 +669,8 @@ loaded_mp3_fixed,column,public_discount_rate,other,float64,331531,100.0,331531
 loaded_mp3_fixed,column,private_discount_rate_fixed_base,other,float64,331531,100.0,331531
 loaded_mp3_fixed,column,private_discount_rate_variable,other,float64,331531,100.0,331531
 loaded_mp3_fixed,column,mp3_heating_rebate_amount_v4MID,rebate_policy,float64,260211,78.5,331531
+loaded_mp3_fixed,column,mp3_heating_rebate_amount_june2026_v4MID,rebate_policy,float64,260211,78.5,331531
+loaded_mp3_fixed,column,mp3_rebate_eligibility_june2026,rebate_policy,object,62809,18.9,331531
 loaded_mp3_fixed,column,row_id_heating_replacement,capital_cost,object,331531,100.0,331531
 loaded_mp3_fixed,column,heating_replacement_pm1_euss,capital_cost,float64,331531,100.0,331531
 loaded_mp3_fixed,column,heating_replacement_pm2_euss,capital_cost,float64,330744,99.8,331531
@@ -819,6 +825,7 @@ loaded_mp4_fixed,column,baseline_heating_lifetime_fuel_cost,fuel_cost,float64,26
 loaded_mp4_fixed,column,ref2025_mp4_cooling_lifetime_fuel_cost,fuel_cost,float64,250576,75.6,331531
 loaded_mp4_fixed,column,ref2025_mp4_cooling_lifetime_savings_fuel_cost,fuel_cost,float64,250576,75.6,331531
 loaded_mp4_fixed,column,baseline_cooling_lifetime_fuel_cost,fuel_cost,float64,250576,75.6,331531
+loaded_mp4_fixed,column,ref2025_mp4_cooling_lifetime_savings_negative,other,bool,331531,100.0,331531
 loaded_mp4_fixed,column,mp4_heating_replacement_installed_cost_v4MID,capital_cost,float64,260211,78.5,331531
 loaded_mp4_fixed,column,mp4_heating_upgrade_installed_cost_v4MID,capital_cost,float64,260211,78.5,331531
 loaded_mp4_fixed,column,mp4_cooling_replacement_installed_cost_v4MID,capital_cost,float64,250307,75.5,331531
@@ -831,6 +838,8 @@ loaded_mp4_fixed,column,public_discount_rate,other,float64,331531,100.0,331531
 loaded_mp4_fixed,column,private_discount_rate_fixed_base,other,float64,331531,100.0,331531
 loaded_mp4_fixed,column,private_discount_rate_variable,other,float64,331531,100.0,331531
 loaded_mp4_fixed,column,mp4_heating_rebate_amount_v4MID,rebate_policy,float64,260211,78.5,331531
+loaded_mp4_fixed,column,mp4_heating_rebate_amount_june2026_v4MID,rebate_policy,float64,260211,78.5,331531
+loaded_mp4_fixed,column,mp4_rebate_eligibility_june2026,rebate_policy,object,68293,20.6,331531
 loaded_mp4_fixed,column,row_id_heating_replacement,capital_cost,object,331531,100.0,331531
 loaded_mp4_fixed,column,heating_replacement_pm1_euss,capital_cost,float64,331531,100.0,331531
 loaded_mp4_fixed,column,heating_replacement_pm2_euss,capital_cost,float64,330744,99.8,331531

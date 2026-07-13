@@ -163,7 +163,7 @@ def _assign_upgrade_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
     row_id_col = f'row_id_{end_use}_upgrade'
 
     # ========== HVAC OPTIONS: HEATING & COOLING ---> HEAT PUMP ==========
-    # MP3 and MP7 Standard heat pumps (SEER 18) | MP4 and MP8-10: High-efficiency heat pumps
+    # MP3/MP7 standard-efficiency heat pumps (SEER 15) | MP4/MP8-10: high-efficiency (SEER 24+)
     # However, the efficiency level does not impact row_id mapping in REMDB v4 but instead pm1/pm2 in the regression formula
     # Generally we use multi-zone non-ducted for homes without ducts, but may update to single-zone in the future for smaller homes 
     # New circuit will be addressed in future versions, but excluded here for simplicity.

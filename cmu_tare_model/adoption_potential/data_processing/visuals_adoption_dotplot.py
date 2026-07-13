@@ -493,6 +493,7 @@ def plot_adoption_panel(
     separator_alpha: float = 0.5,
     annotation_fontsize: int = 7,
     annotation_y_offset_pts: float = 8.0,
+    cluster_stagger_pts: float = 9.0,
     annotation_x_offset_pts: float = 14.0,
     xlim_margin: float = 12.0,
     show_delta_annotation: bool = False,
@@ -523,6 +524,12 @@ def plot_adoption_panel(
         Font size for the ``X (+Y)`` labels above markers. Default 7.
     annotation_y_offset_pts : float
         Vertical offset in points for annotations. Default 8.
+    cluster_stagger_pts : float
+        Extra vertical offset in points added per stagger level for clusters
+        of 3 or more near-equal markers, so their labels stack in a ladder
+        instead of overprinting. Default 9 (about one line height at
+        ``annotation_fontsize=7``). Only affects 3+ marker clusters; single
+        markers and 2-marker split clusters are unchanged.
     xlim_margin : float
         Extra horizontal margin (in data units) added to each side of the
         plot so split-cluster labels at x=0% and x=100% have room to
@@ -577,6 +584,7 @@ def plot_adoption_panel(
                 'x': x_val,
                 'delta': float(row['delta_pct']),
                 'homes_m': float(row['weighted_homes_millions']),
+                'stagger': 0,
             })
 
         row_data.sort(key=lambda r: r['x'])
@@ -618,17 +626,17 @@ def plot_adoption_panel(
                 cluster[0]['shift']  = 'cluster_left'
                 cluster[-1]['shift'] = 'cluster_right'
             elif len(cluster) > 2:
-                # 3+ markers: handle middle-only clusters; mixed/edge
-                # 3-marker clusters fall through to default positioning
-                # (rare; would need vertical-stagger to handle properly).
-                if all(10 <= item['x'] <= 90 for item in cluster):
-                    cluster[0]['shift']  = 'cluster_left'
-                    cluster[-1]['shift'] = 'cluster_right'
-                    for mid in cluster[1:-1]:
-                        mid['shift'] = 'center'
-                else:
-                    for item in cluster:
-                        item['shift'] = None
+                # 3+ markers sit too close for a left/right split to separate
+                # them (worst for MP3, and now common with the 3-marker
+                # replacement-credit and rebate-policy-scenario modes). Ladder
+                # the labels vertically instead: each marker's annotations are
+                # pushed one step further above/below the row so they stack
+                # rather than overprint. Horizontal alignment is left to the
+                # edge-aware default rule below, so labels near x=0/100 never
+                # clip.
+                for level, item in enumerate(cluster):
+                    item['shift'] = None
+                    item['stagger'] = level
 
         all_x: List[float] = []
         for item in row_data:
@@ -676,7 +684,7 @@ def plot_adoption_panel(
                 ann_text = f'{ira_val:.0f}% ({sign}{delta:.0f}%)'
             else:
                 ann_text = f'{ira_val:.0f}%'
-            top_offset = annotation_y_offset_pts
+            top_offset = annotation_y_offset_pts + item['stagger'] * cluster_stagger_pts
             ax.annotate(
                 ann_text,
                 xy=(x_val, y),
@@ -703,7 +711,8 @@ def plot_adoption_panel(
                         f'{ira_homes:.1f}{homes_unit} '
                         f'({sign_h}{delta_homes:.1f}{homes_unit})'
                     )
-                bottom_offset = -annotation_y_offset_pts
+                bottom_offset = -(annotation_y_offset_pts
+                                  + item['stagger'] * cluster_stagger_pts)
                 ax.annotate(
                     ann_homes,
                     xy=(x_val, y),

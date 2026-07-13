@@ -391,6 +391,22 @@ def df_enduse_compare(
         df_compare['size_heating_system_primary_k_btu_h'] = df_mp['out.params.size_heating_system_primary_k_btu_h']
         # df_compare['size_heating_secondary_k_btu_h'] = df_mp['out.params.size_heating_system_secondary_k_btu_h']
         df_compare['upgrade_hvac_heating_efficiency'] = df_mp['upgrade.hvac_heating_efficiency']
+
+        # ENERGY STAR override (MP3 only). MP3's modeled heat pump is
+        # SEER 15 / 9.0 HSPF -- just below the ENERGY STAR minimum
+        # (>= 16.0 SEER1 / >= 9.5 HSPF1) required for the federal heat-pump
+        # rebate. To model MP3 as a rebate-eligible ENERGY STAR install, rewrite
+        # its upgrade spec to that floor. Only the heating SEER value feeds the
+        # REMDB v4 upgrade cost (pm2 = SEER1), so this raises MP3 capital cost
+        # modestly; HSPF is bumped for spec accuracy but has no cost lever in
+        # this model. Energy use is unchanged (it comes from the ResStock
+        # simulation, not from this string).
+        if menu_mp == 3:
+            df_compare['upgrade_hvac_heating_efficiency'] = (
+                df_compare['upgrade_hvac_heating_efficiency']
+                .str.replace('SEER 15', 'SEER 16', regex=False)
+                .str.replace('9.0 HSPF', '9.5 HSPF', regex=False)
+            )
     
     # COOLING - only if in scope
     if 'cooling' in VALID_CATEGORIES:
@@ -398,6 +414,18 @@ def df_enduse_compare(
         df_compare['hvac_cooling_efficiency'] = df_mp['in.hvac_cooling_efficiency']
         df_compare['size_cooling_system_primary_k_btu_h'] = df_mp['out.params.size_cooling_system_primary_k_btu_h']
         df_compare['upgrade_hvac_cooling_efficiency'] = df_mp['upgrade.hvac_cooling_efficiency']
+
+        # ENERGY STAR override (MP3 only), parallel to the heating override above
+        # so the two upgrade-spec columns stay consistent. ResStock records the
+        # MP3 cooling upgrade as the bare "Heat Pump" label (no SEER encoded), so
+        # this replace is a no-op today; it keeps the columns in sync if a future
+        # data vintage carries a numeric cooling spec.
+        if menu_mp == 3:
+            df_compare['upgrade_hvac_cooling_efficiency'] = (
+                df_compare['upgrade_hvac_cooling_efficiency']
+                .str.replace('SEER 15', 'SEER 16', regex=False)
+                .str.replace('9.0 HSPF', '9.5 HSPF', regex=False)
+            )
 
     # WATER HEATING - only if in scope
     if 'waterHeating' in VALID_CATEGORIES:

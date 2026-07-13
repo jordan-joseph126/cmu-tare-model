@@ -312,7 +312,7 @@ PRIVATE IMPACTS: OVERVIEW
 Step 1: Calculate annual operating (fuel) costs
 Step 2: Calculate equipment capital costs (For space heating, include ductwork and weatherization (MP9 and MP10))
 Step 3: Calculate replacement cost (replacing existing piece of equipment with similar technology)
-Step 4: Calculate net equipment capital costs and private NPV (less WTP and more WTP)
+Step 4: Calculate net equipment capital costs and private NPV (nine cases: three scopes x three rebate policy scenarios)
 
 ----------------------------------------------------------------------------------------------------------------------
 Step 1: Calculate annual operating (fuel) costs
@@ -357,9 +357,10 @@ SUMMARY DATAFRAME FOR MP{menu_mp}: df_euss_am_mp{menu_mp}_home
 from cmu_tare_model.utils.inflation_adjustment import *
 from cmu_tare_model.utils.column_names import create_cost_col
 
-# ============================================================================
-# UNIFIED COST MODULES: Routes to v3 (probabilistic) or v4 (regression)
-# based on cost_scenario parameter
+# # ============================================================================
+# COST MODULES: REMDB v4 regression-based installed costs.
+# (These unified modules retain a legacy v3 probabilistic path, but this
+# pipeline runs v4 only -- see REMDB_COST_SCENARIO_KEYS in constants.py.)
 # ============================================================================
 from cmu_tare_model.private_impact.calculations.calculate_equipment_installation_costs import (
     calculate_upgrade_installed_cost,
@@ -370,7 +371,9 @@ from cmu_tare_model.private_impact.calculations.calculate_equipment_replacement_
     calculate_replacement_installed_cost
 )
 
-# Enclosure costs (not yet unified — still uses v3 calculations path)
+# Enclosure costs use a separate probabilistic sampling path. This is only
+# exercised for MP9/MP10 enclosure measures, not the MP3/MP4 HVAC models in
+# this study, so it is kept as-is rather than migrated to the v4 regression.
 from cmu_tare_model.private_impact.calculations.calculate_enclosure_upgrade_costs import (
     calculate_enclosure_retrofit_upgrade_costs
 )
@@ -401,14 +404,14 @@ if VERBOSE:
     ----------------------------------------------------------------------------------------------------------------------
 
     Cost Databases:
-    - REMDB v3: Excel-based probabilistic cost dictionaries (existing)
-    - REMDB v4: Regression-based deterministic cost calculations (new)
+    - REMDB v4: Regression-based deterministic cost calculations
     - Cost scenarios: {REMDB_COST_SCENARIO_KEYS}
 
     ====================================================================================================================================================================
-    LIFETIME CAPITAL COSTS RESULTS: No IRA and IRA-Reference (Rebates)
+    LIFETIME CAPITAL COSTS RESULTS: 2025 Reference Case (With and Without Rebates)
 
     """)
+
 
 # %%
 print("\n" + "="*80)
@@ -416,12 +419,7 @@ print("LOADING CAPITAL COST DATABASES")
 print("="*80)
 
 # ============================================================================
-# REMDB v3: Excel-based cost dictionaries (existing)
-# DELETED V3 BECAUSE WE ARE NOW USING V4 (REGRESSION-BASED COSTS)
-# ============================================================================
-
-# ============================================================================
-# REMDB v4: Regression-based cost database (new)
+# REMDB v4: Regression-based cost database
 # ============================================================================
 print("\nREMDB v4 (Regression):")
 remdb_v4_costs = load_remdb_v4_data()
@@ -437,9 +435,8 @@ print("\n" + "="*80 + "\n")
 # ============================================================================
 # REMDB v4: CAPITAL COST SCENARIO LOOP
 # ============================================================================
-# Calculates installed costs using REMDB v4 regression methodology alongside
-# the existing REMDB v3 probabilistic costs. Results stored in nested dict
-# for cross-scenario comparison.
+# Calculates installed costs using the REMDB v4 regression methodology.
+# Results stored in a nested dict for cross-scenario comparison.
 #
 # v4 workflow (two-step per end-use):
 #   1. add_remdb_metrics() - assigns row_id, maps coefficients, converts units
@@ -448,7 +445,6 @@ print("\n" + "="*80 + "\n")
 # Currently implemented for heating only. Other end-uses (waterHeating,
 # clothesDrying, cooking) will be added when REMDB v4 supports them.
 # ============================================================================
-VERBOSE = True
 
 # Initialize nested dictionary: CAPITAL_COSTS_MPX[end_use][cost_type][scenario_key]
 CAPITAL_COSTS_MPX = {
@@ -460,25 +456,13 @@ print("="*80)
 print(f"CALCULATING CAPITAL COSTS - MEASURE PACKAGE {menu_mp}")
 print("="*80)
 
-# Store v3 results from df_euss_am_mpX_home (already calculated above)
-CAPITAL_COSTS_MPX['heating']['replacement']['v3'] = df_euss_am_mpX_home.copy()
-CAPITAL_COSTS_MPX['heating']['upgrade']['v3'] = df_euss_am_mpX_home.copy()
-print("\nScenario: v3 | Method: v3 | Percentile: ref")
-print(f"  Stored existing v3 results from df_euss_am_mpX_home")
-
 # Loop over REMDB v4 cost scenarios (low, mid, high percentiles)
 for scenario_key in REMDB_COST_SCENARIO_KEYS:
-    # Derive routing method and percentile from cost_scenario
-    if scenario_key == 'v3':
-        method, percentile = 'v3', None
-    else:
-        method = 'remdb_v4'
-        percentile = scenario_key[2:].lower()
-    
-    # Skip v3 (already stored above)
-    if method == 'v3':
-        continue
-    
+    # All active scenarios use the REMDB v4 regression. The percentile token
+    # is the scenario suffix: v4LOW -> 'low', v4MID -> 'mid', v4HIGH -> 'high'.
+    method = 'remdb_v4'
+    percentile = scenario_key[2:].lower()
+
     print(f"\nScenario: {scenario_key} | Method: {method} | Percentile: {percentile}")
     
     # Work from a clean copy of the base DataFrame
@@ -575,9 +559,6 @@ print("="*80)
 v4_columns_merged = []
 
 for scenario_key in REMDB_COST_SCENARIO_KEYS:
-    if scenario_key == 'v3':
-        continue  # v3 columns already on df_euss_am_mpX_home
-
     # The 'upgrade' DataFrame contains heating upgrade, heating replacement,
     # AND cooling replacement cost columns (all computed in the v4 loop)
     df_v4_source = CAPITAL_COSTS_MPX['heating']['upgrade'][scenario_key]
@@ -703,10 +684,6 @@ DATAFRAMES_MPX_RCM_DISCOUNT_RATE = {
 # ============================================================================
 v4_cost_columns_added = []
 for scenario_key in REMDB_COST_SCENARIO_KEYS:
-    # Skip v3 — v3 columns already present from df_euss_am_mpX_home
-    if scenario_key == 'v3':
-        continue
-
     # Get v4 DataFrame that contains the scenario-specific columns
     # Use 'upgrade' since it contains both upgrade and replacement columns
     df_v4_source = CAPITAL_COSTS_MPX['heating']['upgrade'][scenario_key]
@@ -747,27 +724,32 @@ Completed Steps:
 3. Calculate replacement cost (replacing existing piece of eqipment with similar technology)                [COMPLETED]
 
 REMAINING STEP:
-Step 4: Calculate net equipment capital costs and private NPV (less WTP and more WTP)
+Step 4: Calculate net equipment capital costs and private NPV
 ------------------------------------------------------------------------------------------------------
 
 ========================================================================================================
 SCENARIO ANALYSIS: ADOPTION POTENTIAL
     determine_economic_adoption_potential.py defines economic_adoption_decision.
-    A home is an economic adopter if its private incremental NPV (moreWTP framing) >= 0.
+    A home is an economic adopter if its private incremental NPV >= 0.
     Climate damages are computed and stored but do not enter the adoption decision.
-    Three adopter columns are produced per call, one per NPV case.
+    Nine adopter columns are produced per call, one per NPV case.
 ========================================================================================================
 
-Economic adopter condition (moreWTP >= 0) applied across three NPV cases:
-    heating_only                --> Heating capital; heating savings only
-    heating_and_cooling_savings --> Heating capital; heating + cooling savings
-    heating_and_cooling_full    --> Heating + cooling capital; heating + cooling savings
+Economic adopter condition (NPV >= 0) applied across nine NPV cases
+(three replacement-credit scopes x three rebate-policy scenarios).
+All nine cases credit BOTH heating and cooling operating savings; the scope
+token controls which end-use's avoided-replacement capital (LCC) is credited:
+    heatingSavings_coolingLCC --> cooling replacement credited; no heating LCC
+    heatingLCC_coolingSavings --> heating replacement credited; no cooling LCC
+    heatingLCC_coolingLCC     --> both heating and cooling replacement credited
+    each x rebate-policy scenario --> _unsub, _sub, _sub_june2026 
 
 ------------------------------------------------------------------------------------------------------
 
 Cost scenarios to process: {REMDB_COST_SCENARIO_KEYS}
       
 """)
+
 
 # %% [markdown]
 # # MEASURE PACKAGE (MPX): 2025 REFERENCE CASE
@@ -806,7 +788,7 @@ for cost_scenario_key in REMDB_COST_SCENARIO_KEYS:
         df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE[discount_rate]
 
         # One call per (cost_scenario, discount_rate) combination.
-        # calculate_private_npv produces all three NPV case columns in a single call.
+        # calculate_private_npv produces all nine NPV case columns in a single call.
         df = calculate_private_npv(
             df=df,
             df_fuel_costs=df_mpX_ref2025_fuel_costs,
@@ -861,7 +843,7 @@ for cost_scenario_key in REMDB_COST_SCENARIO_KEYS:
             print(f"  Columns: {duplicate_cols[:5]}")
 
         # One call per (cost_scenario, discount_rate) combination.
-        # economic_adoption_decision applies moreWTP >= 0 across all three NPV cases
+        # economic_adoption_decision applies NPV >= 0 across all nine NPV cases
         # in a single call. Climate damages remain in the DataFrame for sensitivity
         # analysis but do not enter the adoption decision.
         df = economic_adoption_decision(
@@ -879,11 +861,14 @@ for cost_scenario_key in REMDB_COST_SCENARIO_KEYS:
 if PRINT_VERBOSE_DATAFRAMES:
     print(f"\n{'='*100}")
     print(f"DATAFRAME FOR MP{menu_mp} AFTER DETERMINING ECONOMIC ADOPTION FEASIBILITY")
-    print("Three adopter columns produced per NPV case:")
-    print("  heating_only, heating_and_cooling_savings, heating_and_cooling_full")
+    print("Nine adopter columns produced "
+          "(three replacement-credit scopes x three rebate-policy scenarios):")
+    print("  heatingSavings_coolingLCC, heatingLCC_coolingSavings, heatingLCC_coolingLCC")
+    print("  each x {_unsub, _sub, _sub_june2026}")
     print(f"{'='*100}")
     print(DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base'])
     print()
+
 
 # %% [markdown]
 # # Model Runtime
@@ -907,14 +892,12 @@ elapsed_seconds = int(elapsed_seconds % 60)
 print(f"The code took {elapsed_minutes} minutes and {elapsed_seconds} seconds to execute.")
 
 # %%
-
-
-# %%
 # =====================================================================
 # Economic adopter analysis -- results check
-# Adopter cols: float 0.0/1.0 (1 = moreWTP >= 0 adopter, NaN = excluded)
-# Three NPV cases per MP: heating_only | heating_and_cooling_savings |
-#                         heating_and_cooling_full
+# Adopter cols: float 0.0/1.0 (1 = NPV >= 0 adopter, NaN = excluded)
+# Nine NPV cases per MP: three replacement-credit scopes
+# (heatingSavings_coolingLCC | heatingLCC_coolingSavings | heatingLCC_coolingLCC)
+# x three rebate-policy scenarios (_unsub | _sub | _sub_june2026)
 # =====================================================================
 import pandas as pd
 
@@ -995,24 +978,26 @@ for col in adopter_cols:
 
 
 # %%
-"""Copy-paste verification cell: June 2026 rebate fossil gate (MP4).
+"""Spec-driven verification: June 2026 rebate fuel gate (MP4).
 
-NOT run automatically and NOT part of the .ipynb. Paste the CELL block below
-into the main notebook AFTER the June 2026 rebate path and its downstream
-economic-adopter step have run, so the frame carries:
-  - mp4_heating_rebate_amount_june2026_v4MID
-  - mp4_rebate_eligibility_june2026
-  - ref2025_mp4_heatingLCC_coolingSavings_sub_june2026_econ_adopter_fixed_base
+This cell runs as part of the notebook. It checks the adjudicated June 2026
+DOE rule: rebates may not fund removing a fossil heating system, so only
+existing electric-resistance baselines (base_heating_fuel == 'Electricity')
+qualify for HEEHR or HOMES. Every fossil baseline (Natural Gas, Propane,
+Fuel Oil) must therefore receive $0.
 
-Pass rule:
-  - by_fuel: every NON-electric baseline row must be $0 in BOTH 'total_eligible'
-    and 'adopters_only'. A nonzero fossil row means the fuel gate has a real bug.
-  - 'adopters_only' national total is the figure to compare against the ~$8-9B
-    appropriation; 'total_eligible' is the uncapped potential (no funding cap
-    is modeled).
+The check aggregates weighted June 2026 rebate dollars by baseline fuel and
+asserts the spec directly, so it fails loudly if the gate ever regresses:
+  1. every NON-electric baseline fuel is exactly $0 -- a nonzero fossil row
+     means fossil-system removal was funded (a gate regression); and
+  2. the Electricity baseline receives > $0 -- guards against a bug that
+     silently zeroes every rebate and would otherwise pass check 1.
+
+Reported figures: 'total_eligible' is the uncapped potential (no funding cap
+is modeled); 'adopters_only' (economic adopters) is the figure to compare
+against the ~$8-9B appropriation.
 """
 
-# ===== CELL (paste into the notebook) =====
 from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import (
     summarize_rebate_funding,
 )
@@ -1024,12 +1009,14 @@ _COST = 'v4MID'
 _METHOD_SUFFIX = '_fixed_base'
 _WEIGHT_COL = 'weight'  # adjust if the frame's household-weight column differs
 
-# Hold the heating-replacement-credit scenario fixed; use its June 2026 adopter.
+# The fuel gate is applied to the rebate itself, so 'total_eligible' by fuel is
+# identical across NPV scopes; one representative adopter scope drives the
+# informational 'adopters_only' column.
 _prefix = define_scenario_params(_MP)[0]
 _adopter_col = create_adoption_col(
     _prefix, 'heatingLCC_coolingSavings_sub_june2026', _METHOD_SUFFIX)
 
-_df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base']  # the canonical MP4 frame in the notebook
+_df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base']  # canonical MP4 frame
 
 by_program, by_fuel = summarize_rebate_funding(
     _df,
@@ -1046,79 +1033,24 @@ print(by_program.round(0))
 print('\n--- June 2026 rebate funding by baseline fuel (weighted $) ---')
 print(by_fuel.round(0))
 
-# Fossil-gate assertion: non-electric fuels must be exactly $0 under June 2026.
+# Spec check 1 -- no fossil baseline may receive June 2026 rebate dollars.
 _fossil = by_fuel.drop(index='Electricity', errors='ignore')
-_nonzero = _fossil[(_fossil != 0).any(axis=1)]
-if len(_nonzero):
-    print('\n[FAIL] Non-electric fuels received June 2026 rebate dollars:')
-    print(_nonzero.round(2))
-else:
-    print('\n[PASS] Every non-electric baseline fuel is $0 under June 2026.')
-
-
-# %%
-"""Copy-paste verification cell: June 2026 rebate fossil gate (MP4).
-
-NOT run automatically and NOT part of the .ipynb. Paste the CELL block below
-into the main notebook AFTER the June 2026 rebate path and its downstream
-economic-adopter step have run, so the frame carries:
-  - mp4_heating_rebate_amount_june2026_v4MID
-  - mp4_rebate_eligibility_june2026
-  - ref2025_mp4_heatingLCC_coolingLCC_sub_june2026_econ_adopter_fixed_base
-
-Pass rule:
-  - by_fuel: every NON-electric baseline row must be $0 in BOTH 'total_eligible'
-    and 'adopters_only'. A nonzero fossil row means the fuel gate has a real bug.
-  - 'adopters_only' national total is the figure to compare against the ~$8-9B
-    appropriation; 'total_eligible' is the uncapped potential (no funding cap
-    is modeled).
-"""
-
-# ===== CELL (paste into the notebook) =====
-from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import (
-    summarize_rebate_funding,
-)
-from cmu_tare_model.utils.column_names import create_adoption_col
-from cmu_tare_model.utils.modeling_params import define_scenario_params
-
-_MP = 4
-_COST = 'v4MID'
-_METHOD_SUFFIX = '_fixed_base'
-_WEIGHT_COL = 'weight'  # adjust if the frame's household-weight column differs
-
-# Hold the heating-replacement-credit scenario fixed; use its June 2026 adopter.
-_prefix = define_scenario_params(_MP)[0]
-_adopter_col = create_adoption_col(
-    _prefix, 'heatingLCC_coolingLCC_sub_june2026', _METHOD_SUFFIX)
-
-_df = DATAFRAMES_MPX_RCM_DISCOUNT_RATE['fixed_base']  # the canonical MP4 frame in the notebook
-
-by_program, by_fuel = summarize_rebate_funding(
-    _df,
-    menu_mp=_MP,
-    cost_scenario=_COST,
-    guidance='june2026',
-    weight_col=_WEIGHT_COL,
-    adopter_col=_adopter_col,
+_fossil_nonzero = _fossil[(_fossil != 0).any(axis=1)]
+assert _fossil_nonzero.empty, (
+    "June 2026 fuel-gate regression: non-electric baselines received rebate "
+    "dollars (fossil-system removal must not be funded):\n"
+    f"{_fossil_nonzero.round(2)}"
 )
 
-print('Adopter column:', _adopter_col)
-print('\n--- June 2026 rebate funding by program (weighted $) ---')
-print(by_program.round(0))
-print('\n--- June 2026 rebate funding by baseline fuel (weighted $) ---')
-print(by_fuel.round(0))
+# Spec check 2 -- electric-resistance baselines must still be funded; guards
+# against a bug that zeroes every rebate and would pass check 1 trivially.
+assert 'Electricity' in by_fuel.index and by_fuel.loc['Electricity', 'total_eligible'] > 0, (
+    "June 2026 gate too strict: Electricity baselines received $0 total_eligible; "
+    "expected electric-resistance homes to qualify for HEEHR/HOMES."
+)
 
-# Fossil-gate assertion: non-electric fuels must be exactly $0 under June 2026.
-_fossil = by_fuel.drop(index='Electricity', errors='ignore')
-_nonzero = _fossil[(_fossil != 0).any(axis=1)]
-if len(_nonzero):
-    print('\n[FAIL] Non-electric fuels received June 2026 rebate dollars:')
-    print(_nonzero.round(2))
-else:
-    print('\n[PASS] Every non-electric baseline fuel is $0 under June 2026.')
-
-
-# %%
+print('\n[PASS] June 2026 fuel gate holds: fossil baselines $0, '
+      'electric-resistance baselines funded.')
 
 
 
