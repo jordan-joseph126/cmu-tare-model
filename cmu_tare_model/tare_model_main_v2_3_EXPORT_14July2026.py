@@ -495,7 +495,9 @@ else:
 # 2026 subsidized adoption rate:
 # - circle = heating replacement credit only (`heatingLCC_coolingSavings`)
 # - triangle = cooling replacement credit only (`heatingSavings_coolingLCC`)
-# - square = heating + cooling replacement credit (`heatingLCC_coolingLCC`)
+# - filled star = heating + cooling replacement credit
+# (`heatingLCC_coolingLCC`) -- the headline pick, drawn filled; the other two
+# are drawn as empty outlines.
 #
 # The annotation shows the June 2026 subsidized minus unsubsidized
 # adoption-rate delta for the same scope.
@@ -567,16 +569,19 @@ else:
             title_fontsize=16,
             ytick_fontsize=14,
             annotation_fontsize=14,
-            annotation_x_offset_pts=0,
+            annotation_x_offset_pts=26,
             annotation_y_offset_pts=8,
             xlim_margin=20,
             fuel_counts_millions=fuel_counts_millions,
             custom_tier_markers=REPLACEMENT_CREDIT_MARKERS,
+            filled_tier='Heating + Cooling Repl. Credit',
         )
         ax.tick_params(axis='both', labelsize=14)
 
-        ax.legend(handles=build_replacement_credit_legend_handles(),
-                  loc='upper right', fontsize=14, frameon=True)
+        ax.legend(
+            handles=build_replacement_credit_legend_handles(
+                filled_case='Heating + Cooling Repl. Credit'),
+            loc='upper right', fontsize=14, frameon=True)
 
         if row_idx < n_mps - 1:
             ax.set_xlabel('')
@@ -653,15 +658,17 @@ else:
             title_fontsize=16,
             ytick_fontsize=14,
             annotation_fontsize=14,
-            annotation_x_offset_pts=0,
+            annotation_x_offset_pts=26,
             annotation_y_offset_pts=8,
             xlim_margin=20,
             fuel_counts_millions=fuel_counts_millions,
             custom_tier_markers=REBATE_POLICY_SCENARIO_MARKERS,
+            filled_tier='June 2026 Rebate Eligibility',
         )
         ax.tick_params(axis='both', labelsize=14)
         ax.legend(
-            handles=build_rebate_policy_scenario_legend_handles(),
+            handles=build_rebate_policy_scenario_legend_handles(
+                filled_label='June 2026 Rebate Eligibility'),
             loc='upper right', fontsize=14, frameon=True,
         )
         if row_idx < n_mps - 1:

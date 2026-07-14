@@ -105,10 +105,13 @@ REBATE_POLICY_SCENARIO_LABELS: Dict[str, str] = {
 # build_econ_plot_df writes into 'tier_label' so plot_adoption_panel can look it
 # up via custom_tier_markers. Distinct from the two-shape TIER_MARKERS used by
 # the default replacement_credit_scenario mode.
+# June 2026 is the headline pick in this figure, so it gets the star shape and
+# is drawn filled; the other two are drawn as empty outlines (see
+# plot_adoption_panel's filled_tier).
 REBATE_POLICY_SCENARIO_MARKERS: Dict[str, str] = {
     'Unsubsidized': 'o',                          # circle
     'December 2024 Rebate Eligibility': 's',      # square
-    'June 2026 Rebate Eligibility': '^',          # triangle
+    'June 2026 Rebate Eligibility': '*',          # star
 }
 
 # ===========================================================================
@@ -133,10 +136,13 @@ REPLACEMENT_CREDIT_SCOPES: List[tuple] = [
 REPLACEMENT_CREDIT_CASES: List[str] = [
     label for _scope, label in REPLACEMENT_CREDIT_SCOPES
 ]
+# The "both replacements" scope is the headline pick in this figure, so it gets
+# the star shape and is drawn filled; the other two are drawn as empty outlines
+# (see plot_adoption_panel's filled_tier).
 REPLACEMENT_CREDIT_MARKERS: Dict[str, str] = {
     'Heating Repl. Credit': 'o',              # circle -- heatingLCC_coolingSavings
     'Cooling Repl. Credit': '^',              # triangle -- heatingSavings_coolingLCC
-    'Heating + Cooling Repl. Credit': 's',    # square -- heatingLCC_coolingLCC
+    'Heating + Cooling Repl. Credit': '*',    # star -- heatingLCC_coolingLCC
 }
 
 # ===========================================================================
@@ -525,14 +531,21 @@ def _build_legend_handles() -> List[mlines.Line2D]:
     return handles
 
 
-def build_rebate_policy_scenario_legend_handles() -> List[mlines.Line2D]:
+def build_rebate_policy_scenario_legend_handles(
+    filled_label: Optional[str] = None,
+) -> List[mlines.Line2D]:
     """Create legend handles for the three rebate policy scenario markers.
 
     Companion to _build_legend_handles for build_econ_plot_df's
-    shape_by='rebate_policy_scenario' mode: one gray handle per rebate policy
+    shape_by='rebate_policy_scenario' mode: one handle per rebate policy
     scenario (unsubsidized, 2024, June 2026) in plot order, using
     REBATE_POLICY_SCENARIO_MARKERS so the shapes on the plot match the legend.
     The notebook cell passes these handles to ax.legend.
+
+    Args:
+        filled_label: The one scenario label to draw filled (gray). Every other
+            handle is drawn as an empty outline, matching plot_adoption_panel's
+            filled_tier. When None, all handles are filled (old behavior).
 
     Returns:
         List of matplotlib Line2D legend handles, one per rebate policy scenario.
@@ -540,12 +553,13 @@ def build_rebate_policy_scenario_legend_handles() -> List[mlines.Line2D]:
     handles: List[mlines.Line2D] = []
     for token in REBATE_POLICY_SCENARIO_ORDER:
         label = REBATE_POLICY_SCENARIO_LABELS[token]
+        face = 'gray' if filled_label is None or label == filled_label else 'none'
         handles.append(
             mlines.Line2D(
                 [], [],
                 marker=REBATE_POLICY_SCENARIO_MARKERS[label],
                 color='none',
-                markerfacecolor='gray',
+                markerfacecolor=face,
                 markeredgecolor='gray',
                 markersize=8,
                 linestyle='None',
@@ -555,16 +569,23 @@ def build_rebate_policy_scenario_legend_handles() -> List[mlines.Line2D]:
     return handles
 
 
-def build_replacement_credit_legend_handles() -> List[mlines.Line2D]:
-    """Create legend handles for the two replacement-credit markers.
+def build_replacement_credit_legend_handles(
+    filled_case: Optional[str] = None,
+) -> List[mlines.Line2D]:
+    """Create legend handles for the three replacement-credit markers.
 
     Companion to build_econ_plot_df's default
-    shape_by='replacement_credit_scenario' mode: one gray handle per
-    replacement-credit scope (heating replacement only, then heating + cooling
-    replacement) in plot order, using REPLACEMENT_CREDIT_MARKERS so the shapes on
-    the plot match the legend. Each legend label equals its marker key exactly,
-    which is what the earlier inline notebook legend got wrong ("Heating Repl.
-    Credit Only" vs the "Heating Repl. Credit" marker key).
+    shape_by='replacement_credit_scenario' mode: one handle per
+    replacement-credit scope (heating, cooling, both) in plot order, using
+    REPLACEMENT_CREDIT_MARKERS so the shapes on the plot match the legend. Each
+    legend label equals its marker key exactly, which is what the earlier inline
+    notebook legend got wrong ("Heating Repl. Credit Only" vs the "Heating Repl.
+    Credit" marker key).
+
+    Args:
+        filled_case: The one scope label to draw filled (gray). Every other
+            handle is drawn as an empty outline, matching plot_adoption_panel's
+            filled_tier. When None, all handles are filled (old behavior).
 
     Returns:
         List of matplotlib Line2D legend handles, one per replacement-credit
@@ -572,12 +593,13 @@ def build_replacement_credit_legend_handles() -> List[mlines.Line2D]:
     """
     handles: List[mlines.Line2D] = []
     for case in REPLACEMENT_CREDIT_CASES:
+        face = 'gray' if filled_case is None or case == filled_case else 'none'
         handles.append(
             mlines.Line2D(
                 [], [],
                 marker=REPLACEMENT_CREDIT_MARKERS[case],
                 color='none',
-                markerfacecolor='gray',
+                markerfacecolor=face,
                 markeredgecolor='gray',
                 markersize=8,
                 linestyle='None',
@@ -615,6 +637,7 @@ def plot_adoption_panel(
     fuel_counts_millions: Optional[Dict[str, float]] = None,
     ytick_label_style: str = 'detailed',
     custom_tier_markers: Optional[Dict[str, str]] = None,
+    filled_tier: Optional[str] = None,
     homes_unit: str = 'M',
 ) -> plt.Axes:
     """Draw a horizontal dot plot showing adoption rates and deltas between cases.
@@ -663,6 +686,11 @@ def plot_adoption_panel(
         manuscript figures where home counts appear in a separate table.
 
         Any other value raises ``ValueError``.
+    filled_tier : str, optional
+        The one case label (a ``tier_label`` value) to draw filled. Every other
+        marker in the row is drawn as an empty outline in the fuel colour. Use
+        this to highlight the headline case. When None (default) all markers are
+        filled, which keeps the old behaviour for other callers.
 
     Returns
     -------
@@ -740,17 +768,16 @@ def plot_adoption_panel(
                 cluster[0]['shift']  = 'cluster_left'
                 cluster[-1]['shift'] = 'cluster_right'
             elif len(cluster) > 2:
-                # 3+ markers sit too close for a left/right split to separate
-                # them (worst for MP3, and now common with the 3-marker
-                # replacement-credit and rebate-policy-scenario modes). Ladder
-                # the labels vertically instead: each marker's annotations are
-                # pushed one step further above/below the row so they stack
-                # rather than overprint. Horizontal alignment is left to the
-                # edge-aware default rule below, so labels near x=0/100 never
-                # clip.
-                for level, item in enumerate(cluster):
-                    item['shift'] = None
-                    item['stagger'] = level
+                # 3+ markers sit too close for centered labels to separate.
+                # Spread them left/right instead of stacking them vertically:
+                # the leftmost label goes LEFT, the rightmost goes RIGHT, and any
+                # middle markers stay centered on their own marker. The
+                # xlim_margin gives the left/right labels room so they do not
+                # clip at the plot edges.
+                cluster[0]['shift'] = 'cluster_left'
+                cluster[-1]['shift'] = 'cluster_right'
+                for mid in cluster[1:-1]:
+                    mid['shift'] = 'cluster_center'
 
         all_x: List[float] = []
         for item in row_data:
@@ -760,12 +787,18 @@ def plot_adoption_panel(
             delta = item['delta']
             homes_m = item['homes_m']
 
-            # All markers are filled (IRA-Reference only)
+            # Fill only the designated headline case (filled_tier); draw every
+            # other marker as an empty outline. When filled_tier is None (other
+            # callers) all markers stay filled, matching the old behavior.
+            if filled_tier is None or tier == filled_tier:
+                face = color
+            else:
+                face = 'none'
             ax.scatter(
                 x_val, y,
                 marker=marker,
                 s=marker_size,
-                facecolors=color,
+                facecolors=face,
                 edgecolors=color,
                 linewidths=marker_linewidth,
                 zorder=3,
@@ -774,13 +807,19 @@ def plot_adoption_panel(
 
             # Choose horizontal alignment and x-offset.
             if item.get('shift') == 'cluster_left':
-                # Leftmost marker of any 2-marker cluster  --  label goes LEFT.
+                # Leftmost marker of a close cluster  --  label goes LEFT.
                 ha = 'right'
                 x_text = -annotation_x_offset_pts
             elif item.get('shift') == 'cluster_right':
-                # Rightmost marker of any 2-marker cluster  --  label goes RIGHT.
+                # Rightmost marker of a close cluster  --  label goes RIGHT.
                 ha = 'left'
                 x_text = annotation_x_offset_pts
+            elif item.get('shift') == 'cluster_center':
+                # Middle marker of a 3+ cluster  --  keep the label centered on
+                # its own marker even near an edge, so it does not collide with
+                # the left/right labels on either side.
+                ha = 'center'
+                x_text = 0
             elif x_val < 10:
                 ha = 'left'
                 x_text = annotation_x_offset_pts
