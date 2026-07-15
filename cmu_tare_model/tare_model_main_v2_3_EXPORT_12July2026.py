@@ -310,6 +310,10 @@ from cmu_tare_model.adoption_kpis.data_loading import COUNTY_SHAPEFILE_PATH
 from cmu_tare_model.adoption_potential.data_processing.visuals_adoption_dotplot import (
     plot_adoption_panel,
     build_econ_plot_df,
+    REPLACEMENT_CREDIT_CASES,
+    REPLACEMENT_CREDIT_MARKERS,
+    NATIONAL_FUEL_GROUPING_ORDER,
+    build_replacement_credit_legend_handles,
 )
 
 # Base-case parameters. The economic-adopter column name encodes these:
@@ -457,19 +461,6 @@ else:
 # The annotation shows the subsidized minus unsubsidized adoption-rate delta for the same case.
 
 # %%
-_ECON_CASE_MARKERS = {
-    'Heating Repl. Credit':           'o',   # circle -- heatingLCC_coolingSavings
-    'Heating + Cooling Repl. Credit': 's',   # square -- heatingLCC_coolingLCC
-}
-_ECON_CASES = ['Heating Repl. Credit', 'Heating + Cooling Repl. Credit']
-_ECON_GROUPING_ORDER = [
-    'National -- Overall',
-    'Electricity -- Overall',
-    'Natural Gas -- Overall',
-    'Fuel Oil -- Overall',
-    'Propane -- Overall',
-]
-
 if not HEATING_MEASURE_PACKAGES:
     print("No active heating measure packages -- skipping economic adoption dotplot.")
 else:
@@ -499,7 +490,7 @@ else:
 
         # Per-panel national summary (headline adoption rate per case).
         print(f"--- MP{mp} economic adoption summary ---")
-        for case_label in _ECON_CASES:
+        for case_label in REPLACEMENT_CREDIT_CASES:
             nat_row = plot_df[
                 (plot_df['grouping'] == 'National -- Overall') &
                 (plot_df['tier_label'] == case_label)
@@ -516,7 +507,7 @@ else:
 
         plot_adoption_panel(
             plot_df, ax,
-            grouping_order=_ECON_GROUPING_ORDER,
+            grouping_order=NATIONAL_FUEL_GROUPING_ORDER,
             title=panel_title,
             title_fontsize=16,
             ytick_fontsize=14,
@@ -525,21 +516,12 @@ else:
             annotation_y_offset_pts=8,
             xlim_margin=20,
             fuel_counts_millions=fuel_counts_millions,
-            custom_tier_markers=_ECON_CASE_MARKERS,
+            custom_tier_markers=REPLACEMENT_CREDIT_MARKERS,
         )
         ax.tick_params(axis='both', labelsize=14)
 
-        legend_handles = [
-            mlines.Line2D([], [], marker='o', color='none',
-                          markerfacecolor='gray', markeredgecolor='gray',
-                          markersize=8, linestyle='None',
-                          label='Heating Repl. Credit Only'),
-            mlines.Line2D([], [], marker='s', color='none',
-                          markerfacecolor='gray', markeredgecolor='gray',
-                          markersize=8, linestyle='None',
-                          label='Heating + Cooling Repl. Credit'),
-        ]
-        ax.legend(handles=legend_handles, loc='upper right', fontsize=14, frameon=True)
+        ax.legend(handles=build_replacement_credit_legend_handles(),
+                  loc='upper right', fontsize=14, frameon=True)
 
         if row_idx < n_mps - 1:
             ax.set_xlabel('')
@@ -566,19 +548,12 @@ from cmu_tare_model.adoption_potential.data_processing.visuals_adoption_dotplot 
     plot_adoption_panel,
     build_rebate_policy_scenario_legend_handles,
     REBATE_POLICY_SCENARIO_MARKERS,
+    NATIONAL_FUEL_GROUPING_ORDER,
 )
 
 # Hold this replacement-credit scenario fixed; the three markers vary the rebate
 # policy scenario. Switch to 'heatingLCC_coolingLCC' for the both-replacements view.
 _FIXED_CREDIT = 'heatingLCC_coolingSavings'
-
-_RPS_GROUPING_ORDER = [
-    'National -- Overall',
-    'Electricity -- Overall',
-    'Natural Gas -- Overall',
-    'Fuel Oil -- Overall',
-    'Propane -- Overall',
-]
 
 if not HEATING_MEASURE_PACKAGES:
     print("No active heating measure packages -- skipping rebate-policy dotplot.")
@@ -617,7 +592,7 @@ else:
 
         plot_adoption_panel(
             plot_df, ax,
-            grouping_order=_RPS_GROUPING_ORDER,
+            grouping_order=NATIONAL_FUEL_GROUPING_ORDER,
             title=panel_title,
             title_fontsize=16,
             ytick_fontsize=14,

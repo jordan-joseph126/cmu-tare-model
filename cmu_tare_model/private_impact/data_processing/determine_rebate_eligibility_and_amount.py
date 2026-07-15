@@ -6,7 +6,9 @@ from typing import Dict, List, Optional, Tuple, Union, Callable
 from cmu_tare_model.constants import (
     REBATE_MAPPING,
     REBATE_ELIGIBLE_HEATING_MPS,
+    REBATE_GUIDANCE_IRA2024,
     REBATE_GUIDANCE_JUNE2026,
+    REBATE_RULE_CONFIG,
     AMI_LOW_CUTOFF,
     AMI_MODERATE_CUTOFF,
     HEEHR_COVERAGE_LOW,
@@ -328,122 +330,306 @@ def calculate_rebate(
             df_results_IRA.at[row.name, weatherization_rebate_col_name] = 0.00
 
 
+def _heehr_rebate_amount(
+        df_copy: pd.DataFrame,
+        menu_mp: int,
+        cost_scenario: str,
+        python_round: bool) -> pd.Series:
+    """Vectorized HEEHR rebate amount per home, before eligibility masking.
+
+    HEEHR pays a share of the heat-pump install cost, up to a fixed per-measure
+    cap. Income sets the share (100% at or below 80% AMI, 50% between 80 and
+    150%); the cap is the $8,000 heat-pump cap when the modeled upgrade is a
+    heat pump, and $0 otherwise.
+
+    The cap is looked up from REBATE_MAPPING (the same source the 2024 row-wise
+    path used) so the tech-string check is preserved: only an 'ASHP'/'MSHP'
+    upgrade earns the cap. For every modeled MP3/MP4 retrofit the upgrade is a
+    heat pump, so this equals the flat HEEHR_CAP_HEAT_PUMP.
+
+    Args:
+        df_copy: DataFrame with percent_AMI, the heating upgrade cost column,
+            and the upgrade-technology column.
+        menu_mp: Measure package identifier.
+        cost_scenario: Cost methodology key (e.g. 'v4MID').
+        python_round: If True, round the capped amount with Python's builtin
+            round() (the 2024 behavior); if False, with numpy's array round()
+            (the June 2026 behavior). The two disagree by one cent on exact
+            half-cent products, so each vintage keeps its original rounding to
+            stay byte-identical. See the REBATE_RULE_CONFIG note.
+
+    Returns:
+        A float Series of HEEHR amounts aligned to df_copy's index.
+    """
+    heating_cost = df_copy[create_cost_col(
+        menu_mp=menu_mp, category='heating', cost_type='upgrade',
+        cost_scenario=cost_scenario)].fillna(0.0)
+
+    pct_ami = df_copy['percent_AMI']
+    coverage = np.where(
+        pct_ami <= AMI_LOW_CUTOFF * 100, HEEHR_COVERAGE_LOW, HEEHR_COVERAGE_MOD)
+
+    # Tech-gated cap from REBATE_MAPPING: only a heat-pump upgrade earns the cap.
+    # This reproduces the 2024 get_max_rebate_amount behavior; the mapped amount
+    # equals HEEHR_CAP_HEAT_PUMP for heat pumps.
+    tech_column, tech_conditions, mapped_cap = REBATE_MAPPING['heating']
+    is_heat_pump = df_copy[tech_column].astype(str).apply(
+        lambda upgrade: any(cond in upgrade for cond in tech_conditions))
+    cap = np.where(is_heat_pump, mapped_cap, 0.0)
+
+    # Cap the covered project cost, then round with the vintage's rounding.
+    capped = np.minimum(cap, coverage * heating_cost)
+    capped = pd.Series(capped, index=df_copy.index, dtype=float)
+    if python_round:
+        amount = capped.apply(lambda value: round(value, 2))
+    else:
+        amount = capped.round(2)
+    return amount.astype(float)
+
+
+def _homes_rebate_amount(
+        df_copy: pd.DataFrame,
+        menu_mp: int,
+        cost_scenario: str) -> Tuple[pd.Series, pd.Series]:
+    """Vectorized HOMES rebate amount and savings-floor mask, before masking.
+
+    HOMES is performance-based on the modeled whole-home percent savings:
+    at least 20% savings earns the $2,000 tier, at least 35% earns the $4,000
+    tier; the rebate covers 50% of the full electrification project cost
+    (heating + cooling upgrade), up to the tier cap. Only the non-LMI amounts
+    are implemented because HOMES is consulted only above 150% AMI, where the
+    low-income doubling is unreachable by construction.
+
+    Args:
+        df_copy: DataFrame with the heating and cooling upgrade cost columns and
+            mp{menu_mp}_modeled_savings_frac.
+        menu_mp: Measure package identifier.
+        cost_scenario: Cost methodology key (e.g. 'v4MID').
+
+    Returns:
+        Tuple (amount, qualifies_savings):
+          amount: float Series of HOMES amounts aligned to df_copy's index.
+          qualifies_savings: boolean Series, True where savings meet the 20%
+            floor (homes below the floor earn nothing).
+    """
+    heating_cost = df_copy[create_cost_col(
+        menu_mp=menu_mp, category='heating', cost_type='upgrade',
+        cost_scenario=cost_scenario)].fillna(0.0)
+
+    cooling_cost_col = create_cost_col(
+        menu_mp=menu_mp, category='cooling', cost_type='upgrade',
+        cost_scenario=cost_scenario)
+    if cooling_cost_col in df_copy.columns:
+        cooling_cost = df_copy[cooling_cost_col].fillna(0.0)
+    else:
+        cooling_cost = pd.Series(0.0, index=df_copy.index)
+    total_project_cost = heating_cost + cooling_cost
+
+    savings_frac = df_copy[f'mp{menu_mp}_modeled_savings_frac']
+    homes_cap = np.where(
+        savings_frac >= HOMES_TIER2_SAVINGS_FRAC,
+        HOMES_CAP_TIER2, HOMES_CAP_TIER1)
+    amount = np.minimum(
+        homes_cap, HOMES_COVERAGE_NON_LMI * total_project_cost).round(2)
+
+    qualifies_savings = savings_frac >= HOMES_MIN_SAVINGS_FRAC
+    return pd.Series(amount, index=df_copy.index, dtype=float), qualifies_savings
+
+
+def calculate_rebate_program(
+    df_results_IRA: pd.DataFrame,
+    category: str,
+    menu_mp: int,
+    cost_scenario: str,
+    guidance: str,
+    verbose: bool = VERBOSE,
+) -> pd.DataFrame:
+    """Calculate heat-pump rebate amounts and program eligibility for one vintage.
+
+    Single central rebate function for both guidance vintages. Each vintage
+    models both federal programs, mutually exclusive and routed by income:
+
+      - HEEHR (percent_AMI <= 150%): a fixed $8,000 heat-pump cap; income sets
+        the share of project cost covered (100% at <=80% AMI, 50% at 80-150%).
+      - HOMES (percent_AMI > 150%): savings-based tiers on the modeled whole-home
+        percent savings (>=20% -> $2,000 cap, >=35% -> $4,000 cap), covering 50%
+        of the full electrification project cost. Non-LMI amounts only.
+
+    The per-vintage rule differences (fuel gates, whether HOMES is modeled, the
+    output column names, and the eligibility label) come from
+    REBATE_RULE_CONFIG[guidance] -- see constants.py for the field meanings.
+
+    Gates applied before program routing (all vintages):
+      - Efficiency (ENERGY STAR): only REBATE_ELIGIBLE_HEATING_MPS qualify.
+      - State participation: homes in a never-participating state (e.g. South
+        Dakota) get 0 / 'None'.
+    HEEHR additionally applies a fuel gate under June 2026 (only existing
+    electric-resistance heating qualifies, because a rebate may not fund removing
+    a fossil system). HOMES is fuel-neutral (see the config note on the 2026
+    homes_fuel_gate, kept only for byte-identity pending re-derivation).
+
+    Args:
+        df_results_IRA: DataFrame with percent_AMI, base_heating_fuel, state, the
+            per-MP upgrade cost columns, and mp{menu_mp}_modeled_savings_frac.
+        category: Equipment category. Only 'heating' carries the rebate;
+            'cooling' is a no-op (the heat-pump rebate covers both end uses).
+        menu_mp: Measure package identifier.
+        cost_scenario: Cost methodology key (e.g. 'v4MID').
+        guidance: Rebate vintage, one of REBATE_RULE_CONFIG's keys
+            (REBATE_GUIDANCE_IRA2024 or REBATE_GUIDANCE_JUNE2026).
+        verbose: Whether to print progress detail.
+
+    Returns:
+        The DataFrame with two new columns:
+          - the rebate amount column from create_rebate_col (guidance-less for
+            2024, june2026-tokened for June 2026); float64, NaN for excluded
+            homes and 0.0 for valid-but-ineligible homes.
+          - the program eligibility column named by the config
+            ('HEEHR' | 'HOMES' | 'None'; NaN for excluded homes).
+
+    Raises:
+        ValueError: If category has no rebate mapping, or guidance is unknown.
+    """
+    # Cooling is covered by the heating heat-pump rebate; nothing to do here.
+    if category == 'cooling':
+        if verbose:
+            print("Skipping rebate for 'cooling' "
+                  "(covered by the heating heat-pump rebate).")
+        return df_results_IRA
+
+    if category not in REBATE_MAPPING:
+        raise ValueError(
+            f"Category '{category}' is not supported for rebate calculations. "
+            f"Valid categories with rebates: {list(REBATE_MAPPING.keys())}."
+        )
+
+    if guidance not in REBATE_RULE_CONFIG:
+        raise ValueError(
+            f"Unknown rebate guidance '{guidance}'. "
+            f"Must be one of {list(REBATE_RULE_CONFIG.keys())}.")
+    config = REBATE_RULE_CONFIG[guidance]
+
+    # Step 1 -- shared validation bookkeeping so excluded homes stay NaN-masked.
+    df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = (
+        initialize_validation_tracking(
+            df_results_IRA, category, menu_mp, verbose=verbose)
+    )
+
+    # Step 2 -- create the amount and eligibility columns.
+    # Amount: NaN for excluded homes, 0.0 for valid homes (the default outcome).
+    rebate_col = create_rebate_col(
+        menu_mp=menu_mp, category=category, cost_scenario=cost_scenario,
+        guidance=config['column_guidance'])
+    df_copy[rebate_col] = create_retrofit_only_series(df_copy, valid_mask)
+    df_copy.loc[valid_mask, rebate_col] = 0.0
+    category_columns_to_mask.append(rebate_col)
+
+    # Eligibility label: NaN for excluded homes, 'None' for valid homes.
+    eligibility_col = config['eligibility_col'].format(mp=menu_mp)
+    df_copy[eligibility_col] = pd.Series(
+        np.nan, index=df_copy.index, dtype=object)
+    df_copy.loc[valid_mask, eligibility_col] = REBATE_NONE
+
+    # Step 3 -- efficiency gate: only high-efficiency (ENERGY STAR) MPs qualify.
+    # Applies to BOTH programs. Ineligible MPs stay at 0.0 / 'None'.
+    if menu_mp not in REBATE_ELIGIBLE_HEATING_MPS:
+        if verbose:
+            print(f"  MP{menu_mp} is NOT rebate-eligible ({guidance}, standard "
+                  f"efficiency). All amounts 0, eligibility 'None'.")
+        df_copy = apply_final_masking(
+            df_copy, all_columns_to_mask, verbose=verbose)
+        return df_copy
+
+    # Step 4 -- shared gate masks.
+    # Fuel gate: only existing electric-resistance heating qualifies. Read
+    # base_heating_fuel only when a fuel gate is actually active so the 2024
+    # (fuel-neutral) path does not require the column. When no gate is active the
+    # mask is all-True and never filters anyone out.
+    homes_fuel_gate_active = config['homes_enabled'] and config['homes_fuel_gate']
+    if config['heehr_fuel_gate'] or homes_fuel_gate_active:
+        electric_mask = df_copy['base_heating_fuel'].isin(
+            ELECTRIC_RESISTANCE_BASELINE)
+    else:
+        electric_mask = pd.Series(True, index=df_copy.index)
+    # State-participation gate: never-participating states are ineligible.
+    participating_mask = ~df_copy['state'].isin(NON_PARTICIPATING_REBATE_STATES)
+
+    # percent_AMI is on a 0-150+ percent scale, so scale the ratio cutoff by 100.
+    pct_ami = df_copy['percent_AMI']
+    mod_cut = AMI_MODERATE_CUTOFF * 100
+
+    # Step 5 -- HEEHR (percent_AMI <= 150%). Fixed cap; income sets the share.
+    heehr_mask = valid_mask & participating_mask & (pct_ami <= mod_cut)
+    if config['heehr_fuel_gate']:
+        heehr_mask = heehr_mask & electric_mask
+    heehr_amount = _heehr_rebate_amount(
+        df_copy, menu_mp, cost_scenario,
+        python_round=config['heehr_python_round'])
+    df_copy.loc[heehr_mask, rebate_col] = heehr_amount.loc[heehr_mask]
+    df_copy.loc[heehr_mask, eligibility_col] = REBATE_HEEHR
+
+    # Step 6 -- HOMES (percent_AMI > 150%), savings-based, non-LMI amounts.
+    if config['homes_enabled']:
+        homes_mask = valid_mask & participating_mask & (pct_ami > mod_cut)
+        if config['homes_fuel_gate']:
+            homes_mask = homes_mask & electric_mask
+        # Only read the HOMES inputs (modeled savings, cooling cost) when at
+        # least one home routes to HOMES; a run with no home above 150% AMI need
+        # not carry those columns.
+        if homes_mask.any():
+            homes_amount, homes_qualifies_savings = _homes_rebate_amount(
+                df_copy, menu_mp, cost_scenario)
+            # Homes below the 20% savings floor earn nothing (stay 0.0 / 'None').
+            homes_qualifies = homes_mask & homes_qualifies_savings
+            df_copy.loc[homes_qualifies, rebate_col] = (
+                homes_amount.loc[homes_qualifies])
+            df_copy.loc[homes_qualifies, eligibility_col] = REBATE_HOMES
+
+    # Step 7 -- final verification masking keeps excluded homes NaN.
+    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=verbose)
+
+    return df_copy
+
+
 def calculate_rebateIRA(
-    df_results_IRA: pd.DataFrame, 
-    category: str, 
+    df_results_IRA: pd.DataFrame,
+    category: str,
     menu_mp: int,
     cost_scenario: str,
     verbose: bool = VERBOSE
 ) -> pd.DataFrame:
-    """
-    Calculates rebate amounts for different end-uses based on income designation.
-    
-    This function applies the appropriate rebate percentage based on income designation
-    and applies data validation to ensure only valid homes are considered for rebates.
-    Rebates are calculated at different rates:
-    - 100% coverage rate for low-income homes (up to maximum rebate amount)
-    - 50% coverage rate for moderate-income homes (up to maximum rebate amount)
-    - 0% coverage rate for middle-to-upper-income homes
-    
+    """DEPRECATED thin wrapper for the 2024-guidance rebate.
+
+    Prefer calling calculate_rebate_program(..., guidance=REBATE_GUIDANCE_IRA2024)
+    directly. Retained so existing call sites keep working. Delegates to the central
+    calculate_rebate_program with guidance=REBATE_GUIDANCE_IRA2024, which
+    reproduces the original 2024 HEEHR amounts byte-for-byte (verified) and, once
+    2024 HOMES is enabled, also credits the HOMES pathway above 150% AMI.
+
+    Note: the original 2024 path created a separate weatherization rebate column
+    for MP9/MP10. The consolidated function models only the heat-pump (heating)
+    rebate; MP9/MP10 are inactive (VALID_MENU_MPS = [0, 3, 4]) and out of scope,
+    so no weatherization column is produced. Reintroduce it if MP9/MP10 are
+    activated.
+
     Args:
-        df_results_IRA: DataFrame containing income designations and cost data
-        category: Equipment category (e.g., 'heating', 'waterHeating')
-        menu_mp: Measure package identifier
-        cost_scenario: Cost methodology key ('v3' or 'v4LOW/MID/HIGH').
-        verbose: Flag to enable verbose logging
-        
+        df_results_IRA: DataFrame with income designations and cost data.
+        category: Equipment category (only 'heating' carries a rebate).
+        menu_mp: Measure package identifier.
+        cost_scenario: Cost methodology key (e.g. 'v4MID').
+        verbose: Flag to enable verbose logging.
+
     Returns:
-        Updated DataFrame with calculated rebate amounts
-        
-    Notes:
-        This function implements the validation framework:
-        1. Uses initialize_validation_tracking() to determine valid homes
-        2. Creates retrofit-only series with NaN for invalid homes
-        3. Calculates rebates only for valid homes
-        4. Applies final verification masking
+        Updated DataFrame with calculated 2024-guidance rebate amounts.
     """
-
-    # Cooling rebates are not modeled separately -- the heat-pump rebate covers
-    # both heating and cooling, so cooling is a no-op here and the DataFrame
-    # passes through unchanged.
-    if category == 'cooling':
-        if verbose:
-            print("Skipping rebate for 'cooling' (covered by the heating heat-pump rebate).")
-        return df_results_IRA
-
-    # Validate category has rebate mapping
-    if category not in REBATE_MAPPING:
-        raise ValueError(
-            f"Category '{category}' is not supported for rebate calculations. "
-            f"Valid categories with rebates: {list(REBATE_MAPPING.keys())}. "
-            f"Note: Cooling rebates are not modeled separately - heat pump rebates cover both heating and cooling."
-        )
-
-    # Initialize validation tracking
-    df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = initialize_validation_tracking(
-        df_results_IRA, category, menu_mp, verbose=verbose)
-    
-    # Create rebate columns
-    rebate_col_name = create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)
-
-    df_copy[rebate_col_name] = create_retrofit_only_series(df_copy, valid_mask)
-    
-    # Track the rebate column
-    category_columns_to_mask.append(rebate_col_name)
-    
-    # Also track and create weatherization rebate column if relevant
-    if menu_mp in [9, 10]:
-        weatherization_rebate_col_name = create_weatherization_rebate_col(cost_scenario=cost_scenario)
-        df_copy[weatherization_rebate_col_name] = 0.0
-        
-        # Track weatherization column under the category
-        category_columns_to_mask.append(weatherization_rebate_col_name)
-    
-    # ===== REBATE ELIGIBILITY CHECK =====
-    # Only high-efficiency MPs qualify for IRA rebates.
-    # Standard-efficiency MPs (e.g., MP3) get zero rebates.
-    if category == 'heating' and menu_mp not in REBATE_ELIGIBLE_HEATING_MPS:
-        if verbose:
-            print(f"  MP{menu_mp} is NOT eligible for heating rebates (standard efficiency). "
-                  f"Setting all rebate amounts to 0.")
-        df_copy[rebate_col_name] = 0.0
-        # Apply valid_mask: NaN for invalid homes, 0 for valid homes
-        df_copy.loc[~valid_mask, rebate_col_name] = np.nan
-        
-        # Apply final verification masking for consistency
-        df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=verbose)
-        return df_copy
-    
-    # Apply rebates based on income designation
-    def apply_rebate(row):
-        # Skip invalid homes
-        if not valid_mask.loc[row.name]:
-            return
-
-        # Homes in a state that never participated (e.g. South Dakota) get no
-        # rebate under any rebate policy scenario.
-        if row['state'] in NON_PARTICIPATING_REBATE_STATES:
-            df_copy.at[row.name, rebate_col_name] = 0.00
-            if menu_mp in [9, 10] and weatherization_rebate_col_name in df_copy.columns:
-                df_copy.at[row.name, weatherization_rebate_col_name] = 0.00
-            return
-
-        income_designation = row['income_level']
-        if income_designation == 'Low-Income':
-            calculate_rebate(df_copy, row, category, menu_mp, 1.00, cost_scenario=cost_scenario)
-        elif income_designation == 'Moderate-Income':
-            calculate_rebate(df_copy, row, category, menu_mp, 0.50, cost_scenario=cost_scenario)
-        else:
-            df_copy.at[row.name, rebate_col_name] = 0.00
-            if menu_mp in [9, 10] and weatherization_rebate_col_name in df_copy.columns:
-                df_copy.at[row.name, weatherization_rebate_col_name] = 0.00
-
-    df_copy.apply(apply_rebate, axis=1)
-
-    # Apply final verification masking for consistency
-    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=verbose)
-
-    return df_copy
+    return calculate_rebate_program(
+        df_results_IRA=df_results_IRA,
+        category=category,
+        menu_mp=menu_mp,
+        cost_scenario=cost_scenario,
+        guidance=REBATE_GUIDANCE_IRA2024,
+        verbose=verbose,
+    )
 
 
 def calculate_rebate_june2026(
@@ -453,7 +639,12 @@ def calculate_rebate_june2026(
     cost_scenario: str,
     verbose: bool = VERBOSE,
 ) -> pd.DataFrame:
-    """Calculate June 2026 DOE-guidance rebate amounts and program eligibility.
+    """DEPRECATED thin wrapper for the June 2026 DOE-guidance rebate.
+
+    Prefer calling
+    calculate_rebate_program(..., guidance=REBATE_GUIDANCE_JUNE2026) directly.
+    Retained so existing call sites keep working; delegates to the central
+    calculate_rebate_program.
 
     Implements the June 2026 rebate policy scenario as a parallel column to the existing
     (2024-guidance) HEEHR rebate. Two programs are modeled, routed by income and
@@ -495,108 +686,14 @@ def calculate_rebate_june2026(
     Raises:
         ValueError: If category has no rebate mapping.
     """
-    # Cooling is covered by the heating heat-pump rebate; nothing to do here.
-    if category == 'cooling':
-        if verbose:
-            print("Skipping June 2026 rebate for 'cooling' "
-                  "(covered by the heating heat-pump rebate).")
-        return df_results_IRA
-
-    if category not in REBATE_MAPPING:
-        raise ValueError(
-            f"Category '{category}' is not supported for rebate calculations. "
-            f"Valid categories with rebates: {list(REBATE_MAPPING.keys())}."
-        )
-
-    # Reuse the shared validation bookkeeping so excluded homes stay NaN-masked
-    # exactly as they do for the 2024-guidance rebate.
-    df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = (
-        initialize_validation_tracking(
-            df_results_IRA, category, menu_mp, verbose=verbose)
+    return calculate_rebate_program(
+        df_results_IRA=df_results_IRA,
+        category=category,
+        menu_mp=menu_mp,
+        cost_scenario=cost_scenario,
+        guidance=REBATE_GUIDANCE_JUNE2026,
+        verbose=verbose,
     )
-
-    rebate_col = create_rebate_col(
-        menu_mp=menu_mp, category=category, cost_scenario=cost_scenario,
-        guidance=REBATE_GUIDANCE_JUNE2026)
-    eligibility_col = f'mp{menu_mp}_rebate_eligibility_june2026'
-
-    # Amount: NaN for excluded homes, 0.0 for valid homes (the default outcome).
-    df_copy[rebate_col] = create_retrofit_only_series(df_copy, valid_mask)
-    df_copy.loc[valid_mask, rebate_col] = 0.0
-    category_columns_to_mask.append(rebate_col)
-
-    # Eligibility label: NaN for excluded homes, 'None' for valid homes.
-    df_copy[eligibility_col] = pd.Series(
-        np.nan, index=df_copy.index, dtype=object)
-    df_copy.loc[valid_mask, eligibility_col] = REBATE_NONE
-
-    # ===== Efficiency gate (ENERGY STAR): only high-efficiency MPs qualify =====
-    # Applies to BOTH programs. MP3 stays at 0.0 / 'None'.
-    if menu_mp not in REBATE_ELIGIBLE_HEATING_MPS:
-        if verbose:
-            print(f"  MP{menu_mp} is NOT rebate-eligible under June 2026 "
-                  f"(standard efficiency). All amounts 0, eligibility 'None'.")
-        df_copy = apply_final_masking(
-            df_copy, all_columns_to_mask, verbose=verbose)
-        return df_copy
-
-    # ===== Fuel gate: only existing electric-resistance heating qualifies =====
-    # June 2026 forbids funding fossil-system removal; TARE only models full
-    # electrification, so any fossil baseline is ineligible (stays 0.0 / 'None').
-    electric_mask = df_copy['base_heating_fuel'].isin(ELECTRIC_RESISTANCE_BASELINE)
-
-    # ===== State-participation gate: opted-out states get no rebate =====
-    # Homes in a state that never participated (e.g. South Dakota) are ineligible
-    # under both HEEHR and HOMES.
-    participating_mask = ~df_copy['state'].isin(NON_PARTICIPATING_REBATE_STATES)
-
-    # Project costs. HEEHR uses the heat-pump (heating) cost; HOMES uses the full
-    # electrification project cost (heating + cooling upgrade installed costs).
-    heating_cost = df_copy[create_cost_col(
-        menu_mp=menu_mp, category='heating', cost_type='upgrade',
-        cost_scenario=cost_scenario)].fillna(0.0)
-    cooling_cost_col = create_cost_col(
-        menu_mp=menu_mp, category='cooling', cost_type='upgrade',
-        cost_scenario=cost_scenario)
-    if cooling_cost_col in df_copy.columns:
-        cooling_cost = df_copy[cooling_cost_col].fillna(0.0)
-    else:
-        cooling_cost = pd.Series(0.0, index=df_copy.index)
-    total_project_cost = heating_cost + cooling_cost
-
-    # percent_AMI is on a 0-150+ percent scale, so scale the ratio cutoffs by 100.
-    pct_ami = df_copy['percent_AMI']
-    low_cut = AMI_LOW_CUTOFF * 100
-    mod_cut = AMI_MODERATE_CUTOFF * 100
-
-    # ---- HEEHR: percent_AMI <= 150%. Fixed cap; income sets the cost share. ----
-    heehr_mask = valid_mask & electric_mask & participating_mask & (pct_ami <= mod_cut)
-    coverage = pd.Series(
-        np.where(pct_ami <= low_cut, HEEHR_COVERAGE_LOW, HEEHR_COVERAGE_MOD),
-        index=df_copy.index)
-    heehr_amount = np.minimum(
-        HEEHR_CAP_HEAT_PUMP, coverage * heating_cost).round(2)
-    df_copy.loc[heehr_mask, rebate_col] = heehr_amount.loc[heehr_mask]
-    df_copy.loc[heehr_mask, eligibility_col] = REBATE_HEEHR
-
-    # ---- HOMES: percent_AMI > 150%, savings-based, non-LMI amounts only. ----
-    savings_frac = df_copy[f'mp{menu_mp}_modeled_savings_frac']
-    homes_mask = valid_mask & electric_mask & participating_mask & (pct_ami > mod_cut)
-    # Homes below the 20% savings floor earn nothing (stay 0.0 / 'None').
-    homes_qualifies = homes_mask & (savings_frac >= HOMES_MIN_SAVINGS_FRAC)
-    homes_cap = pd.Series(
-        np.where(savings_frac >= HOMES_TIER2_SAVINGS_FRAC,
-                 HOMES_CAP_TIER2, HOMES_CAP_TIER1),
-        index=df_copy.index)
-    homes_amount = np.minimum(
-        homes_cap, HOMES_COVERAGE_NON_LMI * total_project_cost).round(2)
-    df_copy.loc[homes_qualifies, rebate_col] = homes_amount.loc[homes_qualifies]
-    df_copy.loc[homes_qualifies, eligibility_col] = REBATE_HOMES
-
-    # Final verification masking keeps excluded homes NaN across tracked columns.
-    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=verbose)
-
-    return df_copy
 
 
 def summarize_june2026_rebate_totals(
@@ -684,19 +781,24 @@ def summarize_rebate_funding(
     model applies no aggregate/state funding cap, so 'total_eligible' is an
     uncapped potential, not a disbursement.
 
-    The by-fuel table is a correctness check on eligibility: under June 2026
-    guidance (guidance='june2026') every non-electric baseline must show $0,
-    because the fuel gate forbids funding fossil-system removal. Under 2024
-    guidance (guidance=None) fossil baselines DO receive HEEHR by design -- the
-    fuel restriction is a June 2026 change.
+    The by-fuel table is a correctness check on eligibility. Under June 2026
+    guidance (guidance='june2026') the HEEHR fuel gate forbids funding
+    fossil-system removal, so fossil baselines earn HEEHR $0 (they can only earn
+    the fuel-neutral HOMES pathway). Under 2024 guidance (guidance=None) fossil
+    baselines DO receive HEEHR by design -- the HEEHR fuel restriction is a June
+    2026 change. Both vintages now model HOMES (fuel-neutral), so the program
+    split is read from an explicit eligibility label, not inferred from a
+    positive amount.
 
     Args:
         df_results_IRA: Model output with the rebate amount column, household
-            weight, baseline fuel, and (for June 2026) the eligibility column.
+            weight, baseline fuel, and the program eligibility column for the
+            requested vintage.
         menu_mp: Measure package identifier (only MP4 carries rebates).
         cost_scenario: Cost methodology key (e.g. 'v4MID').
-        guidance: None for the 2024 rebate column (HEEHR only), or 'june2026'
-            for the June 2026 column (HEEHR/HOMES split via eligibility).
+        guidance: None for the 2024 rebate column (guidance-less amount name), or
+            'june2026' for the June 2026 column. Each vintage now carries an
+            explicit HEEHR/HOMES eligibility label.
         weight_col: Household weight column.
         adopter_col: Optional 0/1 economic-adopter column. When given, an
             'adopters_only' column is added. Pass the column that matches this
@@ -711,15 +813,25 @@ def summarize_rebate_funding(
           by_fuel: same dollar columns, indexed by baseline heating fuel.
 
     Raises:
+        ValueError: If guidance is not None or a known vintage token.
         KeyError: If a required column is missing.
     """
     amount_col = create_rebate_col(
         menu_mp=menu_mp, category='heating', cost_scenario=cost_scenario,
         guidance=guidance)
 
-    required = [amount_col, weight_col, fuel_col]
-    if guidance is not None:
-        required.append(f'mp{menu_mp}_rebate_eligibility_{guidance}')
+    # Map the amount-column guidance token to the rule-config vintage key so the
+    # correct eligibility label is read (2024's amount column is guidance-less,
+    # but its label uses the 'ira2024' token).
+    config_key = REBATE_GUIDANCE_IRA2024 if guidance is None else guidance
+    if config_key not in REBATE_RULE_CONFIG:
+        raise ValueError(
+            f"summarize_rebate_funding: unknown guidance '{guidance}'. "
+            f"Use None (2024) or one of {list(REBATE_RULE_CONFIG.keys())}.")
+    eligibility_col = (
+        REBATE_RULE_CONFIG[config_key]['eligibility_col'].format(mp=menu_mp))
+
+    required = [amount_col, weight_col, fuel_col, eligibility_col]
     if adopter_col is not None:
         required.append(adopter_col)
     missing = [c for c in required if c not in df_results_IRA.columns]
@@ -729,14 +841,10 @@ def summarize_rebate_funding(
     weights = df_results_IRA[weight_col].fillna(0.0)
     eligible_dollars = df_results_IRA[amount_col].fillna(0.0) * weights
 
-    # Program label per home. The 2024 program is HEEHR only, so any positive
-    # rebate is HEEHR; June 2026 carries an explicit HEEHR/HOMES label.
-    if guidance is None:
-        program = pd.Series(
-            np.where(eligible_dollars > 0, REBATE_HEEHR, REBATE_NONE),
-            index=df_results_IRA.index)
-    else:
-        program = df_results_IRA[f'mp{menu_mp}_rebate_eligibility_{guidance}']
+    # Program label per home read from the explicit HEEHR/HOMES eligibility
+    # column. Both vintages now model HOMES, so a positive-amount inference would
+    # mislabel HOMES dollars as HEEHR.
+    program = df_results_IRA[eligibility_col]
 
     frame = pd.DataFrame({
         'program': program,

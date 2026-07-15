@@ -44,6 +44,15 @@ or functions.
 
 Read the actual current file state before proposing any change. Do not assume what a previous session did. Previous sessions sometimes ended mid-task with unknown final state.
 
+### Committing is the researcher's job
+
+Never run `git commit` (or `git add` staging for a commit, `git commit --amend`,
+`git reset`, `git revert`, `git push`, or any history-changing git command). The
+researcher makes ALL commits and writes ALL commit messages by hand. Make and save
+the file changes only; leave them in the working tree for the researcher to stage
+and commit. If a summary or a suggested commit message would help, write it in the
+chat -- do not act on it.
+
 ---
 
 ## Canonical Values (hard-coded knowledge)

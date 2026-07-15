@@ -553,7 +553,7 @@ print("="*80)
 # df_euss_am_mpX_home and expects all cost scenario columns to be present.
 # This block merges only the final cost columns (not REMDB intermediates)
 # from each v4 scenario back onto df_euss_am_mpX_home so that
-# calculate_rebateIRA() can find them.
+# calculate_rebate_program() can find them.
 # ============================================================================
 
 v4_columns_merged = []
@@ -603,11 +603,13 @@ print("=" * 80)
 # %%
 from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import (
     calculate_percent_AMI,
-    calculate_rebateIRA,
-    calculate_rebate_june2026,
+    calculate_rebate_program,
 )
 from cmu_tare_model.utils.discounting import prepare_discount_rates
-from cmu_tare_model.constants import PRIVATE_DISCOUNT_RATE_SHORT_KEYS
+from cmu_tare_model.constants import (
+    PRIVATE_DISCOUNT_RATE_SHORT_KEYS,
+    REBATE_POLICY_SCENARIOS,
+)
 
 print(f"""
 ====================================================================================================================================================================
@@ -635,18 +637,20 @@ df_euss_am_mpX_home = prepare_discount_rates(df=df_euss_am_mpX_home,
 for end_use in VALID_CATEGORIES:
     print(VALID_CATEGORIES)
     for cost_scenario in REMDB_COST_SCENARIO_KEYS:
-        print(f"\nCalculating rebate amounts for {end_use} ({cost_scenario}) ...")
-        # Home energy rebate guidance in December 2024
-        df_euss_am_mpX_home = calculate_rebateIRA(df_results_IRA=df_euss_am_mpX_home,
-                                                  category=end_use,
-                                                  menu_mp=menu_mp,
-                                                  cost_scenario=cost_scenario)
-
-        # Updated Home Energy Rebate Program guidance (from June 2026 Program notices)        
-        df_euss_am_mpX_home = calculate_rebate_june2026(df_results_IRA=df_euss_am_mpX_home,
-                                                        category=end_use,
-                                                        menu_mp=menu_mp,
-                                                        cost_scenario=cost_scenario)
+        # One central rebate function per guidance vintage. REBATE_POLICY_SCENARIOS
+        # is [REBATE_GUIDANCE_IRA2024, REBATE_GUIDANCE_JUNE2026]: the December 2024
+        # Home Energy Rebate guidance and the updated June 2026 Program-notice
+        # guidance. Each vintage writes its own rebate amount + eligibility
+        # columns (2024 uses the guidance-less amount name for byte-identity).
+        for guidance in REBATE_POLICY_SCENARIOS:
+            print(f"\nCalculating {guidance} rebate amounts for "
+                  f"{end_use} ({cost_scenario}) ...")
+            df_euss_am_mpX_home = calculate_rebate_program(
+                df_results_IRA=df_euss_am_mpX_home,
+                category=end_use,
+                menu_mp=menu_mp,
+                cost_scenario=cost_scenario,
+                guidance=guidance)
 
 print(f"""
 ====================================================================================================================================================================

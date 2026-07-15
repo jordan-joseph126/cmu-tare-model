@@ -110,7 +110,7 @@ REBATE_POLICY_SCENARIO_LABELS: Dict[str, str] = {
 # plot_adoption_panel's filled_tier).
 REBATE_POLICY_SCENARIO_MARKERS: Dict[str, str] = {
     'Unsubsidized': 'o',                          # circle
-    'December 2024 Rebate Eligibility': 's',      # square
+    'December 2024 Rebate Eligibility': '^',      # triangle
     'June 2026 Rebate Eligibility': '*',          # star
 }
 

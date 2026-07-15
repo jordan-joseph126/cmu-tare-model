@@ -1,10 +1,11 @@
-"""Tests for the June 2026 DOE-guidance rebate (HEEHR + HOMES).
+"""Tests for the consolidated rebate function (HEEHR + HOMES, both vintages).
 
-Covers calculate_rebate_june2026 in
+Covers calculate_rebate_june2026 and calculate_rebateIRA (both thin wrappers over
+calculate_rebate_program) in
 private_impact/data_processing/determine_rebate_eligibility_and_amount.py and the
-guidance token on create_rebate_col. These are the June 2026
-rebate-policy-scenario additions; the 2024-guidance path is tested elsewhere
-and is unchanged.
+guidance token on create_rebate_col. Includes the 2024 HOMES addition (2024 is
+now HEEHR + fuel-neutral HOMES) and locks the intentionally-deferred June 2026
+HOMES electric gate.
 """
 
 import numpy as np
@@ -55,6 +56,11 @@ def june2026_df():
         'mp4_heating_upgrade_installed_cost_v4MID': [10000.0] * n,
         'mp4_cooling_upgrade_installed_cost_v4MID': [6000.0] * n,
         'mp4_modeled_savings_frac': [0.50, 0.50, 0.25, 0.40, 0.10, 0.50],
+        # MP3 mirrors MP4 so MP3 (now ENERGY STAR-respecified and rebate-eligible)
+        # can be exercised on the same decision grid.
+        'mp3_heating_upgrade_installed_cost_v4MID': [10000.0] * n,
+        'mp3_cooling_upgrade_installed_cost_v4MID': [6000.0] * n,
+        'mp3_modeled_savings_frac': [0.50, 0.50, 0.25, 0.40, 0.10, 0.50],
     }
     return pd.DataFrame(data)
 
@@ -81,14 +87,20 @@ def test_june2026_amounts_across_fuel_and_income(june2026_df):
     assert result[_rebate_col(4)].dtype == 'float64'
 
 
-def test_june2026_mp3_never_eligible(june2026_df):
-    """MP3 (standard efficiency) gets no rebate under either program."""
+def test_june2026_mp3_is_eligible(june2026_df):
+    """MP3 is now rebate-eligible (12-Jul ENERGY STAR respecification).
+
+    With MP3 in REBATE_ELIGIBLE_HEATING_MPS it earns the same amounts and
+    eligibility labels as MP4 on the identical decision grid.
+    """
     result = calculate_rebate_june2026(
         df_results_IRA=june2026_df, category='heating', menu_mp=3,
         cost_scenario=COST, verbose=False)
 
-    assert (result[_rebate_col(3)] == 0.0).all()
-    assert (result[_elig_col(3)] == 'None').all()
+    expected_amount = [8000.0, 5000.0, 2000.0, 4000.0, 0.0, 0.0]
+    expected_elig = ['HEEHR', 'HEEHR', 'HOMES', 'HOMES', 'None', 'None']
+    assert result[_rebate_col(3)].tolist() == expected_amount
+    assert result[_elig_col(3)].tolist() == expected_elig
 
 
 def test_june2026_cooling_is_noop(june2026_df):
@@ -158,6 +170,9 @@ def test_2024_south_dakota_excluded():
         'valid_tech_heating': [True, True],
         'upgrade_hvac_heating_efficiency': ['ASHP', 'ASHP'],
         'income_level': ['Low-Income', 'Low-Income'],
+        # percent_AMI is required by the consolidated rebate function (the real
+        # pipeline sets it in calculate_percent_AMI, consistent with income_level).
+        'percent_AMI': [50.0, 50.0],
         'state': ['SD', 'MN'],
         'mp4_heating_upgrade_installed_cost_v4MID': [10000.0, 10000.0],
     })
@@ -226,18 +241,75 @@ def test_funding_adopters_only_june2026(june2026_df):
     assert by_program.loc['HEEHR', 'total_eligible'] == 130000.0  # unchanged
 
 
-def test_funding_2024_is_heehr_only_and_allows_fossil():
-    """2024: program is HEEHR only, and fossil baselines DO receive it (by design)."""
+def test_funding_2024_heehr_and_homes_fuel_neutral():
+    """2024 now models HEEHR + fuel-neutral HOMES; HEEHR still allows fossil.
+
+    summarize_rebate_funding reads the explicit 'ira2024' eligibility label
+    (guidance=None points at the guidance-less amount column). HEEHR funds a
+    fossil baseline (2024 has no HEEHR fuel gate); HOMES funds any fuel above
+    150% AMI (fuel-neutral).
+    """
     from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import (
         summarize_rebate_funding,
     )
     df = pd.DataFrame({
         'weight': [10.0, 10.0, 10.0],
-        'base_heating_fuel': ['Electricity', 'Natural Gas', 'Electricity'],
-        f'mp4_heating_rebate_amount_{COST}': [8000.0, 8000.0, 0.0],
+        'base_heating_fuel': ['Electricity', 'Natural Gas', 'Natural Gas'],
+        f'mp4_heating_rebate_amount_{COST}': [8000.0, 8000.0, 2000.0],
+        # Explicit 2024 program labels: two HEEHR homes and one fossil HOMES home.
+        'mp4_rebate_eligibility_ira2024': ['HEEHR', 'HEEHR', 'HOMES'],
     })
     by_program, by_fuel = summarize_rebate_funding(
         df, menu_mp=4, cost_scenario=COST, guidance=None)
     assert by_program.loc['HEEHR', 'total_eligible'] == 160000.0
-    assert by_program.loc['HOMES', 'total_eligible'] == 0.0
-    assert by_fuel.loc['Natural Gas', 'total_eligible'] == 80000.0  # allowed in 2024
+    assert by_program.loc['HOMES', 'total_eligible'] == 20000.0   # fossil HOMES
+    # Natural Gas total = one HEEHR ($8,000) + one HOMES ($2,000), x10 weight.
+    assert by_fuel.loc['Natural Gas', 'total_eligible'] == 100000.0
+
+
+def test_2024_homes_is_fuel_neutral(june2026_df):
+    """2024 HOMES credits homes above 150% AMI regardless of baseline fuel.
+
+    The June 2026 fossil-removal restriction is HEEHR-only, so 2024 HOMES is
+    fuel-neutral. Home 5 in the fixture (fossil, 50% AMI) still routes to HEEHR
+    under 2024 (no HEEHR fuel gate). A fossil home above 150% AMI with enough
+    savings earns HOMES.
+    """
+    from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import (
+        calculate_rebateIRA,
+    )
+    df = june2026_df.copy()
+    # Turn home 4 (electric, 200% AMI, 10% savings -> below floor) into a fossil
+    # home above 150% AMI with tier-2 savings so it must earn HOMES under 2024.
+    df.loc[4, 'base_heating_fuel'] = 'Natural Gas'
+    df.loc[4, 'mp4_modeled_savings_frac'] = 0.40
+
+    result = calculate_rebateIRA(
+        df_results_IRA=df, category='heating', menu_mp=4,
+        cost_scenario=COST, verbose=False)
+    amt = f'mp4_heating_rebate_amount_{COST}'
+    elig = 'mp4_rebate_eligibility_ira2024'
+    # Home 4: fossil, >150% AMI, 40% savings -> HOMES tier 2 = min(4000, .5*16000).
+    assert result[amt].iloc[4] == 4000.0
+    assert result[elig].iloc[4] == 'HOMES'
+    # Home 5: fossil, 50% AMI -> HEEHR full (2024 allows fuel switching).
+    assert result[amt].iloc[5] == 8000.0
+    assert result[elig].iloc[5] == 'HEEHR'
+
+
+def test_june2026_homes_still_electric_gated(june2026_df):
+    """June 2026 HOMES remains electric-gated this session (deferred fix).
+
+    Locks the intentional byte-identity choice: making 2026 HOMES fuel-neutral
+    would move the '_sub_june2026' golden and is deferred to the full-run
+    re-derivation. A fossil home above 150% AMI earns $0 under June 2026.
+    """
+    df = june2026_df.copy()
+    df.loc[4, 'base_heating_fuel'] = 'Natural Gas'
+    df.loc[4, 'mp4_modeled_savings_frac'] = 0.40
+    result = calculate_rebate_june2026(
+        df_results_IRA=df, category='heating', menu_mp=4,
+        cost_scenario=COST, verbose=False)
+    # Fossil home above 150% AMI: HOMES electric gate -> $0 / None under June 2026.
+    assert result[_rebate_col(4)].iloc[4] == 0.0
+    assert result[_elig_col(4)].iloc[4] == 'None'

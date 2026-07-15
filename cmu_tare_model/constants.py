@@ -247,10 +247,71 @@ ELECTRIC_RESISTANCE_BASELINE = {"Electricity"}
 # `state` column.
 NON_PARTICIPATING_REBATE_STATES = {"SD"}
 
-# Program labels recorded in the June 2026 rebate_eligibility output column.
+# Program labels recorded in the rebate_eligibility output column (both vintages).
 REBATE_NONE = "None"
 REBATE_HEEHR = "HEEHR"
 REBATE_HOMES = "HOMES"
+
+# =============================================================
+# CONSTANTS: PER-VINTAGE REBATE RULE CONFIG (central rebate function)
+# =============================================================
+# One rebate function (calculate_rebate_program) reads this config to apply the
+# vintage-specific rules. Each vintage models BOTH programs (HEEHR + HOMES),
+# routed by income (HEEHR at/below 150% AMI, HOMES above). The four rule
+# scenarios in docs/rebate_guidance_reference.md map onto two vintages here:
+# 2024 = {heehr_2024, homes_2024}; June 2026 = {heehr_2026, homes_2026}.
+#
+# Config keys:
+#   column_guidance -- token passed to create_rebate_col. None keeps the 2024
+#       rebate column name guidance-less so the existing '_sub' NPV/adopter
+#       columns stay byte-identical; 'june2026' gives the June 2026 column its
+#       own name.
+#   eligibility_col -- name template ('{mp}' substituted) for the program label
+#       column ('HEEHR'/'HOMES'/'None').
+#   heehr_fuel_gate -- True restricts HEEHR to existing electric-resistance
+#       heating (June 2026: rebates may not fund removing a fossil system).
+#       False allows fuel switching (2024).
+#   homes_enabled -- whether the HOMES savings-tier pathway is modeled for homes
+#       above 150% AMI. 2024 starts False (matches the historical HEEHR-only
+#       behavior); it is flipped to True when 2024 HOMES is added (the one
+#       intended value move). 2026 already models HOMES.
+#   homes_fuel_gate -- True restricts HOMES to electric-resistance heating.
+#       HOMES is fuel-neutral by design (the fossil-removal restriction is
+#       HEEHR-only), so 2024 is False. 2026 is True ONLY to preserve the current
+#       byte-identical June 2026 output; making 2026 HOMES fuel-neutral is a
+#       separate value move deferred to the full-run re-derivation session.
+REBATE_RULE_CONFIG = {
+    REBATE_GUIDANCE_IRA2024: {
+        "column_guidance": None,
+        "eligibility_col": "mp{mp}_rebate_eligibility_ira2024",
+        "heehr_fuel_gate": False,
+        # THE ONE INTENDED VALUE MOVE (2026-07-14 session): 2024 HOMES enabled.
+        # The 2024 program previously modeled HEEHR only, so homes above 150% AMI
+        # received $0. Enabling the fuel-neutral HOMES pathway credits those homes
+        # (fossil and electric) under 2024, which raises the '_sub' NPV/adopter
+        # adoption rows. HOMES has no fuel gate (the fossil-removal restriction is
+        # HEEHR-only), so homes_fuel_gate stays False.
+        "homes_enabled": True,
+        "homes_fuel_gate": False,
+        "heehr_python_round": True,
+    },
+    REBATE_GUIDANCE_JUNE2026: {
+        "column_guidance": REBATE_GUIDANCE_JUNE2026,
+        "eligibility_col": "mp{mp}_rebate_eligibility_june2026",
+        "heehr_fuel_gate": True,
+        "homes_enabled": True,
+        "homes_fuel_gate": True,
+        "heehr_python_round": False,
+    },
+}
+# heehr_python_round preserves a pre-consolidation rounding quirk so both
+# vintages stay byte-identical. The original 2024 path rounded the covered
+# project cost with Python's builtin round(); the original June 2026 path used
+# numpy's array .round(). Those two disagree by one cent on exact half-cent
+# products (e.g. a $9,777.77 cost at 50% coverage = $4,888.885 -> Python
+# $4,888.89 vs numpy $4,888.88), which occurs whenever a two-decimal cost with
+# an odd final cent is halved. Keeping the per-vintage rounding avoids a
+# sub-penny value move on the moderate-income HEEHR homes.
 
 # =============================================================
 # CONSTANTS: CAPITAL COST SCENARIOS (REMDB v3 + v4)
