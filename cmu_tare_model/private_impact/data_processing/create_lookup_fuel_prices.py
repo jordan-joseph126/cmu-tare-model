@@ -3,6 +3,7 @@ import pandas as pd
 
 from config import PROJECT_ROOT
 from cmu_tare_model.utils.data_visualization import print_truncated_dict
+from cmu_tare_model.constants import CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH
 
 # ====================================================================================================
 # Set print_verbose to True for detailed output, or False for minimal output
@@ -16,6 +17,13 @@ FIRST_CALC_YEAR = 2024   # fuel-cost loop: year_label = year + 2023, starts at 2
 # Paths to the two new CSV artifacts
 _PATH_ANCHOR  = os.path.join(PROJECT_ROOT, "cmu_tare_model", "data", "fuel_prices",
                               "eia_fuel_price_data_2025_usd2025.csv")
+
+#different path for custom prices
+if CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH is not None:
+        _PATH_ANCHOR  = os.path.join(PROJECT_ROOT, "cmu_tare_model", "data", "fuel_prices",
+                              "eia_fuel_price_data_2025_usd2025_case_study.csv")
+
+
 _PATH_FACTORS = os.path.join(PROJECT_ROOT, "cmu_tare_model", "data", "projections",
                               "aeo2026_fuel_price_factors_2025_2050.csv")
 
