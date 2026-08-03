@@ -171,12 +171,12 @@ def create_npv_col(
 # pathway). The "_sub" and "_unsub" cases are unchanged; "_sub_june2026" is the
 # new case added for the rebate-policy-scenario comparison.
 #
-#   heatingSavings_coolingLCC_sub          -> 2024 subsidized; heating replacement only
-#   heatingSavings_coolingLCC_unsub        -> unsubsidized; heating replacement only
-#   heatingSavings_coolingLCC_sub_june2026 -> June 2026 subsidized; heating replacement only
-#   heatingLCC_coolingSavings_sub          -> 2024 subsidized; cooling replacement only
-#   heatingLCC_coolingSavings_unsub        -> unsubsidized; cooling replacement only
-#   heatingLCC_coolingSavings_sub_june2026 -> June 2026 subsidized; cooling replacement only
+#   heatingSavings_coolingLCC_sub          -> 2024 subsidized; cooling replacement only
+#   heatingSavings_coolingLCC_unsub        -> unsubsidized; cooling replacement only
+#   heatingSavings_coolingLCC_sub_june2026 -> June 2026 subsidized; cooling replacement only
+#   heatingLCC_coolingSavings_sub          -> 2024 subsidized; heating replacement only
+#   heatingLCC_coolingSavings_unsub        -> unsubsidized; heating replacement only
+#   heatingLCC_coolingSavings_sub_june2026 -> June 2026 subsidized; heating replacement only
 #   heatingLCC_coolingLCC_sub              -> 2024 subsidized; both replacements
 #   heatingLCC_coolingLCC_unsub            -> unsubsidized; both replacements
 #   heatingLCC_coolingLCC_sub_june2026     -> June 2026 subsidized; both replacements
@@ -195,6 +195,15 @@ NPV_CASE_CATEGORIES = (
     "heatingLCC_coolingLCC_unsub",
     "heatingLCC_coolingLCC_sub_june2026",
 )
+
+# The study base case: the single NPV case reported as the headline result and
+# used as the default economic-adopter definition (for example the constrained
+# grid-impact set and the county adoption-rate map). Unsubsidized, with both the
+# heating and cooling replacement costs credited in the NPV. Defined here as the
+# one source of truth so the peak-load module default and every notebook cell
+# import the same string -- change it here to move the base case everywhere.
+# Must be one of NPV_CASE_CATEGORIES above.
+BASE_CASE_NPV_CASE = "heatingLCC_coolingLCC_unsub"
 
 
 def create_npv_case_col(

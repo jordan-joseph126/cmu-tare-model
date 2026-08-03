@@ -277,6 +277,45 @@ def calculate_lifetime_fuel_costs(
                     # Track columns for masking
                     category_columns_to_mask.extend([baseline_costs_col, savings_cost_col])
 
+                    # Average-annual framing of the same lifetime costs, for the
+                    # manuscript operating-cost figure. Each lifetime cost is
+                    # spread evenly over the equipment lifetime (years), so the
+                    # average-annual value is just the lifetime cost / lifetime.
+                    # These are additive reporting columns: the lifetime columns
+                    # and every value derived from them are unchanged. Because the
+                    # /lifetime factor cancels in the percent change, the
+                    # avg-annual percent change equals the lifetime percent change
+                    # exactly -- the map that reads it renders the same numbers,
+                    # only the framing (and colorbar wording) changes.
+                    baseline_annual = (
+                        df_baseline_costs[baseline_costs_col] / lifetime
+                    )
+                    retrofit_annual = lifetime_fuel_costs / lifetime
+                    baseline_annual_col = (
+                        f'baseline_{category}_avg_annual_fuel_cost'
+                    )
+                    retrofit_annual_col = (
+                        f'{scenario_prefix}{category}_avg_annual_fuel_cost'
+                    )
+                    annual_pct_change_col = (
+                        f'{scenario_prefix}{category}'
+                        f'_avg_annual_fuel_cost_pct_change'
+                    )
+                    lifetime_dict[baseline_annual_col] = baseline_annual
+                    lifetime_dict[retrofit_annual_col] = retrofit_annual
+                    # Guard a zero or negative baseline to NaN so those homes are
+                    # excluded rather than producing infinite or misleading
+                    # percent changes.
+                    lifetime_dict[annual_pct_change_col] = (
+                        (retrofit_annual - baseline_annual)
+                        / baseline_annual * 100
+                    ).where(baseline_annual > 0)
+                    category_columns_to_mask.extend([
+                        baseline_annual_col,
+                        retrofit_annual_col,
+                        annual_pct_change_col,
+                    ])
+
                     # Cooling-only diagnostic flag (does NOT enter NPV or masking).
                     # For some homes the heat pump's cooling energy exceeds the
                     # baseline air conditioner's, so cooling operating savings go

@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from cmu_tare_model.constants import BLDG_ID_COL, BSQ_ELEC_COL
+from cmu_tare_model.utils.column_names import BASE_CASE_NPV_CASE
 
 
 def gisjoin_to_fips(gisjoin: str) -> str:
@@ -43,7 +44,7 @@ def find_adoption_column(
     mp: int,
     cost_scenario: str,
     discount_rate_key: str = "fixed_base",
-    npv_case: str = "heatingLCC_coolingSavings_sub",
+    npv_case: str = BASE_CASE_NPV_CASE,
 ) -> str:
     """Locate the economic-adopter column in a TARE output DataFrame.
 
@@ -59,9 +60,12 @@ def find_adoption_column(
             the column name (the cost-scenario token was removed from
             output column names in the July 2026 refactor).
         discount_rate_key: Discount rate variant key (e.g. ``'fixed_base'``).
-        npv_case: One of the NPV cases in NPV_CASE_CATEGORIES.
-            Default ``'heatingLCC_coolingSavings_sub'`` (subsidized, heating
-            replacement credit only).
+        npv_case: One of the NPV cases in NPV_CASE_CATEGORIES. Defaults to
+            ``BASE_CASE_NPV_CASE`` (``'heatingLCC_coolingLCC_unsub'``) from
+            column_names.py -- the study base case: unsubsidized, with both the
+            heating and cooling replacement costs credited in the NPV. Pass this
+            argument by keyword at every call site so a positional slip cannot
+            silently substitute another case.
 
     Returns:
         The matched column name string.

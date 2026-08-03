@@ -1,6 +1,6 @@
 # CLAUDE.md — TARE Model / Joseph et al. 2026
 # Heat-Pump Electrification Economics (ResStock 2022.1.1 / EUSS)
-# Last updated: 14 July 2026 -- dotplot revisions (third credit scope; filled-star headline; left/right labels; Cell 1 now plots June 2026 rate)
+# Last updated: 23 July 2026 -- county/state map geometry repointed to the 2021 cartographic boundary vintage (fixes Connecticut graying out); geometry vintage centralized in data_loading.py (COUNTY_GEOMETRY_* / STATE_GEOMETRY_*); loud join-coverage check added; display-layer only, no modeled value moved
 
 > This file is read by Claude Code at the start of every session. It is the authoritative
 > source of truth for project architecture, naming conventions, and permanent constraints.
@@ -80,6 +80,14 @@ LIFETIME_YEARS  = 15                      # NPV calculation horizon
 | Fuel price factors | `aeo2026_fuel_price_factors_2025_2050.csv` | 40 rows; all 2025 values = 1.0 |
 | Degree-day factors | `aeo2026_degree_day_factors_2025_2050.csv` | 20 rows; year columns MUST be cast to int on read |
 | ResStock source | ResStock 2022.1.1 EUSS | Do not update to ResStock 2025.1 |
+| County + state map geometry | `cb_2021_us_county_500k`, `cb_2021_us_state_500k` (under `data/shapefiles/`) | Census cartographic boundary files, 2021 vintage, 500k scale. Matched to ResStock's pre-2023 geography; Connecticut is the binding constraint (see CT note below). Vintage set once via `COUNTY_GEOMETRY_*` / `STATE_GEOMETRY_*` in `adoption_kpis/data_loading.py` -- never hardcode a shapefile name elsewhere. |
+| Area median income (AMI) | `ACSDT5Y2024.B19013-Data.csv` (under `data/ami_calculations_data/`) | U.S. Census Bureau ACS 5-Year table B19013 (median household income), vintage 2024, from data.census.gov. One file holds county (`0500000US`) and state (`0400000US`) rows; inflated USD2024->2025. NOT NHGIS -- the NHGIS PUMA source was retired in Session 1e. |
+
+**Data provisioning (geometry + AMI):** the shapefiles and the ACS B19013 CSV are
+downloaded by hand once, committed to the repo, and read from a local path.
+Nothing downloads at runtime. Repointing the map vintage means vendoring the new
+`cb_*` files under `data/shapefiles/` and changing the `*_GEOMETRY_*` constants;
+there is no fetch step.
 
 **Degree-day read pattern (mandatory):**
 ```python
@@ -90,6 +98,19 @@ Skipping the int cast causes year lookups to silently return 1.0 (no projection 
 
 **State key format:** Two-letter abbreviation (`'PA'`, `'TX'`), NOT full state name.
 A wrong key returns silently as zero — no error, just wrong output.
+
+**Connecticut income fallback (CLOSED limitation, not deferred).** The county AMI
+source (ACS B19013, vintage 2024) uses post-2022 county geography, so its
+Connecticut rows are the nine planning regions (FIPS 09110-09190). ResStock
+2022.1.1 still carries the eight pre-2023 CT counties (09001-09015), so the
+county AMI join misses every CT home and they fall back to a state-level
+`census_area_medianIncome` in `fill_na_with_hierarchy`
+(`private_impact/data_processing/determine_rebate_eligibility_and_amount.py`).
+This is the same root cause as the county-map CT bug (vintage mismatch) but a
+different consequence: it shifts `percent_AMI` and therefore rebate routing for
+CT homes. It is accepted and documented -- **no PUMA tier will be added.** The
+map layer was repointed to pre-2023 geometry (2021 cartographic boundary) so CT
+renders; the income source is deliberately left on state-level fallback for CT.
 
 ---
 
@@ -375,6 +396,7 @@ add a new row marked "supersedes" and keep the old row.
 | 13 July 2026 | 13 Jul 2026 | Post-12-Jul audit fixes. Rebate fuel gate ADJUDICATED KEEP (electric-resistance-only; June 2026 guidance forbids funding fossil-system removal) -- NOT an inversion; two twin scenarios-tail verification cells consolidated into ONE spec-driven test (asserts fossil=$0 AND electric-resistance funded; false ".ipynb" docstring removed); zero value move. Tepper home_count WARN moved into the main notebook with a one-home tolerance read from `df_baseline['weight'].median()` (not hardcoded); in-function exact-match WARN removed; exported values unchanged. Fresh-run 'N'-path fixes: funding cell rebuilt on `DATAFRAMES_BY_MP[mp]['fixed_base']` via helpers, `importlib.reload` cell deleted, inventory cell guarded, `FIGURE_DPI=600` defined. Cleanup: choropleth deduped (vmax=100 kept), SIX->NINE adopter comment, `fuel_counts_millions` de-hardcoded (`* 242` -> `['weight'].sum()`, ~0.05% annotation nudge), dead `.columns` cells removed, `less/more WTP` string + mid-notebook `VERBOSE=True` removed, MP3 header ENERGY STAR parity with `.ipynb`. `.py` exports only; `.ipynb` backport + full-run verification deferred to the researcher. |
 | 14 July 2026 | 14 Jul 2026 | Rebate consolidation (DRY) + 2024 HOMES. ONE central `calculate_rebate_program(guidance)` in `determine_rebate_eligibility_and_amount.py` dispatched by `REBATE_RULE_CONFIG` (constants.py); `calculate_rebateIRA`/`calculate_rebate_june2026` are DEPRECATED thin wrappers. Byte-identical for 2024 HEEHR, June 2026 HEEHR, June 2026 HOMES (verified on a 217-home grid incl. exact half-cent rounding -- kept per-vintage `heehr_python_round`). ONE value move: 2024 HOMES enabled, FUEL-NEUTRAL (SUPERSEDES the 13 Jul "adjudicated KEEP electric-only" wording -- fuel gate is HEEHR-only; HOMES may fund fossil). `summarize_rebate_funding` now reads the explicit `mp{mp}_rebate_eligibility_ira2024`/`_june2026` label instead of inferring HEEHR from a positive amount. 2026 HOMES stays electric-gated this session (byte-identity; fuel-neutral fix DEFERRED -- would move `_sub_june2026`). Migrated the scenarios export to the guidance loop. Dotplots relabeled (`Unsubsidized` / `December 2024 Rebate Eligibility` / `June 2026 Rebate Eligibility`); added `REPLACEMENT_CREDIT_*`, `NATIONAL_FUEL_GROUPING_ORDER`, `build_replacement_credit_legend_handles()`, and folded `scaling_factor=242` to weight-derived homes; fixed the "Heating Repl. Credit Only" legend mismatch. 13 rebate tests pass. `.py` exports + module only; `.ipynb` backport + full-run golden re-derivation deferred to the researcher. |
 | 14 July 2026 (dotplot) | 14 Jul 2026 | Adoption dotplot revisions -- visualization only, no NPV/adopter/rebate math touched. (1) Added the third replacement-credit scope `heatingSavings_coolingLCC` (cooling replacement only) so the first plot cell now shows three markers per row instead of two; driven by the new ordered `REPLACEMENT_CREDIT_SCOPES` list (heating, cooling, both). (2) `build_econ_plot_df` gained a plain `rebate_vintage` argument (`'sub'` = December 2024, `'sub_june2026'` = June 2026) so the plotted vintage is not buried in a hardcoded column name; default `'sub'` keeps the two old scopes byte-identical (verified on MP3 and MP4 National). (3) VALUE MOVE: the first plot cell now plots the June 2026 subsidized rate instead of December 2024 (`rebate_vintage='sub_june2026'`); the cell prints the December 2024 -> June 2026 National rate per scope so the move is visible on every run. Real before/after needs a full run. (4) Filled-star emphasis: `plot_adoption_panel` gained `filled_tier` -- the one headline case is drawn filled with a star shape, every other marker is an empty outline. Cell 1 stars "Heating + Cooling Repl. Credit"; Cell 2 stars "June 2026 Rebate Eligibility". Legend builders gained a matching `filled_case`/`filled_label`. (5) Annotation spacing: 3+ marker clusters go back to a left/center/right split instead of the vertical ladder; both cells pass a nonzero `annotation_x_offset_pts` (26). Note: the label/marker constants live in `visuals_adoption_dotplot.py`, NOT `constants.py`. `.py` export + module only; `.ipynb` backport of the Cell 1/Cell 2 changes deferred to the researcher. |
+| 23 July 2026 | 23 Jul 2026 | County/state map geometry vintage -- DISPLAY LAYER ONLY, no modeled value moved. Root cause: the maps loaded TIGER 2025 county polygons, but Connecticut switched its eight counties (FIPS 09001-09015) to nine planning regions (09110-09190) starting with the 2022 Census vintage, while ResStock 2022.1.1 still carries the eight county codes -- so every CT row found no polygon and the state rendered gray. Fix: (1) centralized the vintage in `adoption_kpis/data_loading.py` via `COUNTY_GEOMETRY_PRODUCT`/`_VINTAGE`/`_SCALE` (+ a `_county_shapefile_stem` helper) and mirrored `STATE_GEOMETRY_*` (+ `_state_shapefile_stem`); `COUNTY_SHAPEFILE_PATH` and `SHAPEFILE_PATH` now derive from these -- no shapefile name is hardcoded elsewhere. (2) Swapped counties AND the state overlay to the 2021 cartographic boundary files (`cb_2021_us_county_500k`, `cb_2021_us_state_500k`); 2021 is the newest vintage still carrying the eight CT counties (2022 already has planning regions -- one year earlier than the commonly cited 2023). State overlay moved to `cb` too so the generalized shorelines/interior borders align with the county fill. (3) Added a loud two-direction join-coverage check in `prepare_county_geodataframe` before the `notna()` drop: unmatched DATA ROWS (alarm, warns; 0 on cb_2021) vs unmatched POLYGONS (benign, 10 unsampled counties). Forcing tl_2025 reproduces 8 unmatched CT data rows + 19 unmatched polygons. Verified via `.dbf` parse: cb_2021 = 3,234 polygons, 8 CT counties, non-CT GEOID set byte-identical to tl_2025 (so non-CT joins unchanged); researcher confirmed 0/10 on the national frame. `.py` + geometry only; `.ipynb` backport deferred; `grid_impact/calculate_postTARE_ts_aws_peak_demand.ipynb` being archived (its inline `tl_2025` path is not live code). Cosmetic rename applied in the export: the `TIGER_*` county-column symbols became `CENSUS_*` (the product is no longer TIGER), with a paste-ready notebook cell handed to the researcher for the `.ipynb`. Also recorded: the CT income fallback is a CLOSED limitation (state-level AMI; no PUMA tier). |
 
 ---
 

@@ -53,7 +53,8 @@ import pandas as pd
 # Heuristic theme tagging
 # ---------------------------------------------------------------------------
 # These substrings are matched against the CURRENT run's naming (2025 Reference
-# Case, six-case NPV scheme). Order matters: the first match wins, so the more
+# Case, nine-case NPV scheme: three replacement-credit scopes x three rebate
+# policy scenarios). Order matters: the first match wins, so the more
 # specific families (npv/adopter) are checked before the generic ones. This is
 # a convenience for scoping the Tepper subset, not an authoritative schema.
 _THEME_RULES: List[tuple[str, tuple[str, ...]]] = [

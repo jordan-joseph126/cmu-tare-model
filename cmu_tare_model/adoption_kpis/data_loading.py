@@ -36,7 +36,7 @@ KWH_PER_MMBTU: float = 293.07107
 KBTU_PER_KWH: float = 3.412
 """1 kWh = 3.412 kBtu."""
 
-# Derived: natural gas $/1000cf → $/kWh
+# Derived: natural gas $/1000cf -> $/kWh
 NG_CONVERSION_FACTOR: float = BTU_PER_KWH / (1000 * BTU_PER_CF_NATURAL_GAS)
 """Multiply ng_price_per_1000cf by this to get $/kWh."""
 
@@ -55,18 +55,138 @@ FUEL_PRICES_PATH: str = os.path.join(
     "fuel_prices_nominal_2015_2024.csv"
 )
 
+# --- State geometry vintage and product -------------------------------------
+# Kept equal to the county geometry (below) on purpose. When the county layer
+# was TIGER/Line, the state overlay could also be TIGER without visible harm.
+# Now that counties are a shoreline-clipped, generalized cartographic boundary
+# file, a full-resolution TIGER state layer would draw state outlines out past
+# the county fill into open water, and interior state borders that no longer
+# coincide with the generalized county edges. Matching product, vintage, and
+# scale keeps the two layers aligned.
+STATE_GEOMETRY_PRODUCT: str = "cb"
+"""Census product for the state overlay: 'tl' or 'cb'. Match the county layer."""
+
+STATE_GEOMETRY_VINTAGE: int = 2021
+"""State geometry vintage year. Kept equal to the county geometry vintage."""
+
+STATE_GEOMETRY_SCALE: str = "500k"
+"""Cartographic boundary scale ('500k', '5m', '20m'). Ignored when product='tl'."""
+
+
+def _state_shapefile_stem(product: str, vintage: int, scale: str) -> str:
+    """Build the Census state shapefile stem for a product and vintage.
+
+    Mirrors :func:`_county_shapefile_stem` for the state boundary layer. The
+    two products name the folder and .shp differently: 'tl_2025_us_state' vs
+    'cb_2021_us_state_500k'.
+
+    Args:
+        product: 'tl' (TIGER/Line) or 'cb' (cartographic boundary).
+        vintage: Geometry vintage year.
+        scale: Cartographic boundary scale; ignored when product is 'tl'.
+
+    Returns:
+        Shapefile stem without extension.
+
+    Raises:
+        ValueError: If product is not 'tl' or 'cb'.
+    """
+    if product == "cb":
+        return f"cb_{vintage}_us_state_{scale}"
+    if product == "tl":
+        return f"tl_{vintage}_us_state"
+    raise ValueError(f"Unknown state geometry product: {product!r}. Use 'tl' or 'cb'.")
+
+
+_STATE_STEM: str = _state_shapefile_stem(
+    STATE_GEOMETRY_PRODUCT, STATE_GEOMETRY_VINTAGE, STATE_GEOMETRY_SCALE
+)
+
 SHAPEFILE_PATH: str = os.path.join(
     PROJECT_ROOT, "cmu_tare_model", "data", "shapefiles",
-    "tl_2025_us_state", "tl_2025_us_state.shp"
+    _STATE_STEM, f"{_STATE_STEM}.shp"
+)
+# State borders for the county-map overlay. Versioned alongside the county
+# geometry (same product, vintage, and scale) so the two layers' generalized
+# shorelines and interior borders coincide -- this is for generalization
+# consistency, not the CT change (the CT county-to-planning-region switch does
+# not alter CT's state polygon). Site 3 reads STUSPS, which cb state files carry.
+
+# --- County geometry vintage and product ------------------------------------
+# Change the three constants below to repoint the county layer; nothing else
+# encodes the vintage. Current: product "cb", vintage 2021, scale "500k"
+# (cb_2021_us_county_500k) -- the newest cartographic boundary vintage that
+# still carries Connecticut's eight pre-2023 counties.
+#
+# Vintage must match ResStock 2022.1.1, which uses 2010-vintage geography.
+# Connecticut replaced its eight counties (FIPS 09001-09015) with nine planning
+# regions (09110-09190); a sweep of the 2020-2025 vintages confirmed the new
+# codes first appear in 2022 and that this is the ONLY change to the national
+# county universe across that span. Any vintage from 2022 on drops all of
+# Connecticut from the county join. Do not advance it without re-running the
+# sweep.
+#
+# Product cb_* over tl_*: cartographic boundary polygons are clipped to the
+# shoreline (TIGER includes territorial water, giving coastal states spurious
+# offshore lobes) and are ~1/10 the size; 500k is the most detailed cb scale.
+# cb_* polygons are generalized, which is safe ONLY because no numeric quantity
+# derives from county geometry here -- polygons are fill shapes keyed on GEOID
+# (no area, density-per-area, or centroid-based spatial join).
+#
+# Dropped by the tl_* -> cb_* swap; none are used in this codebase:
+#   INTPTLAT/INTPTLON       internal point, for label placement and bubble
+#                           overlays. Unused: national maps carry no labels.
+#   CBSAFP/CSAFP/METDIVFP   metro-area codes, for CBSA aggregation only.
+#   CLASSFP/FUNCSTAT/MTFCC  Census classification bookkeeping.
+#   GEOIDFQ                 not a loss -- cb_* carries it as AFFGEOID.
+# Gained: AFFGEOID, STUSPS, STATE_NAME. Both products are EPSG:4269, so no
+# reprojection is needed and the SHAPEFILE_PATH state overlay stays aligned.
+#
+# Download: https://www.census.gov/cgi-bin/geo/shapefiles/index.php
+# Required columns: GEOID (5-digit FIPS), STATEFP (2-digit state FIPS).
+
+COUNTY_GEOMETRY_PRODUCT: str = "cb"
+"""Census product: 'tl' (TIGER/Line) or 'cb' (cartographic boundary)."""
+
+COUNTY_GEOMETRY_VINTAGE: int = 2021
+"""Census geometry vintage year. Must predate 2022 to retain CT counties."""
+
+COUNTY_GEOMETRY_SCALE: str = "500k"
+"""Cartographic boundary scale ('500k', '5m', '20m'). Ignored when product='tl'."""
+
+
+def _county_shapefile_stem(product: str, vintage: int, scale: str) -> str:
+    """Build the Census county shapefile stem for a product and vintage.
+
+    Census names the folder and the .shp identically, and the two products use
+    different conventions: 'tl_2025_us_county' vs 'cb_2021_us_county_500k'.
+
+    Args:
+        product: 'tl' (TIGER/Line) or 'cb' (cartographic boundary).
+        vintage: Geometry vintage year.
+        scale: Cartographic boundary scale; ignored when product is 'tl'.
+
+    Returns:
+        Shapefile stem without extension.
+
+    Raises:
+        ValueError: If product is not 'tl' or 'cb'.
+    """
+    if product == "cb":
+        return f"cb_{vintage}_us_county_{scale}"
+    if product == "tl":
+        return f"tl_{vintage}_us_county"
+    raise ValueError(f"Unknown county geometry product: {product!r}. Use 'tl' or 'cb'.")
+
+
+_COUNTY_STEM: str = _county_shapefile_stem(
+    COUNTY_GEOMETRY_PRODUCT, COUNTY_GEOMETRY_VINTAGE, COUNTY_GEOMETRY_SCALE
 )
 
 COUNTY_SHAPEFILE_PATH: str = os.path.join(
     PROJECT_ROOT, "cmu_tare_model", "data", "shapefiles",
-    "tl_2025_us_county", "tl_2025_us_county.shp"
+    _COUNTY_STEM, f"{_COUNTY_STEM}.shp"
 )
-# Source: US Census Bureau TIGER/Line 2025 county boundaries.
-# Download: https://www.census.gov/cgi-bin/geo/shapefiles/index.php
-# Required columns: GEOID (5-digit FIPS), STATEFP (2-digit state FIPS).
 
 
 # ============================================================================
@@ -90,7 +210,7 @@ HP_FANS_PUMPS_COL: str = "out.electricity.heating_fans_pumps.energy_consumption.
 
 ELEC_TOTAL_COL: str = "out.electricity.total.energy_consumption.kwh"
 """EUSS column for total residential electricity (kWh). Includes all end uses.
-Use this for demand change calculations — do NOT use the heating-only column."""
+Use this for demand change calculations -- do NOT use the heating-only column."""
 
 CLIMATE_ZONE_COL: str = "in.ashrae_iecc_climate_zone_2004"
 """EUSS column for ASHRAE/IECC 2004 climate zone."""

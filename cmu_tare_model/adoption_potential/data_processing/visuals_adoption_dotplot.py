@@ -7,13 +7,14 @@
       heatingLCC_coolingSavings (heating replacement credited only)
       heatingSavings_coolingLCC (cooling replacement credited only)
       heatingLCC_coolingLCC     (both heating + cooling replacements)
-    Each marker plots the subsidized rate for the selected rebate vintage
-    (rebate_vintage: 'sub' = December 2024, 'sub_june2026' = June 2026); the
-    delta annotation is that rate minus the unsubsidized rate for the scope.
+    Each marker plots the rate for the selected rebate vintage
+    (rebate_vintage: 'unsub' = unsubsidized, 'sub' = December 2024,
+    'sub_june2026' = June 2026); the delta annotation is that rate minus the
+    unsubsidized rate for the scope (0 when rebate_vintage='unsub').
 
   'rebate_policy_scenario' -- three markers per row, one per rebate policy
-    scenario (Unsubsidized, December 2024 Rebate Eligibility, June 2026 Rebate
-    Eligibility), for a single fixed replacement-credit scope. Each marker plots
+    scenario (Unsubsidized, 2024 Rebate, 2026 Rebate w/o fuel switching), for a
+    single fixed replacement-credit scope. Each marker plots
     that scenario's own adoption rate. Pair with REBATE_POLICY_SCENARIO_MARKERS
     and build_rebate_policy_scenario_legend_handles().
 
@@ -97,21 +98,21 @@ ALL_TIER_NAMES: List[str] = [
 REBATE_POLICY_SCENARIO_ORDER: List[str] = ['unsub', 'sub', 'sub_june2026']
 REBATE_POLICY_SCENARIO_LABELS: Dict[str, str] = {
     'unsub': 'Unsubsidized',
-    'sub': 'December 2024 Rebate Eligibility',
-    'sub_june2026': 'June 2026 Rebate Eligibility',
+    'sub': '2024 Rebate',
+    'sub_june2026': '2026 Rebate w/o fuel switching',
 }
 
 # Marker shape per rebate policy scenario, keyed by the label that
 # build_econ_plot_df writes into 'tier_label' so plot_adoption_panel can look it
 # up via custom_tier_markers. Distinct from the two-shape TIER_MARKERS used by
 # the default replacement_credit_scenario mode.
-# June 2026 is the headline pick in this figure, so it gets the star shape and
-# is drawn filled; the other two are drawn as empty outlines (see
-# plot_adoption_panel's filled_tier).
+# June 2026 is the headline pick in this figure, so it gets the square shape;
+# with fill_markers=False every marker is drawn as an empty outline, so the
+# headline is set apart by its square shape alone (see plot_adoption_panel).
 REBATE_POLICY_SCENARIO_MARKERS: Dict[str, str] = {
-    'Unsubsidized': 'o',                          # circle
-    'December 2024 Rebate Eligibility': '^',      # triangle
-    'June 2026 Rebate Eligibility': '*',          # star
+    'Unsubsidized': 'o',                        # circle
+    '2024 Rebate': '^',                         # triangle
+    '2026 Rebate w/o fuel switching': 's',      # square (headline)
 }
 
 # ===========================================================================
@@ -129,20 +130,21 @@ REBATE_POLICY_SCENARIO_MARKERS: Dict[str, str] = {
 # display order (heating, cooling, both). build_econ_plot_df loops this list so
 # the plot, the case list, and the legend stay in one order.
 REPLACEMENT_CREDIT_SCOPES: List[tuple] = [
-    ('heatingLCC_coolingSavings', 'Heating Repl. Credit'),
-    ('heatingSavings_coolingLCC', 'Cooling Repl. Credit'),
-    ('heatingLCC_coolingLCC', 'Heating + Cooling Repl. Credit'),
+    ('heatingLCC_coolingSavings', 'Heating Replacement Cost Offset'),
+    ('heatingSavings_coolingLCC', 'Cooling Replacement Cost Offset'),
+    ('heatingLCC_coolingLCC', 'Heating + Cooling Replacement Cost Offset'),
 ]
 REPLACEMENT_CREDIT_CASES: List[str] = [
     label for _scope, label in REPLACEMENT_CREDIT_SCOPES
 ]
 # The "both replacements" scope is the headline pick in this figure, so it gets
-# the star shape and is drawn filled; the other two are drawn as empty outlines
-# (see plot_adoption_panel's filled_tier).
+# the square shape; with fill_markers=False every marker is drawn as an empty
+# outline, so the headline is set apart by its square shape alone (see
+# plot_adoption_panel).
 REPLACEMENT_CREDIT_MARKERS: Dict[str, str] = {
-    'Heating Repl. Credit': 'o',              # circle -- heatingLCC_coolingSavings
-    'Cooling Repl. Credit': '^',              # triangle -- heatingSavings_coolingLCC
-    'Heating + Cooling Repl. Credit': '*',    # star -- heatingLCC_coolingLCC
+    'Heating Replacement Cost Offset': 'o',           # circle -- heatingLCC_coolingSavings
+    'Cooling Replacement Cost Offset': '^',           # triangle -- heatingSavings_coolingLCC
+    'Heating + Cooling Replacement Cost Offset': 's',  # square -- heatingLCC_coolingLCC (headline)
 }
 
 # ===========================================================================
@@ -217,11 +219,13 @@ def build_econ_plot_df(
             when shape_by='rebate_policy_scenario'. One of
             'heatingLCC_coolingSavings' or 'heatingLCC_coolingLCC'. Ignored in the
             default mode.
-        rebate_vintage: Which subsidized vintage each scope marker plots in the
-            default replacement_credit_scenario mode. 'sub' is the December 2024
-            rate; 'sub_june2026' is the June 2026 rate. Ignored when
-            shape_by='rebate_policy_scenario' (that mode plots all three
-            vintages).
+        rebate_vintage: Which rebate vintage each scope marker plots in the
+            default replacement_credit_scenario mode. 'unsub' is the
+            unsubsidized rate (no rebate); 'sub' is the December 2024 rate;
+            'sub_june2026' is the June 2026 rate. With 'unsub' the marker value
+            is the unsubsidized rate and the (unshown) subsidy delta is 0.
+            Ignored when shape_by='rebate_policy_scenario' (that mode plots all
+            three vintages).
 
     Returns:
         DataFrame formatted for ``plot_adoption_panel()``.
@@ -234,7 +238,7 @@ def build_econ_plot_df(
     if shape_by not in valid_shape_by:
         raise ValueError(
             f"shape_by={shape_by!r} is not valid. Choose one of {valid_shape_by}.")
-    valid_vintage = ('sub', 'sub_june2026')
+    valid_vintage = ('unsub', 'sub', 'sub_june2026')
     if rebate_vintage not in valid_vintage:
         raise ValueError(
             f"rebate_vintage={rebate_vintage!r} is not valid. "
@@ -253,9 +257,12 @@ def build_econ_plot_df(
     scenario_prefix = define_scenario_params(mp)[0]
     method_suffix = f'_{discount_rate}'
 
-    # replacement_credit_scenario mode: one marker per credit scope, each
-    # plotting its subsidized rate (for the selected rebate vintage) with the
-    # unsubsidized delta. Keyed by scope token so _append_group can loop them.
+    # replacement_credit_scenario mode: one marker per credit scope. The 'sub'
+    # slot holds the plotted value -- the rate for the selected rebate vintage.
+    # When rebate_vintage='unsub' this resolves to the unsubsidized column, so
+    # the marker plots the unsubsidized rate and the delta below is 0. The
+    # 'unsub' slot is always the delta reference. Keyed by scope token so
+    # _append_group can loop them.
     scope_cols = {
         scope: {
             'sub': create_adoption_col(
@@ -533,6 +540,7 @@ def _build_legend_handles() -> List[mlines.Line2D]:
 
 def build_rebate_policy_scenario_legend_handles(
     filled_label: Optional[str] = None,
+    fill_markers: bool = True,
 ) -> List[mlines.Line2D]:
     """Create legend handles for the three rebate policy scenario markers.
 
@@ -546,6 +554,10 @@ def build_rebate_policy_scenario_legend_handles(
         filled_label: The one scenario label to draw filled (gray). Every other
             handle is drawn as an empty outline, matching plot_adoption_panel's
             filled_tier. When None, all handles are filled (old behavior).
+        fill_markers: When False, every handle is drawn as an empty outline
+            regardless of filled_label -- matching plot_adoption_panel's
+            fill_markers=False all-outline mode, where the headline is set apart
+            by its square shape alone. Default True keeps the old behavior.
 
     Returns:
         List of matplotlib Line2D legend handles, one per rebate policy scenario.
@@ -553,7 +565,10 @@ def build_rebate_policy_scenario_legend_handles(
     handles: List[mlines.Line2D] = []
     for token in REBATE_POLICY_SCENARIO_ORDER:
         label = REBATE_POLICY_SCENARIO_LABELS[token]
-        face = 'gray' if filled_label is None or label == filled_label else 'none'
+        if not fill_markers:
+            face = 'none'
+        else:
+            face = 'gray' if filled_label is None or label == filled_label else 'none'
         handles.append(
             mlines.Line2D(
                 [], [],
@@ -571,6 +586,7 @@ def build_rebate_policy_scenario_legend_handles(
 
 def build_replacement_credit_legend_handles(
     filled_case: Optional[str] = None,
+    fill_markers: bool = True,
 ) -> List[mlines.Line2D]:
     """Create legend handles for the three replacement-credit markers.
 
@@ -586,6 +602,10 @@ def build_replacement_credit_legend_handles(
         filled_case: The one scope label to draw filled (gray). Every other
             handle is drawn as an empty outline, matching plot_adoption_panel's
             filled_tier. When None, all handles are filled (old behavior).
+        fill_markers: When False, every handle is drawn as an empty outline
+            regardless of filled_case -- matching plot_adoption_panel's
+            fill_markers=False all-outline mode, where the headline is set apart
+            by its square shape alone. Default True keeps the old behavior.
 
     Returns:
         List of matplotlib Line2D legend handles, one per replacement-credit
@@ -593,7 +613,10 @@ def build_replacement_credit_legend_handles(
     """
     handles: List[mlines.Line2D] = []
     for case in REPLACEMENT_CREDIT_CASES:
-        face = 'gray' if filled_case is None or case == filled_case else 'none'
+        if not fill_markers:
+            face = 'none'
+        else:
+            face = 'gray' if filled_case is None or case == filled_case else 'none'
         handles.append(
             mlines.Line2D(
                 [], [],
@@ -638,6 +661,7 @@ def plot_adoption_panel(
     ytick_label_style: str = 'detailed',
     custom_tier_markers: Optional[Dict[str, str]] = None,
     filled_tier: Optional[str] = None,
+    fill_markers: bool = True,
     homes_unit: str = 'M',
 ) -> plt.Axes:
     """Draw a horizontal dot plot showing adoption rates and deltas between cases.
@@ -691,6 +715,11 @@ def plot_adoption_panel(
         marker in the row is drawn as an empty outline in the fuel colour. Use
         this to highlight the headline case. When None (default) all markers are
         filled, which keeps the old behaviour for other callers.
+    fill_markers : bool
+        When False, every marker is drawn as an empty outline regardless of
+        ``filled_tier`` -- the headline case is then set apart by its marker
+        shape alone. Default True keeps the old behaviour (``filled_tier`` fills
+        the headline; None fills all).
 
     Returns
     -------
@@ -779,6 +808,33 @@ def plot_adoption_panel(
                 for mid in cluster[1:-1]:
                     mid['shift'] = 'cluster_center'
 
+        # De-duplicate labels for markers that land on the same value. Within
+        # each cluster, group markers whose plotted value matches (within
+        # annotation_equal_eps percentage points); the first marker in a value
+        # group keeps its number and the rest are flagged so their duplicate
+        # label is suppressed. The markers themselves are still drawn -- only the
+        # redundant text is skipped. This catches, e.g., electric rows where the
+        # 2024 and 2026 rebate rates are identical. When an entire cluster
+        # collapses to one value, the single surviving label has nothing to
+        # split from, so its cluster left/right shift is cleared and it falls
+        # back to the default edge-aware centered placement. Near-but-distinct
+        # values (e.g. 4% vs 5%) keep their left/right split.
+        annotation_equal_eps = 0.5
+        for cluster in clusters:
+            value_groups: List[List[dict]] = []
+            for item in cluster:
+                if (value_groups
+                        and abs(item['x'] - value_groups[-1][0]['x'])
+                        <= annotation_equal_eps):
+                    value_groups[-1].append(item)
+                else:
+                    value_groups.append([item])
+            for group in value_groups:
+                for duplicate in group[1:]:
+                    duplicate['skip_annotation'] = True
+            if len(value_groups) == 1:
+                value_groups[0][0]['shift'] = 'center'
+
         all_x: List[float] = []
         for item in row_data:
             tier = item['tier']
@@ -789,8 +845,12 @@ def plot_adoption_panel(
 
             # Fill only the designated headline case (filled_tier); draw every
             # other marker as an empty outline. When filled_tier is None (other
-            # callers) all markers stay filled, matching the old behavior.
-            if filled_tier is None or tier == filled_tier:
+            # callers) all markers stay filled, matching the old behavior. When
+            # fill_markers is False every marker is an empty outline regardless,
+            # so the headline is set apart by its marker shape alone.
+            if not fill_markers:
+                face = 'none'
+            elif filled_tier is None or tier == filled_tier:
                 face = color
             else:
                 face = 'none'
@@ -804,6 +864,12 @@ def plot_adoption_panel(
                 zorder=3,
             )
             all_x.append(x_val)
+
+            # Skip the redundant label for a duplicate-value marker. The marker
+            # and its x (above) are kept, so the connecting line still spans the
+            # full range; only the overlapping number/homes text is suppressed.
+            if item.get('skip_annotation'):
+                continue
 
             # Choose horizontal alignment and x-offset.
             if item.get('shift') == 'cluster_left':
@@ -955,7 +1021,7 @@ def plot_adoption_panel(
     # for fontsize=12. Ticks (0, 20, ..., 100) are unaffected.
     ax.set_xlim(-xlim_margin, 100 + xlim_margin)
     ax.set_xticks(range(0, 101, 20))
-    ax.set_xlabel('Share of Homes Recovering Incremental Costs (%)', fontsize=ytick_fontsize)
+    ax.set_xlabel('Share of households recovering electrification premium through discounted operational savings (%)', fontsize=ytick_fontsize)
 
     # --- Grid and separator ---
     ax.set_axisbelow(True)

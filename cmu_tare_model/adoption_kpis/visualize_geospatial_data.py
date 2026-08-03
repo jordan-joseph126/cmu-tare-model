@@ -1,3 +1,21 @@
+"""
+Geospatial rendering for the adoption KPI choropleths (state and county maps).
+
+County geometry vintage is matched to the ResStock 2022.1.1 data vintage, which
+carries 2010-vintage geography (pre-2023 counties). The binding constraint is
+Connecticut: it replaced its eight counties (FIPS 09001-09015) with nine
+planning regions (09110-09190) starting with the 2022 Census cartographic
+boundary vintage, while ResStock still uses the eight county codes. Any geometry
+from 2022 on finds no polygon for those codes and drops all of Connecticut from
+the county join. The layer therefore uses the 2021 cartographic boundary files
+(cb_2021_us_county_500k, cb_2021_us_state_500k) -- the newest clean vintage.
+
+The vintage is set once, in data_loading.py: COUNTY_GEOMETRY_PRODUCT /
+COUNTY_GEOMETRY_VINTAGE / COUNTY_GEOMETRY_SCALE for counties and the matching
+STATE_GEOMETRY_* constants for the state overlay. Change those to repoint the
+maps; nothing here hardcodes a vintage.
+"""
+
 from typing import Dict, Optional, Tuple, Union
 import pandas as pd
 import numpy as np
@@ -318,16 +336,18 @@ def prepare_county_geodataframe(
     exclude_territories: Optional[list] = None,
 ) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
-    Merge county-level analysis results with TIGER county geometries.
+    Merge county-level analysis results with US county geometries.
 
     Converts GISJOIN codes (e.g. 'G4200030') to 5-digit FIPS (e.g. '42003')
-    and merges with the TIGER/Line county shapefile on the GEOID column.
+    and merges with the county geometry file on the GEOID column.
     Reprojects to US Albers Equal Area (ESRI:102003) and splits into
     CONUS and Alaska GeoDataFrames for inset plotting.
 
     Args:
-        gdf_counties: GeoDataFrame of US county boundaries loaded from
-            tl_2025_us_county.shp (any CRS). Must contain GEOID and STATEFP columns.
+        gdf_counties: GeoDataFrame of US county boundaries loaded from the
+            source named by COUNTY_SHAPEFILE_PATH in data_loading.py (product
+            and vintage set by the COUNTY_GEOMETRY_* constants there; any CRS).
+            Must contain GEOID and STATEFP columns.
         df_analysis: DataFrame with a county GISJOIN column and analysis columns.
         county_gisjoin_col: Column in df_analysis with GISJOIN county codes
             (e.g. 'G4200030' → FIPS '42003'). Default: 'county'.
@@ -335,6 +355,15 @@ def prepare_county_geodataframe(
 
     Returns:
         Tuple of (gdf_all, gdf_conus, gdf_alaska) — all in ESRI:102003.
+
+    Note:
+        The unmatched-polygon count printed here measures join coverage only:
+        polygons with no matching data row (counties with no ResStock sample).
+        It is not the total number of gray counties on the map. More counties
+        may render gray because a KPI function masks a small-sample county to
+        NaN downstream. Both are correct and measure different things -- this
+        count answers "did the geometry vintage match the data's county codes",
+        not "how many counties have a plottable value".
     """
     if exclude_territories is None:
         excl_fips = _TERRITORY_FIPS
@@ -369,6 +398,47 @@ def prepare_county_geodataframe(
     # Detect missing-data filter column
     numeric_cols = df_analysis.select_dtypes(include='number').columns.tolist()
     filter_col = numeric_cols[0] if numeric_cols else county_gisjoin_col
+
+    # Join-coverage check, reported before the notna() drop below.
+    # The merge above is a left join on the polygons, so a data row whose GEOID
+    # matches no polygon is dropped silently and its county renders in the
+    # missing-data color. Report both mismatch directions so a county geometry
+    # vintage that does not match the ResStock county codes fails loudly. The
+    # two directions are NOT symmetric:
+    #   - Unmatched DATA ROWS is the alarm (should be zero). A post-2021 vintage
+    #     drops all of Connecticut, whose ResStock codes (09001-09015) were
+    #     replaced by planning regions (09110-09190) starting in 2022.
+    #   - Unmatched POLYGONS is expected and benign: a few extreme low-population
+    #     counties have no ResStock sample, so they have a polygon but no data
+    #     row and correctly stay gray.
+    # Territories are excluded from both counts because they never render.
+    polygon_geoids = set(gdf_counties['GEOID'])
+    data_geoids = set(df_work['GEOID'])
+
+    unmatched_data = df_work[
+        (~df_work['GEOID'].isin(polygon_geoids))
+        & (~df_work['GEOID'].str[:2].isin(excl_fips))
+    ]
+    unmatched_poly = gdf_counties[
+        (~gdf_counties['GEOID'].isin(data_geoids))
+        & (~gdf_counties['STATEFP'].isin(excl_fips))
+    ]
+    unmatched_data_states = sorted(unmatched_data['GEOID'].str[:2].unique())
+    unmatched_poly_states = sorted(unmatched_poly['STATEFP'].unique())
+
+    if len(unmatched_data) > 0:
+        print(
+            f"[WARN] {len(unmatched_data)} county data row(s) matched no "
+            f"polygon and were dropped (state FIPS {unmatched_data_states}). "
+            f"The county geometry vintage (COUNTY_GEOMETRY_* in "
+            f"data_loading.py) likely does not match the ResStock county "
+            f"codes -- a post-2021 vintage drops all of Connecticut."
+        )
+    print(
+        f"[OK] Join coverage: {len(unmatched_poly)} polygon(s) matched no data "
+        f"row and stay gray (state FIPS {unmatched_poly_states}); expected for "
+        f"counties with no ResStock sample."
+    )
 
     gdf_filtered = gdf[
         (~gdf['STATEFP'].isin(excl_fips)) &
