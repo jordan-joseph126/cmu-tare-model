@@ -53,7 +53,7 @@ def build_household_column_list(menu_mp: Union[int, str]) -> List[str]:
 
     The list is explicit and grouped by theme (identifiers, geography,
     building, household income, existing HVAC, retrofit HVAC, consumption,
-    fuel costs, installed costs, rebate, emissions and damages, model
+    peak, fuel costs, installed costs, rebate, emissions and damages, model
     parameters, nine NPV, nine net capital, nine adopter). bldg_id is the frame
     index and is therefore not in this list; it is written as the CSV index.
 
@@ -113,6 +113,28 @@ def build_household_column_list(menu_mp: Union[int, str]) -> List[str]:
         "baseline_cooling_consumption",
         f"{mp_token}heating_consumption",
         f"{mp_token}cooling_consumption",
+        "base_total_electricity_consumption",
+        f"{mp_token}total_electricity_consumption",
+    ]
+    # Per-home peak demand pass-through for a short-term peak-load approximation
+    # done per building ID outside this model (a simple annual max per home, not
+    # aligned in time across homes). Baseline values have no savings variant;
+    # the post-retrofit block carries ResStock's baseline-minus-upgrade delta as
+    # the '..._savings' columns. The kW electric-demand pair and the kBtu/hr
+    # thermal-load pair are distinct quantities -- both are kept, not combined.
+    peak = [
+        "base_peak_electricity_cooling_kw",
+        "base_peak_electricity_heating_kw",
+        "base_peak_load_cooling_kbtu_hr",
+        "base_peak_load_heating_kbtu_hr",
+        f"{mp_token}peak_electricity_cooling_kw",
+        f"{mp_token}peak_electricity_heating_kw",
+        f"{mp_token}peak_electricity_cooling_kw_savings",
+        f"{mp_token}peak_electricity_heating_kw_savings",
+        f"{mp_token}peak_load_cooling_kbtu_hr",
+        f"{mp_token}peak_load_heating_kbtu_hr",
+        f"{mp_token}peak_load_cooling_kbtu_hr_savings",
+        f"{mp_token}peak_load_heating_kbtu_hr_savings",
     ]
     fuel_costs = [
         "baseline_heating_lifetime_fuel_cost",
@@ -184,9 +206,9 @@ def build_household_column_list(menu_mp: Union[int, str]) -> List[str]:
 
     return (
         identifiers + geography + building + household_income + existing_hvac
-        + retrofit_hvac + consumption + fuel_costs + installed_costs + rebate
-        + emissions_damages + model_parameters + nine_npv + nine_net_capital
-        + nine_adopter
+        + retrofit_hvac + consumption + peak + fuel_costs + installed_costs
+        + rebate + emissions_damages + model_parameters + nine_npv
+        + nine_net_capital + nine_adopter
     )
 
 

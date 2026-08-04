@@ -302,6 +302,35 @@ def df_enduse_refactored(
         df_baseline['out.site_energy.total.energy_consumption.kwh']
     )
 
+    # ===== Retain per-home peak demand + whole-home electricity (metadata) =====
+    # Pass-through columns for a short-term peak-load approximation done per
+    # building ID outside this model (a simple annual max per home, not aligned
+    # in time across homes). These are raw ResStock annual results, carried
+    # unchanged:
+    #   - peak electric demand during the peak cooling / heating hour (kW).
+    #   - peak delivered HVAC thermal load (kBtu/hr) -- a separate, fuel-agnostic
+    #     quantity from the electric demand above. Kept as its own pair; do not
+    #     merge or combine it with the kW demand.
+    #   - whole-home annual electricity use (kWh), the baseline side of the
+    #     baseline-vs-retrofit electricity change.
+    # Home-level values, so they are left unmasked by heating/cooling validity,
+    # the same treatment as baseline_total_site_consumption above.
+    df_enduse['base_peak_electricity_cooling_kw'] = (
+        df_baseline['out.electricity.peak_when_cooling.kw']
+    )
+    df_enduse['base_peak_electricity_heating_kw'] = (
+        df_baseline['out.electricity.peak_when_heating.kw']
+    )
+    df_enduse['base_peak_load_cooling_kbtu_hr'] = (
+        df_baseline['out.load.cooling.peak.kbtu_hr']
+    )
+    df_enduse['base_peak_load_heating_kbtu_hr'] = (
+        df_baseline['out.load.heating.peak.kbtu_hr']
+    )
+    df_enduse['base_total_electricity_consumption'] = (
+        df_baseline['out.electricity.total.energy_consumption.kwh']
+    )
+
     # ===== STEP 3: Calculate total consumption for each category in scope =====
     for category in VALID_CATEGORIES:
         # Get consumption columns for this category
@@ -515,6 +544,49 @@ def df_enduse_compare(
 
         elif category == 'cooking':
             df_compare[f'mp{menu_mp}_cooking_consumption'] = df_cooking_range['out.electricity.range_oven.energy_consumption.kwh'].round(2)
+
+    # ===== STEP 3b: Retain per-home peak demand + whole-home electricity =====
+    # Post-retrofit counterparts of the baseline pass-through columns added in
+    # df_enduse_refactored, for the same per-building-ID peak-load approximation
+    # done outside this model. Raw ResStock annual results from the upgrade file,
+    # carried unchanged. The upgrade files also publish ResStock's own
+    # baseline-minus-upgrade delta as the ".savings" columns, kept here so the
+    # peak change is available without re-differencing:
+    #   - peak electric demand during the peak cooling / heating hour (kW),
+    #     plus its savings.
+    #   - peak delivered HVAC thermal load (kBtu/hr) plus its savings -- a
+    #     separate, fuel-agnostic quantity; kept independent of the kW demand.
+    #   - whole-home annual electricity use (kWh), the retrofit side of the
+    #     baseline-vs-retrofit electricity change.
+    # Home-level values; they are not added to any columns_to_mask list below, so
+    # STEP 6 category validation leaves them intact.
+    df_compare[f'mp{menu_mp}_peak_electricity_cooling_kw'] = (
+        df_mp['out.electricity.peak_when_cooling.kw']
+    )
+    df_compare[f'mp{menu_mp}_peak_electricity_heating_kw'] = (
+        df_mp['out.electricity.peak_when_heating.kw']
+    )
+    df_compare[f'mp{menu_mp}_peak_electricity_cooling_kw_savings'] = (
+        df_mp['out.electricity.peak_when_cooling.kw.savings']
+    )
+    df_compare[f'mp{menu_mp}_peak_electricity_heating_kw_savings'] = (
+        df_mp['out.electricity.peak_when_heating.kw.savings']
+    )
+    df_compare[f'mp{menu_mp}_peak_load_cooling_kbtu_hr'] = (
+        df_mp['out.load.cooling.peak.kbtu_hr']
+    )
+    df_compare[f'mp{menu_mp}_peak_load_heating_kbtu_hr'] = (
+        df_mp['out.load.heating.peak.kbtu_hr']
+    )
+    df_compare[f'mp{menu_mp}_peak_load_cooling_kbtu_hr_savings'] = (
+        df_mp['out.load.cooling.peak.kbtu_hr.savings']
+    )
+    df_compare[f'mp{menu_mp}_peak_load_heating_kbtu_hr_savings'] = (
+        df_mp['out.load.heating.peak.kbtu_hr.savings']
+    )
+    df_compare[f'mp{menu_mp}_total_electricity_consumption'] = (
+        df_mp['out.electricity.total.energy_consumption.kwh']
+    )
 
     # ===== STEP 4: Merge with baseline DataFrame =====
     df_compare = pd.merge(df_baseline, df_compare, how='inner', left_index=True, right_index=True)

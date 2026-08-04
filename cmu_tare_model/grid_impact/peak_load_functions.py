@@ -6,7 +6,7 @@ Used by the notebook and by the national loop (Step 9).
 Author: Jordan M. Joseph, PhD — Carnegie Mellon University
 """
 
-from typing import Any
+from typing import Any, Dict, Iterable, Optional, Set
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -289,3 +289,464 @@ def plot_demand_panel(
     ax.set_xlabel("Hour of Year", fontsize=14)
     ax.set_ylabel("Demand (MW)", fontsize=14)
     ax.tick_params(labelsize=12)
+
+
+# =============================================================================
+# NON-TIME-ALIGNED peak-load summary (per-home annual maxima; NO peak hour).
+# Separate from compute_county_scenario_profile above, which is the coincident,
+# hourly-profile approach. These two answer different questions and must not be
+# mixed: the profile finds a single peak hour across homes; the summary below
+# sums each home's own annual peak, so it has no hour and is a non-coincident
+# upper bound on the true feeder peak.
+# =============================================================================
+def compute_peak_load_summary(
+    df: pd.DataFrame,
+    mp: int,
+    adopter_bldg_ids: Iterable[int],
+    *,
+    weight_col: str = "weight",
+    already_weighted: bool = False,
+    county_name: str = "County",
+) -> Dict[str, Any]:
+    """Summarize residential electric peak demand WITHOUT time alignment.
+
+    Unlike ``compute_county_scenario_profile`` (which sums 8,760 hourly
+    profiles and finds one coincident peak hour), this sums each home's OWN
+    annual peak. The homes are not aligned to a common hour, so the result has
+    no peak hour and is a non-coincident upper bound on the true feeder peak --
+    it overstates the coincident peak because it assumes every home peaks at
+    once.
+
+    Heating and cooling are reported as two independent seasonal quantities so
+    the seasonal peak shift stays visible: a home's electric peak is usually in
+    summer (cooling) before electrification and can move to winter (heating)
+    after a heat-pump retrofit. The four seasonal quantities are summed over the
+    adopter homes only. A secondary whole-home total takes each home's
+    max(heating, cooling) and, for the scenario, gives adopters the retrofit
+    value while non-adopters keep the baseline value -- the same per-home
+    adopter logic ``compute_county_scenario_profile`` applies per hour.
+
+    Weighting has two modes so one code path serves the standard sampled frame
+    and a row-duplicated (per-parcel) frame:
+      - default (``already_weighted=False``): multiply each home by its EUSS
+        sample weight from ``weight_col``, then divide by 1,000 -> MW.
+      - ``already_weighted=True``: the frame is already weighted by row
+        duplication, so sum the raw per-home values, then divide by 1,000 -> MW,
+        applying no sample weight (this avoids double-weighting).
+
+    A frame with duplicate bldg_id rows (e.g. Tamar's row-duplicated per-parcel
+    frame) combined with ``already_weighted=False`` raises ``ValueError``
+    instead of silently double-weighting -- the caller must pass
+    ``already_weighted=True`` for a row-duplicated frame.
+
+    Args:
+        df: TARE household frame for the scope of interest (e.g. one county),
+            indexed by bldg_id. Must carry the base and mp{mp} peak-electricity
+            columns and, unless ``already_weighted``, the ``weight_col`` column.
+        mp: Measure-package number (3 or 4); selects the ``mp{mp}_`` columns.
+        adopter_bldg_ids: Building IDs that adopt the retrofit. For the 100%
+            scenario pass every applicable home; for the economically
+            constrained scenario pass the NPV >= 0 homes.
+        weight_col: Column holding the per-home EUSS sample weight. Ignored
+            when ``already_weighted`` is True.
+        already_weighted: True if the frame is pre-weighted by row duplication
+            (do not apply the sample weight; sum rows directly).
+        county_name: Display label for the scope (printing only).
+
+    Returns:
+        Dict with the four seasonal peaks (``baseline_heating_peak_mw``,
+        ``baseline_cooling_peak_mw``, ``retrofit_heating_peak_mw``,
+        ``retrofit_cooling_peak_mw``), the derived ``baseline_peak_season`` /
+        ``retrofit_peak_season`` ('heating' or 'cooling'), the whole-home totals
+        (``wholehome_baseline_total_mw``, ``wholehome_scenario_total_mw``,
+        ``wholehome_delta_mw``), ``n_adopters``, ``n_total_buildings``, the
+        ``mp`` and ``county_name`` echoed back, and ``not_time_aligned=True``.
+        There are deliberately NO peak-hour keys.
+
+    Raises:
+        TypeError: If df is not a DataFrame.
+        ValueError: If mp is not a positive integer, the frame is empty, or
+            df has duplicate bldg_id rows with already_weighted=False (the
+            double-weighting trap -- see already_weighted above).
+        KeyError: If a required peak or weight column is absent.
+    """
+    # Step 1 -- validate inputs before any computation.
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(f"df must be a DataFrame, got {type(df)!r}")
+    if not isinstance(mp, (int, np.integer)) or int(mp) <= 0:
+        raise ValueError(f"mp must be a positive integer, got {mp!r}")
+    if len(df) == 0:
+        raise ValueError("df is empty; nothing to summarize.")
+    mp = int(mp)
+
+    base_heating = "base_peak_electricity_heating_kw"
+    base_cooling = "base_peak_electricity_cooling_kw"
+    mp_heating = f"mp{mp}_peak_electricity_heating_kw"
+    mp_cooling = f"mp{mp}_peak_electricity_cooling_kw"
+
+    required = [base_heating, base_cooling, mp_heating, mp_cooling]
+    if not already_weighted:
+        required.append(weight_col)
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise KeyError(
+            f"MP{mp} peak summary is missing required column(s): {missing}"
+        )
+
+    # Guard: the double-weighting trap. If bldg_id has duplicate rows (a row-
+    # duplicated per-parcel frame such as Tamar's feeder match) and
+    # already_weighted=False, applying the sample weight on top of the row
+    # duplication would double-count those homes. Refuse the combination
+    # instead of silently computing a ~242x-inflated answer.
+    if not already_weighted:
+        n_dup_rows = int(df.index.duplicated().sum())
+        if n_dup_rows > 0:
+            raise ValueError(
+                f"df has {n_dup_rows:,d} row(s) sharing a bldg_id with "
+                f"another row, but already_weighted=False. This looks like a "
+                f"row-duplicated per-parcel frame (e.g. Tamar's feeder "
+                f"match) -- applying the '{weight_col}' sample weight on top "
+                f"of the duplication would double-count those homes. Pass "
+                f"already_weighted=True instead, which sums the duplicated "
+                f"rows directly with no sample weight."
+            )
+
+    # Step 2 -- per-home weights. A pre-weighted frame counts each row once.
+    if already_weighted:
+        weights_all = pd.Series(1.0, index=df.index)
+        # A pre-weighted frame's own 'weight' column, if present, is expected
+        # to be informational only (e.g. the constant EUSS weight carried
+        # through unchanged) -- it is never applied. Warn, don't raise.
+        if weight_col in df.columns and not (df[weight_col] == 1.0).all():
+            print(
+                f"  NOTE: already_weighted=True but '{weight_col}' is "
+                f"present and not all 1.0 -- it is being ignored by design; "
+                f"row duplication is treated as the weighting, not this "
+                f"column."
+            )
+    else:
+        weights_all = df[weight_col].astype("float64")
+
+    # Step 3 -- adopter mask over this frame (aligned to df row order). Kept
+    # as a NumPy boolean array throughout -- never converted to a label list
+    # and re-looked-up with .loc, which explodes into a cartesian product
+    # when bldg_id has duplicates (confirmed empirically in the Task 1
+    # audit). Boolean-array .loc indexing is always positional, so it stays
+    # correct whether or not the index has duplicates.
+    adopter_set: Set[int] = set(adopter_bldg_ids)
+    is_adopter = df.index.isin(adopter_set)
+    w_adopt = weights_all.loc[is_adopter]
+
+    def weighted_mw(values: pd.Series, w: pd.Series) -> float:
+        """Weighted kW sum -> MW. Skips NaN peaks (does not fill with zero)."""
+        return float((values * w).sum() / 1000.0)
+
+    # Step 4 -- four seasonal peaks, summed over the adopter homes only.
+    baseline_heating_peak_mw = weighted_mw(
+        df.loc[is_adopter, base_heating], w_adopt)
+    baseline_cooling_peak_mw = weighted_mw(
+        df.loc[is_adopter, base_cooling], w_adopt)
+    retrofit_heating_peak_mw = weighted_mw(
+        df.loc[is_adopter, mp_heating], w_adopt)
+    retrofit_cooling_peak_mw = weighted_mw(
+        df.loc[is_adopter, mp_cooling], w_adopt)
+
+    def peak_season(heating_mw: float, cooling_mw: float) -> str:
+        """Season carrying the larger summed peak (ties resolve to heating)."""
+        return "heating" if heating_mw >= cooling_mw else "cooling"
+
+    # Step 5 -- secondary whole-home total over ALL homes in the scope: each
+    # home's own season max, with adopters switched to the retrofit and
+    # non-adopters left on baseline. This is the non-coincident counterpart of
+    # the profile's baseline_mw / scenario_mw, computed per home instead of per
+    # hour.
+    baseline_max = df[[base_heating, base_cooling]].max(axis=1)
+    retrofit_max = df[[mp_heating, mp_cooling]].max(axis=1)
+    scenario_max = pd.Series(
+        np.where(is_adopter, retrofit_max, baseline_max), index=df.index
+    )
+
+    wholehome_baseline_total_mw = weighted_mw(baseline_max, weights_all)
+    wholehome_scenario_total_mw = weighted_mw(scenario_max, weights_all)
+
+    return {
+        "county_name": county_name,
+        "mp": mp,
+        "not_time_aligned": True,
+        "n_adopters": int(is_adopter.sum()),
+        "n_total_buildings": int(len(df)),
+        "baseline_heating_peak_mw": baseline_heating_peak_mw,
+        "baseline_cooling_peak_mw": baseline_cooling_peak_mw,
+        "retrofit_heating_peak_mw": retrofit_heating_peak_mw,
+        "retrofit_cooling_peak_mw": retrofit_cooling_peak_mw,
+        "baseline_peak_season": peak_season(
+            baseline_heating_peak_mw, baseline_cooling_peak_mw),
+        "retrofit_peak_season": peak_season(
+            retrofit_heating_peak_mw, retrofit_cooling_peak_mw),
+        "wholehome_baseline_total_mw": wholehome_baseline_total_mw,
+        "wholehome_scenario_total_mw": wholehome_scenario_total_mw,
+        "wholehome_delta_mw": (
+            wholehome_scenario_total_mw - wholehome_baseline_total_mw),
+    }
+
+
+def build_adopter_ids_for_scope(
+    df_tare: pd.DataFrame,
+    adoption_col: str,
+    *,
+    county_fips: Optional[str] = None,
+    custom_bldg_ids: Optional[Iterable[int]] = None,
+) -> Dict[str, np.ndarray]:
+    """Build the 100% and constrained adopter ID sets for one scope.
+
+    Replaces hardcoding a county filter: the scope is chosen at the call site.
+    Exactly one selector must be given:
+      - county_fips: a 5-digit county FIPS string; keeps the homes whose GISJOIN
+        'county' code maps to that FIPS (via gisjoin_to_fips).
+      - custom_bldg_ids: an explicit set of building IDs (e.g. a feeder or
+        matched-parcel set); keeps those homes present in the frame.
+
+    Within the scope, two sets are returned, matching the study's economic
+    adoption definition (NOT the deprecated Tier 1+2 split):
+      - all_filtered: every building in the scope (the 100% adoption bound).
+      - constrained: economic adopters only (adoption_col == 1.0). A NaN adopter
+        value (excluded home) is not equal to 1.0 and is left out.
+
+    Args:
+        df_tare: TARE household frame indexed by bldg_id, carrying 'county'
+            (GISJOIN, needed only for county scope) and adoption_col.
+        adoption_col: The 0/1 economic-adopter column from find_adoption_column.
+        county_fips: 5-digit county FIPS string, or None.
+        custom_bldg_ids: Iterable of building IDs, or None.
+
+    Returns:
+        Dict with 'all_filtered' and 'constrained', each a NumPy boolean
+        array the same length as df_tare, aligned by row position (True =
+        home is in that set). NOT a list of building IDs: bldg_id is not
+        guaranteed unique on every frame this is used on (e.g. Tamar's row-
+        duplicated per-parcel frame), and a label list would silently
+        multiply rows if re-selected with df.loc[label_list] on a duplicate
+        index (confirmed empirically in the Task 1 audit). Select rows with
+        df.loc[mask]; select bldg_id values with df.index[mask].
+
+    Raises:
+        ValueError: If not exactly one selector is given, county_fips is not 5
+            digits, or the scope matches no homes.
+        KeyError: If adoption_col or (for county scope) 'county' is absent.
+    """
+    # Step 1 -- exactly one scope selector.
+    if (county_fips is None) == (custom_bldg_ids is None):
+        raise ValueError(
+            "Provide exactly one scope: county_fips OR custom_bldg_ids "
+            "(not both, not neither)."
+        )
+    if adoption_col not in df_tare.columns:
+        raise KeyError(f"adoption_col '{adoption_col}' not in the frame.")
+
+    # Step 2 -- resolve the scope to buildings present in the frame.
+    if county_fips is not None:
+        county_fips = str(county_fips).strip()
+        if len(county_fips) != 5 or not county_fips.isdigit():
+            raise ValueError(
+                f"county_fips must be a 5-digit string, got {county_fips!r}."
+            )
+        if "county" not in df_tare.columns:
+            raise KeyError(
+                "county-scope needs a 'county' (GISJOIN) column; not found."
+            )
+        fips_series = df_tare["county"].apply(gisjoin_to_fips)
+        in_scope = (fips_series == county_fips).to_numpy()
+        scope_desc = f"county FIPS {county_fips}"
+    else:
+        requested: Set[int] = set(custom_bldg_ids)
+        in_scope = df_tare.index.isin(requested)
+        found = int(in_scope.sum())
+        if found < len(requested):
+            print(
+                f"  NOTE: {len(requested) - found:,d} of {len(requested):,d} "
+                f"requested building IDs are not in this frame; using the "
+                f"{found:,d} that are."
+            )
+        scope_desc = f"custom set of {len(requested):,d} building IDs"
+
+    if not in_scope.any():
+        raise ValueError(f"No homes match the requested scope ({scope_desc}).")
+
+    # Step 3 -- split the scope into the 100% and economic-adopter boolean
+    # masks. Both are full-length NumPy boolean arrays aligned to df_tare's
+    # row order (True = in that set) -- NOT label lists. bldg_id is not
+    # guaranteed unique on every frame this is used on (e.g. Tamar's row-
+    # duplicated per-parcel frame), and re-selecting via a label list with
+    # .loc explodes into a cartesian product for any duplicated id (confirmed
+    # in the Task 1 audit). Boolean masks stay positionally correct either
+    # way.
+    # 100% (all_filtered): every building in scope, regardless of its economic
+    # decision -- i.e. assume every sample home adopts the retrofit.
+    # constrained: only the economic adopters (NPV >= 0) within that scope.
+    is_adopter_full = df_tare[adoption_col].to_numpy() == 1.0
+    all_filtered_mask = in_scope
+    constrained_mask = in_scope & is_adopter_full
+
+    n_frame = len(df_tare)
+    n_scope = int(all_filtered_mask.sum())
+    n_con = int(constrained_mask.sum())
+    # Diagnostics: make the state-vs-scope building counts explicit so a small
+    # in-scope count (e.g. one county) is not mistaken for the whole frame.
+    print(
+        f"  scope resolved: {scope_desc}\n"
+        f"    buildings in frame (e.g. whole state) : {n_frame:,d}\n"
+        f"    buildings in scope (100% adoption set): {n_scope:,d}\n"
+        f"    economic adopters in scope (NPV >= 0) : {n_con:,d}"
+    )
+    return {
+        "all_filtered": all_filtered_mask,
+        "constrained": constrained_mask,
+    }
+
+
+def prompt_peak_load_scope(
+    preset_county_fips: Optional[str] = None,
+    preset_custom_bldg_ids: Optional[Iterable[int]] = None,
+) -> Dict[str, Any]:
+    """Resolve the peak-load scope from presets or an interactive prompt.
+
+    Batch-aware, mirroring the notebook's measure-package selector: if a preset
+    is passed (a county FIPS or a custom building-ID set), it is used with no
+    prompt, so a non-interactive run -- or code injecting a feeder set -- never
+    blocks on input(). If neither preset is given, the user is asked whether to
+    scope by county (then for a 5-digit FIPS) or to use a custom set.
+
+    A custom building-ID set is never typed at the prompt (it is a variable such
+    as a feeder list); choosing 'custom' interactively without a preset raises,
+    directing the caller to pass preset_custom_bldg_ids.
+
+    Args:
+        preset_county_fips: Pre-set 5-digit county FIPS, or None.
+        preset_custom_bldg_ids: Pre-set iterable of building IDs, or None.
+
+    Returns:
+        Dict with 'mode' ('county' or 'custom'), 'county_fips' (or None), and
+        'custom_bldg_ids' (a set or None), ready to unpack into
+        build_adopter_ids_for_scope.
+
+    Raises:
+        ValueError: If both presets are given, or an interactive choice or FIPS
+            entry is invalid.
+    """
+    # Batch mode: a preset wins and skips the prompt. Only one may be set.
+    if preset_county_fips is not None and preset_custom_bldg_ids is not None:
+        raise ValueError(
+            "Set only one preset: preset_county_fips OR preset_custom_bldg_ids."
+        )
+    if preset_county_fips is not None:
+        fips = str(preset_county_fips).strip()
+        print(f"[BATCH] Peak-load scope: county FIPS {fips}.")
+        return {"mode": "county", "county_fips": fips, "custom_bldg_ids": None}
+    if preset_custom_bldg_ids is not None:
+        ids: Set[int] = set(preset_custom_bldg_ids)
+        print(f"[BATCH] Peak-load scope: custom set of {len(ids):,d} IDs.")
+        return {"mode": "custom", "county_fips": None, "custom_bldg_ids": ids}
+
+    # Interactive mode. Type the full word so a bare 'c' can't mean either.
+    choice = input(
+        "Scope the peak-load summary by 'county' (a FIPS code) or 'custom' "
+        "(a building-ID set)? Type county or custom: "
+    ).strip().lower()
+    # Echo the entry so the run log records exactly what was typed.
+    print(f"[INPUT] scope choice entered: {choice!r}")
+    if choice == "county":
+        fips = input("Enter the 5-digit county FIPS code: ").strip()
+        print(f"[INPUT] county FIPS entered: {fips!r}")
+        if len(fips) != 5 or not fips.isdigit():
+            raise ValueError(f"Expected a 5-digit FIPS, got {fips!r}.")
+        return {"mode": "county", "county_fips": fips, "custom_bldg_ids": None}
+    if choice == "custom":
+        raise ValueError(
+            "Custom-set scope selected: pass the building IDs via "
+            "preset_custom_bldg_ids (e.g. a feeder set), not the prompt."
+        )
+    raise ValueError(
+        f"Invalid choice {choice!r}; type 'county' or 'custom'."
+    )
+
+
+def _print_seasonal_block(r: Dict[str, Any]) -> None:
+    """Print the four seasonal peaks and the peak-season line for one result."""
+    print(f"  baseline  heating peak : {r['baseline_heating_peak_mw']:.2f} MW")
+    print(f"  baseline  cooling peak : {r['baseline_cooling_peak_mw']:.2f} MW")
+    print(f"  retrofit  heating peak : {r['retrofit_heating_peak_mw']:.2f} MW")
+    print(f"  retrofit  cooling peak : {r['retrofit_cooling_peak_mw']:.2f} MW")
+    print(f"  -> peak season shift: baseline={r['baseline_peak_season']}, "
+          f"retrofit={r['retrofit_peak_season']}")
+
+
+def print_peak_load_summary(
+    result_100pct: Dict[str, Any],
+    result_constrained: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Print the non-time-aligned peak-load diagnostic block.
+
+    Two adoption scenarios are reported, kept distinct:
+      - 100% adoption: assume EVERY home in scope adopts the retrofit,
+        regardless of its economic decision. Its seasonal peaks are summed over
+        all homes in scope.
+      - Economic adopters only: the subset of homes that are economic adopters
+        (NPV >= 0, recovering the incremental cost through operating savings).
+        Its seasonal peaks are summed over that subset only.
+
+    Each scenario reports heating and cooling electric peaks (baseline vs
+    retrofit, in MW) with the derived peak season, so the summer-to-winter shift
+    is legible. All values are per-home annual maxima summed WITHOUT time
+    alignment across buildings -- there is no peak hour, and any total is a
+    non-coincident upper bound. A final whole-home block compares the two
+    scenarios' totals against the shared baseline.
+
+    Number formatting matches the time-aligned output: ',d' for counts, '.2f'
+    for MW, and a leading '+' on deltas.
+
+    Args:
+        result_100pct: compute_peak_load_summary output for the 100% adoption
+            scenario (adopter set = every building in scope).
+        result_constrained: Optional compute_peak_load_summary output for the
+            economic-adopters-only scenario (adopter set = NPV >= 0 homes).
+            When present, its seasonal block and the whole-home comparison print.
+    """
+    r = result_100pct
+    mp = r["mp"]
+    n_scope = r["n_total_buildings"]
+
+    print(f"{r['county_name']} peak results (MP{mp})   "
+          f"[not time-aligned across bldg_ids]")
+    if result_constrained is None:
+        print(f"  buildings in scope: {n_scope:,d}")
+    else:
+        print(f"  buildings in scope: {n_scope:,d}   |   "
+              f"economic adopters (NPV >= 0): "
+              f"{result_constrained['n_adopters']:,d}")
+
+    # Scenario 1 -- 100% adoption: every home in scope adopts the retrofit.
+    print()
+    print(f"[100% adoption -- all {n_scope:,d} homes assume the retrofit]")
+    _print_seasonal_block(r)
+
+    # Scenario 2 -- economic adopters only: the NPV >= 0 subset.
+    if result_constrained is not None:
+        c = result_constrained
+        print()
+        print(f"[Economic adopters only -- {c['n_adopters']:,d} of "
+              f"{n_scope:,d} homes (NPV >= 0)]")
+        _print_seasonal_block(c)
+
+        # Whole-home max(heating, cooling) total: one shared baseline, one
+        # scenario total per adoption assumption. A non-coincident upper bound.
+        print()
+        print("[whole-home max(heating, cooling) total -- "
+              "non-coincident upper bound]")
+        print(f"  baseline total                    : "
+              f"{r['wholehome_baseline_total_mw']:.2f} MW")
+        print(f"  scenario [100% adoption]          : "
+              f"{r['wholehome_scenario_total_mw']:.2f} MW  "
+              f"(delta {r['wholehome_delta_mw']:+.2f} MW)")
+        print(f"  scenario [economic adopters only] : "
+              f"{c['wholehome_scenario_total_mw']:.2f} MW  "
+              f"(delta {c['wholehome_delta_mw']:+.2f} MW)")
