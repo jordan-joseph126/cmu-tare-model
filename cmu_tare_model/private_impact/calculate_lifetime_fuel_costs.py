@@ -450,6 +450,14 @@ def calculate_annual_fuel_costs(
             # Set values to NaN for invalid homes (not zero)
             consumption.loc[~valid_mask] = np.nan  # Changed from 0.0 to np.nan
 
+        if verbose:
+            colorado_prices = df.loc[
+                df["state"] == "CO",
+                ["state", "census_division", f"fuel_type_{category}", "_temp_price"]
+            ]
+            print(f"\nColorado price check for {category}, year {year_label}:")
+            print(colorado_prices.head(20).to_string(index=False))
+        
         # Calculate fuel costs
         fuel_costs = consumption * df['_temp_price']
         

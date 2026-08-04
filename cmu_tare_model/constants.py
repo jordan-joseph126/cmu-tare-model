@@ -10,7 +10,7 @@
 # TARE MODEL RUN CONFIGURATION
 # =============================================================
 # Configuration
-VERBOSE = False
+VERBOSE = True
 PRINT_DEBUG = False
 PRINT_VERBOSE_DATAFRAMES = False
 FIGURE_DPI = 600
@@ -20,6 +20,7 @@ MAP_CBAR_LABEL_FONT_SIZE = 16
 MAP_CBAR_TICK_LABEL_SIZE = 16
 MAP_LEGEND_FONT_SIZE = 16
 
+#Case study-specific electricity price from https://www.eia.gov/electricity/sales_revenue_price/pdf/table_6.pdf
 CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH = 12.3
 
 FIGURE_TITLE_FONT_SIZE = 18
@@ -422,8 +423,12 @@ WEIGHT_COL: str = "weight"        # BSQ reads per-row from metadata
 MIN_HOME_COUNT: int = 1
 
 # Reference values for Allegheny County validation
-TEST_FIPS: str = "42003"
+# TEST_FIPS: str = "42003"
 TEST_GISJOIN: str = "G4200030"
+
+
+#Reference values for Boulder County
+TEST_FIPS: str = "08013"
 
 # =============================================================
 # CONSTANTS: PRE-TARE KPI VALIDATION
