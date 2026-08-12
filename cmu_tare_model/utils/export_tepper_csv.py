@@ -113,6 +113,9 @@ def build_household_column_list(menu_mp: Union[int, str]) -> List[str]:
         "baseline_cooling_consumption",
         f"{mp_token}heating_consumption",
         f"{mp_token}cooling_consumption",
+        # Whole-home ELECTRICITY totals (kWh), baseline and retrofit -- the
+        # electricity change is their difference. Not the all-fuel site energy
+        # (baseline_total_site_consumption); read the '...electricity...' token.
         "base_total_electricity_consumption",
         f"{mp_token}total_electricity_consumption",
     ]
@@ -294,6 +297,11 @@ def export_tepper_household(
 # rather than silently reshaping the export.
 COUNTY_ADOPTION_COLS = ["county", "state", "home_count", "adoption_rate_pct"]
 COUNTY_BILL_COLS = ["county", "operating_cost_pct_change"]
+# NOTE: 'site_energy_change_gwh' and 'pct_site_energy_change' are ALIASES of the
+# electricity metrics (see demand.py) -- with whole-home electrification measured
+# on the electricity total, site-energy change equals electricity change. They
+# are NOT independent all-fuel numbers; prefer 'elec_change_gwh' /
+# 'pct_elec_demand_change' for an electricity read.
 COUNTY_DEMAND_METRIC_COLS = [
     "baseline_elec_gwh", "retrofit_elec_gwh", "elec_change_gwh",
     "site_energy_change_gwh", "pct_elec_demand_change", "pct_site_energy_change",

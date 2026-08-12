@@ -401,6 +401,10 @@ EFFICIENCY_FLOORS_PM2 = {
 # Timeseries table columns
 BLDG_ID_COL: str = "bldg_id"
 TIMESTAMP_COL: str = "timestamp"
+# Whole-home ELECTRICITY total (all electric end uses) -- NOT the all-fuel
+# 'out.site_energy.total.energy_consumption', which sums gas/oil/propane in
+# kWh-equivalent. Use this electricity total for demand/peak metrics; the site
+# energy total is only a HOMES savings-fraction denominator elsewhere.
 ELEC_TOTAL_COL: str = "out.electricity.total.energy_consumption"
 
 # BSQ returns enduse columns WITHOUT the 'out.' prefix

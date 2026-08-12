@@ -298,6 +298,13 @@ def df_enduse_refactored(
     # must be expressed against the WHOLE home, so carry ResStock's total site
     # energy through as the denominator. Home-level total (not category-specific),
     # so it is not masked by heating/cooling validity.
+    #
+    # WATCH THE SOURCE: 'out.site_energy.total.energy_consumption.kwh' is the
+    # whole-home total across ALL fuels (natural gas, fuel oil, and propane are
+    # reported in kWh-equivalent), NOT electricity. It is deliberately a
+    # different column from the electricity total set below. This all-fuel value
+    # is correct ONLY as the savings-fraction denominator; do NOT feed it into
+    # any electricity, demand, or peak metric -- those use the electricity total.
     df_enduse['baseline_total_site_consumption'] = (
         df_baseline['out.site_energy.total.energy_consumption.kwh']
     )
@@ -327,6 +334,19 @@ def df_enduse_refactored(
     df_enduse['base_peak_load_heating_kbtu_hr'] = (
         df_baseline['out.load.heating.peak.kbtu_hr']
     )
+    # 'out.electricity.total.energy_consumption.kwh' is the whole-home
+    # ELECTRICITY total (all electric end uses), NOT the all-fuel site energy
+    # above. This is the baseline side of the baseline-vs-retrofit electricity
+    # change, and the value every demand and peak metric must use.
+    #
+    # Prefix convention for the two whole-home totals: the 'base_' vs 'baseline_'
+    # prefix does NOT tell you electricity from site energy -- read the token
+    # after it ('...electricity...' vs '...site...'). Generally 'base_' marks an
+    # equipment/fuel/metadata-level baseline reading that pairs with a retrofit
+    # column (base_total_electricity_consumption pairs with
+    # mp{mp}_total_electricity_consumption), while 'baseline_' marks a whole-home
+    # or category aggregate used in the cost/rebate pipeline
+    # (baseline_total_site_consumption, baseline_{category}_consumption).
     df_enduse['base_total_electricity_consumption'] = (
         df_baseline['out.electricity.total.energy_consumption.kwh']
     )

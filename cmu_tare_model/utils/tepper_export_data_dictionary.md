@@ -180,6 +180,16 @@ there are 67 counties.
 A county with too few sample homes has NaN metrics (small-sample masking in the
 KPI functions); NaN is preserved, not zeroed.
 
+**On `site_energy_change_gwh` / `pct_site_energy_change`:** these are **aliases**
+of the electricity metrics, not independent all-fuel numbers. Both the baseline
+and retrofit sides are read from the whole-home electricity total
+(`out.electricity.total.energy_consumption.kwh`), and because the retrofit fully
+electrifies heating and cooling, the all-fuel site-energy change and the
+electricity change converge -- so `site_energy_change_gwh == elec_change_gwh` and
+`pct_site_energy_change == pct_elec_demand_change` by construction (see
+`adoption_kpis/demand.py`). For an electricity read, use `elec_change_gwh` /
+`pct_elec_demand_change`.
+
 ---
 
 ## 4. How the heat-pump upgrade cost and rebate are recorded
