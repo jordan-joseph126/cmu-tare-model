@@ -4,6 +4,7 @@ import numpy as np
 from typing import Tuple, Dict, List, Optional, Union
 
 from cmu_tare_model.constants import (
+    ANCHOR_YEAR,
     EQUIPMENT_SPECS,
     PRIVATE_DISCOUNTING_METHOD_SUFFIXES,
     REBATE_ELIGIBLE_HEATING_MPS,
@@ -80,7 +81,6 @@ def calculate_private_npv(
         policy_scenario: str,
         discount_rate_col_name: str,
         cost_scenario: str = 'v4MID',
-        base_year: int = 2024,
         verbose: bool = True,
 ) -> pd.DataFrame:
     """
@@ -117,8 +117,14 @@ def calculate_private_npv(
         discount_rate_col_name: Discount rate column name for private discounting.
         cost_scenario: Cost scenario identifier for column naming. Supported
             values: 'v4LOW', 'v4MID' (default), 'v4HIGH'.
-        base_year: Base year for discounting calculations. Default is 2024.
         verbose: Whether to print detailed processing information. Default is True.
+
+    Note:
+        The cost stream always starts at ANCHOR_YEAR (2025), which is where the
+        fuel-price and degree-day data begin, and that is also the year all
+        future dollars are discounted back to. This is deliberately not a
+        parameter: a caller passing a different start year would silently price
+        the retrofit over years the projection data does not cover.
 
     Returns:
         DataFrame with, per measure package, one private NPV column and a net
@@ -176,12 +182,14 @@ def calculate_private_npv(
     discount_factors: Dict[int, pd.Series] = {}
 
     for year in range(1, max_lifetime + 1):
-        year_label = year + (base_year - 1)
-        
+        # Year 1 of the stream is ANCHOR_YEAR itself, so a 15-year lifetime
+        # runs 2025-2039 and the first year is undiscounted.
+        year_label = year + (ANCHOR_YEAR - 1)
+
         # ===== Calculate private discount factors for fixed and variable methods =====
         discount_factors[year_label] = calculate_discount_factors(
             df=df_copy,
-            base_year=base_year, 
+            base_year=ANCHOR_YEAR,
             target_year=year_label,
             discount_rate_col_name=discount_rate_col_name
         )
@@ -217,7 +225,6 @@ def calculate_private_npv(
         discount_factors=discount_factors,
         valid_mask=heating_valid_mask,
         menu_mp=menu_mp,
-        base_year=base_year,
         verbose=verbose,
     )
     cooling_savings_raw = _calculate_discounted_savings(
@@ -229,7 +236,6 @@ def calculate_private_npv(
         discount_factors=discount_factors,
         valid_mask=heating_valid_mask,
         menu_mp=menu_mp,
-        base_year=base_year,
         verbose=verbose,
     )
 
@@ -369,7 +375,6 @@ def _calculate_discounted_savings(
     discount_factors: Dict[int, pd.Series],
     valid_mask: pd.Series,
     menu_mp: int,
-    base_year: int = 2024,
     verbose: bool = False,
 ) -> pd.Series:
     """Compute discounted lifetime fuel-cost savings for one equipment category.
@@ -388,8 +393,12 @@ def _calculate_discounted_savings(
         discount_factors: Mapping from year label to a per-home discount factor.
         valid_mask: Homes with valid baseline data scheduled for the retrofit.
         menu_mp: Measure package identifier (0 = baseline; nonzero applies masking).
-        base_year: Base year used to build year labels. Default is 2024.
         verbose: Whether to raise on partial-year coverage. Default is False.
+
+    Note:
+        Year labels always start at ANCHOR_YEAR (2025), matching the year the
+        fuel-cost columns were built for. Not a parameter, for the same reason
+        as in calculate_private_npv.
 
     Returns:
         Series of discounted lifetime savings, NaN outside valid_mask.
@@ -406,7 +415,7 @@ def _calculate_discounted_savings(
 
     # Sum the discounted avoided cost for each year of the equipment lifetime.
     for year in range(1, lifetime + 1):
-        year_label = year + (base_year - 1)
+        year_label = year + (ANCHOR_YEAR - 1)
         discount_factor = discount_factors[year_label]
 
         base_cost_col_name = create_fuel_cost_col('baseline_', year_label, category)

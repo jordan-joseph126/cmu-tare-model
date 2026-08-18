@@ -2,7 +2,12 @@ import pandas as pd
 import numpy as np
 from typing import Optional, Tuple, Dict, List
 
-from cmu_tare_model.constants import EQUIPMENT_SPECS, FUEL_MAPPING, VERBOSE
+from cmu_tare_model.constants import (
+    ANCHOR_YEAR,
+    EQUIPMENT_SPECS,
+    FUEL_MAPPING,
+    VERBOSE,
+)
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.validation_framework import (
     apply_final_masking,
@@ -43,8 +48,8 @@ def calculate_lifetime_fuel_costs(
     Args:
         df: Input DataFrame containing equipment consumption data, region info, etc.
         menu_mp: Measure package identifier (0 for baseline, nonzero for different scenarios).
-        policy_scenario: Determines fuel price scenario inputs 
-            (e.g., 'No Inflation Reduction Act' or 'AEO2023 Reference Case').
+        policy_scenario: Key into the fuel price table. There is one scenario:
+            '2025 Reference Case'.
         df_baseline_costs: Optional DataFrame with baseline costs for computing operational savings.
             Default is None.
         verbose: Whether to print detailed processing information. Default is VERBOSE constant.
@@ -113,8 +118,15 @@ def calculate_lifetime_fuel_costs(
     # Loop over each equipment category and its lifetime
     for category, lifetime in EQUIPMENT_SPECS.items():
         try:
+            # The cost stream runs for `lifetime` years starting at ANCHOR_YEAR,
+            # so the last year is ANCHOR_YEAR + lifetime - 1 (2025-2039 for a
+            # 15-year lifetime). The old message added a year to the end of the
+            # span and reported 16 years for a 15-year stream.
             if verbose:
-                print(f"Calculating Fuel Costs from 2024 to {2024 + lifetime} for {category}")
+                last_year = ANCHOR_YEAR + lifetime - 1
+                print(
+                    f"Calculating Fuel Costs from {ANCHOR_YEAR} to "
+                    f"{last_year} for {category}")
             
             # ===== STEP 1: Initialize validation tracking =====
             # MEMORY OPTIMIZATION: copy=False since df_copy was already copied at the start
@@ -181,8 +193,12 @@ def calculate_lifetime_fuel_costs(
             # ===== STEP 3 & 4: Valid-Only Calculation and Updates =====
             # Loop over each year in the equipment's lifetime
             for year in range(1, lifetime + 1):
-                year_label = year + 2023
-                
+                # Year 1 of the stream is ANCHOR_YEAR itself, so a 15-year
+                # lifetime runs 2025-2039. Derived from the shared constant so
+                # the start year is set in exactly one place.
+                year_label = year + (ANCHOR_YEAR - 1)
+
+
                 try:
                     # Calculate the annual fuel costs for this category and year
                     annual_costs, annual_cost_value = calculate_annual_fuel_costs(
@@ -375,7 +391,83 @@ def calculate_lifetime_fuel_costs(
     return df_main, df_detailed
 
 
-# ====== Helper Function ======
+# ====== Helper Functions ======
+def _lookup_annual_fuel_price(
+    lookup_fuel_prices: Dict[str, Dict[str, Dict[str, Dict[int, float]]]],
+    region: str,
+    fuel_type: object,
+    policy_scenario: str,
+    year_label: int
+) -> float:
+    """Find one home's fuel price for one year, or fail loudly.
+
+    The price table is nested region -> fuel -> policy scenario -> year. This
+    walks those four levels and treats two kinds of miss differently, because
+    they mean different things:
+
+    - An unmapped FUEL returns NaN. Roughly 10,000 ResStock homes burn
+      'Other Fuel' or have no heating fuel recorded, so FUEL_MAPPING leaves
+      them blank. That is a real condition in the source data, not a mistake
+      in the model, and every one of those homes is already excluded from
+      results by include_heating. NaN is used rather than 0 because a zero
+      price would silently pull down any average it reached, while a NaN
+      cannot hide in one.
+    - A missing REGION, POLICY SCENARIO, or YEAR raises. If the fuel resolved,
+      the price table was meant to carry that combination, so a miss means the
+      model asked for something the data does not contain -- most likely a
+      year outside ANCHOR_YEAR through the end of the projection file.
+
+    Args:
+        lookup_fuel_prices: Nested price table, in USD per kWh.
+        region: State abbreviation for electricity and natural gas, census
+            division name for fuel oil and propane.
+        fuel_type: Mapped fuel name ('electricity', 'naturalGas', 'fuelOil',
+            'propane'), or a blank value for a fuel the model does not price.
+        policy_scenario: Policy scenario key, e.g. '2025 Reference Case'.
+        year_label: Calendar year to price.
+
+    Returns:
+        Price in USD per kWh, or NaN when the home's fuel is not one the model
+        prices.
+
+    Raises:
+        KeyError: If the region, policy scenario, or year is missing for a fuel
+            the model does price.
+    """
+    # Blank fuel: an excluded home, not a data problem. See docstring.
+    if not isinstance(fuel_type, str):
+        return np.nan
+
+    region_prices = lookup_fuel_prices.get(region)
+    if region_prices is None:
+        raise KeyError(
+            f"No fuel prices for region '{region}' "
+            f"(fuel '{fuel_type}', scenario '{policy_scenario}', "
+            f"year {year_label}).")
+
+    fuel_prices = region_prices.get(fuel_type)
+    if fuel_prices is None:
+        raise KeyError(
+            f"No '{fuel_type}' prices for region '{region}' "
+            f"(scenario '{policy_scenario}', year {year_label}).")
+
+    scenario_prices = fuel_prices.get(policy_scenario)
+    if scenario_prices is None:
+        raise KeyError(
+            f"No prices under policy scenario '{policy_scenario}' for region "
+            f"'{region}', fuel '{fuel_type}' (year {year_label}). "
+            f"Available scenarios: {sorted(fuel_prices)}.")
+
+    if year_label not in scenario_prices:
+        available = sorted(scenario_prices)
+        raise KeyError(
+            f"No fuel price for year {year_label} -- region '{region}', "
+            f"fuel '{fuel_type}', scenario '{policy_scenario}'. "
+            f"The price data covers {available[0]}-{available[-1]}.")
+
+    return scenario_prices[year_label]
+
+
 def calculate_annual_fuel_costs(
     df: pd.DataFrame,
     category: str,
@@ -398,7 +490,7 @@ def calculate_annual_fuel_costs(
     Args:
         df: DataFrame containing consumption data and region info.
         category: Equipment category (e.g., 'heating', 'waterHeating').
-        year_label: The calendar year (e.g., 2024).
+        year_label: The calendar year (e.g., 2025).
         menu_mp: Measure package identifier (0 for baseline, nonzero for a measure scenario).
         lookup_fuel_prices: Nested dict with fuel prices for different locations and years.
         policy_scenario: The policy scenario to use for fuel price lookups.
@@ -437,16 +529,15 @@ def calculate_annual_fuel_costs(
             
             # Build a list/Series of per-row prices using a dictionary lookup based on state/census_division
             df['_temp_price'] = [
-                lookup_fuel_prices
-                    .get(
-                        # Use 'state' if electric/natural gas, else use 'census_division'
-                        state_val if use_state else cdiv_val,
-                        {}
-                    )
-                    .get(fueltype_val, {})
-                    .get(policy_scenario, {})
-                    .get(year_label, 0)
-                    
+                _lookup_annual_fuel_price(
+                    lookup_fuel_prices=lookup_fuel_prices,
+                    # Electricity and natural gas are priced by state; fuel oil
+                    # and propane by census division.
+                    region=state_val if use_state else cdiv_val,
+                    fuel_type=fueltype_val,
+                    policy_scenario=policy_scenario,
+                    year_label=year_label,
+                )
                 for state_val, cdiv_val, fueltype_val, use_state in zip(
                     df['state'],
                     df['census_division'],
@@ -463,11 +554,13 @@ def calculate_annual_fuel_costs(
                 raise ValueError("Required column 'state' not found")
                 
             df['_temp_price'] = [
-                lookup_fuel_prices
-                    .get(state_name, {})
-                    .get('electricity', {})
-                    .get(policy_scenario, {})
-                    .get(year_label, 0)
+                _lookup_annual_fuel_price(
+                    lookup_fuel_prices=lookup_fuel_prices,
+                    region=state_name,
+                    fuel_type='electricity',
+                    policy_scenario=policy_scenario,
+                    year_label=year_label,
+                )
                 for state_name in df['state']
             ]
 

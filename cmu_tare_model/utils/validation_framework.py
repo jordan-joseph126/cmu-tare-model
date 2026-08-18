@@ -453,26 +453,38 @@ def replace_small_values_with_nan(
     threshold: float = 1e-10
 ) -> Union[pd.Series, pd.DataFrame, Dict[Any, pd.Series]]:
     """
-    Replace values close to zero with NaN to avoid numerical artifacts.
-    
+    Replace tiny nonzero values with NaN to avoid numerical artifacts.
+
+    A value is treated as an artifact only if it is nonzero and its magnitude
+    is at or below the threshold -- the signature of a rounding remainder that
+    should have cancelled to zero. An exact 0.0 is kept as 0.0, because it is a
+    real answer: two quantities that genuinely match produce a difference of
+    zero, which is different from "no result". Turning those into NaN removed
+    real homes from downstream results (see the 12 Aug 2026 changelog).
+
     Args:
         series_or_dict: A pandas Series, DataFrame, or dictionary of Series.
-        threshold: Values with absolute value below this threshold will be replaced with NaN.
-        
+        threshold: Nonzero values with absolute value at or below this
+            threshold will be replaced with NaN.
+
     Returns:
-        The input with small values replaced by NaN.
-        
+        The input with tiny nonzero values replaced by NaN, exact zeros kept.
+
     Raises:
         TypeError: If input is not a pandas Series, DataFrame, or dictionary of Series.
-    """    
+    """
     if isinstance(series_or_dict, pd.Series):
-        return series_or_dict.where(abs(series_or_dict) > threshold, np.nan)
+        keep = (series_or_dict == 0) | (abs(series_or_dict) > threshold)
+        return series_or_dict.where(keep, np.nan)
     elif isinstance(series_or_dict, pd.DataFrame):
         # Process each column individually and return a new DataFrame
         result_df = pd.DataFrame(index=series_or_dict.index)
         for col in series_or_dict.columns:
             # Apply column-wise replacement directly with the same threshold
-            result_df[col] = series_or_dict[col].where(abs(series_or_dict[col]) > threshold, np.nan)
+            keep_col = (
+                (series_or_dict[col] == 0)
+                | (abs(series_or_dict[col]) > threshold))
+            result_df[col] = series_or_dict[col].where(keep_col, np.nan)
         return result_df
     elif isinstance(series_or_dict, dict):
         return {k: replace_small_values_with_nan(v, threshold) for k, v in series_or_dict.items()}

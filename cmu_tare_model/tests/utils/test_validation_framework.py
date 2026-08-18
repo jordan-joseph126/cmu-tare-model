@@ -13,10 +13,26 @@ from cmu_tare_model.tests.conftest import FULL_EQUIPMENT_SPECS, FULL_UPGRADE_COL
 
 @pytest.fixture(autouse=True)
 def mock_constants(monkeypatch):
-    """Mock constants with full production lifetimes."""
+    """Mock constants with full production lifetimes.
+
+    validation_framework.py does `from cmu_tare_model.constants import
+    EQUIPMENT_SPECS, UPGRADE_COLUMNS`, which copies those names into its own
+    module namespace the first time it is imported. Patching only
+    cmu_tare_model.constants therefore leaves the copy untouched, and whether
+    these tests saw the patched value came down to which test file happened to
+    import validation_framework first -- so they passed alone and failed after
+    the climate tests. Both the source and the module's own copy are patched
+    here so the result no longer depends on run order.
+    """
     monkeypatch.setattr('cmu_tare_model.constants.EQUIPMENT_SPECS', FULL_EQUIPMENT_SPECS)
     monkeypatch.setattr('cmu_tare_model.constants.UPGRADE_COLUMNS', FULL_UPGRADE_COLUMNS)
     monkeypatch.setattr('cmu_tare_model.constants.VERBOSE', False)
+    monkeypatch.setattr(
+        'cmu_tare_model.utils.validation_framework.EQUIPMENT_SPECS',
+        FULL_EQUIPMENT_SPECS)
+    monkeypatch.setattr(
+        'cmu_tare_model.utils.validation_framework.UPGRADE_COLUMNS',
+        FULL_UPGRADE_COLUMNS)
 
 
 @pytest.fixture
@@ -433,13 +449,13 @@ def test_apply_new_columns_handles_overlapping_columns():
 # =============================================================================
 
 def test_replace_small_values_with_nan_series():
-    """Values at or below threshold become NaN; values above are preserved."""
+    """Tiny nonzero values become NaN; exact zeros and larger values survive."""
     from cmu_tare_model.utils.validation_framework import replace_small_values_with_nan
 
     s = pd.Series([1e-11, -1e-11, 1e-10, -1e-10, 1e-9, -1e-9, 0.0, 5.0])
     result = replace_small_values_with_nan(s, threshold=1e-10)
 
-    # abs <= 1e-10 should be NaN
+    # Nonzero with abs <= 1e-10 should be NaN
     assert np.isnan(result.iloc[0])  # 1e-11
     assert np.isnan(result.iloc[1])  # -1e-11
     assert np.isnan(result.iloc[2])  # 1e-10 (at threshold, not > threshold)
@@ -447,8 +463,25 @@ def test_replace_small_values_with_nan_series():
     # abs > 1e-10 should be preserved
     assert result.iloc[4] == 1e-9
     assert result.iloc[5] == -1e-9
-    assert np.isnan(result.iloc[6])  # 0.0
+    # An exact zero is a real answer, not an artifact, so it is kept.
+    assert result.iloc[6] == 0.0
     assert result.iloc[7] == 5.0
+
+
+def test_replace_small_values_with_nan_keeps_exact_zero():
+    """An exact 0.0 is never treated as a floating-point artifact.
+
+    Two quantities that genuinely match produce a difference of exactly zero,
+    which is a real result and must not be confused with missing data.
+    """
+    from cmu_tare_model.utils.validation_framework import replace_small_values_with_nan
+
+    s = pd.Series([0.0, -0.0, 1e-11])
+    result = replace_small_values_with_nan(s, threshold=1e-10)
+
+    assert result.iloc[0] == 0.0
+    assert result.iloc[1] == 0.0
+    assert np.isnan(result.iloc[2])  # tiny but nonzero -> still an artifact
 
 
 def test_replace_small_values_with_nan_dataframe():
@@ -459,7 +492,8 @@ def test_replace_small_values_with_nan_dataframe():
     result = replace_small_values_with_nan(df, threshold=1e-10)
     assert np.isnan(result.loc[0, 'a'])
     assert result.loc[1, 'a'] == 5.0
-    assert np.isnan(result.loc[0, 'b'])
+    # An exact zero is a real answer, not an artifact, so it is kept.
+    assert result.loc[0, 'b'] == 0.0
     assert result.loc[1, 'b'] == -1e-9
 
 

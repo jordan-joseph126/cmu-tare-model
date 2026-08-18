@@ -152,7 +152,19 @@ SCC_ASSUMPTIONS = [
 # to this year so every dollar value is directly comparable. Defined here so
 # the reference year lives in exactly one place rather than as scattered
 # literals.
+#
+# ANCHOR_YEAR is also the first year of every lifetime cost stream. Fuel-price
+# and degree-day projection factors are measured relative to this year, so the
+# factor for ANCHOR_YEAR itself is exactly 1.0 in every source file. The
+# projection data begins in this year: there is no earlier year to fall back
+# on, and nothing in the model may invent one.
 ANCHOR_YEAR = 2025
+
+# Last year covered by the fuel-price and degree-day projection files. Used to
+# check at load time that a projection file covers ANCHOR_YEAR through this
+# year with no gaps, so a truncated or re-cut source file is caught on import
+# rather than silently shortening a cost stream.
+PROJECTION_END_YEAR = 2050
 # FUEL_PRICE_ASSUMPTIONS = ['lower', 'central', 'upper']
 
 # Discount rate constants (centralized for easy modification)
