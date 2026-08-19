@@ -594,7 +594,9 @@ def add_remdb_metrics(
         df: DataFrame with equipment specifications.
         remdb_v4_costs: REMDB v4 cost database (indexed by row_id).
         end_use: Equipment category ('heating' or 'cooling').
-        metric_type: 'replacement' (baseline equipment) or 'upgrade' (heat pump).
+        metric_type: 'replacement' (avoided-replacement cost for the existing
+            system) or 'upgrade' (the heat pump). Both are costed using the
+            same capacity column -- see the capacity_col comment below.
         percentile: Cost percentile ('low', 'mid', 'high').
         capacity_lower_percentile: Lower percentile for capacity filtering (0-100), or None.
         capacity_upper_percentile: Upper percentile for capacity filtering (0-100), or None.
@@ -646,6 +648,21 @@ def add_remdb_metrics(
     # Determine source columns based on end_use and metric_type
     # UPDATE VARIABLE NAMES FOR WATER HEATING, CLOTHES DRYING, COOKING LATER
     if end_use == 'heating':
+        # size_heating_system_primary_k_btu_h is the retrofit heat pump's
+        # ResStock-autosized capacity for this measure package, not the
+        # baseline furnace's nameplate size (see process_euss_data.py,
+        # df_enduse_compare). It is used for BOTH metric_type values: the
+        # 'replacement' cost (avoided baseline-system replacement) is sized
+        # off the same heat-pump capacity because no separate baseline
+        # capacity value is carried in this pipeline.
+        #
+        # FOLLOW-UP FLAGGED 19 Aug 2026: this is the point where the
+        # mismatch actually enters the replacement-cost regression -- pm1
+        # (capacity) for metric_type='replacement' is built from the
+        # retrofit capacity, not the baseline system's own. Dollar magnitude
+        # and whether cooling is affected to the same degree are unconfirmed.
+        # A fix is planned for a separate, value-critical session; see
+        # docs/SESSION_CHANGELOG_2026-08-19.md. Do not change this line here.
         capacity_col = 'size_heating_system_primary_k_btu_h'
         efficiency_col = 'upgrade_hvac_heating_efficiency' if metric_type == 'upgrade' else 'hvac_heating_efficiency'
     elif end_use == 'cooling':

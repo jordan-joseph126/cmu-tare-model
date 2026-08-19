@@ -260,7 +260,7 @@ ELECTRIC_RESISTANCE_BASELINE = {"Electricity"}
 NON_PARTICIPATING_REBATE_STATES = {"SD"}
 
 # Program labels recorded in the rebate_eligibility output column (both vintages).
-REBATE_NONE = "None"
+REBATE_NONE = "Not Eligible"
 REBATE_HEEHR = "HEEHR"
 REBATE_HOMES = "HOMES"
 

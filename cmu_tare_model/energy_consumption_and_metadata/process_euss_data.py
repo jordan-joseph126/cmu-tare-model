@@ -437,6 +437,25 @@ def df_enduse_compare(
         df_compare['hvac_heating_type_and_fuel'] = df_mp['in.hvac_heating_type_and_fuel']
         df_compare['hvac_heating_efficiency'] = df_mp['in.hvac_heating_efficiency']
         # df_compare['size_heat_pump_backup_k_btu_h'] = df_mp['out.params.size_heat_pump_backup_primary_k_btu_h']
+        # This is the retrofit heat pump's capacity for THIS measure package,
+        # not the baseline furnace's nameplate size. ResStock autosizes
+        # equipment separately for every upgrade run (out.params.* comes from
+        # df_mp, the MP3/MP4 upgrade output), so the value varies by measure
+        # package and by whether the home is ducted. One heat pump serves both
+        # heating and cooling, so this equals the cooling capacity column
+        # below for every home.
+        #
+        # FOLLOW-UP FLAGGED 19 Aug 2026: the baseline EUSS file has its own
+        # out.params.size_heating_system_primary_k_btu_h for the home's
+        # EXISTING system, but df_enduse_refactored (the baseline-side
+        # counterpart of this function) never carries any size_* column into
+        # the baseline frame, so that value does not exist anywhere
+        # downstream. This is the reason the heating replacement-cost credit
+        # is priced off the retrofit capacity instead -- see
+        # calculate_capital_costs() in calculate_lifetime_private_impact.py
+        # and docs/SESSION_CHANGELOG_2026-08-19.md for what depends on this.
+        # A fix is planned for a separate, value-critical session -- do not
+        # change this line to fix it here.
         df_compare['size_heating_system_primary_k_btu_h'] = df_mp['out.params.size_heating_system_primary_k_btu_h']
         # df_compare['size_heating_secondary_k_btu_h'] = df_mp['out.params.size_heating_system_secondary_k_btu_h']
         df_compare['upgrade_hvac_heating_efficiency'] = df_mp['upgrade.hvac_heating_efficiency']
@@ -461,6 +480,20 @@ def df_enduse_compare(
     if 'cooling' in VALID_CATEGORIES:
         df_compare['hvac_cooling_type'] = df_mp['in.hvac_cooling_type']
         df_compare['hvac_cooling_efficiency'] = df_mp['in.hvac_cooling_efficiency']
+        # Same retrofit heat-pump capacity as size_heating_system_primary_k_btu_h
+        # above -- one heat pump serves both loads, so heating and cooling
+        # capacity are identical for every home. Not the baseline air
+        # conditioner's size.
+        #
+        # FOLLOW-UP FLAGGED 19 Aug 2026: same structural gap as the heating
+        # column above -- no baseline cooling capacity survives past
+        # df_enduse_refactored either, so the cooling replacement-cost credit
+        # is priced off this retrofit value too. UNCONFIRMED whether this
+        # matters as much in dollar terms: a small sample checked this
+        # session showed the retrofit capacity landing close to the baseline
+        # AC's own capacity (unlike the heating side, where the gap was
+        # large), but that was not checked at population scale. See
+        # docs/SESSION_CHANGELOG_2026-08-19.md.
         df_compare['size_cooling_system_primary_k_btu_h'] = df_mp['out.params.size_cooling_system_primary_k_btu_h']
         df_compare['upgrade_hvac_cooling_efficiency'] = df_mp['upgrade.hvac_cooling_efficiency']
 

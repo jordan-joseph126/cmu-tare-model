@@ -23,6 +23,7 @@ from cmu_tare_model.utils.calculation_utils import (
 from cmu_tare_model.utils.degree_day_consumption_utils import (
     get_hdd_adjusted_consumption
 )
+from cmu_tare_model.utils.column_names import create_annual_consumption_col
 
 def calculate_lifetime_fuel_costs(
     df: pd.DataFrame,
@@ -236,6 +237,19 @@ def calculate_lifetime_fuel_costs(
                         if baseline_col in df_baseline_costs.columns:
                             annual_costs[baseline_col] = df_baseline_costs[baseline_col]
                             category_columns_to_mask.append(baseline_col)
+
+                        # Carry the baseline consumption across too, so one
+                        # measure-package file holds both the baseline
+                        # consumption and the retrofit consumption. A reader
+                        # needs both, each priced at its own fuel price; the
+                        # measure-package run only computes the retrofit
+                        # consumption.
+                        baseline_consumption_col = create_annual_consumption_col(
+                            'baseline_', year_label, category)
+                        if baseline_consumption_col in df_baseline_costs.columns:
+                            annual_costs[baseline_consumption_col] = (
+                                df_baseline_costs[baseline_consumption_col])
+                            category_columns_to_mask.append(baseline_consumption_col)
 
                     # Add annual costs to detailed DataFrame
                     if annual_costs:
@@ -588,7 +602,16 @@ def calculate_annual_fuel_costs(
         # Store the result
         cost_col = f'{scenario_prefix}{year_label}_{category}_fuel_cost'
         annual_costs[cost_col] = fuel_costs
-        
+
+        # Keep the projected consumption that produced this cost. Without it a
+        # reader can see the dollars but cannot check them against a fuel
+        # price, because the degree-day-adjusted consumption existed only
+        # inside this function. Stored in the same dictionary as the cost
+        # column, so the caller applies the same masking to both.
+        consumption_col = create_annual_consumption_col(
+            scenario_prefix, year_label, category)
+        annual_costs[consumption_col] = consumption
+
         # Note: No baseline or avoided cost calculations here - consistent with climate and health modules
     
     except KeyError as e:

@@ -11,10 +11,45 @@
 ## Project at a Glance
 
 **Research question:** Economics of heat-pump electrification across U.S. counties
-**Data:** ~331,531 baseline homes | 331,526 applicable | 3,098 counties (ResStock 2022.1.1 EUSS)
+**Data:** 331,531 baseline representative dwelling units | 3,098 counties (ResStock 2022.1.1 EUSS)
 **Heat-pump models:** MP3 (standard ASHP, 15 SEER1, 9 HSPF1) | MP4 (high-efficiency ASHP, 24–29.3 SEER1, 13–14 HSPF1)
 **Policy scenario:** Single — `'2025 Reference Case'` (see Canonical Values below)
 **Adoption metric:** `NPV >= 0` — economic payback only; no climate/health damages in the adoption decision
+
+---
+
+## Terminology — representative dwelling units vs homes
+
+**A ResStock row is a representative dwelling unit (rdu), NOT a home.** Every
+row carries `weight = 242.131013` (uniform across this release), meaning it
+stands for that many real U.S. dwellings. Multiply a row count by the weight,
+or sum the `weight` column, to get actual homes.
+
+- Say "331,531 representative dwelling units", not "331,531 homes". Those rows
+  represent **80,273,937 actual homes**.
+- Say "260,211 rdu have `include_heating = True`" — that is **63,005,153 real
+  dwellings**.
+- **Rule of thumb: any count below about 242 is a count of rdu, never homes.**
+  One rdu is the smallest a non-zero count can be. A stated "14 homes" is
+  almost certainly 14 rdu = ~3,390 homes.
+- Weighted and unweighted **averages and shares are identical**, because the
+  weight is the same for every row. Only totals and counts differ.
+
+When reporting any count to the researcher or in documentation, either label it
+`rdu` or convert it to actual homes. Give both where both are useful. Getting
+this wrong understates real-world impact by a factor of 242.
+
+**Reading the older rows in this file.** The Golden Values table and the
+Session Log below were written before this rule and say "homes" where they mean
+representative dwelling units -- for example "260,211 homes with
+`include_heating = True`" is 260,211 rdu, representing 63,005,153 real
+dwellings. Those rows are left as written so no golden value appears to have
+been altered. Read every count in them as rdu unless it is explicitly weighted;
+the dollar means, rates and percentages in them are unaffected, because the
+weight is uniform.
+
+Reference conversions: 331,531 rdu = 80,273,937 homes | 260,211 rdu =
+63,005,153 homes | 250,576 rdu = 60,672,221 homes | 1 rdu = 242.131013 homes.
 
 ---
 
@@ -28,6 +63,7 @@ These apply to every session, every task, without exception.
 |---|---|
 | `utils/validation_framework.py` | Core validation logic — never touch |
 | Any `.ipynb` file | VSCode in-memory cache causes changes not to persist; backport manually |
+| Any `*_EXPORT_*.py` file | Read-only snapshot of a notebook — see the rule below |
 | `fetch_aeo_data_and_project_EXPORT_24June2026.py` | EIA API scenario string must match API identifier — do NOT rename |
 | TARE/EUSS load cells (preserved region) | Upstream data source — do not modify |
 | Demand computation cells (preserved region) | Preserve original computation — do not modify |
@@ -44,6 +80,28 @@ shared function rather than a local copy so every caller behaves the same way.
 Details and before/after numbers: `docs/SESSION_CHANGELOG_2026-08-12.md`.
 **The never-edit rule still stands for every future session** — this exception
 does not generalize; ask again.
+
+### Never edit an `_EXPORT` file
+
+Any file whose name contains `_EXPORT_` (for example
+`tare_model_main_v2_3_EXPORT_1Aug2026.py`,
+`calculate_postTARE_ts_aws_peak_demand_EXPORT_23July2026.py`) is a **read-only
+snapshot** of a notebook, kept so the notebook's contents are easy to read and
+diff in git. It is not the source of anything.
+
+Editing one does nothing useful and is actively harmful: the notebook is the
+real file, it does not read from the snapshot, so the edit changes no behaviour
+while making the snapshot disagree with the notebook it is supposed to mirror.
+
+**Instead:** make the change in the importable modules under `cmu_tare_model/`,
+then hand the researcher a list of notebook cells to backport, with
+copy-paste-ready replacement code for each cell. The researcher edits the
+notebook and re-exports the snapshot. This is the same rule as the `.ipynb`
+one above, from the other direction: do not edit the notebook, and do not edit
+its snapshot either.
+
+If an `_EXPORT` file has already been changed, revert those changes before
+going further.
 
 ### One-edit-per-stop-gate rule
 
@@ -324,14 +382,19 @@ For homes where `include_cooling = False`: cooling savings = 0, cooling capital 
 For these homes: `heatingLCC_coolingLCC` == `heatingLCC_coolingSavings` (cooling LCC credit = 0),
 and both exceed `heatingSavings_coolingLCC` (heating LCC credit is the only differentiation).
 
-**Negative cooling savings -- ACCEPTED as real (12 Jul 2026 session).**
+**Negative cooling savings -- ACCEPTED as real (12 Jul 2026 session; national
+share corrected 19 Aug 2026).**
 For some homes the heat pump's cooling energy exceeds the baseline air conditioner's, so
 `ref2025_mp{mp}_cooling_lifetime_savings_fuel_cost` is negative. This is a genuine ResStock
 base-year result, not a projection artifact: baseline and retrofit cooling are scaled by the
 SAME CDD factor and electricity price each year, so the sign is fixed by the raw base-year
-kWh delta. It is overwhelmingly a service-level change -- about 54% of Room AC baselines go
-negative vs 2.5% of Central AC, because the baseline room AC cools one room while the
-whole-home heat pump cools the entire house. Decision: keep the negative savings in the NPV
+kWh delta. It is overwhelmingly a service-level change, because the baseline room AC cools
+one room while the whole-home heat pump cools the entire house. The share is measure-package
+specific: MP3 90.68% of Room AC baselines go negative vs 10.84% of Central AC; MP4 61.97% vs
+3.46%. Recomputed 19 Aug 2026 from the `2026-08-19_13-19` run
+(`docs/SESSION_CHANGELOG_2026-08-19.md`), correcting the 12 Jul 2026 session's single,
+MP-unsplit "about 54% / 2.5%" figure, which did not reproduce for either MP on this run.
+Decision: keep the negative savings in the NPV
 as a real operating cost (consistent with the dollars-only, no-WTP adoption threshold); do
 NOT floor or exclude. A non-NPV boolean flag
 `ref2025_mp{mp}_cooling_lifetime_savings_negative` marks the affected homes for reporting.
@@ -398,8 +461,8 @@ add a new row marked "supersedes" and keep the old row.
 | PROVISIONAL -- Mean `heatingLCC_coolingLCC_unsub` NPV, `fixed_base` (National), AFTER the exact-zero savings fix | PENDING (MP3 not re-run) | -$5,838.23 | Years 2025-2039 | 12 Aug 2026 exact-zero fix. Supersedes -$5,816.35. The mean moves because the 1,279 newly-valued homes (mostly large negative NPVs) now enter the average, NOT because any already-valued home changed -- the denominator goes 258,932 -> 260,211. CONFIRMED by the 17 Aug 2026 full run -- kept as history; cite the CONFIRMED row below. |
 | CONFIRMED -- Mean lifetime heating fuel cost, baseline (National) -- $20,362.56 | (shared) | (shared) | Years 2025-2039 | 17 Aug 2026 full run. Exactly $20,362.5614700378 over the 260,211 homes with `include_heating = True`. Matches the 12 Aug provisional value to the cent. |
 | CONFIRMED -- Mean lifetime cooling fuel cost, baseline (National) -- $10,097.37 | (shared) | (shared) | Years 2025-2039 | 17 Aug 2026 full run. Exactly $10,097.3677096370 over the 250,576 homes with `include_cooling = True`. Matches the 12 Aug provisional value to the cent. |
-| CONFIRMED -- Mean `heatingLCC_coolingLCC_unsub` NPV, `fixed_base` (National) | -$4,852.41 | -$5,838.23 | Years 2025-2039 | 17 Aug 2026 full run. MP4 is exactly -$5,838.2316748715, matching the 12 Aug provisional value to the cent. MP3 measured for the first time. Both MPs: 260,211 homes with a usable NPV. |
-| CONFIRMED -- Mean economic adoption rate, `heatingLCC_coolingLCC_unsub`, `fixed_base` (National) | 27.7140% | 18.4416% | Years 2025-2039 | 17 Aug 2026 full run. MP4 is 18.441572%, matching the 12 Aug provisional value; 47,987 adopters out of a 260,211 denominator. MP3 measured for the first time: 72,115 adopters out of the same 260,211. Weighted and unweighted rates are identical -- every home carries weight 242.13. |
+| CONFIRMED -- Mean `heatingLCC_coolingLCC_unsub` NPV, `fixed_base` (National) | -$4,852.41 | -$5,838.23 | Years 2025-2039 | 17 Aug 2026 full run. MP4 is exactly -$5,838.2316748715, matching the 12 Aug provisional value to the cent. MP3 measured for the first time. Both MPs: 260,211 homes with a usable NPV. Independently reproduced to the same digits on the 19 Aug 2026 run (`2026-08-19_13-19`), which carries the Tepper-export changes from that session -- confirms those changes did not move this value. |
+| CONFIRMED -- Mean economic adoption rate, `heatingLCC_coolingLCC_unsub`, `fixed_base` (National) | 27.7140% | 18.4416% | Years 2025-2039 | 17 Aug 2026 full run. MP4 is 18.441572%, matching the 12 Aug provisional value; 47,987 adopters out of a 260,211 denominator. MP3 measured for the first time: 72,115 adopters out of the same 260,211. Weighted and unweighted rates are identical -- every home carries weight 242.13. Independently reproduced to the same digits on the 19 Aug 2026 run (`2026-08-19_13-19`), which carries the Tepper-export changes from that session -- confirms those changes did not move this value. |
 | CONFIRMED -- `baseline_heating_lifetime_mt_co2e_lrmer` (National) | (shared) | (shared) | Years 2025-2039 | 69.4238 tonnes over 260,204 homes. 17 Aug 2026 full run; matches the 12 Aug climate table. |
 | CONFIRMED -- `baseline_heating_lifetime_damages_climate_lrmer_central` (National) | (shared) | (shared) | Years 2025-2039 | $18,377.40 over 260,204 homes. 17 Aug 2026 full run. |
 | CONFIRMED -- `baseline_heating_lifetime_mt_co2e_srmer` (National) | (shared) | (shared) | Years 2025-2039 | 80.6867 tonnes over 260,204 homes. 17 Aug 2026 full run. |
@@ -615,6 +678,8 @@ Do not suggest any of these:
 ❌ Delete the tiered adoption module — prepend deprecation header only
 ❌ Generate econ adopter columns inside a loop — generate all per MP in a single block
 ❌ Edit .ipynb JSON directly — backport accepted changes manually
+❌ Edit any *_EXPORT_*.py file — it is a read-only snapshot of a notebook; change the modules and hand over copy-paste cells to backport
+❌ Call a ResStock row count "homes" — rows are representative dwelling units; multiply by weight (242.131013) for actual homes. A count under ~242 is always rdu
 ❌ Edit validation_framework.py — never
 ❌ Silently overwrite a golden value — keep old row with 'superseded by Session N' note
 ❌ Skip the pre-edit audit — read actual file state before every change

@@ -29,6 +29,8 @@ from cmu_tare_model.utils.column_names import (
     create_rebate_col,
     create_capital_col,
     create_npv_case_col,
+    create_discounted_savings_col,
+    create_cooling_credit_applied_col,
     create_enclosure_cost_col,
     create_weatherization_rebate_col,
 )
@@ -243,6 +245,25 @@ def calculate_private_npv(
     cooling_savings = cooling_savings_raw.where(include_cooling, other=0.0)
     heating_and_cooling_savings = heating_savings + cooling_savings
 
+    # Save the discounted heating savings and the discounted cooling savings.
+    # The NPV is heating savings plus cooling savings minus net capital cost.
+    # All nine NPV cases use these same two savings figures and differ only in
+    # net capital cost, so storing them once lets a reader reproduce the
+    # subtraction for any case. Until now both figures were discarded after
+    # the nine cases were built, leaving the savings side of the NPV
+    # unverifiable from the exported columns.
+    # Store the cooling figure AFTER the include_cooling adjustment above, so
+    # the column holds what the NPV actually used: 0.0 for a home with
+    # include_cooling = False, not the raw cooling savings.
+    heating_savings_col = create_discounted_savings_col(
+        scenario_prefix, 'heating', method_suffix)
+    cooling_savings_col = create_discounted_savings_col(
+        scenario_prefix, 'cooling', method_suffix)
+    df_new_columns[heating_savings_col] = heating_savings
+    df_new_columns[cooling_savings_col] = cooling_savings
+    all_columns_to_mask['heating'].extend(
+        [heating_savings_col, cooling_savings_col])
+
     # ===== Capital costs =====
     # Heating capital: heat-pump install (minus rebate) credited against the
     # heating system it replaces. The total (gross) capital is shared by all
@@ -266,6 +287,17 @@ def calculate_private_npv(
     
     cooling_replacement_cost = (
         df_copy[cooling_replacement_col].fillna(0).where(include_cooling, other=0.0))
+
+    # Save the cooling replacement credit the NPV actually subtracted. It
+    # differs from the raw mp{mp}_cooling_replacement_installed_cost_{scenario}
+    # column in two ways: it is 0.0 for a home with include_cooling = False,
+    # and it is 0.0 where the raw column is blank. Nationally 269 homes have
+    # include_cooling = True but no recorded cooling replacement cost, so
+    # their credit is 0.0 while the raw column reads blank.
+    cooling_credit_col = create_cooling_credit_applied_col(
+        menu_mp=menu_mp, cost_scenario=cost_scenario)
+    df_new_columns[cooling_credit_col] = cooling_replacement_cost
+    all_columns_to_mask['heating'].append(cooling_credit_col)
     
     net_capital_heating_and_cooling = net_capital_heating - cooling_replacement_cost
     
@@ -523,6 +555,50 @@ def calculate_capital_costs(
         Single policy scenario ('2025 Reference Case'); IRA rebates are always
         applied for rebate-eligible measure packages.
 
+        FOLLOW-UP FLAGGED 19 Aug 2026 -- the replacement cost subtracted here
+        (create_cost_col(..., cost_type='replacement', ...), read a few lines
+        below) is described everywhere as the avoided cost of replacing the
+        home's EXISTING heating (or cooling) system like-for-like. For
+        category='heating' that description does not match how the cost is
+        actually priced. The REMDB v4 regression that produces this column is
+        built from size_heating_system_primary_k_btu_h, which is the RETROFIT
+        heat pump's ResStock-autosized capacity for this measure package, not
+        a value read from the home's existing furnace or boiler. No baseline
+        equipment capacity survives this pipeline at all: ResStock's own
+        baseline run computes one, but it is dropped in
+        process_euss_data.py's df_enduse_compare (the baseline-side
+        equivalent, df_enduse_refactored, never carries any size_* column
+        forward) and is not recoverable from any column in df_copy here.
+
+        Concretely: on a 5-home spot check in the 19 Aug 2026 Allegheny
+        export, one home's true baseline furnace capacity was 35.30 kBtu/h
+        while the value actually priced for its "replacement" cost was 14.90
+        kBtu/h (MP3) or 16.03 kBtu/h (MP4) -- the retrofit heat pump's
+        capacity, roughly 2 to 2.5x smaller. Since the REMDB v4 regression is
+        approximately linear in capacity, using a materially smaller capacity
+        very likely understates net_capital_cost's replacement credit for
+        many homes on the heating side, which would understate net_capital_cost
+        and therefore make the NPV look worse than it should for adoption --
+        but this was NOT measured across the full population this session, so
+        do not treat "2 to 2.5x" or the direction of the NPV effect as a
+        confirmed population-level result, only as what one small sample
+        showed.
+
+        UNCONFIRMED by this session, left for the follow-up: (1) whether
+        category='cooling' is affected to a similar degree -- the same
+        5-home sample showed the retrofit cooling capacity landing close to
+        the baseline air conditioner's own capacity, unlike heating, but that
+        was not checked at scale; (2) the actual dollar and NPV impact across
+        the full sample; (3) whether MP3 and MP4 are affected differently,
+        since their retrofit capacities differ from each other as well as
+        from baseline.
+
+        A fix is planned for a separate, value-critical session, because
+        changing the replacement-cost capacity input would move net_capital_cost,
+        the NPV, and the adoption rate for a large share of homes -- exactly
+        the kind of change this session's scope excluded. Do not attempt the
+        fix here. Full trace and the four flagged sites:
+        docs/SESSION_CHANGELOG_2026-08-19.md.
     """
     if verbose:
         print(f"\nCalculating costs for {category}... ")
@@ -579,6 +655,11 @@ def calculate_capital_costs(
             rebate_amount = 0.0
 
         total_capital_cost = installation_cost - rebate_amount
+        # FOLLOW-UP FLAGGED 19 Aug 2026 (see the function docstring Notes for
+        # the full trace): this replacement-cost column is priced off the
+        # retrofit heat pump's capacity, not the existing heating system's,
+        # so the credit subtracted here is not truly sized to what it claims
+        # to replace. Not fixed this session.
         net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='replacement', cost_scenario=cost_scenario)].fillna(0)
 
     else:

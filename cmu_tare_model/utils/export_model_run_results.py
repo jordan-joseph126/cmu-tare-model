@@ -16,7 +16,8 @@ def export_model_run_output(
     location_id: str,
     results_export_formatted_date: str,
     discount_rate: Optional[str] = None,
-    county_tables: Optional[dict] = None
+    county_tables: Optional[dict] = None,
+    df_annual_consumption: Optional[pd.DataFrame] = None
 ) -> None:
     """Export model run results to CSV files with sensitivity tracking.
 
@@ -53,6 +54,10 @@ def export_model_run_output(
         county_tables: Mapping with keys 'adoption', 'bill_savings', and
             'demand' holding the three per-MP county result frames. Required
             only when results_category='tepper_county'.
+        df_annual_consumption: Supplemental fuel-cost frame for this measure
+            package and run, indexed by bldg_id. It holds the per-year
+            consumption columns, which are not in the summary frame. Required
+            only when results_category='tepper_household'.
 
     Raises:
         ValueError: If any required parameter is missing, results_category is invalid,
@@ -74,8 +79,16 @@ def export_model_run_output(
     # because each applies its own list of included columns or multi-table
     # assembly.
     if results_category == 'tepper_household':
+        if df_annual_consumption is None:
+            raise ValueError(
+                "results_category='tepper_household' requires "
+                "df_annual_consumption: the supplemental fuel-cost frame for "
+                "this measure package and run, which holds the per-year "
+                "consumption columns."
+            )
         export_tepper_household(
             df_household=df_results_export,
+            df_annual_consumption=df_annual_consumption,
             menu_mp=menu_mp,
             output_folder_path=output_folder_path,
             location_id=location_id,

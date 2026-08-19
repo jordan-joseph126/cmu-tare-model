@@ -77,6 +77,18 @@ def calculate_replacement_installed_cost(
 
     Routes to REMDB v3 (probabilistic) or v4 (regression) based on ``cost_scenario``.
 
+    FOLLOW-UP FLAGGED 19 Aug 2026 -- for end_use='heating', the capacity input
+    behind this "replacement" cost (both the v4 pm1_euss column, built in
+    add_remdb_metrics, and the v3 read of size_heating_system_primary_k_btu_h
+    in _calculate_replacement_cost_per_row below) is the RETROFIT heat pump's
+    capacity, not the existing furnace/boiler's own capacity -- no baseline
+    capacity value survives the pipeline (see process_euss_data.py,
+    df_enduse_compare). So this function's "like-for-like replacement" cost is
+    not actually sized like the system it is replacing. Whether cooling shares
+    this to the same degree, and the resulting dollar magnitude, are both
+    unconfirmed. A fix is planned for a separate, value-critical session --
+    see docs/SESSION_CHANGELOG_2026-08-19.md; do not attempt it here.
+
     Args:
         df: DataFrame with home data and prepared metrics.
         df_detailed: Detailed DataFrame with regression parameters (v4) or cost lookup data.
