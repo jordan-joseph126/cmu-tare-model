@@ -255,40 +255,29 @@ def plot_demand_panel(
     ax.plot(df_profile["hour"], df_profile["scenario_mw"],
             color="tab:blue", linewidth=0.8, alpha=0.5)
 
-    peak_hr_base = peak_result["peak_hour_baseline"]
-    peak_mw_base = peak_result["baseline_peak_mw"]
-    peak_hr_scen = peak_result["peak_hour_scenario"]
-    peak_mw_scen = peak_result["scenario_peak_mw"]
+    # Horizontal dashed lines mark each series' peak MW so panels sharing a
+    # y-axis can be compared by eye. What solid vs. dashed and red vs. blue
+    # mean is explained once in the shared figure legend built by the
+    # notebook cell that calls this function, not repeated as per-panel text
+    # (the old text-box annotations overlapped and were hard to read).
+    ax.axhline(y=peak_result["baseline_peak_mw"], color="tab:red",
+               linestyle="--", linewidth=2.0, alpha=0.85)
+    ax.axhline(y=peak_result["scenario_peak_mw"], color="tab:blue",
+               linestyle="--", linewidth=2.0, alpha=0.85)
 
-    ax.axvline(x=peak_hr_base, color="tab:red", linestyle="--", linewidth=2.0,
-               alpha=0.85)
-    ax.axvline(x=peak_hr_scen, color="tab:blue", linestyle="--", linewidth=2.0,
-               alpha=0.85)
+    # Black open circle marks the exact (hour, MW) point where each series
+    # peaks -- the dashed line shows the peak height across the whole panel,
+    # this marker pins down exactly when it happens.
+    ax.plot(peak_result["peak_hour_baseline"], peak_result["baseline_peak_mw"],
+            marker="o", markerfacecolor="none", markeredgecolor="black",
+            markersize=11, markeredgewidth=2.0, linestyle="none", zorder=5)
+    ax.plot(peak_result["peak_hour_scenario"], peak_result["scenario_peak_mw"],
+            marker="o", markerfacecolor="none", markeredgecolor="black",
+            markersize=11, markeredgewidth=2.0, linestyle="none", zorder=5)
 
-    ax.annotate(
-        f"Base peak\n{peak_mw_base:.1f} MW\n(hr {peak_hr_base})",
-        xy=(peak_hr_base, 0.95),
-        xycoords=("data", "axes fraction"),
-        xytext=(peak_hr_base + 180, 0.95),
-        textcoords=("data", "axes fraction"),
-        fontsize=14, color="tab:red",
-        ha="left", va="top",
-        bbox={"boxstyle": "round,pad=0.2", "fc": "white", "ec": "tab:red", "alpha": 0.7},
-    )
-    ax.annotate(
-        f"Scenario peak\n{peak_mw_scen:.1f} MW\n(hr {peak_hr_scen})",
-        xy=(peak_hr_scen, 0.95),
-        xycoords=("data", "axes fraction"),
-        xytext=(peak_hr_scen + 180, 0.95),
-        textcoords=("data", "axes fraction"),
-        fontsize=14, color="tab:blue",
-        ha="left", va="top",
-        bbox={"boxstyle": "round,pad=0.2", "fc": "white", "ec": "tab:blue", "alpha": 0.7},
-    )
-
-    ax.set_xlabel("Hour of Year", fontsize=14)
-    ax.set_ylabel("Demand (MW)", fontsize=14)
-    ax.tick_params(labelsize=12)
+    ax.set_xlabel("Hour of Year", fontsize=17)
+    ax.set_ylabel("Demand (MW)", fontsize=17)
+    ax.tick_params(labelsize=15)
 
 
 # =============================================================================

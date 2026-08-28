@@ -330,7 +330,8 @@ REBATE_RULE_CONFIG = {
 # =============================================================
 
 # REMDB v4 MID is considered our base case
-# Removed v3
+# Removed v3 -- if v3 is ever turned back on, it still has the old-system-size
+# bug fixed in v4 on 20 Aug 2026; see calculate_equipment_replacement_costs.py.
 REMDB_COST_SCENARIO_KEYS = [
     # 'v4LOW',       # REMDB v4: 10th percentile
     'v4MID',       # REMDB v4: 50th percentile (median)
