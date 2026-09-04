@@ -1045,6 +1045,211 @@ def plot_adoption_panel(
     return ax
 
 
+def plot_econ_adoption_panel(
+    plot_df: pd.DataFrame,
+    ax: plt.Axes,
+    title: str,
+    fuel_counts_millions: Dict[str, float],
+    custom_tier_markers: Dict[str, str],
+) -> plt.Axes:
+    """Draw one economic-adoption dot-plot panel with the main notebook's styling.
+
+    Thin wrapper around ``plot_adoption_panel`` that bakes in the eight keyword
+    values the main notebook's two adoption-dotplot cells (replacement-credit
+    scope, and rebate policy scenario) always pass identically:
+    ``grouping_order=NATIONAL_FUEL_GROUPING_ORDER``, ``title_fontsize=16``,
+    ``ytick_fontsize=14``, ``annotation_fontsize=14``,
+    ``annotation_x_offset_pts=26``, ``annotation_y_offset_pts=8``,
+    ``xlim_margin=20``, and ``fill_markers=False``. Only the arguments that
+    differ between the two calls -- ``plot_df``, ``ax``, ``title``,
+    ``fuel_counts_millions``, and ``custom_tier_markers`` -- stay as
+    parameters. The paired legend-handle builder
+    (``build_replacement_credit_legend_handles`` or
+    ``build_rebate_policy_scenario_legend_handles``) is a separate call at the
+    notebook cell's ``ax.legend(...)`` line, not wrapped here.
+
+    Args:
+        plot_df: Output of ``build_econ_plot_df`` for one measure package.
+        ax: Matplotlib Axes to draw on.
+        title: Panel title (the measure-package subtitle).
+        fuel_counts_millions: ``{fuel_type: weighted_homes_millions}`` for the
+            y-axis home-count annotations.
+        custom_tier_markers: Marker-shape lookup for this call's mode --
+            ``REPLACEMENT_CREDIT_MARKERS`` or ``REBATE_POLICY_SCENARIO_MARKERS``.
+
+    Returns:
+        The same Axes, per ``plot_adoption_panel``.
+    """
+    return plot_adoption_panel(
+        plot_df, ax,
+        grouping_order=NATIONAL_FUEL_GROUPING_ORDER,
+        title=title,
+        title_fontsize=16,
+        ytick_fontsize=14,
+        annotation_fontsize=14,
+        annotation_x_offset_pts=26,
+        annotation_y_offset_pts=8,
+        xlim_margin=20,
+        fuel_counts_millions=fuel_counts_millions,
+        custom_tier_markers=custom_tier_markers,
+        fill_markers=False,
+    )
+
+
+def plot_econ_adoption_dotplot_figure(
+    measure_packages: List[int],
+    dataframes_by_mp: Dict[int, Dict[str, pd.DataFrame]],
+    discount_rate: str,
+    cost_scenario: str,
+    mp_subtitles: Dict[int, str],
+    build_df_kwargs: Dict,
+    custom_tier_markers: Dict[str, str],
+    legend_handles: List[mlines.Line2D],
+    summary_header: str,
+    save_figure: bool = False,
+    output_dir: Optional[str] = None,
+    output_filename: Optional[str] = None,
+    figure_dpi: int = FIGURE_DPI,
+) -> Optional[plt.Figure]:
+    """Build the full N-row economic-adoption dot-plot figure.
+
+    Consolidates what used to be duplicated per-cell code in the main
+    notebook's two adoption-dotplot cells (replacement-credit scope, and
+    rebate policy scenario): computing national fuel counts, looping over
+    measure packages to build each panel's data (``build_econ_plot_df``),
+    printing the National per-case summary, drawing the panel
+    (``plot_econ_adoption_panel``), adding the per-panel legend, and saving
+    the figure. Only what genuinely differs between the two notebook cells
+    stays a parameter: the ``build_econ_plot_df`` mode-specific keyword
+    arguments, the marker lookup, the legend handles, and the summary header
+    text.
+
+    The National-row summary print assumes ``build_econ_plot_df`` always
+    emits one row per case, in a fixed order, for the 'National -- Overall'
+    grouping -- true for both modes by construction (confirmed against
+    REPLACEMENT_CREDIT_CASES and REBATE_POLICY_SCENARIO_ORDER before this
+    function replaced the two cells' separate print loops).
+
+    Args:
+        measure_packages: Measure-package numbers to render as rows, in
+            order (``HEATING_MEASURE_PACKAGES`` in the notebook).
+        dataframes_by_mp: ``{mp: {discount_rate: DataFrame}}`` -- the main
+            notebook's ``DATAFRAMES_BY_MP``.
+        discount_rate: Discount-rate key to select from ``dataframes_by_mp``.
+        cost_scenario: Forwarded to ``build_econ_plot_df`` (retained for
+            caller compatibility; not embedded in column names).
+        mp_subtitles: Per-MP panel title lookup (``HEATING_MP_SUBTITLES``).
+        build_df_kwargs: Extra keyword arguments forwarded to
+            ``build_econ_plot_df`` beyond ``source_df``, ``mp``,
+            ``cost_scenario``, and ``discount_rate`` -- e.g.
+            ``{'rebate_vintage': 'unsub'}`` for the replacement-credit mode,
+            or ``{'shape_by': 'rebate_policy_scenario',
+            'fixed_replacement_credit_scenario': 'heatingLCC_coolingLCC'}``
+            for the rebate-policy mode.
+        custom_tier_markers: Marker-shape lookup for this figure's mode --
+            ``REPLACEMENT_CREDIT_MARKERS`` or
+            ``REBATE_POLICY_SCENARIO_MARKERS``.
+        legend_handles: Legend handles for this figure's mode, from
+            ``build_replacement_credit_legend_handles`` or
+            ``build_rebate_policy_scenario_legend_handles``. Built once by
+            the caller and reused for every panel's legend (the original
+            per-cell code rebuilt it on every loop iteration, which is
+            wasteful but harmless since the builder is a pure function --
+            reusing one set of handles changes nothing about what renders).
+        summary_header: Printed once per panel before its National summary
+            line, e.g. ``'economic adoption summary (National,
+            unsubsidized)'``.
+        save_figure: If True, save the figure. Requires ``output_dir`` and
+            ``output_filename``.
+        output_dir: Project root to save under (the file goes in
+            ``output_dir/figures/``).
+        output_filename: Bare filename stem (no extension); saved as both
+            ``.png`` and ``.pdf``.
+        figure_dpi: Resolution used when saving.
+
+    Returns:
+        The matplotlib Figure, or None if ``measure_packages`` is empty (the
+        caller is expected to print its own "skipping" message in that case,
+        since the two notebook cells word it differently).
+
+    Raises:
+        ValueError: If save_figure is True but output_dir or output_filename
+            is None.
+    """
+    if save_figure and (output_dir is None or output_filename is None):
+        raise ValueError(
+            "output_dir and output_filename are both required when "
+            "save_figure=True."
+        )
+    if not measure_packages:
+        return None
+
+    # National fuel counts, weighted to homes. The fuel mix is a property of
+    # the housing stock, not the measure package, so any MP's frame gives the
+    # same counts -- the first one is used.
+    _src = dataframes_by_mp[measure_packages[0]][discount_rate]
+    fuel_counts_millions = {
+        str(fuel): weighted_homes / 1_000_000
+        for fuel, weighted_homes in _src.groupby(
+            'base_heating_fuel', observed=True)['weight'].sum().items()
+    }
+
+    n_mps = len(measure_packages)
+    fig, axes = plt.subplots(
+        n_mps, 1, figsize=(12, 6 * n_mps), sharex=True, sharey=True,
+    )
+    if n_mps == 1:
+        axes = [axes]
+
+    for row_idx, mp in enumerate(measure_packages):
+        ax = axes[row_idx]
+        panel_title = mp_subtitles.get(mp, f'MP{mp}')
+        source_df = dataframes_by_mp[mp][discount_rate]
+
+        plot_df = build_econ_plot_df(
+            source_df, mp, cost_scenario=cost_scenario,
+            discount_rate=discount_rate, **build_df_kwargs,
+        )
+
+        # National per-case summary so the plotted values are visible on
+        # every run.
+        print(f"--- MP{mp} {summary_header} ---")
+        national = plot_df[plot_df['grouping'] == 'National -- Overall']
+        for _, row in national.iterrows():
+            print(f"  {row['tier_label']}: {row['case_b_pct']:.1f}%")
+        print()
+
+        plot_econ_adoption_panel(
+            plot_df, ax,
+            title=panel_title,
+            fuel_counts_millions=fuel_counts_millions,
+            custom_tier_markers=custom_tier_markers,
+        )
+        ax.tick_params(axis='both', labelsize=14)
+        ax.legend(
+            handles=legend_handles, loc='upper right', fontsize=14,
+            frameon=True,
+        )
+
+        if row_idx < n_mps - 1:
+            ax.set_xlabel('')
+
+    fig.tight_layout(rect=[0.0, 0.02, 1.0, 0.96])
+
+    if save_figure:
+        out_dir = os.path.join(output_dir, 'figures')
+        os.makedirs(out_dir, exist_ok=True)
+        for ext in ('png', 'pdf'):
+            fig.savefig(
+                os.path.join(out_dir, f'{output_filename}.{ext}'),
+                dpi=figure_dpi, bbox_inches='tight',
+            )
+        print(f"[OK] Saved {output_filename}.png / .pdf to {out_dir}")
+
+    plt.show()
+    return fig
+
+
 # ===================================================================
 # plot_adoption_dotplot  (N×1 multi-panel figure)
 # ===================================================================
