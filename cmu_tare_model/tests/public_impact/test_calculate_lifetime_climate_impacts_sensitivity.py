@@ -12,9 +12,19 @@ from cmu_tare_model.tests.conftest import FULL_EQUIPMENT_SPECS, FULL_UPGRADE_COL
 # FIXTURES
 # =============================================================================
 
+MODULE = 'cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity'
+
+
 @pytest.fixture(autouse=True)
 def mock_constants(monkeypatch):
-    """Mock constants with full production lifetimes."""
+    """Mock constants with full production lifetimes.
+
+    The module under test and validation_framework.py each copy these names
+    into their own namespace with `from cmu_tare_model.constants import ...`
+    when first imported, so patching cmu_tare_model.constants alone leaves
+    those copies pointing at the real two-category spec. Every copy is patched
+    here so these tests do not depend on which file imported the modules first.
+    """
     monkeypatch.setattr('cmu_tare_model.constants.EQUIPMENT_SPECS', FULL_EQUIPMENT_SPECS)
     monkeypatch.setattr('cmu_tare_model.constants.UPGRADE_COLUMNS', FULL_UPGRADE_COLUMNS)
     monkeypatch.setattr('cmu_tare_model.constants.FUEL_MAPPING', FULL_FUEL_MAPPING)
@@ -22,6 +32,16 @@ def mock_constants(monkeypatch):
     monkeypatch.setattr('cmu_tare_model.constants.TD_LOSSES_MULTIPLIER', 1 / (1 - 0.05))
     monkeypatch.setattr('cmu_tare_model.constants.MER_TYPES', ['lrmer', 'srmer'])
     monkeypatch.setattr('cmu_tare_model.constants.SCC_ASSUMPTIONS', ['lower', 'central', 'upper'])
+    monkeypatch.setattr(f'{MODULE}.EQUIPMENT_SPECS', FULL_EQUIPMENT_SPECS)
+    monkeypatch.setattr(f'{MODULE}.TD_LOSSES_MULTIPLIER', 1 / (1 - 0.05))
+    monkeypatch.setattr(f'{MODULE}.MER_TYPES', ['lrmer', 'srmer'])
+    monkeypatch.setattr(f'{MODULE}.SCC_ASSUMPTIONS', ['lower', 'central', 'upper'])
+    monkeypatch.setattr(
+        'cmu_tare_model.utils.validation_framework.EQUIPMENT_SPECS',
+        FULL_EQUIPMENT_SPECS)
+    monkeypatch.setattr(
+        'cmu_tare_model.utils.validation_framework.UPGRADE_COLUMNS',
+        FULL_UPGRADE_COLUMNS)
 
 
 @pytest.fixture
@@ -122,7 +142,7 @@ def test_baseline_climate_output_structure(mock_params, mock_elec, mock_fossil, 
                                            climate_df, mock_emissions_electricity_climate,
                                            mock_scc_lookup):
     """Baseline produces df_main and df_detailed with expected column patterns."""
-    mock_params.return_value = ('baseline_', 'MidCase', {}, mock_emissions_electricity_climate, {}, {})
+    mock_params.return_value = ('baseline_', 'MidCase', {}, mock_emissions_electricity_climate, {})
     mock_elec.return_value = pd.Series(1000.0, index=climate_df.index)
     mock_fossil.return_value = {
         'co2e': pd.Series(0.5, index=climate_df.index),
@@ -133,7 +153,7 @@ def test_baseline_climate_output_structure(mock_params, mock_elec, mock_fossil, 
     mock_scc.__getitem__ = lambda self, key: mock_scc_lookup[key]
 
     df_main, df_detailed = calculate_lifetime_climate_impacts(
-        climate_df, menu_mp=0, policy_scenario='AEO2023 Reference Case', verbose=False
+        climate_df, menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
     )
 
     assert isinstance(df_main, pd.DataFrame)
@@ -155,7 +175,7 @@ def test_baseline_climate_damages_columns_exist(mock_params, mock_elec, mock_fos
                                                  climate_df, mock_emissions_electricity_climate,
                                                  mock_scc_lookup):
     """Lifetime damages columns exist for all (MER, SCC) combinations."""
-    mock_params.return_value = ('baseline_', 'MidCase', {}, mock_emissions_electricity_climate, {}, {})
+    mock_params.return_value = ('baseline_', 'MidCase', {}, mock_emissions_electricity_climate, {})
     mock_elec.return_value = pd.Series(1000.0, index=climate_df.index)
     mock_fossil.return_value = {
         'co2e': pd.Series(0.5, index=climate_df.index),
@@ -166,7 +186,7 @@ def test_baseline_climate_damages_columns_exist(mock_params, mock_elec, mock_fos
     mock_scc.__getitem__ = lambda self, key: mock_scc_lookup[key]
 
     df_main, _ = calculate_lifetime_climate_impacts(
-        climate_df, menu_mp=0, policy_scenario='AEO2023 Reference Case', verbose=False
+        climate_df, menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
     )
 
     for cat in FULL_EQUIPMENT_SPECS:
@@ -188,7 +208,7 @@ def test_mp_invalid_homes_masked(mock_params, mock_elec, mock_fossil, mock_scc,
                                   climate_df, mock_emissions_electricity_climate,
                                   mock_scc_lookup):
     """Invalid homes get NaN in measure package lifetime climate columns."""
-    mock_params.return_value = ('iraRef_mp8_', 'MidCase', {}, mock_emissions_electricity_climate, {}, {})
+    mock_params.return_value = ('ref2025_mp8_', 'MidCase', {}, mock_emissions_electricity_climate, {})
     mock_elec.return_value = pd.Series(1000.0, index=climate_df.index)
     mock_fossil.return_value = {
         'co2e': pd.Series(0.5, index=climate_df.index),
@@ -199,7 +219,7 @@ def test_mp_invalid_homes_masked(mock_params, mock_elec, mock_fossil, mock_scc,
     mock_scc.__getitem__ = lambda self, key: mock_scc_lookup[key]
 
     df_main, _ = calculate_lifetime_climate_impacts(
-        climate_df, menu_mp=8, policy_scenario='AEO2023 Reference Case', verbose=False
+        climate_df, menu_mp=8, policy_scenario='2025 Reference Case', verbose=False
     )
 
     for cat in FULL_EQUIPMENT_SPECS:
@@ -213,7 +233,7 @@ def test_mp_invalid_homes_masked(mock_params, mock_elec, mock_fossil, mock_scc,
         if not invalid_mask.any():
             continue
         for mer in ['lrmer', 'srmer']:
-            col = f'iraRef_mp8_{cat}_lifetime_mt_co2e_{mer}'
+            col = f'ref2025_mp8_{cat}_lifetime_mt_co2e_{mer}'
             if col in df_main.columns:
                 assert df_main.loc[invalid_mask, col].isna().all(), \
                     f"Invalid homes should have NaN in {col}"
@@ -231,7 +251,7 @@ def test_all_years_in_detailed(mock_params, mock_elec, mock_fossil, mock_scc,
                                 climate_df, mock_emissions_electricity_climate,
                                 mock_scc_lookup):
     """df_detailed has annual columns for every year of the full lifetime."""
-    mock_params.return_value = ('baseline_', 'MidCase', {}, mock_emissions_electricity_climate, {}, {})
+    mock_params.return_value = ('baseline_', 'MidCase', {}, mock_emissions_electricity_climate, {})
     mock_elec.return_value = pd.Series(1000.0, index=climate_df.index)
     mock_fossil.return_value = {
         'co2e': pd.Series(0.5, index=climate_df.index),
@@ -242,7 +262,7 @@ def test_all_years_in_detailed(mock_params, mock_elec, mock_fossil, mock_scc,
     mock_scc.__getitem__ = lambda self, key: mock_scc_lookup[key]
 
     _, df_detailed = calculate_lifetime_climate_impacts(
-        climate_df, menu_mp=0, policy_scenario='AEO2023 Reference Case', verbose=False
+        climate_df, menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
     )
 
     for cat, lifetime in FULL_EQUIPMENT_SPECS.items():

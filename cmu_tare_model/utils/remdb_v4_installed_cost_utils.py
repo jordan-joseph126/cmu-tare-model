@@ -1,34 +1,29 @@
 """REMDB v4 installed-cost metric preparation.
 
-This module turns raw EUSS equipment fields into the performance metrics that
-the REMDB v4 cost regression consumes. The single public entry point is
-add_remdb_metrics(), which handles both replacement (counterfactual, like-for-
-like) and upgrade (heat pump) metrics.
+Turns raw EUSS equipment fields into the metrics the REMDB v4 cost
+regression consumes. The single public entry point is add_remdb_metrics(),
+which handles both replacement (counterfactual, like-for-like) and upgrade
+(heat pump) metrics.
 
-What the pipeline does, in order (see add_remdb_metrics):
+Pipeline, in order (see add_remdb_metrics):
   1. Optional percentile filtering of capacity outliers.
   2. Assign a REMDB row_id from the baseline (replacement) or heat-pump
      (upgrade) equipment type.
   3. Map the REMDB regression coefficients and unit specs onto each home.
-  4. Convert capacity (pm1) and efficiency (pm2) into the units the regression
-     expects.
-  5. Replacement only: raise below-floor efficiencies (pm2) up to the minimum
-     efficiency equipment sold today, preserving the raw value in a
-     ``{pm2_col}_original`` column.
-  6. Report diagnostics (including any capacity values outside the REMDB
-     training bounds) and return a summary frame plus a detailed frame.
+  4. Convert capacity (pm1) and efficiency (pm2) into the regression's units.
+  5. Replacement only: raise below-floor efficiencies (pm2) up to today's
+     minimum, keeping the raw value in a ``{pm2_col}_original`` column.
+  6. Report diagnostics and return a summary frame plus a detailed frame.
 
-Capacity outliers are reported but never modified: pm1 is used as converted.
-Homes far outside the training range are handled by the upstream percentile
-filter and by NaN propagation, not by clamping.
+Capacity outliers are reported, never modified -- pm1 is used as converted.
 
-NaN handling: homes with invalid fuel/technology types resolve to row_id
-'unknown' and carry NaN metrics, which propagate to NaN costs downstream. This
-is intentional and matches the validation framework's masking.
+NaN handling: homes with invalid fuel/technology types get row_id 'unknown'
+and NaN metrics, which propagate to NaN costs. This matches the validation
+framework's masking.
 
-System sizing: a single primary system size drives both the heating and cooling
-cost; supplemental electric-strip heat is already priced into the REMDB v4
-figures, so heating and cooling loads are not summed into one larger system.
+System sizing: one primary system size drives both heating and cooling cost
+(supplemental electric-strip heat is already priced into REMDB v4), so the
+two loads are never summed into one larger system.
 """
 
 import os
@@ -96,10 +91,9 @@ def _assign_replacement_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
     df_copy = df.copy()
     row_id_col = f'row_id_{end_use}_replacement'
         
-    # ========== HVAC OPTIONS: HEATING & COOLING ==========
-    # The efficiency level does not impact row_id mapping in REMDB v4 but instead pm1/pm2 in the regression formula
-    # Generally we use multi-zone non-ducted for homes without ducts, but may update to single-zone in the future for smaller homes 
-    # New circuit will be addressed in future versions, but excluded here for simplicity.
+    # Row_id depends only on equipment type -- efficiency feeds pm1/pm2 in
+    # the regression instead. Non-ducted homes default to multi-zone (no
+    # single-zone or new-circuit sizing modeled yet).
     if end_use == 'heating':
         conditions = [
             (df_copy['base_heating_fuel'] == 'Propane'),
@@ -162,12 +156,10 @@ def _assign_upgrade_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
     df_copy = df.copy()
     row_id_col = f'row_id_{end_use}_upgrade'
 
-    # ========== HVAC OPTIONS: HEATING & COOLING ---> HEAT PUMP ==========
-    # MP3/MP7 standard-efficiency heat pumps (SEER 15) | MP4/MP8-10: high-efficiency (SEER 24+)
-    # However, the efficiency level does not impact row_id mapping in REMDB v4 but instead pm1/pm2 in the regression formula
-    # Generally we use multi-zone non-ducted for homes without ducts, but may update to single-zone in the future for smaller homes 
-    # New circuit will be addressed in future versions, but excluded here for simplicity.
-    if end_use == 'heating':        
+    # Row_id depends only on ducted vs. non-ducted -- efficiency (SEER 15 for
+    # MP3/MP7, SEER 24+ for MP4/MP8-10) feeds pm1/pm2 instead. Non-ducted
+    # homes default to multi-zone (no single-zone or new-circuit sizing yet).
+    if end_use == 'heating':
         conditions = [
             (df_copy['hvac_has_ducts'] == 'Yes'),
             (df_copy['hvac_has_ducts'] == 'No'),
@@ -364,18 +356,11 @@ def _apply_efficiency_floor(
 ) -> pd.DataFrame:
     """Clamp pm2 (efficiency) upward to a hard minimum floor per equipment type.
 
-    For replacement cost estimation, the EUSS housing stock may contain
-    legacy equipment with efficiencies far below what is available or legal
-    today (e.g., SEER 8, AFUE 60%).  Since the replacement cost represents
-    buying TODAY's minimum-efficiency equipment, we clamp ALL below-floor
-    pm2 values up to the floor.
-
-    The original (pre-clamping) pm2 values are preserved in a new column
-    named ``{pm2_col}_original`` so that downstream reporting can show both
-    the raw EUSS efficiency and the floored replacement efficiency.
-
-    Only modifies rows whose row_id appears in *efficiency_floors*.
-    Rows with NaN pm2 are left untouched.
+    The replacement cost represents buying TODAY's minimum-efficiency
+    equipment, so legacy EUSS efficiencies below that floor (e.g. SEER 8,
+    AFUE 60%) are raised to it. The pre-clamping value is preserved in a new
+    ``{pm2_col}_original`` column. Only row_ids present in *efficiency_floors*
+    are touched; NaN pm2 values pass through unchanged.
 
     Args:
         df: DataFrame with pm2 values already converted by _convert_pm2().
@@ -385,9 +370,8 @@ def _apply_efficiency_floor(
         verbose: If True, print diagnostic info about clamped homes.
 
     Returns:
-        DataFrame with:
-          - ``pm2_col`` clamped upward where applicable (used by cost regression)
-          - ``{pm2_col}_original`` preserving pre-clamping values (used by validation)
+        DataFrame with ``pm2_col`` clamped upward where applicable, plus
+        ``{pm2_col}_original`` preserving the pre-clamping values.
     """
     df_out = df.copy()
 
@@ -594,7 +578,10 @@ def add_remdb_metrics(
         df: DataFrame with equipment specifications.
         remdb_v4_costs: REMDB v4 cost database (indexed by row_id).
         end_use: Equipment category ('heating' or 'cooling').
-        metric_type: 'replacement' (baseline equipment) or 'upgrade' (heat pump).
+        metric_type: 'replacement' (avoided-replacement cost for the
+            existing system, priced at its own size) or 'upgrade' (the heat
+            pump, priced at its own size) -- see the capacity_col comment
+            below.
         percentile: Cost percentile ('low', 'mid', 'high').
         capacity_lower_percentile: Lower percentile for capacity filtering (0-100), or None.
         capacity_upper_percentile: Upper percentile for capacity filtering (0-100), or None.
@@ -646,11 +633,36 @@ def add_remdb_metrics(
     # Determine source columns based on end_use and metric_type
     # UPDATE VARIABLE NAMES FOR WATER HEATING, CLOTHES DRYING, COOKING LATER
     if end_use == 'heating':
-        capacity_col = 'size_heating_system_primary_k_btu_h'
-        efficiency_col = 'upgrade_hvac_heating_efficiency' if metric_type == 'upgrade' else 'hvac_heating_efficiency'
+        # 'replacement' prices the OLD system's own size
+        # (base_size_heating_system_primary_k_btu_h, from the ResStock
+        # baseline run); 'upgrade' prices the NEW heat pump's size
+        # (size_heating_system_primary_k_btu_h).
+        #
+        # FIXED 20 Aug 2026: replacement used to read the heat pump's size
+        # too, because no baseline capacity column existed downstream of the
+        # raw EUSS file. That gap is closed in df_enduse_refactored
+        # (process_euss_data.py). This moves the heating replacement cost
+        # and, through it, net_capital_cost, NPV, and adoption -- see
+        # docs/SESSION_CHANGELOG_2026-08-20.md for before/after numbers.
+        capacity_col = (
+            'size_heating_system_primary_k_btu_h' if metric_type == 'upgrade'
+            else 'base_size_heating_system_primary_k_btu_h')
+        # Same split for efficiency. base_heating_efficiency (replacement)
+        # and the old hvac_heating_efficiency it replaced held identical
+        # values, so that earlier rename alone changed no output.
+        efficiency_col = (
+            'upgrade_hvac_heating_efficiency' if metric_type == 'upgrade'
+            else 'base_heating_efficiency')
     elif end_use == 'cooling':
-        capacity_col = 'size_cooling_system_primary_k_btu_h'
-        efficiency_col = 'hvac_cooling_efficiency'
+        # Same reasoning as heating. Cooling has no real 'upgrade' case (the
+        # heat pump's upgrade cost is only ever priced on the heating side),
+        # but both branches are defined for consistency.
+        capacity_col = (
+            'size_cooling_system_primary_k_btu_h' if metric_type == 'upgrade'
+            else 'base_size_cooling_system_primary_k_btu_h')
+        efficiency_col = (
+            'hvac_cooling_efficiency' if metric_type == 'upgrade'
+            else 'base_cooling_efficiency')
     else:
         raise ValueError(f"Unsupported end_use: {end_use}")
     

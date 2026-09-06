@@ -4,6 +4,7 @@ import numpy as np
 from typing import Tuple, Dict, List, Optional, Union
 
 from cmu_tare_model.constants import (
+    ANCHOR_YEAR,
     EQUIPMENT_SPECS,
     PRIVATE_DISCOUNTING_METHOD_SUFFIXES,
     REBATE_ELIGIBLE_HEATING_MPS,
@@ -28,6 +29,8 @@ from cmu_tare_model.utils.column_names import (
     create_rebate_col,
     create_capital_col,
     create_npv_case_col,
+    create_discounted_savings_col,
+    create_cooling_credit_applied_col,
     create_enclosure_cost_col,
     create_weatherization_rebate_col,
 )
@@ -80,7 +83,6 @@ def calculate_private_npv(
         policy_scenario: str,
         discount_rate_col_name: str,
         cost_scenario: str = 'v4MID',
-        base_year: int = 2024,
         verbose: bool = True,
 ) -> pd.DataFrame:
     """
@@ -117,8 +119,14 @@ def calculate_private_npv(
         discount_rate_col_name: Discount rate column name for private discounting.
         cost_scenario: Cost scenario identifier for column naming. Supported
             values: 'v4LOW', 'v4MID' (default), 'v4HIGH'.
-        base_year: Base year for discounting calculations. Default is 2024.
         verbose: Whether to print detailed processing information. Default is True.
+
+    Note:
+        The cost stream always starts at ANCHOR_YEAR (2025), which is where the
+        fuel-price and degree-day data begin, and that is also the year all
+        future dollars are discounted back to. This is deliberately not a
+        parameter: a caller passing a different start year would silently price
+        the retrofit over years the projection data does not cover.
 
     Returns:
         DataFrame with, per measure package, one private NPV column and a net
@@ -176,12 +184,14 @@ def calculate_private_npv(
     discount_factors: Dict[int, pd.Series] = {}
 
     for year in range(1, max_lifetime + 1):
-        year_label = year + (base_year - 1)
-        
+        # Year 1 of the stream is ANCHOR_YEAR itself, so a 15-year lifetime
+        # runs 2025-2039 and the first year is undiscounted.
+        year_label = year + (ANCHOR_YEAR - 1)
+
         # ===== Calculate private discount factors for fixed and variable methods =====
         discount_factors[year_label] = calculate_discount_factors(
             df=df_copy,
-            base_year=base_year, 
+            base_year=ANCHOR_YEAR,
             target_year=year_label,
             discount_rate_col_name=discount_rate_col_name
         )
@@ -217,7 +227,6 @@ def calculate_private_npv(
         discount_factors=discount_factors,
         valid_mask=heating_valid_mask,
         menu_mp=menu_mp,
-        base_year=base_year,
         verbose=verbose,
     )
     cooling_savings_raw = _calculate_discounted_savings(
@@ -229,13 +238,31 @@ def calculate_private_npv(
         discount_factors=discount_factors,
         valid_mask=heating_valid_mask,
         menu_mp=menu_mp,
-        base_year=base_year,
         verbose=verbose,
     )
 
     # Zero cooling savings for no-AC homes; keep them where the home has AC.
     cooling_savings = cooling_savings_raw.where(include_cooling, other=0.0)
     heating_and_cooling_savings = heating_savings + cooling_savings
+
+    # Save the discounted heating savings and the discounted cooling savings.
+    # The NPV is heating savings plus cooling savings minus net capital cost.
+    # All nine NPV cases use these same two savings figures and differ only in
+    # net capital cost, so storing them once lets a reader reproduce the
+    # subtraction for any case. Until now both figures were discarded after
+    # the nine cases were built, leaving the savings side of the NPV
+    # unverifiable from the exported columns.
+    # Store the cooling figure AFTER the include_cooling adjustment above, so
+    # the column holds what the NPV actually used: 0.0 for a home with
+    # include_cooling = False, not the raw cooling savings.
+    heating_savings_col = create_discounted_savings_col(
+        scenario_prefix, 'heating', method_suffix)
+    cooling_savings_col = create_discounted_savings_col(
+        scenario_prefix, 'cooling', method_suffix)
+    df_new_columns[heating_savings_col] = heating_savings
+    df_new_columns[cooling_savings_col] = cooling_savings
+    all_columns_to_mask['heating'].extend(
+        [heating_savings_col, cooling_savings_col])
 
     # ===== Capital costs =====
     # Heating capital: heat-pump install (minus rebate) credited against the
@@ -260,6 +287,25 @@ def calculate_private_npv(
     
     cooling_replacement_cost = (
         df_copy[cooling_replacement_col].fillna(0).where(include_cooling, other=0.0))
+
+    # FIXED 20 Aug 2026: this credit is now priced off the existing air
+    # conditioner's own size, not the retrofit heat pump's -- see
+    # add_remdb_metrics in remdb_v4_installed_cost_utils.py. On the full
+    # national population the mean cooling replacement cost fell by $663.19
+    # (MP3) / $502.02 (MP4), driven mostly by Room AC homes, where the old
+    # AC is much smaller than the whole-home heat pump replacing it. Full
+    # numbers: docs/SESSION_CHANGELOG_2026-08-20.md.
+
+    # Save the cooling replacement credit the NPV actually subtracted. It
+    # differs from the raw mp{mp}_cooling_replacement_installed_cost_{scenario}
+    # column in two ways: it is 0.0 for a home with include_cooling = False,
+    # and it is 0.0 where the raw column is blank. Nationally 269 homes have
+    # include_cooling = True but no recorded cooling replacement cost, so
+    # their credit is 0.0 while the raw column reads blank.
+    cooling_credit_col = create_cooling_credit_applied_col(
+        menu_mp=menu_mp, cost_scenario=cost_scenario)
+    df_new_columns[cooling_credit_col] = cooling_replacement_cost
+    all_columns_to_mask['heating'].append(cooling_credit_col)
     
     net_capital_heating_and_cooling = net_capital_heating - cooling_replacement_cost
     
@@ -369,7 +415,6 @@ def _calculate_discounted_savings(
     discount_factors: Dict[int, pd.Series],
     valid_mask: pd.Series,
     menu_mp: int,
-    base_year: int = 2024,
     verbose: bool = False,
 ) -> pd.Series:
     """Compute discounted lifetime fuel-cost savings for one equipment category.
@@ -388,8 +433,12 @@ def _calculate_discounted_savings(
         discount_factors: Mapping from year label to a per-home discount factor.
         valid_mask: Homes with valid baseline data scheduled for the retrofit.
         menu_mp: Measure package identifier (0 = baseline; nonzero applies masking).
-        base_year: Base year used to build year labels. Default is 2024.
         verbose: Whether to raise on partial-year coverage. Default is False.
+
+    Note:
+        Year labels always start at ANCHOR_YEAR (2025), matching the year the
+        fuel-cost columns were built for. Not a parameter, for the same reason
+        as in calculate_private_npv.
 
     Returns:
         Series of discounted lifetime savings, NaN outside valid_mask.
@@ -406,7 +455,7 @@ def _calculate_discounted_savings(
 
     # Sum the discounted avoided cost for each year of the equipment lifetime.
     for year in range(1, lifetime + 1):
-        year_label = year + (base_year - 1)
+        year_label = year + (ANCHOR_YEAR - 1)
         discount_factor = discount_factors[year_label]
 
         base_cost_col_name = create_fuel_cost_col('baseline_', year_label, category)
@@ -514,6 +563,19 @@ def calculate_capital_costs(
         Single policy scenario ('2025 Reference Case'); IRA rebates are always
         applied for rebate-eligible measure packages.
 
+        FIXED 20 Aug 2026 -- the replacement cost subtracted here (the avoided
+        cost of replacing the home's EXISTING heating or cooling system) used
+        to be priced off the retrofit heat pump's own size, because no
+        baseline capacity column survived the pipeline. That gap is closed in
+        df_enduse_refactored (process_euss_data.py), and add_remdb_metrics
+        (remdb_v4_installed_cost_utils.py) now prices the replacement case off
+        the old system's own size. On the full national population this moved
+        the mean heating replacement cost by -$62.79 (MP3) / +$148.99 (MP4)
+        and the mean cooling replacement cost by -$663.19 (MP3) / -$502.02
+        (MP4); direction varies by baseline system -- fossil-fuel furnaces
+        mostly rose, electric baseboard mostly fell, Room AC dropped sharply
+        since a whole-home heat pump is much bigger than the room unit it
+        replaces. Full numbers: docs/SESSION_CHANGELOG_2026-08-20.md.
     """
     if verbose:
         print(f"\nCalculating costs for {category}... ")
@@ -570,6 +632,8 @@ def calculate_capital_costs(
             rebate_amount = 0.0
 
         total_capital_cost = installation_cost - rebate_amount
+        # This replacement-cost column is now priced off the existing
+        # heating system's own size (see the function docstring Notes).
         net_capital_cost = total_capital_cost - df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='replacement', cost_scenario=cost_scenario)].fillna(0)
 
     else:

@@ -1,5 +1,5 @@
 # cmu-tare-model
-The Tradeoff Analysis of residential Retrofits for energy Equity (TARE) Model v2.1
+The Tradeoff Analysis of residential Retrofits for energy Equity (TARE) Model v3.0
 
 <img width="8000" height="4500" alt="Figure_1" src="https://github.com/user-attachments/assets/f554ea06-0b03-4aab-823c-346b8f684c00" />
 
@@ -171,17 +171,19 @@ Best for: One-time use or if you don't have Git installed
 ```
 cmu-tare-model/
 ├── cmu_tare_model/                          # Main model package
-│   ├── model_scenarios/                     # SCENARIO NOTEBOOKS (START HERE)
-│   │   ├── tare_baseline_v2_1.ipynb
-│   │   ├── tare_basic_v2_1.ipynb
-│   │   ├── tare_moderate_v2_1.ipynb
-│   │   ├── tare_advanced_v2_1.ipynb
-│   │   └── tare_run_simulation_v2_1.ipynb
+│   ├── model_scenarios/                     # SCENARIO NOTEBOOKS
+│   │   ├── tare_baseline_v3_0.ipynb
+│   │   ├── tare_scenarios_v3_0.ipynb
+│   │   └── tare_run_simulation_v3_0.ipynb
 │   ├── private_impact/                      # Private cost/benefit calculations
 │   ├── public_impact/                       # Climate and health impacts
 │   ├── adoption_potential/                  # Technology adoption analysis
+│   ├── adoption_kpis/                       # Adoption KPIs, maps, dot plots
+│   ├── grid_impact/                         # County peak-load / demand profiles
 │   ├── energy_consumption_and_metadata/     # EUSS data processing
 │   ├── utils/                               # Utility functions
+│   ├── tests/                               # Unit tests (pytest)
+│   ├── docs/                                # Session changelogs
 │   ├── data/                                # Input data (download separately)
 │   │   ├── euss_data/                       # NREL energy consumption data
 │   │   ├── fuel_prices/                     # EIA price data and projections
@@ -190,7 +192,8 @@ cmu-tare-model/
 │   │   ├── marginal_social_costs/           # SCC, health damages
 │   │   └── [additional data folders...]
 │   ├── output_results/                      # Model outputs (created on run)
-│   ├── tare_model_main_v2_1.ipynb           # MAIN ENTRY POINT
+│   ├── figures/                             # Generated figures
+│   ├── tare_model_main_v3_0.ipynb           # MAIN ENTRY POINT
 │   └── constants.py                         # Model constants
 ├── environment-cmu-tare-model.yml           # Conda environment specification
 ├── setup.py                                 # Package installation script
@@ -199,7 +202,7 @@ cmu-tare-model/
 ```
 
 **Key Entry Points:**
-- **Main Analysis:** `tare_model_main_v2_1.ipynb` - Start here
+- **Main Analysis:** `tare_model_main_v3_0.ipynb` - Start here
 - **Individual Scenarios:** `model_scenarios/` folder
 - **Functions/Modules:** Navigate to respective directories (e.g., `public_impact/`)
 
@@ -291,7 +294,7 @@ code .
 
 ### Running Notebooks
 
-1. Open `cmu_tare_model/tare_model_main_v2_1.ipynb`
+1. Open `cmu_tare_model/tare_model_main_v3_0.ipynb`
 2. Click kernel selector (top-right corner)
 3. Select **"Python 3.11.13 (cmu-tare-model)"**
 4. Verify `(cmu-tare-model)` appears in kernel indicator
@@ -399,7 +402,7 @@ conda update --all
 
 ## 2.1 Version Information
 
-**Current Version:** 2.1
+**Current Version:** 3.0
 
 **Development Status:** Production/Stable
 

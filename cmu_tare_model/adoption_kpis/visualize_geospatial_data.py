@@ -16,6 +16,7 @@ STATE_GEOMETRY_* constants for the state overlay. Change those to repoint the
 maps; nothing here hardcodes a vintage.
 """
 
+import os
 from typing import Dict, Optional, Tuple, Union
 import pandas as pd
 import numpy as np
@@ -25,6 +26,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
+from config import PROJECT_ROOT
 from cmu_tare_model.constants import (
     FIGURE_DPI,
     MAP_TITLE_FONT_SIZE,
@@ -34,6 +36,10 @@ from cmu_tare_model.constants import (
     MAP_LEGEND_FONT_SIZE,
 )
 from cmu_tare_model.adoption_kpis.thermal_cop import assign_breakeven_category
+from cmu_tare_model.adoption_kpis.visualize_tabular_data import (
+    make_symmetric_norm,
+    print_column_summary,
+)
 from cmu_tare_model.adoption_kpis.data_loading import SHAPEFILE_PATH
 
 # ============================================================================
@@ -317,6 +323,140 @@ def plot_combined_choropleth(
         fig.savefig(output_path, dpi=dpi, bbox_inches='tight', facecolor='white')
         print(f"  Saved: {output_path}")
     plt.show()
+
+
+def plot_national_county_choropleth(
+    gdf_counties_raw: gpd.GeoDataFrame,
+    data_by_mp: dict,
+    column: str,
+    title_template: Union[str, Dict[int, str]],
+    cbar_label: str,
+    cmap,
+    norm,
+    selected_mps: list,
+    save_figure: bool,
+    output_filename: str,
+) -> None:
+    """Render one national county choropleth with this notebook's shared settings.
+
+    Thin wrapper around ``plot_combined_choropleth`` for the four national
+    county maps the main notebook builds (adoption rate, operating-cost %
+    change, demand GWh change, demand % change). All four calls always map
+    counties and save under the project root, so ``geo_level`` is fixed to
+    ``'county'`` here and ``output_path`` is built from ``PROJECT_ROOT`` plus a
+    bare filename instead of each call site repeating
+    ``os.path.join(PROJECT_ROOT, ...)``. ``title_template``, ``selected_mps``,
+    and ``save_figure`` stay as parameters because they are notebook-session
+    values (the discount rate and MP selection, the save-figures toggle), not
+    constants this module can hardcode.
+
+    Args:
+        gdf_counties_raw: Raw county boundary GeoDataFrame, as passed to
+            ``plot_combined_choropleth``.
+        data_by_mp: Dict mapping MP number -> DataFrame with the target
+            ``column`` and a county GISJOIN column.
+        column: Column name to choropleth-shade.
+        title_template: Per-panel title template or dict; see
+            ``plot_combined_choropleth``.
+        cbar_label: Colorbar axis label.
+        cmap: Matplotlib colormap (name string or Colormap instance).
+        norm: Matplotlib Normalize instance for this map's color scale.
+        selected_mps: Ordered list of MP keys to render as panels.
+        save_figure: If True, save the figure under ``output_filename``.
+        output_filename: Bare filename (e.g. ``'county_econ_adoption_rate_
+            combined.png'``); joined with ``PROJECT_ROOT`` to build the save path.
+
+    Returns:
+        None. Renders and, if requested, saves the figure -- same as
+        ``plot_combined_choropleth``.
+    """
+    plot_combined_choropleth(
+        gdf_counties_raw, data_by_mp,
+        column=column,
+        title_template=title_template,
+        cbar_label=cbar_label,
+        cmap=cmap,
+        norm=norm,
+        selected_mps=selected_mps,
+        geo_level='county',
+        save_figure=save_figure,
+        output_path=os.path.join(PROJECT_ROOT, output_filename),
+    )
+
+
+def plot_national_county_change_map(
+    gdf_counties_raw: gpd.GeoDataFrame,
+    data_by_mp: dict,
+    column: str,
+    cbar_label: str,
+    cmap,
+    title_template: Union[str, Dict[int, str]],
+    selected_mps: list,
+    positive_direction: str,
+    norm_label: str,
+    norm_unit: str,
+    save_figure: bool,
+    output_filename: str,
+) -> None:
+    """Print the summary + symmetric-norm line, then render one change map.
+
+    Consolidates the three near-identical blocks the main notebook's county
+    choropleth cells build (operating-cost % change, electricity demand GWh
+    change, electricity demand % change): compute a symmetric color norm
+    across all selected MPs, print it, print the per-MP min/median/mean/max
+    summary (``print_column_summary``), then render the map
+    (``plot_national_county_choropleth``). Skips with a warning instead of
+    raising when ``gdf_counties_raw`` is None (no county shapefile loaded),
+    matching the notebook's existing fallback behavior.
+
+    Args:
+        gdf_counties_raw: Raw county boundary GeoDataFrame, or None if the
+            shapefile failed to load.
+        data_by_mp: Dict mapping MP number -> DataFrame with the target
+            ``column`` and a county GISJOIN column.
+        column: Column name to choropleth-shade and summarize.
+        cbar_label: Colorbar axis label.
+        cmap: Matplotlib colormap (name string or Colormap instance).
+        title_template: Per-panel title template or dict; see
+            ``plot_combined_choropleth``.
+        selected_mps: Ordered list of MP keys to render as panels.
+        positive_direction: Forwarded to ``print_column_summary`` -- which
+            sign counts as "positive" in the printed share, e.g.
+            ``'increase'`` or ``'HP saves money (< 0)'``.
+        norm_label: Printed before " norm: [...]" (e.g. ``'Operating cost
+            %'``, ``'Demand GWh'``).
+        norm_unit: Printed after the norm's bracketed range (e.g. ``'%'``,
+            ``' GWh'`` -- include a leading space when the unit is a word,
+            not a percent sign).
+        save_figure: If True, save the figure under ``output_filename``.
+        output_filename: Bare filename; joined with ``PROJECT_ROOT`` to build
+            the save path.
+
+    Returns:
+        None.
+    """
+    if gdf_counties_raw is None:
+        print(f"[WARN] {norm_label} map skipped -- county shapefile not available")
+        return
+
+    all_values = pd.concat([data_by_mp[mp][column] for mp in selected_mps])
+    norm = make_symmetric_norm(all_values)
+    print(f"\n{norm_label} norm: [{norm.vmin:.1f}, 0, {norm.vmax:.1f}]{norm_unit}")
+
+    print_column_summary(
+        data_by_mp, column, norm_label, selected_mps, title_template,
+        positive_direction=positive_direction,
+    )
+    plot_national_county_choropleth(
+        gdf_counties_raw, data_by_mp,
+        column=column,
+        title_template=title_template,
+        cbar_label=cbar_label,
+        cmap=cmap, norm=norm,
+        selected_mps=selected_mps,
+        save_figure=save_figure,
+        output_filename=output_filename,
+    )
 
 
 

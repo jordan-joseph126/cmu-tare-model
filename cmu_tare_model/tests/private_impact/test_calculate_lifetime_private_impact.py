@@ -216,6 +216,12 @@ def npv_cases_df():
         # Fixed cost columns (MP3, v4MID).
         'mp3_heating_upgrade_installed_cost_v4MID': [12000.0] * n,
         'mp3_heating_replacement_installed_cost_v4MID': [5000.0] * n,
+        # MP3 became rebate-eligible in the 12 Jul 2026 ENERGY STAR session, so
+        # the capital-cost step now requires this column. Held at zero so the
+        # subsidized and unsubsidized cases carry the same capital and the
+        # exact arithmetic checked below stays readable. The rebate arithmetic
+        # itself is covered by the dedicated rebate tests.
+        'mp3_heating_rebate_amount_v4MID': [0.0] * n,
         # Cooling replacement is non-NaN even for the no-AC home, to prove the
         # include_cooling mask (not the data) zeroes the credit.
         'mp3_cooling_replacement_installed_cost_v4MID': [4000.0] * n,
@@ -286,7 +292,6 @@ def test_private_npv_three_cases_columns_and_dtype(mock_discount, mock_params, n
         policy_scenario='2025 Reference Case',
         discount_rate_col_name='private_discount_rate_fixed_base',
         cost_scenario='v4MID',
-        base_year=BASE_YEAR,
         verbose=False,
     )
 
@@ -315,7 +320,6 @@ def test_private_npv_three_cases_ordering(mock_discount, mock_params, npv_cases_
         policy_scenario='2025 Reference Case',
         discount_rate_col_name='private_discount_rate_fixed_base',
         cost_scenario='v4MID',
-        base_year=BASE_YEAR,
         verbose=False,
     )
 
@@ -365,7 +369,6 @@ def test_private_npv_three_cases_invalid_homes_masked(mock_discount, mock_params
         policy_scenario='2025 Reference Case',
         discount_rate_col_name='private_discount_rate_fixed_base',
         cost_scenario='v4MID',
-        base_year=BASE_YEAR,
         verbose=False,
     )
 

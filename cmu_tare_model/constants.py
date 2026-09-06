@@ -152,7 +152,19 @@ SCC_ASSUMPTIONS = [
 # to this year so every dollar value is directly comparable. Defined here so
 # the reference year lives in exactly one place rather than as scattered
 # literals.
+#
+# ANCHOR_YEAR is also the first year of every lifetime cost stream. Fuel-price
+# and degree-day projection factors are measured relative to this year, so the
+# factor for ANCHOR_YEAR itself is exactly 1.0 in every source file. The
+# projection data begins in this year: there is no earlier year to fall back
+# on, and nothing in the model may invent one.
 ANCHOR_YEAR = 2025
+
+# Last year covered by the fuel-price and degree-day projection files. Used to
+# check at load time that a projection file covers ANCHOR_YEAR through this
+# year with no gaps, so a truncated or re-cut source file is caught on import
+# rather than silently shortening a cost stream.
+PROJECTION_END_YEAR = 2050
 # FUEL_PRICE_ASSUMPTIONS = ['lower', 'central', 'upper']
 
 # Discount rate constants (centralized for easy modification)
@@ -248,7 +260,7 @@ ELECTRIC_RESISTANCE_BASELINE = {"Electricity"}
 NON_PARTICIPATING_REBATE_STATES = {"SD"}
 
 # Program labels recorded in the rebate_eligibility output column (both vintages).
-REBATE_NONE = "None"
+REBATE_NONE = "Not Eligible"
 REBATE_HEEHR = "HEEHR"
 REBATE_HOMES = "HOMES"
 
@@ -318,7 +330,8 @@ REBATE_RULE_CONFIG = {
 # =============================================================
 
 # REMDB v4 MID is considered our base case
-# Removed v3
+# Removed v3 -- if v3 is ever turned back on, it still has the old-system-size
+# bug fixed in v4 on 20 Aug 2026; see calculate_equipment_replacement_costs.py.
 REMDB_COST_SCENARIO_KEYS = [
     # 'v4LOW',       # REMDB v4: 10th percentile
     'v4MID',       # REMDB v4: 50th percentile (median)
@@ -401,6 +414,10 @@ EFFICIENCY_FLOORS_PM2 = {
 # Timeseries table columns
 BLDG_ID_COL: str = "bldg_id"
 TIMESTAMP_COL: str = "timestamp"
+# Whole-home ELECTRICITY total (all electric end uses) -- NOT the all-fuel
+# 'out.site_energy.total.energy_consumption', which sums gas/oil/propane in
+# kWh-equivalent. Use this electricity total for demand/peak metrics; the site
+# energy total is only a HOMES savings-fraction denominator elsewhere.
 ELEC_TOTAL_COL: str = "out.electricity.total.energy_consumption"
 
 # BSQ returns enduse columns WITHOUT the 'out.' prefix

@@ -8,6 +8,8 @@ import pytest
 import pandas as pd
 import numpy as np
 
+from cmu_tare_model.constants import ANCHOR_YEAR
+
 MODULE = 'cmu_tare_model.utils.degree_day_consumption_utils'
 
 
@@ -74,7 +76,7 @@ def test_get_hdd_factor_missing_census_division_raises():
     from cmu_tare_model.utils.degree_day_consumption_utils import get_hdd_factor_for_year
     df = pd.DataFrame({'other_col': [1, 2]})
     with pytest.raises(KeyError, match="census_division"):
-        get_hdd_factor_for_year(df, 2024)
+        get_hdd_factor_for_year(df, ANCHOR_YEAR)
 
 
 def test_get_hdd_factor_invalid_year_raises():
@@ -86,7 +88,7 @@ def test_get_hdd_factor_invalid_year_raises():
 
 def test_get_hdd_factor_returns_series(consumption_df):
     from cmu_tare_model.utils.degree_day_consumption_utils import get_hdd_factor_for_year
-    result = get_hdd_factor_for_year(consumption_df, 2024)
+    result = get_hdd_factor_for_year(consumption_df, ANCHOR_YEAR)
     assert isinstance(result, pd.Series)
     assert len(result) == len(consumption_df)
 
@@ -97,7 +99,7 @@ def test_get_cdd_factor_missing_census_division_raises():
     from cmu_tare_model.utils.degree_day_consumption_utils import get_cdd_factor_for_year
     df = pd.DataFrame({'other_col': [1, 2]})
     with pytest.raises(KeyError, match="census_division"):
-        get_cdd_factor_for_year(df, 2024)
+        get_cdd_factor_for_year(df, ANCHOR_YEAR)
 
 
 def test_get_cdd_factor_invalid_year_raises():
@@ -109,7 +111,7 @@ def test_get_cdd_factor_invalid_year_raises():
 
 def test_get_cdd_factor_returns_series(consumption_df):
     from cmu_tare_model.utils.degree_day_consumption_utils import get_cdd_factor_for_year
-    result = get_cdd_factor_for_year(consumption_df, 2024)
+    result = get_cdd_factor_for_year(consumption_df, ANCHOR_YEAR)
     assert isinstance(result, pd.Series)
     assert len(result) == len(consumption_df)
 
@@ -121,7 +123,7 @@ def test_total_baseline_cooling_uses_electricity_only(consumption_df, monkeypatc
         'heating': 15, 'cooling': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15
     })
     from cmu_tare_model.utils.degree_day_consumption_utils import get_total_baseline_consumption
-    result = get_total_baseline_consumption(consumption_df, 'cooling', 2024)
+    result = get_total_baseline_consumption(consumption_df, 'cooling', ANCHOR_YEAR)
     assert isinstance(result, pd.Series)
     assert len(result) == len(consumption_df)
 
@@ -131,7 +133,7 @@ def test_total_baseline_cooking_includes_three_fuels(consumption_df, monkeypatch
         'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15
     })
     from cmu_tare_model.utils.degree_day_consumption_utils import get_total_baseline_consumption
-    result = get_total_baseline_consumption(consumption_df, 'cooking', 2024)
+    result = get_total_baseline_consumption(consumption_df, 'cooking', ANCHOR_YEAR)
     expected = (consumption_df['base_electricity_cooking_consumption'] +
                 consumption_df['base_naturalGas_cooking_consumption'] +
                 consumption_df['base_propane_cooking_consumption'])
@@ -142,7 +144,7 @@ def test_total_baseline_invalid_category_raises(consumption_df, monkeypatch):
     monkeypatch.setattr(f'{MODULE}.EQUIPMENT_SPECS', {'heating': 15})
     from cmu_tare_model.utils.degree_day_consumption_utils import get_total_baseline_consumption
     with pytest.raises(ValueError, match="Unknown fuel pattern"):
-        get_total_baseline_consumption(consumption_df, 'invalid', 2024)
+        get_total_baseline_consumption(consumption_df, 'invalid', ANCHOR_YEAR)
 
 
 # ── get_electricity_consumption_for_year ─────────────────────────────────────
@@ -152,7 +154,7 @@ def test_electricity_consumption_baseline(consumption_df, monkeypatch):
         'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15
     })
     from cmu_tare_model.utils.degree_day_consumption_utils import get_electricity_consumption_for_year
-    result = get_electricity_consumption_for_year(consumption_df, 'heating', 2024, menu_mp=0)
+    result = get_electricity_consumption_for_year(consumption_df, 'heating', ANCHOR_YEAR, menu_mp=0)
     assert isinstance(result, pd.Series)
 
 
@@ -161,7 +163,7 @@ def test_electricity_consumption_retrofit(consumption_df, monkeypatch):
         'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15
     })
     from cmu_tare_model.utils.degree_day_consumption_utils import get_electricity_consumption_for_year
-    result = get_electricity_consumption_for_year(consumption_df, 'heating', 2024, menu_mp=8)
+    result = get_electricity_consumption_for_year(consumption_df, 'heating', ANCHOR_YEAR, menu_mp=8)
     pd.testing.assert_series_equal(result, consumption_df['mp8_heating_consumption'], check_names=False)
 
 
@@ -169,7 +171,7 @@ def test_electricity_consumption_invalid_category_raises(consumption_df, monkeyp
     monkeypatch.setattr(f'{MODULE}.EQUIPMENT_SPECS', {'heating': 15})
     from cmu_tare_model.utils.degree_day_consumption_utils import get_electricity_consumption_for_year
     with pytest.raises(ValueError, match="Invalid category"):
-        get_electricity_consumption_for_year(consumption_df, 'invalid', 2024, 0)
+        get_electricity_consumption_for_year(consumption_df, 'invalid', ANCHOR_YEAR, 0)
 
 
 # ── get_hdd_adjusted_consumption ─────────────────────────────────────────────
@@ -179,7 +181,7 @@ def test_hdd_adjusted_consumption_baseline(consumption_df, monkeypatch):
         'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15
     })
     from cmu_tare_model.utils.degree_day_consumption_utils import get_hdd_adjusted_consumption
-    result = get_hdd_adjusted_consumption(consumption_df, 'heating', 2024, menu_mp=0)
+    result = get_hdd_adjusted_consumption(consumption_df, 'heating', ANCHOR_YEAR, menu_mp=0)
     assert isinstance(result, pd.Series)
     assert len(result) == len(consumption_df)
 
@@ -189,7 +191,7 @@ def test_hdd_adjusted_consumption_retrofit(consumption_df, monkeypatch):
         'heating': 15, 'waterHeating': 12, 'clothesDrying': 13, 'cooking': 15
     })
     from cmu_tare_model.utils.degree_day_consumption_utils import get_hdd_adjusted_consumption
-    result = get_hdd_adjusted_consumption(consumption_df, 'heating', 2024, menu_mp=8)
+    result = get_hdd_adjusted_consumption(consumption_df, 'heating', ANCHOR_YEAR, menu_mp=8)
     assert isinstance(result, pd.Series)
 
 
@@ -197,4 +199,4 @@ def test_hdd_adjusted_consumption_invalid_category_raises(consumption_df, monkey
     monkeypatch.setattr(f'{MODULE}.EQUIPMENT_SPECS', {'heating': 15})
     from cmu_tare_model.utils.degree_day_consumption_utils import get_hdd_adjusted_consumption
     with pytest.raises(ValueError, match="Invalid category"):
-        get_hdd_adjusted_consumption(consumption_df, 'invalid', 2024, 0)
+        get_hdd_adjusted_consumption(consumption_df, 'invalid', ANCHOR_YEAR, 0)

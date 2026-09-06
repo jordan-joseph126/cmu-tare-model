@@ -12,6 +12,10 @@ from typing import List
 
 import pandas as pd
 
+# Every required column is ELECTRICITY power (peak_electricity_*_kw), ELECTRICITY
+# energy (total_electricity_consumption, kWh), or fuel-agnostic thermal load
+# (peak_load_*_kbtu_hr). None is the all-fuel site-energy total: the peak-load
+# path is electricity only, so no site-energy column belongs in this list.
 REQUIRED_EXPORT_PEAK_COLUMN_TEMPLATES: List[str] = [
     "base_peak_electricity_heating_kw",
     "base_peak_electricity_cooling_kw",

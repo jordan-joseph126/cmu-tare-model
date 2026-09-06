@@ -80,7 +80,8 @@ def test_june2026_amounts_across_fuel_and_income(june2026_df):
         cost_scenario=COST, verbose=False)
 
     expected_amount = [8000.0, 5000.0, 2000.0, 4000.0, 0.0, 0.0]
-    expected_elig = ['HEEHR', 'HEEHR', 'HOMES', 'HOMES', 'None', 'None']
+    expected_elig = [
+        'HEEHR', 'HEEHR', 'HOMES', 'HOMES', 'Not Eligible', 'Not Eligible']
 
     assert result[_rebate_col(4)].tolist() == expected_amount
     assert result[_elig_col(4)].tolist() == expected_elig
@@ -98,7 +99,8 @@ def test_june2026_mp3_is_eligible(june2026_df):
         cost_scenario=COST, verbose=False)
 
     expected_amount = [8000.0, 5000.0, 2000.0, 4000.0, 0.0, 0.0]
-    expected_elig = ['HEEHR', 'HEEHR', 'HOMES', 'HOMES', 'None', 'None']
+    expected_elig = [
+        'HEEHR', 'HEEHR', 'HOMES', 'HOMES', 'Not Eligible', 'Not Eligible']
     assert result[_rebate_col(3)].tolist() == expected_amount
     assert result[_elig_col(3)].tolist() == expected_elig
 
@@ -152,9 +154,9 @@ def test_june2026_south_dakota_excluded():
     result = calculate_rebate_june2026(
         df_results_IRA=df, category='heating', menu_mp=4,
         cost_scenario=COST, verbose=False)
-    # SD home: excluded -> 0 / None. MN home: normal HEEHR full.
+    # SD home: excluded -> 0 / Not Eligible. MN home: normal HEEHR full.
     assert result[_rebate_col(4)].iloc[0] == 0.0
-    assert result[_elig_col(4)].iloc[0] == 'None'
+    assert result[_elig_col(4)].iloc[0] == 'Not Eligible'
     assert result[_rebate_col(4)].iloc[1] == 8000.0
     assert result[_elig_col(4)].iloc[1] == 'HEEHR'
 
@@ -310,6 +312,6 @@ def test_june2026_homes_still_electric_gated(june2026_df):
     result = calculate_rebate_june2026(
         df_results_IRA=df, category='heating', menu_mp=4,
         cost_scenario=COST, verbose=False)
-    # Fossil home above 150% AMI: HOMES electric gate -> $0 / None under June 2026.
+    # Fossil home above 150% AMI: HOMES electric gate -> $0 / Not Eligible under June 2026.
     assert result[_rebate_col(4)].iloc[4] == 0.0
-    assert result[_elig_col(4)].iloc[4] == 'None'
+    assert result[_elig_col(4)].iloc[4] == 'Not Eligible'

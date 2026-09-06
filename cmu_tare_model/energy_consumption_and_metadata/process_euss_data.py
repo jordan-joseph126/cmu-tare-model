@@ -257,6 +257,12 @@ def df_enduse_refactored(
         df_enduse['base_heating_fuel'] = df_baseline['in.heating_fuel']
         df_enduse['heating_type'] = df_baseline['in.hvac_heating_type_and_fuel']
         df_enduse['base_heating_efficiency'] = df_baseline['in.hvac_heating_efficiency']
+        # The home's existing heating system's own size, straight from the
+        # ResStock baseline run -- not the retrofit heat pump's size. This is
+        # what the avoided-replacement cost should be priced from (see
+        # add_remdb_metrics in remdb_v4_installed_cost_utils.py).
+        df_enduse['base_size_heating_system_primary_k_btu_h'] = (
+            df_baseline['out.params.size_heating_system_primary_k_btu_h'])
         df_enduse['base_electricity_heating_consumption'] = df_baseline['out.electricity.heating.energy_consumption.kwh']
         df_enduse['base_fuelOil_heating_consumption'] = df_baseline['out.fuel_oil.heating.energy_consumption.kwh']
         df_enduse['base_naturalGas_heating_consumption'] = df_baseline['out.natural_gas.heating.energy_consumption.kwh']
@@ -267,6 +273,11 @@ def df_enduse_refactored(
         df_enduse['base_cooling_fuel'] = 'Electricity'  # Cooling is always electric
         df_enduse['cooling_type'] = df_baseline['in.hvac_cooling_type']
         df_enduse['base_cooling_efficiency'] = df_baseline['in.hvac_cooling_efficiency']
+        # The home's existing cooling system's own size, straight from the
+        # ResStock baseline run -- not the retrofit heat pump's size. Same
+        # reasoning as base_size_heating_system_primary_k_btu_h above.
+        df_enduse['base_size_cooling_system_primary_k_btu_h'] = (
+            df_baseline['out.params.size_cooling_system_primary_k_btu_h'])
         df_enduse['base_electricity_cooling_consumption'] = df_baseline['out.electricity.cooling.energy_consumption.kwh']
 
     # WATER HEATING - only if in scope
@@ -298,6 +309,13 @@ def df_enduse_refactored(
     # must be expressed against the WHOLE home, so carry ResStock's total site
     # energy through as the denominator. Home-level total (not category-specific),
     # so it is not masked by heating/cooling validity.
+    #
+    # WATCH THE SOURCE: 'out.site_energy.total.energy_consumption.kwh' is the
+    # whole-home total across ALL fuels (natural gas, fuel oil, and propane are
+    # reported in kWh-equivalent), NOT electricity. It is deliberately a
+    # different column from the electricity total set below. This all-fuel value
+    # is correct ONLY as the savings-fraction denominator; do NOT feed it into
+    # any electricity, demand, or peak metric -- those use the electricity total.
     df_enduse['baseline_total_site_consumption'] = (
         df_baseline['out.site_energy.total.energy_consumption.kwh']
     )
@@ -327,6 +345,19 @@ def df_enduse_refactored(
     df_enduse['base_peak_load_heating_kbtu_hr'] = (
         df_baseline['out.load.heating.peak.kbtu_hr']
     )
+    # 'out.electricity.total.energy_consumption.kwh' is the whole-home
+    # ELECTRICITY total (all electric end uses), NOT the all-fuel site energy
+    # above. This is the baseline side of the baseline-vs-retrofit electricity
+    # change, and the value every demand and peak metric must use.
+    #
+    # Prefix convention for the two whole-home totals: the 'base_' vs 'baseline_'
+    # prefix does NOT tell you electricity from site energy -- read the token
+    # after it ('...electricity...' vs '...site...'). Generally 'base_' marks an
+    # equipment/fuel/metadata-level baseline reading that pairs with a retrofit
+    # column (base_total_electricity_consumption pairs with
+    # mp{mp}_total_electricity_consumption), while 'baseline_' marks a whole-home
+    # or category aggregate used in the cost/rebate pipeline
+    # (baseline_total_site_consumption, baseline_{category}_consumption).
     df_enduse['base_total_electricity_consumption'] = (
         df_baseline['out.electricity.total.energy_consumption.kwh']
     )
@@ -417,6 +448,17 @@ def df_enduse_compare(
         df_compare['hvac_heating_type_and_fuel'] = df_mp['in.hvac_heating_type_and_fuel']
         df_compare['hvac_heating_efficiency'] = df_mp['in.hvac_heating_efficiency']
         # df_compare['size_heat_pump_backup_k_btu_h'] = df_mp['out.params.size_heat_pump_backup_primary_k_btu_h']
+        # This is the retrofit heat pump's capacity for THIS measure package,
+        # not the baseline furnace's nameplate size. ResStock autosizes
+        # equipment separately for every upgrade run (out.params.* comes from
+        # df_mp, the MP3/MP4 upgrade output), so the value varies by measure
+        # package and by whether the home is ducted. One heat pump serves both
+        # heating and cooling, so this equals the cooling capacity column
+        # below for every home. Only the heat pump's own upgrade cost is
+        # priced off this column -- the heating replacement cost (the avoided
+        # cost of replacing the OLD furnace/boiler) is priced off
+        # base_size_heating_system_primary_k_btu_h instead, added in
+        # df_enduse_refactored. See docs/SESSION_CHANGELOG_2026-08-20.md.
         df_compare['size_heating_system_primary_k_btu_h'] = df_mp['out.params.size_heating_system_primary_k_btu_h']
         # df_compare['size_heating_secondary_k_btu_h'] = df_mp['out.params.size_heating_system_secondary_k_btu_h']
         df_compare['upgrade_hvac_heating_efficiency'] = df_mp['upgrade.hvac_heating_efficiency']
@@ -441,6 +483,14 @@ def df_enduse_compare(
     if 'cooling' in VALID_CATEGORIES:
         df_compare['hvac_cooling_type'] = df_mp['in.hvac_cooling_type']
         df_compare['hvac_cooling_efficiency'] = df_mp['in.hvac_cooling_efficiency']
+        # Same retrofit heat-pump capacity as size_heating_system_primary_k_btu_h
+        # above -- one heat pump serves both loads, so heating and cooling
+        # capacity are identical for every home. Not the baseline air
+        # conditioner's size. Only the heat pump's own upgrade cost is priced
+        # off this column -- the cooling replacement cost (the avoided cost
+        # of replacing the OLD air conditioner) is priced off
+        # base_size_cooling_system_primary_k_btu_h instead, added in
+        # df_enduse_refactored. See docs/SESSION_CHANGELOG_2026-08-20.md.
         df_compare['size_cooling_system_primary_k_btu_h'] = df_mp['out.params.size_cooling_system_primary_k_btu_h']
         df_compare['upgrade_hvac_cooling_efficiency'] = df_mp['upgrade.hvac_cooling_efficiency']
 

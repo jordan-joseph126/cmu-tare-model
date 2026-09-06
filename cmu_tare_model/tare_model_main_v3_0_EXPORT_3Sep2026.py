@@ -1,20 +1,17 @@
 # %% [markdown]
 # -------------------------------------------------------------------------------------------------------
-# # EUSS Post-Retrofit Measure Packages: MP3, MP4, MP8, MP9, MP10
-# -------------------------------------------------------------------------------------------------------
-# - MP3: Min-efficiency, single-stage ASHP (15 SEER1, 9 HSPF1) --> (16 SEER1, 9.5 HSPF1) for ENERGY STAR
-# - MP4: High-efficiency, variable-speed ASHP (24-29.3 SEER1, 14 HSPF1)
-# - MP8: Whole Home Electrification (MP4 + High Efficiency End-uses)
-# - MP9: Whole-Home Electrification (MP8) + Basic Enclosure Upgrade (MP1)
-# - MP10: Whole-Home Electrification (MP8) + Enhanced Enclosure Upgrade (MP2)
-# 
-# -------------------------------------------------------------------------------------------------------
 # # TARE MODEL SCENARIO: 2025 Reference Case
 # -------------------------------------------------------------------------------------------------------
+# ResStock 2022 Release (EUSS) Post-Retrofit Measure Packages, Heat Pump Adoption: MP3 and MP4
+# - MP3: Min-efficiency, single-stage ASHP (15 SEER1, 9 HSPF1) --> (16 SEER1, 9.5 HSPF1) for ENERGY STAR
+# - MP4: High-efficiency, variable-speed ASHP (24-29.3 SEER1, 14 HSPF1)
+# 
+# Reference Case Data and Assumptions:
 # - AEO2026 fuel price projections
 # - AEO2026 degree-day factors
-# - Cambium MidCase electricity grid
+# - Cambium 2024 MidCase electricity grid
 # - Single scenario: '2025 Reference Case'
+# 
 
 # %%
 # =============================================================================
@@ -29,7 +26,6 @@ import time
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
 import seaborn as sns
 
 # Project configuration
@@ -41,36 +37,23 @@ from cmu_tare_model.constants import (
     SCC_ASSUMPTIONS,
     REMDB_COST_SCENARIO_KEYS,
     VALID_MENU_MPS,
-    VALID_CATEGORIES,
-    PRINT_DEBUG,
-    PRINT_VERBOSE_DATAFRAMES,
     BLDG_ID_COL,
     TIMESTAMP_COL,
     ELEC_TOTAL_COL,
     BSQ_ELEC_COL,
     TEST_FIPS,
 )
-from cmu_tare_model.constants import (
-    PRIVATE_DISCOUNT_RATE_COLS,
-    PRIVATE_DISCOUNT_RATE_SHORT_KEYS,
-)
+from cmu_tare_model.constants import PRIVATE_DISCOUNT_RATE_SHORT_KEYS
 
 # Column name builders
 from cmu_tare_model.utils.column_names import (
     NPV_CASE_CATEGORIES,
-    create_cost_col,
-    create_capital_col,
-    create_npv_col,
-    create_npv_case_col,
-    create_rebate_col,
-    create_total_npv_col,
-    create_climate_npv_col,
+    BASE_CASE_NPV_CASE
 )
 from cmu_tare_model.grid_impact.peak_load_functions import (
     find_adoption_column,
-    extract_adopter_ids,
     compute_county_scenario_profile,
-    plot_demand_panel,
+    plot_county_demand_grid
 )
 
 # Data loading utility
@@ -84,7 +67,7 @@ plt.rcParams['font.sans-serif'] = 'Arial'
 plt.close('all')
 %matplotlib inline
 
-sns.set_theme(font='sans-serif', style='darkgrid')
+sns.set_theme(font='sans-serif', style='white')
 
 # =============================================================================
 # PROJECT ROOT AND TIMESTAMP SETUP
@@ -108,7 +91,6 @@ Active SCC Assumptions: {SCC_ASSUMPTIONS}
 Active Discount Rates: {PRIVATE_DISCOUNT_RATE_SHORT_KEYS}
 
 Note: DataFrames contain columns for ALL active cost scenarios.
-Visualizations default to 'v4MID' with comparative sections for other scenarios.
 
 """)
 
@@ -127,7 +109,7 @@ N. I'd like to visualize output results from a previous model run.""")).upper()
             print(f"Formatted date for use in file name: {model_run_date_time}")
 
             # Relative path to the file from the project root
-            relative_path = os.path.join("cmu_tare_model", "model_scenarios", "tare_run_simulation_v2_3.ipynb")
+            relative_path = os.path.join("cmu_tare_model", "model_scenarios", "tare_run_simulation_v3_0.ipynb")
 
             # Construct the absolute path to the file
             file_path = os.path.join(PROJECT_ROOT, relative_path)
@@ -196,9 +178,7 @@ if VERBOSE:
 # -------------------------------------------------------------------------------------------------------
 
 # %%
-# =======================================================================================================
-# Baseline Scenario: Measure Package 0 (MP0)
-# =======================================================================================================
+# ========== Baseline Scenario: Measure Package 0 (MP0) ==========
 menu_mp = 0
 
 df_outputs_baseline_home = load_model_run_output(
@@ -211,12 +191,7 @@ df_outputs_baseline_home = load_model_run_output(
     chunk_size=10000
 )
 
-# %%
-# =============================================================================
-# LOAD MODEL RESULTS: Based on VALID_MENU_MPS
-# =============================================================================
-# Only load measure packages that are in VALID_MENU_MPS.
-# MP0 (baseline) is loaded separately above.
+# ========== Load Measure Packages in VALID_MENU_MPS ==========
 NON_BASELINE_MPS = [mp for mp in VALID_MENU_MPS if mp != 0]
 
 # Convenience mapping for downstream code
@@ -234,39 +209,6 @@ print(f"\nLoaded measure packages: {list(DATAFRAMES_BY_MP.keys())}")
 # # ECONOMIC ADOPTION POTENTIAL
 # -------------------------------------------------------------------------------------------------------
 
-# %%
-# =============================================================================
-# UPDATE IMPORTS FOR NEW ADOPTION DOT PLOT VISUALIZATION FUNCTIONS
-# =============================================================================
-
-from cmu_tare_model.adoption_potential.data_processing.visuals_adoption_potential import (
-    build_adoption_scenario_names,
-    create_multiIndex_adoption_df,
-    print_adoption_decision_percentages,
-    subplot_grid_adoption_vBar
-)
-
-if VERBOSE:
-
-    print(f"""  
-    ====================================================================================================================================================================
-    ADOPTION POTENTIAL VISUALIZATION
-    ====================================================================================================================================================================
-
-    --------------------------------------------------------
-    CREATE MULTI-INDEX DF FOR ADOPTION POTENTIAL
-    --------------------------------------------------------
-    visuals_adoption_potential.py file contains the documentation for the create_multiIndex_adoption_df function.
-
-    --------------------------------------------------------
-    VISUALIZE ADOPTION POTENTIAL SUBPLOT GRID
-    --------------------------------------------------------
-    visuals_adoption_potential.py file contains the documentation for the subplot_grid_adoption_vBar function.
-        
-    --------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-    """)
-
 # %% [markdown]
 # ## Does the heat pump pay for itself?
 # 
@@ -279,11 +221,11 @@ if VERBOSE:
 # 
 # | Value | Meaning |
 # |-------|---------|
-# | `True`  | Heat pump covers its incremental cost (or better) from bill savings |
-# | `False` | Valid home that cannot recover the incremental cost from savings alone |
+# | `True` or 1  | Heat pump covers its incremental cost (or better) from bill savings |
+# | `False` or 0 | Valid home that cannot recover the incremental cost from savings alone |
 # | `NaN`   | Excluded: invalid baseline fuel/tech or not in this measure package |
 # 
-# Climate and health damages are computed elsewhere and reported as outcomes,
+# Climate emissions and damages are computed elsewhere and reported as outcomes,
 # not as inputs to this decision.
 
 # %%
@@ -294,7 +236,6 @@ if VERBOSE:
 # use the nine-case NPV_CASE_CATEGORIES scheme; there is no WTP or cost-scenario
 # token in adopter column names.
 import geopandas as gpd
-import matplotlib.lines as mlines
 from matplotlib.colors import Normalize
 
 from cmu_tare_model.adoption_potential.determine_economic_adoption_potential import (
@@ -302,18 +243,19 @@ from cmu_tare_model.adoption_potential.determine_economic_adoption_potential imp
 )
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.column_names import create_adoption_col
-from cmu_tare_model.adoption_kpis import load_euss_baseline, compute_adoption_rate
+from cmu_tare_model.adoption_kpis.data_loading import load_euss_baseline
+from cmu_tare_model.adoption_kpis.compute_adoption_rate import compute_adoption_rate
 from cmu_tare_model.adoption_kpis.visualize_geospatial_data import (
-    plot_combined_choropleth,
+    plot_national_county_choropleth,
+    plot_national_county_change_map,
 )
 from cmu_tare_model.adoption_kpis.data_loading import COUNTY_SHAPEFILE_PATH
 from cmu_tare_model.adoption_potential.data_processing.visuals_adoption_dotplot import (
-    plot_adoption_panel,
-    build_econ_plot_df,
-    REPLACEMENT_CREDIT_CASES,
+    plot_econ_adoption_dotplot_figure,
     REPLACEMENT_CREDIT_MARKERS,
-    NATIONAL_FUEL_GROUPING_ORDER,
     build_replacement_credit_legend_handles,
+    build_rebate_policy_scenario_legend_handles,
+    REBATE_POLICY_SCENARIO_MARKERS,
 )
 
 # Base-case parameters. The economic-adopter column name encodes these:
@@ -331,9 +273,8 @@ selected_mps = NON_BASELINE_MPS
 HEATING_MEASURE_PACKAGES = selected_mps
 
 # Equipment subtitles used as panel/map titles. Covers this notebook's MP set.
-# TODO: Consider updating the specs to be SEER2/HSPF2 and MP3 as min rebate eligible
 HEATING_MP_SUBTITLES = {
-    3: 'Single-stage, min-efficiency ASHP (15 SEER1, 9 HSPF1)',
+    3: 'Single-stage, min-efficiency ASHP (16 SEER1, 9.5 HSPF1)',
     4: 'Variable-speed, high-efficiency ASHP (24-29.3 SEER1, 13-14 HSPF1)',
     8: 'Whole-Home Electrification (High Efficiency)',
     9: 'Whole-Home Electrification + Basic Enclosure Upgrade',
@@ -366,7 +307,6 @@ for mp in selected_mps:
     scenario_prefix = define_scenario_params(mp, _POLICY)[0]
     expected_adopter_cols = [
         create_adoption_col(scenario_prefix, npv_case, '_fixed_base')
-        # Replace with the constant NPV_CASE_CATEGORIES to avoid hardcoding the list.
         for npv_case in NPV_CASE_CATEGORIES
     ]
     missing_cols = [c for c in expected_adopter_cols if c not in df_tare.columns]
@@ -390,8 +330,8 @@ for mp in selected_mps:
 print("\n[OK] Economic-adopter columns present for all selected MPs")
 
 # %%
-# County-level economic adoption rate. Uses heatingLCC_coolingSavings (both
-# avoided replacements credited, subsidized) as the headline adoption metric.
+# County-level economic adoption rate. Uses BASE_CASE_NPV_CASE
+# ('heatingLCC_coolingLCC_unsub' -- unsubsidized, both avoided replacements credited).
 print(f"\n{'='*60}")
 print("Economic Adoption Rate -- 2025 Reference Case")
 print(f"{'='*60}")
@@ -403,12 +343,12 @@ for mp in selected_mps:
     prefix = define_scenario_params(mp, _POLICY)[0]
     adoption_col = create_adoption_col(
         scenario_prefix=prefix,
-        npv_case='heatingLCC_coolingLCC_sub',
+        npv_case=BASE_CASE_NPV_CASE,
         method_suffix='_fixed_base',
     )
     print(f'  Adoption column: {adoption_col}')
-    # adopter_tiers=[True] counts 1.0 (adopter) vs 0.0; NaN (excluded) rows are
-    # ignored automatically by compute_adoption_rate.
+    # adopter_tiers=[True] counts 1.0 (adopter) vs 0.0
+    # NaN (excluded) rows are ignored automatically by compute_adoption_rate.
     df_adopt = compute_adoption_rate(
         df_tare,
         adoption_col=adoption_col,
@@ -421,12 +361,17 @@ for mp in selected_mps:
 
 print("\n[OK] Economic adoption rate complete (county-level)")
 
-# %%
-# Visualize the county-level economic adoption rate as a choropleth. 
-# Colorbase 0 to 100% adoption potential. The choropleth is skipped if the county shapefile is unavailable.
 
+# %%
+# =============================================================================
+# ECONOMIC ADOPTION (Choropleth Map) -- Unsub, heating and cooling LCC
+# =============================================================================
+
+# The choropleth is skipped if the county shapefile is unavailable.
 if gdf_counties_raw is not None:
     _adopt_cmap = 'Greens'
+
+    # Colorbase 0 to 100% adoption potential. 
     _adopt_norm = Normalize(vmin=0, vmax=100)
 
     print("\n--- Summary: adoption_rate_pct ---")
@@ -438,164 +383,54 @@ if gdf_counties_raw is not None:
               f"mean={_v.mean():.1f}% | max={_v.max():.1f}% | "
               f"{_pct_high:.1f}% of counties >= 50% adoption potential")
 
-    plot_combined_choropleth(
+    # Visualize the county-level economic adoption rate as a choropleth. 
+    plot_national_county_choropleth(
         gdf_counties_raw, econ_adoption_rate_results,
         column='adoption_rate_pct',
         title_template=HEATING_MP_SUBTITLES,
-        # cbar_label='Share of households recovering incremental costs\n'
-        #            'through discounted operational savings (%)',
-        cbar_label='Share of households recovering incremental costs through discounted operational savings (%)',
+        cbar_label='Share of households recovering electrification premium through discounted operational savings (%)',
         cmap=_adopt_cmap, norm=_adopt_norm,
         selected_mps=selected_mps,
-        geo_level='county',
         save_figure=SAVE_FIGURES,
-        output_path=os.path.join(PROJECT_ROOT, 'county_econ_adoption_rate_combined.png'),
+        output_filename='county_econ_adoption_rate_combined.png',
     )
+
     print("[OK] Economic adoption choropleth generated")
 else:
     print("[WARN] Adoption choropleth skipped -- county shapefile not available")
 
 # %% [markdown]
 # ## Economic Adoption Potential Dotplot
-# 
-# Three markers per row, one per replacement-credit scope, plotting the June
-# 2026 subsidized adoption rate:
-# - circle = heating replacement credit only (`heatingLCC_coolingSavings`)
-# - triangle = cooling replacement credit only (`heatingSavings_coolingLCC`)
-# - filled star = heating + cooling replacement credit
-# (`heatingLCC_coolingLCC`) -- the headline pick, drawn filled; the other two
-# are drawn as empty outlines.
-# 
-# The annotation shows the June 2026 subsidized minus unsubsidized
-# adoption-rate delta for the same scope.
-# 
+# ### Sensitivity of Heat Pump Adoption to Replacement Cost Offset Assumptions
 
 # %%
-import os
-import matplotlib.pyplot as plt
-
-from cmu_tare_model.adoption_potential.data_processing.visuals_adoption_dotplot import (
-    build_econ_plot_df,
-    plot_adoption_panel,
-    build_replacement_credit_legend_handles,
-    REPLACEMENT_CREDIT_CASES,
-    REPLACEMENT_CREDIT_MARKERS,
-    NATIONAL_FUEL_GROUPING_ORDER,
-)
-
+# =============================================================================
+# ECONOMIC ADOPTION (Dotplot) -- Replacement Cost Offset Sensitivity
+# =============================================================================
 if not HEATING_MEASURE_PACKAGES:
     print("No active heating measure packages -- skipping economic adoption dotplot.")
 else:
-    # National fuel counts, weighted to homes (same method as the tier dotplot).
-    _src = DATAFRAMES_BY_MP[HEATING_MEASURE_PACKAGES[0]][discount_rate]
-    fuel_counts_millions = {
-        str(fuel): weighted_homes / 1_000_000
-        for fuel, weighted_homes in _src.groupby(
-            'base_heating_fuel', observed=True)['weight'].sum().items()
-    }
-
-    n_mps = len(HEATING_MEASURE_PACKAGES)
-    fig, axes = plt.subplots(
-        n_mps, 1, figsize=(12, 6 * n_mps), sharex=True, sharey=True,
+    plot_econ_adoption_dotplot_figure(
+        HEATING_MEASURE_PACKAGES, DATAFRAMES_BY_MP, discount_rate, _COST,
+        HEATING_MP_SUBTITLES,
+        build_df_kwargs=dict(rebate_vintage='unsub'),
+        custom_tier_markers=REPLACEMENT_CREDIT_MARKERS,
+        legend_handles=build_replacement_credit_legend_handles(fill_markers=False),
+        summary_header='economic adoption summary (National, unsubsidized)',
+        save_figure=SAVE_FIGURES,
+        output_dir=PROJECT_ROOT,
+        output_filename=f'figure6_econ_adoption_dotplot_{location_id}',
+        figure_dpi=FIGURE_DPI,
     )
-    if n_mps == 1:
-        axes = [axes]
 
-    for row_idx, mp in enumerate(HEATING_MEASURE_PACKAGES):
-        ax = axes[row_idx]
-        panel_title = f'{HEATING_MP_SUBTITLES.get(mp, f"MP{mp}")}'
-        source_df = DATAFRAMES_BY_MP[mp][discount_rate]
 
-        # This figure now plots the June 2026 subsidized rate for each scope
-        # (it used to plot the December 2024 rate). The vintage is passed as a
-        # plain argument so it is not buried in a hardcoded column name.
-        plot_df = build_econ_plot_df(
-            source_df, mp, cost_scenario=_COST, discount_rate=discount_rate,
-            rebate_vintage='sub_june2026',
-        )
-
-        # Build the December 2024 version too, just to print the before/after
-        # National rates so the vintage switch is visible on every run.
-        plot_df_dec2024 = build_econ_plot_df(
-            source_df, mp, cost_scenario=_COST, discount_rate=discount_rate,
-            rebate_vintage='sub',
-        )
-        print(
-            f"--- MP{mp} economic adoption summary "
-            f"(National, 2024 -> June 2026) ---"
-        )
-        for case_label in REPLACEMENT_CREDIT_CASES:
-            june_row = plot_df[
-                (plot_df['grouping'] == 'National -- Overall') &
-                (plot_df['tier_label'] == case_label)
-            ]
-            dec_row = plot_df_dec2024[
-                (plot_df_dec2024['grouping'] == 'National -- Overall') &
-                (plot_df_dec2024['tier_label'] == case_label)
-            ]
-            if not june_row.empty and not dec_row.empty:
-                dec_rate = dec_row.iloc[0]['case_b_pct']
-                june_rate = june_row.iloc[0]['case_b_pct']
-                print(
-                    f"  {case_label}: {dec_rate:.1f}% -> {june_rate:.1f}% "
-                    f"({june_rate - dec_rate:+.1f} pts)"
-                )
-        print()
-
-        plot_adoption_panel(
-            plot_df, ax,
-            grouping_order=NATIONAL_FUEL_GROUPING_ORDER,
-            title=panel_title,
-            title_fontsize=16,
-            ytick_fontsize=14,
-            annotation_fontsize=14,
-            annotation_x_offset_pts=26,
-            annotation_y_offset_pts=8,
-            xlim_margin=20,
-            fuel_counts_millions=fuel_counts_millions,
-            custom_tier_markers=REPLACEMENT_CREDIT_MARKERS,
-            fill_markers=False,
-        )
-        ax.tick_params(axis='both', labelsize=14)
-
-        ax.legend(
-            handles=build_replacement_credit_legend_handles(
-                fill_markers=False),
-            loc='upper right', fontsize=14, frameon=True)
-
-        if row_idx < n_mps - 1:
-            ax.set_xlabel('')
-
-    fig.tight_layout(rect=[0.0, 0.02, 1.0, 0.96])
-
-    if SAVE_FIGURES:
-        out_dir = os.path.join(PROJECT_ROOT, 'figures')
-        os.makedirs(out_dir, exist_ok=True)
-        for ext in ('png', 'pdf'):
-            fig.savefig(
-                os.path.join(out_dir, f'figure6_econ_adoption_dotplot_{location_id}.{ext}'),
-                dpi=FIGURE_DPI, bbox_inches='tight',
-            )
-        print(f"Saved econ adoption dotplot to {out_dir}")
-    plt.show()
-
+# %% [markdown]
+# ### Sensitivity of Heat Pump Adoption to Rebate Policy Scenario
 
 # %%
-import os
-import matplotlib.pyplot as plt
-
-import importlib
-import cmu_tare_model.adoption_potential.data_processing.visuals_adoption_dotplot as visuals_adoption_dotplot
-importlib.reload(visuals_adoption_dotplot)
-
-from cmu_tare_model.adoption_potential.data_processing.visuals_adoption_dotplot import (
-    build_econ_plot_df,
-    plot_adoption_panel,
-    build_rebate_policy_scenario_legend_handles,
-    REBATE_POLICY_SCENARIO_MARKERS,
-    NATIONAL_FUEL_GROUPING_ORDER,
-)
-
+# =============================================================================
+# ECONOMIC ADOPTION (Dotplot) -- Rebate Policy Scenario Sensitivity
+# =============================================================================
 # Hold this replacement-credit scenario fixed; the three markers vary the rebate
 # policy scenario. Switch to 'heatingLCC_coolingSavings' for the heating-only view.
 _FIXED_CREDIT = 'heatingLCC_coolingLCC'
@@ -603,72 +438,21 @@ _FIXED_CREDIT = 'heatingLCC_coolingLCC'
 if not HEATING_MEASURE_PACKAGES:
     print("No active heating measure packages -- skipping rebate-policy dotplot.")
 else:
-    _src = DATAFRAMES_BY_MP[HEATING_MEASURE_PACKAGES[0]][discount_rate]
-    fuel_counts_millions = {
-        str(fuel): weighted_homes / 1_000_000
-        for fuel, weighted_homes in _src.groupby(
-            'base_heating_fuel', observed=True)['weight'].sum().items()
-    }
-
-    n_mps = len(HEATING_MEASURE_PACKAGES)
-    fig, axes = plt.subplots(
-        n_mps, 1, figsize=(12, 6 * n_mps), sharex=True, sharey=True,
-    )
-    if n_mps == 1:
-        axes = [axes]
-
-    for row_idx, mp in enumerate(HEATING_MEASURE_PACKAGES):
-        ax = axes[row_idx]
-        panel_title = f'{HEATING_MP_SUBTITLES.get(mp, f"MP{mp}")}'
-        source_df = DATAFRAMES_BY_MP[mp][discount_rate]
-
-        plot_df = build_econ_plot_df(
-            source_df, mp, cost_scenario=_COST, discount_rate=discount_rate,
+    plot_econ_adoption_dotplot_figure(
+        HEATING_MEASURE_PACKAGES, DATAFRAMES_BY_MP, discount_rate, _COST,
+        HEATING_MP_SUBTITLES,
+        build_df_kwargs=dict(
             shape_by='rebate_policy_scenario',
             fixed_replacement_credit_scenario=_FIXED_CREDIT,
-        )
-
-        # Per-panel national summary (headline adoption rate per rebate policy scenario).
-        print(f"--- MP{mp} adoption by rebate policy scenario ({_FIXED_CREDIT}) ---")
-        nat = plot_df[plot_df['grouping'] == 'National -- Overall']
-        for _, r in nat.iterrows():
-            print(f"  {r['tier_label']}: {r['case_b_pct']:.1f}%")
-        print()
-
-        plot_adoption_panel(
-            plot_df, ax,
-            grouping_order=NATIONAL_FUEL_GROUPING_ORDER,
-            title=panel_title,
-            title_fontsize=16,
-            ytick_fontsize=14,
-            annotation_fontsize=14,
-            annotation_x_offset_pts=26,
-            annotation_y_offset_pts=8,
-            xlim_margin=20,
-            fuel_counts_millions=fuel_counts_millions,
-            custom_tier_markers=REBATE_POLICY_SCENARIO_MARKERS,
-            fill_markers=False,
-        )
-        ax.tick_params(axis='both', labelsize=14)
-        ax.legend(
-            handles=build_rebate_policy_scenario_legend_handles(
-                fill_markers=False),
-            loc='upper right', fontsize=14, frameon=True,
-        )
-        if row_idx < n_mps - 1:
-            ax.set_xlabel('')
-
-    fig.tight_layout(rect=[0.0, 0.02, 1.0, 0.96])
-
-    if SAVE_FIGURES:
-        out_dir = os.path.join(PROJECT_ROOT, 'figures')
-        os.makedirs(out_dir, exist_ok=True)
-        stem = f'econ_adoption_dotplot_rebate_policy_scenario_{_FIXED_CREDIT}'
-        for ext in ('png', 'pdf'):
-            fig.savefig(os.path.join(out_dir, f'{stem}.{ext}'),
-                        bbox_inches='tight', dpi=FIGURE_DPI)
-        print(f"[OK] Saved {stem}.png / .pdf")
-    plt.show()
+        ),
+        custom_tier_markers=REBATE_POLICY_SCENARIO_MARKERS,
+        legend_handles=build_rebate_policy_scenario_legend_handles(fill_markers=False),
+        summary_header=f'adoption by rebate policy scenario ({_FIXED_CREDIT})',
+        save_figure=SAVE_FIGURES,
+        output_dir=PROJECT_ROOT,
+        output_filename=f'econ_adoption_dotplot_rebate_policy_scenario_{_FIXED_CREDIT}',
+        figure_dpi=FIGURE_DPI,
+    )
 
 
 # %% [markdown]
@@ -678,121 +462,9 @@ else:
 # =============================================================================
 # Retrofit impact on electricity demand and operating cost (county choropleths)
 # =============================================================================
-# Transported from calculate_postTARE_am_kpis_demand_bill_savings. Produces the
-# three county maps: operating-cost % change, electricity demand change (GWh),
-# and demand % change. Reuses the already-loaded df_baseline and
-# gdf_counties_raw; it does not re-read any shapefile.
-from cmu_tare_model.adoption_kpis import (
-    load_euss_upgrade,
-    mp_to_upgrade,
-    compute_scenario_demand,
-    aggregate_demand,
-)
+from cmu_tare_model.adoption_kpis.data_loading import load_euss_upgrade, mp_to_upgrade
+from cmu_tare_model.adoption_kpis.demand import compute_scenario_demand, aggregate_demand
 
-
-# These three helpers have no module home yet; they are defined inline here.
-# If they gain wider use, move them into an adoption_kpis viz-helper module.
-def pct_change(new, old):
-    """Per-element percent change (new - old) / old * 100.
-
-    Returns NaN wherever old <= 0 (invalid baseline) or either input is NaN,
-    so homes with zero or negative baseline cost are excluded rather than
-    producing infinite or misleading values.
-    """
-    old_safe = old.where(old > 0, other=np.nan)
-    return (new - old_safe) / old_safe * 100
-
-
-def make_symmetric_norm(values, center=0.0, low_q=0.02, high_q=0.98):
-    """Symmetric Normalize centered at ``center``.
-
-    Clips to the [low_q, high_q] percentiles before computing the symmetric
-    deviation, so a single extreme county cannot compress the colormap.
-    """
-    v = values.dropna()
-    q_low = v.quantile(low_q)
-    q_high = v.quantile(high_q)
-    dev = max(abs(q_low - center), abs(q_high - center))
-    return Normalize(vmin=center - dev, vmax=center + dev)
-
-
-def print_column_summary(results, column, label, selected_mps, mp_subtitles,
-                         positive_direction="increase"):
-    """Print per-MP min/median/mean/max summary for a county-level column."""
-    print(f"\n--- Summary: {column} ---")
-    for mp in selected_mps:
-        _v = results[mp][column].dropna()
-        if positive_direction == "increase":
-            _pct = (_v > 0).mean() * 100
-        else:
-            _pct = (_v < 0).mean() * 100
-        print(f"  MP{mp}: n={len(_v):,} counties | "
-              f"min={_v.min():.1f} | med={_v.median():.1f} | "
-              f"mean={_v.mean():.1f} | max={_v.max():.1f} | "
-              f"{_pct:.1f}% of counties {positive_direction}")
-
-
-# %%
-# # Step 1 -- load EUSS upgrade energy for each measure package.
-# upgrade_data = {}
-# for mp in selected_mps:
-#     upgrade_name = mp_to_upgrade(mp)
-#     print(f"Loading MP{mp} ({upgrade_name})...")
-#     upgrade_data[mp] = load_euss_upgrade(upgrade_name)
-#     print(f"  MP{mp}: {len(upgrade_data[mp]):,} applicable homes")
-
-# # Step 2 -- operating-cost % change (county median of per-home percent change).
-# # The retrofit column is derived from the scenario prefix, never hardcoded.
-# # Under the 2025 Reference Case this resolves to
-# # ref2025_mp{mp}_heating_lifetime_fuel_cost.
-# print(f"\n{'='*60}")
-# print("OPERATING COST % CHANGE -- all fuels, 100% adoption")
-# print(f"{'='*60}")
-
-# bill_savings_results = {}
-# baseline_col = 'baseline_heating_lifetime_fuel_cost'
-# for mp in selected_mps:
-#     print(f"\n===== {HEATING_MP_SUBTITLES.get(mp, f'MP{mp}')} =====")
-#     df_tare = DATAFRAMES_BY_MP[mp][discount_rate]
-#     scenario_prefix = define_scenario_params(mp, _POLICY)[0]
-#     retrofit_col = f"{scenario_prefix}heating_lifetime_fuel_cost"
-#     if retrofit_col not in df_tare.columns:
-#         raise KeyError(
-#             f"Retrofit fuel-cost column '{retrofit_col}' not found for MP{mp}. "
-#             "Load a current-convention (2025 Reference Case) model run."
-#         )
-#     # Per-home direct percent change: (retrofit - baseline) / baseline * 100,
-#     # then county median. Do not derive from a ratio formula.
-#     pct = pct_change(df_tare[retrofit_col], df_tare[baseline_col])
-#     df_county = (
-#         pd.DataFrame({'county': df_tare['county'],
-#                       'operating_cost_pct_change': pct})
-#         .groupby('county')['operating_cost_pct_change']
-#         .median()
-#         .reset_index()
-#     )
-#     print(f"  Per-home valid records: {pct.notna().sum():,} | "
-#           f"Counties: {len(df_county):,}")
-#     bill_savings_results[mp] = df_county
-
-# # Step 3 -- electricity demand change (county-level GWh and percent). Both
-# # elec_change_gwh and pct_elec_demand_change come straight from aggregate_demand.
-# print(f"\n{'='*60}")
-# print("DEMAND CHANGE -- all fuels, 100% adoption")
-# print(f"{'='*60}")
-
-# demand_results = {}
-# for mp in selected_mps:
-#     print(f"\n===== {HEATING_MP_SUBTITLES.get(mp, f'MP{mp}')} =====")
-#     df_demand = compute_scenario_demand(
-#         df_baseline, upgrade_data[mp], fuel_filter=None, verbose=True,
-#     )
-#     demand_results[mp] = aggregate_demand(
-#         df_demand, geo_level='county', verbose=True,
-#     )
-
-
-# %%
 # Step 1 -- load EUSS upgrade energy for each measure package.
 upgrade_data = {}
 for mp in selected_mps:
@@ -802,12 +474,6 @@ for mp in selected_mps:
     print(f"  MP{mp}: {len(upgrade_data[mp]):,} applicable homes")
 
 # Step 2 -- operating-cost % change (county median of per-home percent change).
-# Reads the materialized per-home average-annual operating-cost percent change
-# (each lifetime cost / equipment lifetime, then percent change). Under the 2025
-# Reference Case this resolves to
-# ref2025_mp{mp}_heating_avg_annual_fuel_cost_pct_change. The /lifetime factor
-# cancels, so these county medians match the old lifetime map exactly; only the
-# framing and colorbar wording change to "average annual".
 print(f"\n{'='*60}")
 print("OPERATING COST % CHANGE -- average annual, all fuels, 100% adoption")
 print(f"{'='*60}")
@@ -827,17 +493,15 @@ for mp in selected_mps:
         )
     # County median of the materialized per-home percent change.
     df_county = (
-        pd.DataFrame({'county': df_tare['county'],
-                      'operating_cost_pct_change': df_tare[pct_col]})
+        pd.DataFrame({'county': df_tare['county'],'operating_cost_pct_change': df_tare[pct_col]})
         .groupby('county')['operating_cost_pct_change']
         .median()
         .reset_index()
     )
-    print(f"  Per-home valid records: {df_tare[pct_col].notna().sum():,} | "
-          f"Counties: {len(df_county):,}")
+    print(f"  Per-home valid records: {df_tare[pct_col].notna().sum():,} | Counties: {len(df_county):,}")
     bill_savings_results[mp] = df_county
 
-# Step 3 -- electricity demand change (county-level GWh and percent). Both
+# Step 3 -- ANNUAL electricity demand change in 2025 (county-level GWh and percent). Both
 # elec_change_gwh and pct_elec_demand_change come straight from aggregate_demand.
 print(f"\n{'='*60}")
 print("DEMAND CHANGE -- all fuels, 100% adoption")
@@ -847,100 +511,74 @@ demand_results = {}
 for mp in selected_mps:
     print(f"\n===== {HEATING_MP_SUBTITLES.get(mp, f'MP{mp}')} =====")
     df_demand = compute_scenario_demand(
-        df_baseline, upgrade_data[mp], fuel_filter=None, verbose=True,
+        df_baseline=df_baseline, df_upgrade=upgrade_data[mp], fuel_filter=None, verbose=True,
     )
     demand_results[mp] = aggregate_demand(
-        df_demand, geo_level='county', verbose=True,
+        df_demand=df_demand, geo_level='county', verbose=True,
     )
 
-
-# %% [markdown]
-# ## TODO: Update the annual change in demand to be the average like fuel cost.
-# Right now the operational savings are reported in average annual over equipment lifetime (incorporating projections for degree days and fuel prices), but the electricity demand is just the base year. 
 
 # %%
-# Step 4 -- shared symmetric norms (centered at 0) then the three choropleths.
-# make_symmetric_norm clips to the 2nd/98th percentile across all MPs so a
-# single extreme county cannot compress the colormap.
+# =============================================================================
+# Operating cost percent change (county-level) -- separate function call
+# =============================================================================
 if gdf_counties_raw is not None:
-    _all_pct_bill = pd.concat(
-        [bill_savings_results[mp]['operating_cost_pct_change']
-         for mp in selected_mps]
-    )
-    shared_pct_bill_norm = make_symmetric_norm(_all_pct_bill)
-    print(f"\nOperating cost % norm: [{shared_pct_bill_norm.vmin:.1f}, 0, "
-          f"{shared_pct_bill_norm.vmax:.1f}]%")
-
-    _all_demand_gwh = pd.concat(
-        [demand_results[mp]['elec_change_gwh'] for mp in selected_mps]
-    )
-    shared_demand_norm = make_symmetric_norm(_all_demand_gwh)
-    print(f"Demand GWh norm: [{shared_demand_norm.vmin:.1f}, 0, "
-          f"{shared_demand_norm.vmax:.1f}] GWh")
-
-    _all_pct_demand = pd.concat(
-        [demand_results[mp]['pct_elec_demand_change'] for mp in selected_mps]
-    )
-    shared_pct_demand_norm = make_symmetric_norm(_all_pct_demand)
-    print(f"Demand % norm: [{shared_pct_demand_norm.vmin:.1f}, 0, "
-          f"{shared_pct_demand_norm.vmax:.1f}]%")
-
     # ---- Operating cost percent change (county-level) ----
-    print_column_summary(
-        bill_savings_results, 'operating_cost_pct_change',
-        'Operating cost % change', selected_mps, HEATING_MP_SUBTITLES,
-        positive_direction='HP saves money (< 0)',
-    )
-    plot_combined_choropleth(
+    plot_national_county_change_map(
         gdf_counties_raw, bill_savings_results,
         column='operating_cost_pct_change',
-        title_template=HEATING_MP_SUBTITLES,
         cbar_label='Post-retrofit change in average annual operating cost, relative to baseline equipment (%)',
-        cmap='RdBu_r', norm=shared_pct_bill_norm, selected_mps=selected_mps,
-        geo_level='county',
+        cmap='RdBu_r',
+        title_template=HEATING_MP_SUBTITLES,
+        selected_mps=selected_mps,
+        positive_direction='HP saves money (< 0)',
+        norm_label='Operating cost %',
+        norm_unit='%',
         save_figure=SAVE_FIGURES,
-        output_path=os.path.join(
-            PROJECT_ROOT, 'county_bill_pct_change_combined.png'),
+        output_filename='county_bill_pct_change_combined.png',
     )
+    
 
+# %%
+# =============================================================================
+# Electricity demand change (GWh, county-level) -- separate function call
+# =============================================================================
+if gdf_counties_raw is not None:
     # ---- Electricity demand change (GWh, county-level) ----
-    print_column_summary(
-        demand_results, 'elec_change_gwh',
-        'Elec demand change (GWh)', selected_mps, HEATING_MP_SUBTITLES,
-        positive_direction='increase',
-    )
-    plot_combined_choropleth(
+    plot_national_county_change_map(
         gdf_counties_raw, demand_results,
         column='elec_change_gwh',
+        cbar_label='Post-retrofit change in 2025 annual electricity demand, relative to baseline (GWh)',
+        cmap='coolwarm',
         title_template=HEATING_MP_SUBTITLES,
-        cbar_label='Post-retrofit change in annual electricity demand, relative to baseline (GWh)',
-        cmap='coolwarm', norm=shared_demand_norm, selected_mps=selected_mps,
-        geo_level='county',
-        save_figure=SAVE_FIGURES,
-        output_path=os.path.join(
-            PROJECT_ROOT, 'county_elec_demand_gwh_combined.png'),
-    )
+        selected_mps=selected_mps,
+    positive_direction='increase',
+    norm_label='Demand GWh',
+    norm_unit=' GWh',
+    save_figure=SAVE_FIGURES,
+    output_filename='county_elec_demand_gwh_combined.png',
+)
 
+
+# %%
+# =============================================================================
+# Electricity demand percent change (county-level) -- separate function call
+# =============================================================================
+if gdf_counties_raw is not None:
     # ---- Electricity demand percent change (county-level) ----
-    print_column_summary(
-        demand_results, 'pct_elec_demand_change',
-        'Elec demand % change', selected_mps, HEATING_MP_SUBTITLES,
-        positive_direction='increase',
-    )
-    plot_combined_choropleth(
+    plot_national_county_change_map(
         gdf_counties_raw, demand_results,
         column='pct_elec_demand_change',
+        cbar_label='Post-retrofit change in 2025 annual electricity demand, relative to baseline (%)',
+        cmap='coolwarm',
         title_template=HEATING_MP_SUBTITLES,
-        cbar_label='Post-retrofit change in annual electricity demand, relative to baseline (%)',
-        cmap='coolwarm', norm=shared_pct_demand_norm, selected_mps=selected_mps,
-        geo_level='county',
+        selected_mps=selected_mps,
+        positive_direction='increase',
+        norm_label='Demand %',
+        norm_unit='%',
         save_figure=SAVE_FIGURES,
-        output_path=os.path.join(
-            PROJECT_ROOT, 'county_elec_demand_pct_combined.png'),
+        output_filename='county_elec_demand_pct_combined.png',
     )
-    print("\n[OK] All county-level demand maps generated")
-else:
-    print("[WARN] County maps skipped -- county shapefile not available")
 
 
 # %% [markdown]
@@ -948,7 +586,7 @@ else:
 
 # %%
 # ============================================================
-# Tepper CSV exports -- one household + one county CSV per MP
+# Tepper CSV exports -- one household + one county CSV per export scope
 # ============================================================
 # Reuses objects already in memory from this notebook run:
 #   DATAFRAMES_BY_MP[mp]['fixed_base']  -- household frame (per MP)
@@ -956,8 +594,17 @@ else:
 #   bill_savings_results[mp]            -- county operating-cost table
 #   demand_results[mp]                  -- county demand table
 # and the run identifiers output_folder_path / location_id / model_run_date_time.
+#
+# The per-year consumption columns are not in the household summary frame.
+# They live in the supplemental fuel-cost file written earlier in this run,
+# which is loaded once per measure package below.
 
 from cmu_tare_model.utils.export_model_run_results import export_model_run_output
+from cmu_tare_model.utils.load_exported_results_to_df import load_model_run_output
+from cmu_tare_model.utils.export_tepper_csv import (
+    export_source_data_copies,
+    filter_to_export_scope,
+)
 
 # Reconcile the per-county home tallies before exporting. The adoption and
 # demand tables sum household weights independently, so their totals drift by a
@@ -987,68 +634,252 @@ for mp in selected_mps:
               f"({one_home_weight:,.2f} weighted).")
 
 
+# Export scopes. Each entry writes one household CSV and one county CSV per
+# measure package. Filtering happens here, not at model run scope, so one
+# national run can produce a national file plus any number of state or county
+# files.
+#
+#   label                -- goes in the filename
+#   column               -- any column shared by the household frame and the
+#                           county tables: 'state' (two-letter code) or
+#                           'county' (Census GISJOIN code). None keeps every row.
+#   value                -- what that column must equal
+#   drop_not_applicable  -- drop homes the model could not evaluate
+#                           (include_heating = False) from the household file.
+#                           Leave False for the full-scope master and True for
+#                           a filtered subset: Excel treats a blank cell as zero
+#                           in arithmetic, so averaging an NPV column over rows
+#                           that are not applicable gives a wrong answer with no
+#                           warning.
+#
+# To add a scope, copy a line. A whole state is
+# {"label": "PA", "column": "state", "value": "PA"}; another county is its
+# Census GISJOIN code, e.g. "G4200030" for Allegheny County, PA.
+TEPPER_EXPORT_SCOPES = [
+    {"label": location_id, "column": None, "value": None,
+     "drop_not_applicable": False},
+    {"label": "Allegheny", "column": "county", "value": "G4200030",
+     "drop_not_applicable": True},
+]
+
 for mp in selected_mps:
-    # Household CSV (one row per home).
-    export_model_run_output(
-        df_results_export=DATAFRAMES_BY_MP[mp]['fixed_base'],
-        results_category='tepper_household',
+    # Per-year consumption for this measure package. The file also holds the
+    # per-year fuel costs; the export selects only the consumption columns.
+    df_annual_consumption = load_model_run_output(
+        results_category='fuel_costs_ref2025',
         menu_mp=mp,
         output_folder_path=output_folder_path,
         location_id=location_id,
         results_export_formatted_date=model_run_date_time,
     )
 
-    # County CSV (one row per county) -- three tables assembled on 'county'.
-    export_model_run_output(
-        df_results_export=None,  # not used by the county export
-        results_category='tepper_county',
-        menu_mp=mp,
-        output_folder_path=output_folder_path,
-        location_id=location_id,
-        results_export_formatted_date=model_run_date_time,
-        county_tables={
-            'adoption': econ_adoption_rate_results[mp],
-            'bill_savings': bill_savings_results[mp],
-            'demand': demand_results[mp],
-        },
-    )
+    df_household = DATAFRAMES_BY_MP[mp]['fixed_base']
+    county_tables_full = {
+        'adoption': econ_adoption_rate_results[mp],
+        'bill_savings': bill_savings_results[mp],
+        'demand': demand_results[mp],
+    }
+
+    for scope in TEPPER_EXPORT_SCOPES:
+        scope_label = scope["label"]
+        scope_column = scope["column"]
+        scope_value = scope["value"]
+
+        # Skip a scope that this run does not cover, rather than failing. A
+        # single-state run will not contain most counties.
+        if scope_column is not None:
+            if not (df_household[scope_column] == scope_value).any():
+                print(f"[INFO] MP{mp}: no homes match {scope_column} = "
+                      f"{scope_value!r}; skipping the {scope_label} files.")
+                continue
+
+        df_scope = filter_to_export_scope(
+            df_household, scope_column, scope_value)
+
+        if scope["drop_not_applicable"]:
+            applicable = df_scope['include_heating'].fillna(False).astype(bool)
+            dropped_count = int((~applicable).sum())
+            df_scope = df_scope.loc[applicable]
+            print(f"[INFO] MP{mp} {scope_label}: {dropped_count:,} of "
+                  f"{dropped_count + len(df_scope):,} homes dropped for "
+                  f"include_heating = False; {len(df_scope):,} exported.")
+
+        # Household CSV (one row per home).
+        export_model_run_output(
+            df_results_export=df_scope,
+            results_category='tepper_household',
+            menu_mp=mp,
+            output_folder_path=output_folder_path,
+            location_id=scope_label,
+            results_export_formatted_date=model_run_date_time,
+            df_annual_consumption=df_annual_consumption,
+        )
+
+        # County CSV (one row per county) -- three tables assembled on 'county'.
+        county_tables_scope = {}
+        for table_name, df_county_table in county_tables_full.items():
+            county_tables_scope[table_name] = filter_to_export_scope(
+                df_county_table, scope_column, scope_value)
+
+        export_model_run_output(
+            df_results_export=None,  # not used by the county export
+            results_category='tepper_county',
+            menu_mp=mp,
+            output_folder_path=output_folder_path,
+            location_id=scope_label,
+            results_export_formatted_date=model_run_date_time,
+            county_tables=county_tables_scope,
+        )
 
 print(f"\nTepper exports written to: {os.path.join(output_folder_path, 'tepper_export')}")
 
-
-# %%
-# # Reload the edited modules in-place (keeps your 40-min results in memory).
-# # Order matters: constants must reload BEFORE the modules that import from it.
-# import importlib
-# import cmu_tare_model.constants
-# import cmu_tare_model.utils.column_names
-# import cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount as _rebate_mod
-
-# importlib.reload(cmu_tare_model.constants)
-# importlib.reload(cmu_tare_model.utils.column_names)
-# importlib.reload(_rebate_mod)
-
-# print("Reloaded. NON_PARTICIPATING_REBATE_STATES =",
-#       cmu_tare_model.constants.NON_PARTICIPATING_REBATE_STATES)
+# The three vendored inputs, copied unchanged, so a reader can redo the
+# fuel-price lookup themselves.
+export_source_data_copies(output_folder_path)
 
 
 # %%
-from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import summarize_rebate_funding
-fmt = lambda d: d.round(0).astype('int64')
+# ============================================================================
+# VERIFY: peak-load + whole-home electricity columns in the Tepper household CSV
+# ============================================================================
+# Reads the actual exported files and confirms the 14 retained columns are
+# present, populated, and internally consistent. Nothing in-memory is trusted --
+# this reads the CSVs that Tamar will pull. There is now one file per export
+# scope per measure package, so every scope is checked, not just the newest.
+import pandas as pd
+from pathlib import Path
 
-# 2024 (current data) — HEEHR only:
-by_prog, by_fuel = summarize_rebate_funding(df, 4, 'v4MID', guidance=None)
-print(fmt(by_prog)); print(fmt(by_fuel))   # confirm Natural Gas/Propane/Fuel Oil are non-zero (2024 has no fuel gate)
+try:
+    from config import PROJECT_ROOT
+    search_root = Path(PROJECT_ROOT)
+except Exception:
+    search_root = Path.cwd()
 
-# June 2026 (after re-run) — with adopters-only:
-adopter_col = 'ref2025_mp4_heatingLCC_coolingSavings_sub_june2026_econ_adopter_fixed_base'
-by_prog, by_fuel = summarize_rebate_funding(df, 4, 'v4MID', guidance='june2026', adopter_col=adopter_col)
-print(fmt(by_prog))                         # HEEHR/HOMES: total_eligible vs adopters_only
-print(fmt(by_fuel))                         # CORRECTNESS: fossil rows MUST be 0
+def expected_new_columns(mp):
+    """The 14 columns this change adds for one measure package."""
+    base = [
+        "base_peak_electricity_cooling_kw", "base_peak_electricity_heating_kw",
+        "base_peak_load_cooling_kbtu_hr", "base_peak_load_heating_kbtu_hr",
+        "base_total_electricity_consumption",
+    ]
+    mp_cols = [f"mp{mp}_{s}" for s in [
+        "peak_electricity_cooling_kw", "peak_electricity_heating_kw",
+        "peak_electricity_cooling_kw_savings", "peak_electricity_heating_kw_savings",
+        "peak_load_cooling_kbtu_hr", "peak_load_heating_kbtu_hr",
+        "peak_load_cooling_kbtu_hr_savings", "peak_load_heating_kbtu_hr_savings",
+        "total_electricity_consumption",
+    ]]
+    return base, mp_cols
+
+# Find the newest exported household CSV for each measure package AND scope.
+# Filenames read tepper_household_mp{mp}_{scope}_{date}.csv.
+all_files = sorted(search_root.rglob("tepper_household_mp*.csv"),
+                   key=lambda p: p.stat().st_mtime)
+by_file = {}
+for p in all_files:
+    token = p.name.split("_mp", 1)[1]           # e.g. "3_National_2026-08-18.csv"
+    parts = token.split("_")
+    mp = int(parts[0])
+    scope = parts[1]                             # 'National', 'Allegheny', ...
+    by_file[(mp, scope)] = p                     # keep the newest of each
+
+if not by_file:
+    print("No tepper_household_mp*.csv found under", search_root)
+else:
+    for mp, scope in sorted(by_file):
+        path = by_file[(mp, scope)]
+        df = pd.read_csv(path, index_col="bldg_id")
+        base_cols, mp_cols = expected_new_columns(mp)
+        need = base_cols + mp_cols
+        missing = [c for c in need if c not in df.columns]
+
+        print("=" * 78)
+        print(f"MP{mp} {scope}: {path.name}")
+        print(f"  rows={len(df):,}  total_columns={df.shape[1]}")
+        print(f"  new columns present: {len(need) - len(missing)}/{len(need)}"
+              f"   missing={missing}")
+
+        if not missing:
+            for c in need:
+                print(f"    {c:<50} non_null={int(df[c].notna().sum()):,}")
+
+            # Consistency checks (do not assume -- verify against the data):
+            # whole-home electricity delta = baseline total - retrofit total.
+            elec_delta = (df["base_total_electricity_consumption"]
+                          - df[f"mp{mp}_total_electricity_consumption"])
+            print(f"  whole-home elec change (base - retrofit) kWh:"
+                  f" mean={elec_delta.mean():,.0f}"
+                  f" min={elec_delta.min():,.0f} max={elec_delta.max():,.0f}")
+            print(f"  heating peak-demand savings (kW):"
+                  f" mean={df[f'mp{mp}_peak_electricity_heating_kw_savings'].mean():.3f}")
+    print("=" * 78)
+    print("[OK] Verification complete.")
+
+
+# %%
+# ============================================================================
+# VERIFY (in-memory): the loaded export frames vs the export column list
+# ============================================================================
+# The export now draws from two frames: the household summary frame supplies
+# 94 columns, and the supplemental fuel-cost frame supplies the 60 per-year
+# consumption columns. This checks each column against the frame it comes
+# from, which is exactly what export_tepper_household does -- if this succeeds,
+# the real export will not raise KeyError.
+from cmu_tare_model.utils.export_tepper_csv import (
+    build_household_column_list,
+    build_annual_consumption_column_list,
+)
+from cmu_tare_model.utils.load_exported_results_to_df import load_model_run_output
+
+if "DATAFRAMES_BY_MP" in dir():
+    for mp in sorted(DATAFRAMES_BY_MP):
+        df = DATAFRAMES_BY_MP[mp]["fixed_base"]
+        wanted = build_household_column_list(mp)
+        annual_columns = build_annual_consumption_column_list(mp)
+        annual_column_set = set(annual_columns)
+
+        summary_columns = []
+        for column in wanted:
+            if column not in annual_column_set:
+                summary_columns.append(column)
+
+        missing_from_frame = []
+        for column in summary_columns:
+            if column not in df.columns:
+                missing_from_frame.append(column)
+
+        print(f"MP{mp}: frame_cols={df.shape[1]}  export_list={len(wanted)}  "
+              f"(summary {len(summary_columns)} + annual {len(annual_columns)})")
+        print(f"  summary columns missing from frame: "
+              f"{missing_from_frame or 'none'}")
+        _ = df.loc[:, summary_columns]
+        print(f"  [OK] the {len(summary_columns)} summary columns select cleanly")
+
+        # The 60 annual consumption columns live in the supplemental
+        # fuel-cost file, so check them there.
+        df_annual = load_model_run_output(
+            results_category='fuel_costs_ref2025',
+            menu_mp=mp,
+            output_folder_path=output_folder_path,
+            location_id=location_id,
+            results_export_formatted_date=model_run_date_time,
+        )
+        missing_from_annual = []
+        for column in annual_columns:
+            if column not in df_annual.columns:
+                missing_from_annual.append(column)
+        print(f"  annual columns missing from supplemental frame: "
+              f"{missing_from_annual or 'none'}")
+        _ = df_annual.loc[:, annual_columns]
+        print(f"  [OK] the {len(annual_columns)} annual columns select cleanly")
+else:
+    print("DATAFRAMES_BY_MP not in session -- run the export cells first, "
+          "or rely on Cell 1 (reads the written CSVs).")
 
 
 # %% [markdown]
 # # GRID IMPACT ANALYSIS
+# - TODO: Update to prompt the user for the FIPS Code and County Name OR simply request a custom set of bldg_id values like Tamar has.
 
 # %%
 # =============================================================================
@@ -1061,7 +892,15 @@ print(fmt(by_fuel))                         # CORRECTNESS: fossil rows MUST be 0
 #                   i.e. the heat pump pays for itself at NPV >= 0. This matches
 #                   the economic-adoption definition used throughout the
 #                   notebook; it is NOT the deprecated Tier 1+2 tiered split.
+#
+# The constrained set uses BASE_CASE_NPV_CASE (the study base case, defined once
+# in column_names.py: 'heatingLCC_coolingLCC_unsub' -- unsubsidized, both the
+# heating and cooling replacement costs credited in the NPV). npv_case is passed
+# by keyword so the adopter column can never silently fall back to
+# find_adoption_column's default (a positional call previously routed this
+# figure to the wrong case).
 from cmu_tare_model.grid_impact.peak_load_functions import gisjoin_to_fips
+from cmu_tare_model.utils.column_names import BASE_CASE_NPV_CASE
 
 adopter_ids_by_mp = {}
 adoption_col_by_mp = {}
@@ -1070,18 +909,33 @@ for mp in selected_mps:
     df_tare = DATAFRAMES_BY_MP[mp][discount_rate]
 
     # Derive the economic-adopter column via the helper -- no hardcoded prefix.
-    # Try each cost scenario key in turn; the cost token is ignored when
-    # building the name but the helper accepts it for signature compatibility.
+    # The cost token does not change the column name (it was dropped from output
+    # names in the July 2026 refactor), so any key in REMDB_COST_SCENARIO_KEYS
+    # resolves the same column; the loop just takes the first one that succeeds.
+    # All arguments are passed by keyword so a positional slip cannot silently
+    # change the case.
     adoption_col = None
     for cost_scenario in REMDB_COST_SCENARIO_KEYS:
         try:
-            adoption_col = find_adoption_column(df_tare, mp, cost_scenario)
+            adoption_col = find_adoption_column(
+                df=df_tare,
+                mp=mp,
+                cost_scenario=cost_scenario,
+                discount_rate_key=discount_rate,
+                npv_case=BASE_CASE_NPV_CASE,
+            )
             break
         except KeyError:
             continue
     if adoption_col is None:
         # Re-raise with full diagnostics using the first cost scenario key.
-        adoption_col = find_adoption_column(df_tare, mp, REMDB_COST_SCENARIO_KEYS[0])
+        adoption_col = find_adoption_column(
+            df=df_tare,
+            mp=mp,
+            cost_scenario=REMDB_COST_SCENARIO_KEYS[0],
+            discount_rate_key=discount_rate,
+            npv_case=BASE_CASE_NPV_CASE,
+        )
     adoption_col_by_mp[mp] = adoption_col
 
     # Group buildings by 5-digit county FIPS (from the GISJOIN county code) and
@@ -1198,8 +1052,9 @@ if GRID_IMPACT_ANALYSIS:
 
     n_bldgs = df_ts_baseline_allegheny[BLDG_ID_COL].nunique()
     n_hours_per_bldg = df_ts_baseline_allegheny.groupby(BLDG_ID_COL).size()
+    weight_val = df_ts_baseline_allegheny["units_count"].iloc[0]
 
-    print(f"\n========== df_ts_baseline_allegheny summary ==========")
+    print("\n========== df_ts_baseline_allegheny summary ==========")
     print(f"  Rows       : {len(df_ts_baseline_allegheny):,d}")
     print(f"  Buildings  : {n_bldgs:,d}")
     print(
@@ -1210,6 +1065,7 @@ if GRID_IMPACT_ANALYSIS:
         f"  kWh range  : {df_ts_baseline_allegheny['baseline_kwh'].min():.3f} "
         f"to {df_ts_baseline_allegheny['baseline_kwh'].max():.3f}"
     )
+    print(f"  BSQ weight : {weight_val:.6f}")
     print(f"  Query time : {query_time_s:.2f} s")
 
     assert n_hours_per_bldg.min() == 8760
@@ -1285,14 +1141,31 @@ if GRID_IMPACT_ANALYSIS:
 # ### Visuals - Retrofit Impact on County Peak Load
 
 # %%
-if GRID_IMPACT_ANALYSIS: 
-       
+# ============================================================================
+# GRID IMPACT -- plot county-level demand for the selected measure packages
+# ============================================================================
+if GRID_IMPACT_ANALYSIS:
+
     # ---------- Step 7: Compute scenario profiles ----------
+    # Builds the two nested dicts plot_county_demand_grid expects, keyed
+    # {mp: {'100pct': ..., 'constrained': ...}}. Two profiles per measure
+    # package: '100pct' treats every filtered building in the county as an
+    # adopter, 'constrained' only the economic adopters.
     peak_results_allegheny_by_mp = {}
     df_profiles_by_mp = {}
 
+    # Echo the base case behind the constrained adopter set so the peak numbers
+    # below are traceable to the exact NPV case that defined those adopters.
+    # adoption_col_by_mp was built from BASE_CASE_NPV_CASE in the adopter-IDs
+    # cell above. The 100pct scenario uses all filtered buildings, so it does
+    # not depend on the NPV case at all.
+    print(f"Grid impact base case (constrained adopters): {BASE_CASE_NPV_CASE}")
+
     for mp in selected_mps:
-        print(f"\nComputing county profiles for MP{mp}...")
+        print(
+            f"\nComputing county profiles for MP{mp} "
+            f"(adopter column: {adoption_col_by_mp[mp]})..."
+        )
         adopter_ids_allegheny = adopter_ids_by_mp[mp][TEST_FIPS]
 
         df_profile_100pct, peak_100pct = compute_county_scenario_profile(
@@ -1317,107 +1190,38 @@ if GRID_IMPACT_ANALYSIS:
         }
 
         print(f"\nAllegheny peak results (MP{mp})")
-        for scenario, p in peak_results_allegheny_by_mp[mp].items():
-            print(f"  [{scenario}] adopters: {p['n_adopters']:,d} / {p['n_total_buildings']:,d}")
-            print(f"    baseline peak : {p['baseline_peak_mw']:.2f} MW @ hour {p['peak_hour_baseline']}")
-            print(f"    scenario peak : {p['scenario_peak_mw']:.2f} MW @ hour {p['peak_hour_scenario']}")
-            print(f"    delta         : {p['delta_mw']:+.2f} MW")
+        for scenario, peak_summary in peak_results_allegheny_by_mp[mp].items():
+            print(
+                f"  [{scenario}] adopters: {peak_summary['n_adopters']:,d} / "
+                f"{peak_summary['n_total_buildings']:,d}"
+            )
+            print(
+                f"    baseline peak : {peak_summary['baseline_peak_mw']:.2f} MW "
+                f"@ hour {peak_summary['peak_hour_baseline']}"
+            )
+            print(
+                f"    scenario peak : {peak_summary['scenario_peak_mw']:.2f} MW "
+                f"@ hour {peak_summary['peak_hour_scenario']}"
+            )
+            print(f"    delta         : {peak_summary['delta_mw']:+.2f} MW")
 
         assert len(df_profile_100pct) == 8760
         assert len(df_profile_constrained) == 8760
 
-    print(f"\n[OK] Step 7 PASSED -- peak_results_allegheny_by_mp.keys() = {list(peak_results_allegheny_by_mp.keys())}")
-
-    # ---------- Optional visualization ----------
-    fig, axes = plt.subplots(2, 2, figsize=(16, 10), sharey=False)
-    scenarios = ["100pct", "constrained"]
-    scenario_labels = ["100% Adoption", "Constrained (Economic Adopters, NPV>=0)"]
-    mp_labels = {
-        3: "Standard ASHP (15 SEER1, 9 HSPF1)",
-        4: "High-Efficiency ASHP (24-29.3 SEER1, 13-14 HSPF1)",
-    }
-
-    for row_idx, (scenario, scenario_label) in enumerate(zip(scenarios, scenario_labels)):
-        for col_idx, mp in enumerate(selected_mps):
-            ax = axes[row_idx, col_idx]
-            df_profile = df_profiles_by_mp[mp][scenario]
-            peak_result = peak_results_allegheny_by_mp[mp][scenario]
-            plot_demand_panel(ax, df_profile, peak_result, mp, scenario_label)
-            ax.set_title(f"{mp_labels.get(mp, f'MP{mp}')} | {scenario_label}")
-
-    plt.tight_layout()
-    if SAVE_FIGURES:
-        out_path = os.path.join(
-            PROJECT_ROOT,
-            "outputs",
-            f"allegheny_demand_profiles_MP{'_'.join(str(m) for m in selected_mps)}.png",
-        )
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
-        fig.savefig(out_path, dpi=FIGURE_DPI, bbox_inches="tight")
-        print(f"[OK] Figure saved: {out_path}")
-    plt.show()
-
-
-# %%
-# =============================================================================
-# GRID IMPACT -- county geography lookup (county_geo_df, gdf_counties)
-# =============================================================================
-# Builds a FIPS -> county-name -> state lookup and a merge-ready county
-# GeoDataFrame for the county peak-load choropleth. Reuses the already-loaded
-# gdf_counties_raw (same TIGER tl_2025_us_county shapefile); it does not re-read
-# the shapefile.
-if gdf_counties_raw is not None:
-    # TIGER/Line county columns: GEOID = 5-digit FIPS, NAME = county name,
-    # STATEFP = 2-digit state FIPS (county shapefiles carry no state abbrev.).
-    TIGER_FIPS_COL = "GEOID"
-    TIGER_NAME_COL = "NAME"
-    TIGER_STATEFP_COL = "STATEFP"
-
-    _expected_cols = {TIGER_FIPS_COL, TIGER_NAME_COL, TIGER_STATEFP_COL}
-    _missing = _expected_cols - set(gdf_counties_raw.columns)
-    if _missing:
-        raise KeyError(
-            f"TIGER county shapefile missing expected columns: {_missing}. "
-            f"Available: {sorted(gdf_counties_raw.columns.tolist())}"
-        )
-
-    # Plain lookup table (no geometry) for joining results to county names.
-    county_geo_df = gdf_counties_raw[
-        [TIGER_FIPS_COL, TIGER_NAME_COL, TIGER_STATEFP_COL]
-    ].rename(
-        columns={
-            TIGER_FIPS_COL: "fips_5digit",
-            TIGER_NAME_COL: "county_name",
-            TIGER_STATEFP_COL: "state_fips",
-        }
-    ).copy()
-    county_geo_df["fips_5digit"] = (
-        county_geo_df["fips_5digit"].astype(str).str.zfill(5)
+    print(
+        f"\n[OK] Step 7 PASSED -- peak_results_allegheny_by_mp.keys() = "
+        f"{list(peak_results_allegheny_by_mp.keys())}"
     )
 
-    # Merge-ready GeoDataFrame with renamed columns for downstream choropleths.
-    gdf_counties = gdf_counties_raw.rename(
-        columns={
-            TIGER_FIPS_COL: "fips_5digit",
-            TIGER_NAME_COL: "county_name",
-            TIGER_STATEFP_COL: "state_fips",
-        }
-    )[["fips_5digit", "county_name", "state_fips", "geometry"]]
-    gdf_counties["fips_5digit"] = (
-        gdf_counties["fips_5digit"].astype(str).str.zfill(5)
+    # ---------- Demand-profile grid figure ----------
+    plot_county_demand_grid(
+        df_profiles_by_mp,
+        peak_results_allegheny_by_mp,
+        selected_mps,
+        save_figure=SAVE_FIGURES,
+        output_dir=PROJECT_ROOT,
+        figure_dpi=FIGURE_DPI,
     )
-
-    # Allegheny County, PA (FIPS 42003) must be present for the Step 7 test case.
-    _test_row = county_geo_df[county_geo_df["fips_5digit"] == TEST_FIPS]
-    if _test_row.empty:
-        raise ValueError(
-            f"Test county FIPS {TEST_FIPS} (Allegheny, PA) not found in shapefile."
-        )
-    print(f"[OK] county_geo_df: {len(county_geo_df):,} counties")
-    print(f"     Test county: {_test_row.iloc[0].to_dict()}")
-    print(f"[OK] gdf_counties CRS: {gdf_counties.crs}")
-else:
-    print("[WARN] County geo mapping skipped -- county shapefile not available")
 
 
 # %%
@@ -1426,10 +1230,10 @@ else:
 # =============================================================================
 # Baseline heating-fuel breakdown for the four combinations:
 #   MP3 / MP4 x constrained (economic adopters) / 100% adoption.
-# Each cell shows count and percentage within the scenario; percentages sum to
-# 100% per column. adopter_ids_by_mp already holds only Allegheny County IDs
-# per FIPS, so they are used directly. Note: main keys DATAFRAMES_BY_MP by
-# discount rate only, so the frame is DATAFRAMES_BY_MP[mp]['fixed_base'].
+#
+#   The table shows the distribution of heating fuels for each combination,
+#   with counts and percentages for each fuel type.
+
 if GRID_IMPACT_ANALYSIS:
     # Collect fuel counts and percentages for all four combinations.
     _fuel_results = {}
@@ -1504,27 +1308,6 @@ if GRID_IMPACT_ANALYSIS:
     print()
 
     print("\n[OK] Baseline heating fuel distribution table complete")
-
-
-# %%
-# PLACEHOLDER: Add the subplot grid comparison for one measure package at a time
-# UNSUBSIDIZED ADOPTION COUNT - MP3 Min-efficiency ASHP Retrofit (15 SEER1, 8.5 HSPF1)
-# - Constrained (Left) vs. 100% Adoption (Right)
-# - Key: Red = Baseline (MP0), Blue = Retrofit (MP3 or MP4)
-
-
-# %%
-# PLACEHOLDER: Add the subplot grid comparison for one measure package at a time 
-# SUBSIDIZED - MP3 Load Profile but Rebate-Eligible Spec Sensitivity (__ SEER2, __ HSPF2) --> (__ SEER1, __ HSPF1)
-# - Constrained (Left) vs. 100% Adoption (Right)
-# - Key: Red = Baseline (MP0), Blue = Retrofit (MP3 or MP4)
-
-
-# %%
-# PLACEHOLDER: Add the subplot grid comparison for one measure package at a time 
-# SUBSIDIZED ADOPTION COUNT - MP4 High-efficiency ASHP Retrofit (__ SEER1, __ HSPF1)
-# - Constrained (Left) vs. 100% Adoption (Right)
-# - Key: Red = Baseline (MP0), Blue = Retrofit (MP3 or MP4)
 
 
 # %% [markdown]
