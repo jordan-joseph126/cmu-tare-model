@@ -34,6 +34,8 @@ import pytest
 import pandas as pd
 import numpy as np
 
+from cmu_tare_model.constants import ANCHOR_YEAR
+
 # Full production lifetimes — never shorten these
 FULL_EQUIPMENT_SPECS = {
     'heating': 15,
@@ -56,10 +58,10 @@ FULL_FUEL_MAPPING = {
     'Propane': 'propane',
 }
 
-BASE_YEAR = 2024
+BASE_YEAR = ANCHOR_YEAR
 
 
-def create_sample_homes_df(n_homes=10, categories=None, base_year=2024):
+def create_sample_homes_df(n_homes=10, categories=None, base_year=ANCHOR_YEAR):
     """Create a minimal DataFrame with mixed valid/invalid homes.
 
     Provides data for all equipment categories across full production lifetimes.

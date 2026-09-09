@@ -1,0 +1,11 @@
+[33m508acaa[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mjoseph-2026-nature-comms-submission[m[33m, [m[1;31morigin/joseph-2026-nature-comms-submission[m[33m)[m Cleared outputs from notebook to reduce file size.
+[33ma5af423[m Finished cleanup before v3 model release and updated Zenodo DOI. Moved Tamar and Tepper related files into separate folders hidden by .gitignore
+[33m5cca7eb[m Add a BuildStockQuery/AWS setup check and guide for the grid-impact section (Fix the three AWS configuration failures blocking a second researcher). Consolidate the peak-load documentation into one guide.
+[33mc795f10[m Restore grid-impact demand-grid visualization in the main notebook (Fix missing plot_county_demand_grid import and the dropped county-profile computation loop). Set project version to 3.0 across all documentation.
+[33mc1f54f6[m Archived old files (mostly health impact module files) to clean up codebase.
+[33m2f54ed2[m Refactor REMDB v4 installed-cost metric preparation module (Fix replacement cost to price off old system size, not heat pump). Improved the peak demand visual.
+[33m68f0964[m Rebuild Tepper CSV exports to 154 reconcilable columns; fix rebate-eligibility export defect and close data-dictionary gaps
+[33meba9650[m Refactor tests and utility functions to use ANCHOR_YEAR constant. Updated reference values in CLAUDE.md file after model re-run.
+[33mc839181[m Clarify electricity-vs-site-energy comments in demand/peak columns
+[33m67bb134[m Updated peak demand calculations to allow for Tamar's custom feeder home subset.
+[33md6c2989[m Remove outdated reference materials related to TARE model file organization and capital cost distributions. Updated documentation for the peak load analysis. Finished updating codebase for Tepper result exports. - Began consolidating information to a single file for peak load documentation - Deleted old files - Cleaned up files for readability

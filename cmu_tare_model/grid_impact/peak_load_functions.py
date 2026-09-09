@@ -6,13 +6,17 @@ Used by the notebook and by the national loop (Step 9).
 Author: Jordan M. Joseph, PhD — Carnegie Mellon University
 """
 
-from typing import Any
+import os
+from typing import Any, Dict, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
+from matplotlib.lines import Line2D
 
-from cmu_tare_model.constants import BLDG_ID_COL, BSQ_ELEC_COL
+from cmu_tare_model.constants import BLDG_ID_COL, FIGURE_DPI
+from cmu_tare_model.utils.column_names import BASE_CASE_NPV_CASE
 
 
 def gisjoin_to_fips(gisjoin: str) -> str:
@@ -43,7 +47,7 @@ def find_adoption_column(
     mp: int,
     cost_scenario: str,
     discount_rate_key: str = "fixed_base",
-    npv_case: str = "heatingLCC_coolingSavings_sub",
+    npv_case: str = BASE_CASE_NPV_CASE,
 ) -> str:
     """Locate the economic-adopter column in a TARE output DataFrame.
 
@@ -59,9 +63,12 @@ def find_adoption_column(
             the column name (the cost-scenario token was removed from
             output column names in the July 2026 refactor).
         discount_rate_key: Discount rate variant key (e.g. ``'fixed_base'``).
-        npv_case: One of the NPV cases in NPV_CASE_CATEGORIES.
-            Default ``'heatingLCC_coolingSavings_sub'`` (subsidized, heating
-            replacement credit only).
+        npv_case: One of the NPV cases in NPV_CASE_CATEGORIES. Defaults to
+            ``BASE_CASE_NPV_CASE`` (``'heatingLCC_coolingLCC_unsub'``) from
+            column_names.py -- the study base case: unsubsidized, with both the
+            heating and cooling replacement costs credited in the NPV. Pass this
+            argument by keyword at every call site so a positional slip cannot
+            silently substitute another case.
 
     Returns:
         The matched column name string.
@@ -251,37 +258,203 @@ def plot_demand_panel(
     ax.plot(df_profile["hour"], df_profile["scenario_mw"],
             color="tab:blue", linewidth=0.8, alpha=0.5)
 
-    peak_hr_base = peak_result["peak_hour_baseline"]
-    peak_mw_base = peak_result["baseline_peak_mw"]
-    peak_hr_scen = peak_result["peak_hour_scenario"]
-    peak_mw_scen = peak_result["scenario_peak_mw"]
+    # Horizontal dashed lines mark each series' peak MW so panels sharing a
+    # y-axis can be compared by eye. What solid vs. dashed and red vs. blue
+    # mean is explained once in the shared figure legend built by the
+    # notebook cell that calls this function, not repeated as per-panel text
+    # (the old text-box annotations overlapped and were hard to read).
+    ax.axhline(y=peak_result["baseline_peak_mw"], color="tab:red",
+               linestyle="--", linewidth=2.0, alpha=0.85)
+    ax.axhline(y=peak_result["scenario_peak_mw"], color="tab:blue",
+               linestyle="--", linewidth=2.0, alpha=0.85)
 
-    ax.axvline(x=peak_hr_base, color="tab:red", linestyle="--", linewidth=2.0,
-               alpha=0.85)
-    ax.axvline(x=peak_hr_scen, color="tab:blue", linestyle="--", linewidth=2.0,
-               alpha=0.85)
+    # Black open circle marks the exact (hour, MW) point where each series
+    # peaks -- the dashed line shows the peak height across the whole panel,
+    # this marker pins down exactly when it happens.
+    ax.plot(peak_result["peak_hour_baseline"], peak_result["baseline_peak_mw"],
+            marker="o", markerfacecolor="none", markeredgecolor="black",
+            markersize=11, markeredgewidth=2.0, linestyle="none", zorder=5)
+    ax.plot(peak_result["peak_hour_scenario"], peak_result["scenario_peak_mw"],
+            marker="o", markerfacecolor="none", markeredgecolor="black",
+            markersize=11, markeredgewidth=2.0, linestyle="none", zorder=5)
 
-    ax.annotate(
-        f"Base peak\n{peak_mw_base:.1f} MW\n(hr {peak_hr_base})",
-        xy=(peak_hr_base, 0.95),
-        xycoords=("data", "axes fraction"),
-        xytext=(peak_hr_base + 180, 0.95),
-        textcoords=("data", "axes fraction"),
-        fontsize=14, color="tab:red",
-        ha="left", va="top",
-        bbox={"boxstyle": "round,pad=0.2", "fc": "white", "ec": "tab:red", "alpha": 0.7},
-    )
-    ax.annotate(
-        f"Scenario peak\n{peak_mw_scen:.1f} MW\n(hr {peak_hr_scen})",
-        xy=(peak_hr_scen, 0.95),
-        xycoords=("data", "axes fraction"),
-        xytext=(peak_hr_scen + 180, 0.95),
-        textcoords=("data", "axes fraction"),
-        fontsize=14, color="tab:blue",
-        ha="left", va="top",
-        bbox={"boxstyle": "round,pad=0.2", "fc": "white", "ec": "tab:blue", "alpha": 0.7},
-    )
+    ax.set_xlabel("Hour of Year", fontsize=17)
+    ax.set_ylabel("Demand (MW)", fontsize=17)
+    ax.tick_params(labelsize=15)
 
-    ax.set_xlabel("Hour of Year", fontsize=14)
-    ax.set_ylabel("Demand (MW)", fontsize=14)
-    ax.tick_params(labelsize=12)
+
+def plot_county_demand_grid(
+    df_profiles_by_mp: Dict[int, Dict[str, pd.DataFrame]],
+    peak_results_by_mp: Dict[int, Dict[str, Dict[str, Any]]],
+    selected_mps: list,
+    *,
+    mp_labels: Optional[Dict[int, str]] = None,
+    county_display_name: str = "Allegheny County, PA",
+    save_figure: bool = False,
+    output_dir: Optional[str] = None,
+    figure_dpi: int = FIGURE_DPI,
+) -> plt.Figure:
+    """Draw the MP x scenario demand-profile grid with a shared legend.
+
+    Rows are measure packages (in ``selected_mps`` order); columns are the two
+    adoption scenarios, economic adopters left and 100% adoption right. All
+    panels share a y-axis so peak MW is directly comparable across both
+    scenarios and both measure packages.
+
+    This consolidates two duplicate 2x2 notebook blocks that differed only in
+    row/column axis ordering, font sizes, and a shared legend -- consolidated
+    2 Sep 2026 during the notebook/codebase cleanup session onto the second,
+    later block (row=MP, column=scenario, with the shared legend), which was
+    the more complete of the two. The superseded first block (row=scenario,
+    column=MP, no shared legend, smaller fonts) was not kept.
+
+    Args:
+        df_profiles_by_mp: ``{mp: {'100pct': df_profile, 'constrained':
+            df_profile}}`` -- outputs of ``compute_county_scenario_profile``,
+            one pair per measure package.
+        peak_results_by_mp: ``{mp: {'100pct': peak_dict, 'constrained':
+            peak_dict}}`` -- the matching peak dicts from the same calls.
+        selected_mps: Measure-package numbers to render as rows, in order.
+        mp_labels: Row label per MP (e.g. ``{3: 'Minimum-Efficiency Heat
+            Pump'}``). Defaults to the MP3/MP4 labels this notebook uses.
+        county_display_name: County name shown in the legend box title.
+        save_figure: If True and ``output_dir`` is set, save the figure.
+        output_dir: Directory the figure is saved under (the file goes in
+            ``output_dir/outputs/``); required when ``save_figure`` is True.
+        figure_dpi: Resolution used when saving.
+
+    Returns:
+        The matplotlib Figure.
+
+    Raises:
+        ValueError: If save_figure is True but output_dir is None.
+    """
+    if save_figure and output_dir is None:
+        raise ValueError("output_dir is required when save_figure=True.")
+
+    if mp_labels is None:
+        mp_labels = {
+            3: "Minimum-efficiency heat pump",
+            4: "High-efficiency heat pump",
+        }
+
+    scenarios = ["constrained", "100pct"]
+    scenario_labels = ["Only Economic Adopters", "100% Adoption"]
+    subplot_title_fontsize = 18
+    tick_label_fontsize = 16
+
+    # Month x-axis: hour is hour-of-year. Ticks land at the first hour of each
+    # month (non-leap year, matching the 8,760-row profile). Hours are
+    # cumulative, so this is built once from the days-per-month table rather
+    # than hardcoding twelve hour offsets.
+    days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    _starts_days, _running = [], 0
+    for _d in days_in_month:
+        _starts_days.append(_running)
+        _running += _d
+    month_start_hours = [s * 24 for s in _starts_days]
+
+    # Scope the white style to THIS figure only via sns.axes_style, independent
+    # of any global sns.set_theme(style=...) the caller has set, so this
+    # figure's styling stays fixed even if that global changes later.
+    with sns.axes_style("white"):
+        # sharey='all' -> all panels share a single y-scale, so peak MW is
+        # directly comparable across both scenarios and both measure packages.
+        fig, axes = plt.subplots(2, 2, figsize=(16, 11), sharey='all')
+        fig.patch.set_facecolor("white")
+
+        for row_idx, mp in enumerate(selected_mps):
+            for col_idx, (scenario, scenario_label) in enumerate(
+                    zip(scenarios, scenario_labels)):
+                ax = axes[row_idx, col_idx]
+                ax.set_facecolor("white")
+                df_profile = df_profiles_by_mp[mp][scenario]
+                peak_result = peak_results_by_mp[mp][scenario]
+                plot_demand_panel(ax, df_profile, peak_result, mp, scenario_label)
+                ax.set_title(
+                    f"{mp_labels.get(mp, f'MP{mp}')} ({scenario_label})",
+                    fontsize=subplot_title_fontsize,
+                    fontweight="bold",
+                )
+
+                # --- Override x-axis to months + enlarge tick labels ---
+                h0 = df_profile["hour"].min()
+                ax.set_xticks([h0 + m for m in month_start_hours])
+                ax.set_xticklabels(month_labels)
+                ax.set_xlim(h0, h0 + 8760)
+                ax.set_xlabel("Month", fontsize=17)
+                ax.tick_params(labelsize=tick_label_fontsize)
+
+        # --- Shared legend, bottom center, drawn as a fancy box ---
+        # Proxy handles only (no data) -- the real lines/markers are drawn per
+        # panel by plot_demand_panel. The black peak-X marker is left out of
+        # the legend on purpose (self-evident on the panels, and a fifth
+        # entry would add a row and compress the figure) -- only solid vs.
+        # dashed and red vs. blue are explained here.
+        # Order is [solid_red, dashed_red, solid_blue, dashed_blue] so that
+        # matplotlib's column-major legend fill (with ncol=2) lays them out as
+        # two rows -- row 1 solid red/blue, row 2 dashed red/blue -- matching
+        # "Solid Red | Solid Blue" then "Dashed Red | Dashed Blue".
+        legend_handles = [
+            Line2D([0], [0], color="tab:red", linewidth=2.5, linestyle="-"),
+            Line2D([0], [0], color="tab:red", linewidth=2.5, linestyle="--"),
+            Line2D([0], [0], color="tab:blue", linewidth=2.5, linestyle="-"),
+            Line2D([0], [0], color="tab:blue", linewidth=2.5, linestyle="--"),
+        ]
+        legend_labels = [
+            "Existing HVAC",
+            "Peak Existing HVAC",
+            "Post-Retrofit",
+            "Peak Post-Retrofit",
+        ]
+        fig_legend = fig.legend(
+            handles=legend_handles,
+            labels=legend_labels,
+            loc="lower center",
+            bbox_to_anchor=(0.5, -0.03),
+            ncol=2,
+            fontsize=16,
+            title=f"Residential Electricity Load (MW) for {county_display_name}",
+            title_fontsize=17,
+            frameon=True,
+            fancybox=True,
+            shadow=True,
+            facecolor="white",
+            edgecolor="0.3",
+            framealpha=0.95,
+            borderpad=1.1,
+            labelspacing=0.9,
+            handlelength=2.5,
+        )
+        fig_legend.get_title().set_fontweight("bold")
+
+        # Extra bottom margin so the legend box has room below the panels.
+        plt.tight_layout(rect=[0, 0.12, 1, 1])
+        if save_figure:
+            out_path = os.path.join(
+                output_dir,
+                "outputs",
+                f"allegheny_demand_profiles_MP"
+                f"{'_'.join(str(m) for m in selected_mps)}.png",
+            )
+            os.makedirs(os.path.dirname(out_path), exist_ok=True)
+            fig.savefig(out_path, dpi=figure_dpi, bbox_inches="tight")
+            print(f"[OK] Figure saved: {out_path}")
+        plt.show()
+
+    return fig
+
+
+# =============================================================================
+# The non-time-aligned peak-load summary path (compute_peak_load_summary,
+# build_adopter_ids_for_scope, prompt_peak_load_scope, print_peak_load_summary,
+# and the private _print_seasonal_block helper) was moved out of this module
+# on 2 Sep 2026, during the notebook/codebase cleanup session -- the live
+# notebook's grid-impact cells had already migrated to the time-aligned
+# BuildStockQuery hourly-profile approach above (compute_county_scenario_profile
+# + plot_demand_panel), and a full-repo grep found zero importers of the moved
+# functions outside this file. They are kept, not deleted, at
+# cmu_tare_model/grid_impact/archived_files/peak_load_functions_legacy.py.
+# =============================================================================

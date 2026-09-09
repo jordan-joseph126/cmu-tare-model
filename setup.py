@@ -8,7 +8,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="cmu_tare_model",
-    version="2.0",
+    version="3.0",
     packages=find_packages(),
     install_requires=[
         # Add dependencies here, e.g., 'numpy', 'pandas', etc.
@@ -19,7 +19,10 @@ setup(
         'seaborn',
     ],
     description="Tradeoff Analysis of Residential retrofits for Energy equity (TARE) Model",
-    long_description=open("README.md").read(),
+    # Read as UTF-8 explicitly. Without this, Python on Windows uses the
+    # platform default (cp1252) and setup.py crashes on any non-cp1252
+    # character in the README, which breaks `python setup.py --version`.
+    long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     author="Jordan Joseph",
     author_email="jordanjo@andrew.cmu.edu",

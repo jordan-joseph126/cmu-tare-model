@@ -2,7 +2,14 @@ import pandas as pd
 import numpy as np
 from typing import Optional, Tuple
 
-from cmu_tare_model.constants import EQUIPMENT_SPECS, TD_LOSSES_MULTIPLIER, MER_TYPES, SCC_ASSUMPTIONS, VERBOSE
+from cmu_tare_model.constants import (
+    ANCHOR_YEAR,
+    EQUIPMENT_SPECS,
+    TD_LOSSES_MULTIPLIER,
+    MER_TYPES,
+    SCC_ASSUMPTIONS,
+    VERBOSE,
+)
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.column_names import (
     create_lifetime_damages_col, 
@@ -32,7 +39,6 @@ def calculate_lifetime_climate_impacts(
         df: pd.DataFrame,
         menu_mp: int,
         policy_scenario: str,
-        base_year: int = 2024,
         df_baseline_damages: Optional[pd.DataFrame] = None,
         verbose: bool = VERBOSE) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
@@ -58,7 +64,6 @@ def calculate_lifetime_climate_impacts(
         df (pd.DataFrame): Input DataFrame containing equipment consumption data, region info, etc.
         menu_mp (int): Measure package identifier (0 for baseline, nonzero for different scenarios).
         policy_scenario (str): Single policy scenario. Must equal '2025 Reference Case'.
-        base_year (int, optional): Base year for calculations. Defaults to 2024.
         df_baseline_damages (pd.DataFrame, optional): Baseline damages for computing avoided emissions/damages.
         verbose (bool, optional): Whether to print detailed progress messages. Defaults to False.
 
@@ -103,7 +108,15 @@ def calculate_lifetime_climate_impacts(
     for category, lifetime in EQUIPMENT_SPECS.items():
         try:
             if verbose:
-                print(f"Calculating Climate Emissions and Damages from 2024 to {2024 + lifetime} for {category}")                    
+                # The stream runs for `lifetime` years starting at
+                # ANCHOR_YEAR, so the last year is
+                # ANCHOR_YEAR + lifetime - 1 (2025-2039 for a 15-year
+                # lifetime). The old message added a year to the end of
+                # the span and reported 16 years for a 15-year stream.
+                last_year = ANCHOR_YEAR + lifetime - 1
+                print(
+                    f"Calculating Climate Emissions and Damages from "
+                    f"{ANCHOR_YEAR} to {last_year} for {category}")
             
             # ===== STEP 1: Initialize validation tracking for this category =====
             # MEMORY OPTIMIZATION: copy=False since df_copy was already copied at the start
@@ -135,7 +148,10 @@ def calculate_lifetime_climate_impacts(
             for year in range(1, lifetime + 1):
                 try:
                     # Calculate the calendar year label (e.g., 2024, 2025, etc.)
-                    year_label = year + (base_year - 1)
+                    # Year 1 of the stream is ANCHOR_YEAR itself, so a
+                    # 15-year lifetime runs 2025-2039. Derived from the
+                    # shared constant so the start year is set in one place.
+                    year_label = year + (ANCHOR_YEAR - 1)
                     
                     # FIXED: Calculate fossil fuel emissions with year_label parameter
                     total_fossil_fuel_emissions = calculate_fossil_fuel_emissions(

@@ -52,6 +52,32 @@ def create_fuel_cost_col(
     return f'{scenario_prefix}{year_label}_{category}_fuel_cost'
 
 
+def create_annual_consumption_col(
+    scenario_prefix: str,
+    year_label: int,
+    category: str) -> str:
+    """Build the per-year projected consumption column name.
+
+    Mirrors create_fuel_cost_col: the year sits between the scenario prefix
+    and the category, so the consumption column and the fuel cost column for
+    the same home, year and end use differ only in their last token. The pair
+    lets a reader multiply consumption by a fuel price and land on the cost.
+
+    There is no discount-method or cost-scenario token: projected consumption
+    depends only on the measure package and the degree-day factors, not on how
+    the resulting dollars are discounted or which REMDB cost scenario is used.
+
+    Args:
+        scenario_prefix: Scenario prefix (e.g. 'baseline_', 'ref2025_mp3_').
+        year_label: Calendar year (e.g. 2025).
+        category: Equipment category (e.g. 'heating').
+
+    Returns:
+        Column name string, e.g. 'ref2025_mp3_2039_heating_consumption'.
+    """
+    return f'{scenario_prefix}{year_label}_{category}_consumption'
+
+
 def create_cost_col(
     menu_mp: int,
     category: str,
@@ -128,6 +154,57 @@ def create_capital_col(
     return f'{scenario_prefix}{category}_{kind}_capital_cost_{cost_scenario}'
 
 
+def create_discounted_savings_col(
+    scenario_prefix: str,
+    category: str,
+    method_suffix: str) -> str:
+    """Build the discounted lifetime operating-savings column name.
+
+    This is the savings half of the NPV: the sum over the equipment lifetime
+    of each year's avoided fuel cost, discounted to the anchor year. Adding
+    the heating and cooling columns and subtracting the net capital cost
+    reproduces the private NPV, so the three together let a reader check the
+    NPV without redoing the discounting.
+
+    The discount-method suffix is part of the name because the same energy
+    savings discount to different dollars under each private discount rate.
+
+    Args:
+        scenario_prefix: Scenario prefix (e.g. 'ref2025_mp3_').
+        category: Equipment category ('heating' or 'cooling').
+        method_suffix: Discount method suffix, which carries its own leading
+            underscore (e.g. '_fixed_base').
+
+    Returns:
+        Column name string, e.g.
+        'ref2025_mp3_heating_discounted_lifetime_savings_fixed_base'.
+    """
+    return (f'{scenario_prefix}{category}_discounted_lifetime_savings'
+            f'{method_suffix}')
+
+
+def create_cooling_credit_applied_col(
+    menu_mp: int,
+    cost_scenario: str) -> str:
+    """Build the applied cooling replacement credit column name.
+
+    Distinct from the raw cooling replacement installed cost. The raw cost is
+    what a counterfactual air conditioner would have cost; the applied credit
+    is what the NPV actually subtracted, which is zero for a home with no air
+    conditioning and zero where the raw cost is blank. Storing the applied
+    value means a reader never has to reconstruct that rule.
+
+    Args:
+        menu_mp: Measure package number.
+        cost_scenario: 'v3' or 'v4LOW/MID/HIGH'.
+
+    Returns:
+        Column name string, e.g.
+        'mp3_cooling_replacement_credit_applied_v4MID'.
+    """
+    return f'mp{menu_mp}_cooling_replacement_credit_applied_{cost_scenario}'
+
+
 
 def create_npv_col(
     scenario_prefix: str,
@@ -171,12 +248,12 @@ def create_npv_col(
 # pathway). The "_sub" and "_unsub" cases are unchanged; "_sub_june2026" is the
 # new case added for the rebate-policy-scenario comparison.
 #
-#   heatingSavings_coolingLCC_sub          -> 2024 subsidized; heating replacement only
-#   heatingSavings_coolingLCC_unsub        -> unsubsidized; heating replacement only
-#   heatingSavings_coolingLCC_sub_june2026 -> June 2026 subsidized; heating replacement only
-#   heatingLCC_coolingSavings_sub          -> 2024 subsidized; cooling replacement only
-#   heatingLCC_coolingSavings_unsub        -> unsubsidized; cooling replacement only
-#   heatingLCC_coolingSavings_sub_june2026 -> June 2026 subsidized; cooling replacement only
+#   heatingSavings_coolingLCC_sub          -> 2024 subsidized; cooling replacement only
+#   heatingSavings_coolingLCC_unsub        -> unsubsidized; cooling replacement only
+#   heatingSavings_coolingLCC_sub_june2026 -> June 2026 subsidized; cooling replacement only
+#   heatingLCC_coolingSavings_sub          -> 2024 subsidized; heating replacement only
+#   heatingLCC_coolingSavings_unsub        -> unsubsidized; heating replacement only
+#   heatingLCC_coolingSavings_sub_june2026 -> June 2026 subsidized; heating replacement only
 #   heatingLCC_coolingLCC_sub              -> 2024 subsidized; both replacements
 #   heatingLCC_coolingLCC_unsub            -> unsubsidized; both replacements
 #   heatingLCC_coolingLCC_sub_june2026     -> June 2026 subsidized; both replacements
@@ -195,6 +272,15 @@ NPV_CASE_CATEGORIES = (
     "heatingLCC_coolingLCC_unsub",
     "heatingLCC_coolingLCC_sub_june2026",
 )
+
+# The study base case: the single NPV case reported as the headline result and
+# used as the default economic-adopter definition (for example the constrained
+# grid-impact set and the county adoption-rate map). Unsubsidized, with both the
+# heating and cooling replacement costs credited in the NPV. Defined here as the
+# one source of truth so the peak-load module default and every notebook cell
+# import the same string -- change it here to move the base case everywhere.
+# Must be one of NPV_CASE_CATEGORIES above.
+BASE_CASE_NPV_CASE = "heatingLCC_coolingLCC_unsub"
 
 
 def create_npv_case_col(

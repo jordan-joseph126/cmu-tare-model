@@ -5,6 +5,7 @@ from scipy.interpolate import interp1d
 
 # import from cmu-tare-model package
 from config import PROJECT_ROOT
+from cmu_tare_model.constants import ANCHOR_YEAR
 
 # ====================================================================================================================================================================================
 # Set print_verbose to True for detailed output, or False for minimal output
@@ -190,12 +191,6 @@ CAMBIUM_VERSION = "Cambium24"
 CAMBIUM_SCENARIO = "MidCase"
 CAMBIUM_HEADER_ROW = 5
 
-# The model's climate loop starts at 2024, but Cambium 2024 begins at 2025.
-# Hold the pre-anchor year 2024 at the 2025 value, matching how the fuel-price
-# projection holds 2024 at the 2025 anchor.
-CLIMATE_ANCHOR_YEAR = 2025
-CLIMATE_FIRST_MODEL_YEAR = 2024
-
 filename = "cambium24_allScenarios_annual_gea.csv"
 relative_path = os.path.join("cmu_tare_model", "data", "projections", filename)
 file_path = os.path.join(PROJECT_ROOT, relative_path)
@@ -224,15 +219,17 @@ df_cambium24_margEmis_electricity["year"] = (
     df_cambium24_margEmis_electricity["year"].astype(int)
 )
 
-# Add a 2024 row per region equal to the 2025 anchor so the model's first year
-# (2024) has a factor; interpolation between 2024 and 2025 is then flat.
-df_anchor_hold = df_cambium24_margEmis_electricity[
-    df_cambium24_margEmis_electricity["year"] == CLIMATE_ANCHOR_YEAR
-].copy()
-df_anchor_hold["year"] = CLIMATE_FIRST_MODEL_YEAR
-df_cambium24_margEmis_electricity = pd.concat(
-    [df_anchor_hold, df_cambium24_margEmis_electricity], ignore_index=True
-)
+# The Cambium data begins at ANCHOR_YEAR, which is also the first year of the
+# model's climate stream, so there is no earlier year to hold and nothing to
+# synthesize. Checked here rather than assumed: a source file that started
+# later would otherwise leave the first year of the stream with no emission
+# factor, and the failure would not surface until a year lookup missed.
+_first_cambium_year = int(df_cambium24_margEmis_electricity["year"].min())
+if _first_cambium_year != ANCHOR_YEAR:
+    raise ValueError(
+        f"Cambium emissions data starts at {_first_cambium_year}, but the "
+        f"climate stream starts at ANCHOR_YEAR ({ANCHOR_YEAR}). "
+        f"File: {file_path}")
 
 if print_verbose:
     print(f"""

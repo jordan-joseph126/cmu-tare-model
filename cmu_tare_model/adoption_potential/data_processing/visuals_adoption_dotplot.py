@@ -7,13 +7,14 @@
       heatingLCC_coolingSavings (heating replacement credited only)
       heatingSavings_coolingLCC (cooling replacement credited only)
       heatingLCC_coolingLCC     (both heating + cooling replacements)
-    Each marker plots the subsidized rate for the selected rebate vintage
-    (rebate_vintage: 'sub' = December 2024, 'sub_june2026' = June 2026); the
-    delta annotation is that rate minus the unsubsidized rate for the scope.
+    Each marker plots the rate for the selected rebate vintage
+    (rebate_vintage: 'unsub' = unsubsidized, 'sub' = December 2024,
+    'sub_june2026' = June 2026); the delta annotation is that rate minus the
+    unsubsidized rate for the scope (0 when rebate_vintage='unsub').
 
   'rebate_policy_scenario' -- three markers per row, one per rebate policy
-    scenario (Unsubsidized, December 2024 Rebate Eligibility, June 2026 Rebate
-    Eligibility), for a single fixed replacement-credit scope. Each marker plots
+    scenario (Unsubsidized, 2024 Rebate, 2026 Rebate w/o fuel switching), for a
+    single fixed replacement-credit scope. Each marker plots
     that scenario's own adoption rate. Pair with REBATE_POLICY_SCENARIO_MARKERS
     and build_rebate_policy_scenario_legend_handles().
 
@@ -97,21 +98,21 @@ ALL_TIER_NAMES: List[str] = [
 REBATE_POLICY_SCENARIO_ORDER: List[str] = ['unsub', 'sub', 'sub_june2026']
 REBATE_POLICY_SCENARIO_LABELS: Dict[str, str] = {
     'unsub': 'Unsubsidized',
-    'sub': 'December 2024 Rebate Eligibility',
-    'sub_june2026': 'June 2026 Rebate Eligibility',
+    'sub': '2024 Rebate',
+    'sub_june2026': '2026 Rebate w/o fuel switching',
 }
 
 # Marker shape per rebate policy scenario, keyed by the label that
 # build_econ_plot_df writes into 'tier_label' so plot_adoption_panel can look it
 # up via custom_tier_markers. Distinct from the two-shape TIER_MARKERS used by
 # the default replacement_credit_scenario mode.
-# June 2026 is the headline pick in this figure, so it gets the star shape and
-# is drawn filled; the other two are drawn as empty outlines (see
-# plot_adoption_panel's filled_tier).
+# June 2026 is the headline pick in this figure, so it gets the square shape;
+# with fill_markers=False every marker is drawn as an empty outline, so the
+# headline is set apart by its square shape alone (see plot_adoption_panel).
 REBATE_POLICY_SCENARIO_MARKERS: Dict[str, str] = {
-    'Unsubsidized': 'o',                          # circle
-    'December 2024 Rebate Eligibility': '^',      # triangle
-    'June 2026 Rebate Eligibility': '*',          # star
+    'Unsubsidized': 'o',                        # circle
+    '2024 Rebate': '^',                         # triangle
+    '2026 Rebate w/o fuel switching': 's',      # square (headline)
 }
 
 # ===========================================================================
@@ -129,20 +130,21 @@ REBATE_POLICY_SCENARIO_MARKERS: Dict[str, str] = {
 # display order (heating, cooling, both). build_econ_plot_df loops this list so
 # the plot, the case list, and the legend stay in one order.
 REPLACEMENT_CREDIT_SCOPES: List[tuple] = [
-    ('heatingLCC_coolingSavings', 'Heating Repl. Credit'),
-    ('heatingSavings_coolingLCC', 'Cooling Repl. Credit'),
-    ('heatingLCC_coolingLCC', 'Heating + Cooling Repl. Credit'),
+    ('heatingLCC_coolingSavings', 'Heating Replacement Cost Offset'),
+    ('heatingSavings_coolingLCC', 'Cooling Replacement Cost Offset'),
+    ('heatingLCC_coolingLCC', 'Heating + Cooling Replacement Cost Offset'),
 ]
 REPLACEMENT_CREDIT_CASES: List[str] = [
     label for _scope, label in REPLACEMENT_CREDIT_SCOPES
 ]
 # The "both replacements" scope is the headline pick in this figure, so it gets
-# the star shape and is drawn filled; the other two are drawn as empty outlines
-# (see plot_adoption_panel's filled_tier).
+# the square shape; with fill_markers=False every marker is drawn as an empty
+# outline, so the headline is set apart by its square shape alone (see
+# plot_adoption_panel).
 REPLACEMENT_CREDIT_MARKERS: Dict[str, str] = {
-    'Heating Repl. Credit': 'o',              # circle -- heatingLCC_coolingSavings
-    'Cooling Repl. Credit': '^',              # triangle -- heatingSavings_coolingLCC
-    'Heating + Cooling Repl. Credit': '*',    # star -- heatingLCC_coolingLCC
+    'Heating Replacement Cost Offset': 'o',           # circle -- heatingLCC_coolingSavings
+    'Cooling Replacement Cost Offset': '^',           # triangle -- heatingSavings_coolingLCC
+    'Heating + Cooling Replacement Cost Offset': 's',  # square -- heatingLCC_coolingLCC (headline)
 }
 
 # ===========================================================================
@@ -217,11 +219,13 @@ def build_econ_plot_df(
             when shape_by='rebate_policy_scenario'. One of
             'heatingLCC_coolingSavings' or 'heatingLCC_coolingLCC'. Ignored in the
             default mode.
-        rebate_vintage: Which subsidized vintage each scope marker plots in the
-            default replacement_credit_scenario mode. 'sub' is the December 2024
-            rate; 'sub_june2026' is the June 2026 rate. Ignored when
-            shape_by='rebate_policy_scenario' (that mode plots all three
-            vintages).
+        rebate_vintage: Which rebate vintage each scope marker plots in the
+            default replacement_credit_scenario mode. 'unsub' is the
+            unsubsidized rate (no rebate); 'sub' is the December 2024 rate;
+            'sub_june2026' is the June 2026 rate. With 'unsub' the marker value
+            is the unsubsidized rate and the (unshown) subsidy delta is 0.
+            Ignored when shape_by='rebate_policy_scenario' (that mode plots all
+            three vintages).
 
     Returns:
         DataFrame formatted for ``plot_adoption_panel()``.
@@ -234,7 +238,7 @@ def build_econ_plot_df(
     if shape_by not in valid_shape_by:
         raise ValueError(
             f"shape_by={shape_by!r} is not valid. Choose one of {valid_shape_by}.")
-    valid_vintage = ('sub', 'sub_june2026')
+    valid_vintage = ('unsub', 'sub', 'sub_june2026')
     if rebate_vintage not in valid_vintage:
         raise ValueError(
             f"rebate_vintage={rebate_vintage!r} is not valid. "
@@ -253,9 +257,12 @@ def build_econ_plot_df(
     scenario_prefix = define_scenario_params(mp)[0]
     method_suffix = f'_{discount_rate}'
 
-    # replacement_credit_scenario mode: one marker per credit scope, each
-    # plotting its subsidized rate (for the selected rebate vintage) with the
-    # unsubsidized delta. Keyed by scope token so _append_group can loop them.
+    # replacement_credit_scenario mode: one marker per credit scope. The 'sub'
+    # slot holds the plotted value -- the rate for the selected rebate vintage.
+    # When rebate_vintage='unsub' this resolves to the unsubsidized column, so
+    # the marker plots the unsubsidized rate and the delta below is 0. The
+    # 'unsub' slot is always the delta reference. Keyed by scope token so
+    # _append_group can loop them.
     scope_cols = {
         scope: {
             'sub': create_adoption_col(
@@ -533,6 +540,7 @@ def _build_legend_handles() -> List[mlines.Line2D]:
 
 def build_rebate_policy_scenario_legend_handles(
     filled_label: Optional[str] = None,
+    fill_markers: bool = True,
 ) -> List[mlines.Line2D]:
     """Create legend handles for the three rebate policy scenario markers.
 
@@ -546,6 +554,10 @@ def build_rebate_policy_scenario_legend_handles(
         filled_label: The one scenario label to draw filled (gray). Every other
             handle is drawn as an empty outline, matching plot_adoption_panel's
             filled_tier. When None, all handles are filled (old behavior).
+        fill_markers: When False, every handle is drawn as an empty outline
+            regardless of filled_label -- matching plot_adoption_panel's
+            fill_markers=False all-outline mode, where the headline is set apart
+            by its square shape alone. Default True keeps the old behavior.
 
     Returns:
         List of matplotlib Line2D legend handles, one per rebate policy scenario.
@@ -553,7 +565,10 @@ def build_rebate_policy_scenario_legend_handles(
     handles: List[mlines.Line2D] = []
     for token in REBATE_POLICY_SCENARIO_ORDER:
         label = REBATE_POLICY_SCENARIO_LABELS[token]
-        face = 'gray' if filled_label is None or label == filled_label else 'none'
+        if not fill_markers:
+            face = 'none'
+        else:
+            face = 'gray' if filled_label is None or label == filled_label else 'none'
         handles.append(
             mlines.Line2D(
                 [], [],
@@ -571,6 +586,7 @@ def build_rebate_policy_scenario_legend_handles(
 
 def build_replacement_credit_legend_handles(
     filled_case: Optional[str] = None,
+    fill_markers: bool = True,
 ) -> List[mlines.Line2D]:
     """Create legend handles for the three replacement-credit markers.
 
@@ -586,6 +602,10 @@ def build_replacement_credit_legend_handles(
         filled_case: The one scope label to draw filled (gray). Every other
             handle is drawn as an empty outline, matching plot_adoption_panel's
             filled_tier. When None, all handles are filled (old behavior).
+        fill_markers: When False, every handle is drawn as an empty outline
+            regardless of filled_case -- matching plot_adoption_panel's
+            fill_markers=False all-outline mode, where the headline is set apart
+            by its square shape alone. Default True keeps the old behavior.
 
     Returns:
         List of matplotlib Line2D legend handles, one per replacement-credit
@@ -593,7 +613,10 @@ def build_replacement_credit_legend_handles(
     """
     handles: List[mlines.Line2D] = []
     for case in REPLACEMENT_CREDIT_CASES:
-        face = 'gray' if filled_case is None or case == filled_case else 'none'
+        if not fill_markers:
+            face = 'none'
+        else:
+            face = 'gray' if filled_case is None or case == filled_case else 'none'
         handles.append(
             mlines.Line2D(
                 [], [],
@@ -638,6 +661,7 @@ def plot_adoption_panel(
     ytick_label_style: str = 'detailed',
     custom_tier_markers: Optional[Dict[str, str]] = None,
     filled_tier: Optional[str] = None,
+    fill_markers: bool = True,
     homes_unit: str = 'M',
 ) -> plt.Axes:
     """Draw a horizontal dot plot showing adoption rates and deltas between cases.
@@ -691,6 +715,11 @@ def plot_adoption_panel(
         marker in the row is drawn as an empty outline in the fuel colour. Use
         this to highlight the headline case. When None (default) all markers are
         filled, which keeps the old behaviour for other callers.
+    fill_markers : bool
+        When False, every marker is drawn as an empty outline regardless of
+        ``filled_tier`` -- the headline case is then set apart by its marker
+        shape alone. Default True keeps the old behaviour (``filled_tier`` fills
+        the headline; None fills all).
 
     Returns
     -------
@@ -779,6 +808,33 @@ def plot_adoption_panel(
                 for mid in cluster[1:-1]:
                     mid['shift'] = 'cluster_center'
 
+        # De-duplicate labels for markers that land on the same value. Within
+        # each cluster, group markers whose plotted value matches (within
+        # annotation_equal_eps percentage points); the first marker in a value
+        # group keeps its number and the rest are flagged so their duplicate
+        # label is suppressed. The markers themselves are still drawn -- only the
+        # redundant text is skipped. This catches, e.g., electric rows where the
+        # 2024 and 2026 rebate rates are identical. When an entire cluster
+        # collapses to one value, the single surviving label has nothing to
+        # split from, so its cluster left/right shift is cleared and it falls
+        # back to the default edge-aware centered placement. Near-but-distinct
+        # values (e.g. 4% vs 5%) keep their left/right split.
+        annotation_equal_eps = 0.5
+        for cluster in clusters:
+            value_groups: List[List[dict]] = []
+            for item in cluster:
+                if (value_groups
+                        and abs(item['x'] - value_groups[-1][0]['x'])
+                        <= annotation_equal_eps):
+                    value_groups[-1].append(item)
+                else:
+                    value_groups.append([item])
+            for group in value_groups:
+                for duplicate in group[1:]:
+                    duplicate['skip_annotation'] = True
+            if len(value_groups) == 1:
+                value_groups[0][0]['shift'] = 'center'
+
         all_x: List[float] = []
         for item in row_data:
             tier = item['tier']
@@ -789,8 +845,12 @@ def plot_adoption_panel(
 
             # Fill only the designated headline case (filled_tier); draw every
             # other marker as an empty outline. When filled_tier is None (other
-            # callers) all markers stay filled, matching the old behavior.
-            if filled_tier is None or tier == filled_tier:
+            # callers) all markers stay filled, matching the old behavior. When
+            # fill_markers is False every marker is an empty outline regardless,
+            # so the headline is set apart by its marker shape alone.
+            if not fill_markers:
+                face = 'none'
+            elif filled_tier is None or tier == filled_tier:
                 face = color
             else:
                 face = 'none'
@@ -805,8 +865,23 @@ def plot_adoption_panel(
             )
             all_x.append(x_val)
 
-            # Choose horizontal alignment and x-offset.
-            if item.get('shift') == 'cluster_left':
+            # Skip the redundant label for a duplicate-value marker. The marker
+            # and its x (above) are kept, so the connecting line still spans the
+            # full range; only the overlapping number/homes text is suppressed.
+            if item.get('skip_annotation'):
+                continue
+
+            # Choose horizontal alignment and x-offset. A zero offset means
+            # the caller wants every label centered on its own marker
+            # regardless of clustering or edge position -- left/right
+            # alignment with no offset would still visually shift the text
+            # to one side of the marker (ha controls which way the text
+            # grows from its anchor point, independent of the point offset),
+            # so skip the cluster/edge branches entirely in that case.
+            if annotation_x_offset_pts == 0:
+                ha = 'center'
+                x_text = 0
+            elif item.get('shift') == 'cluster_left':
                 # Leftmost marker of a close cluster  --  label goes LEFT.
                 ha = 'right'
                 x_text = -annotation_x_offset_pts
@@ -955,7 +1030,7 @@ def plot_adoption_panel(
     # for fontsize=12. Ticks (0, 20, ..., 100) are unaffected.
     ax.set_xlim(-xlim_margin, 100 + xlim_margin)
     ax.set_xticks(range(0, 101, 20))
-    ax.set_xlabel('Share of Homes Recovering Incremental Costs (%)', fontsize=ytick_fontsize)
+    ax.set_xlabel('Share of households recovering electrification premium through discounted operational savings (%)', fontsize=ytick_fontsize)
 
     # --- Grid and separator ---
     ax.set_axisbelow(True)
@@ -977,6 +1052,234 @@ def plot_adoption_panel(
         ax.set_title(title, fontsize=title_fontsize, fontweight='bold')
 
     return ax
+
+
+def plot_econ_adoption_panel(
+    plot_df: pd.DataFrame,
+    ax: plt.Axes,
+    title: str,
+    fuel_counts_millions: Dict[str, float],
+    custom_tier_markers: Dict[str, str],
+    annotation_x_offset_pts: float = 8.0,
+    annotation_y_offset_pts: float = 8.0,
+) -> plt.Axes:
+    """Draw one economic-adoption dot-plot panel with the main notebook's styling.
+
+    Thin wrapper around ``plot_adoption_panel`` that bakes in the six keyword
+    values the main notebook's two adoption-dotplot cells (replacement-credit
+    scope, and rebate policy scenario) always pass identically:
+    ``grouping_order=NATIONAL_FUEL_GROUPING_ORDER``, ``title_fontsize=16``,
+    ``ytick_fontsize=14``, ``annotation_fontsize=14``, ``xlim_margin=20``, and
+    ``fill_markers=False``. The remaining arguments -- ``plot_df``, ``ax``,
+    ``title``, ``fuel_counts_millions``, ``custom_tier_markers``, and the two
+    annotation offsets -- stay as parameters. The annotation offsets default
+    to 8 points each (the value both notebook cells used before this became
+    configurable) so existing callers that omit them are unaffected; pass a
+    different value when one dataset's markers sit close enough together that
+    the default offset causes overlapping labels. The paired legend-handle
+    builder (``build_replacement_credit_legend_handles`` or
+    ``build_rebate_policy_scenario_legend_handles``) is a separate call at the
+    notebook cell's ``ax.legend(...)`` line, not wrapped here.
+
+    Args:
+        plot_df: Output of ``build_econ_plot_df`` for one measure package.
+        ax: Matplotlib Axes to draw on.
+        title: Panel title (the measure-package subtitle).
+        fuel_counts_millions: ``{fuel_type: weighted_homes_millions}`` for the
+            y-axis home-count annotations.
+        custom_tier_markers: Marker-shape lookup for this call's mode --
+            ``REPLACEMENT_CREDIT_MARKERS`` or ``REBATE_POLICY_SCENARIO_MARKERS``.
+        annotation_x_offset_pts: Horizontal offset (points) for annotation
+            labels pushed left/right of their marker -- see
+            ``plot_adoption_panel``. Default 8.
+        annotation_y_offset_pts: Vertical offset (points) for annotation
+            labels above/below their marker -- see ``plot_adoption_panel``.
+            Default 8.
+
+    Returns:
+        The same Axes, per ``plot_adoption_panel``.
+    """
+    return plot_adoption_panel(
+        plot_df, ax,
+        grouping_order=NATIONAL_FUEL_GROUPING_ORDER,
+        title=title,
+        title_fontsize=16,
+        ytick_fontsize=14,
+        annotation_fontsize=14,
+        annotation_x_offset_pts=annotation_x_offset_pts,
+        annotation_y_offset_pts=annotation_y_offset_pts,
+        xlim_margin=20,
+        fuel_counts_millions=fuel_counts_millions,
+        custom_tier_markers=custom_tier_markers,
+        fill_markers=False,
+    )
+
+
+def plot_econ_adoption_dotplot_figure(
+    measure_packages: List[int],
+    dataframes_by_mp: Dict[int, Dict[str, pd.DataFrame]],
+    discount_rate: str,
+    cost_scenario: str,
+    mp_subtitles: Dict[int, str],
+    build_df_kwargs: Dict,
+    custom_tier_markers: Dict[str, str],
+    legend_handles: List[mlines.Line2D],
+    summary_header: str,
+    annotation_x_offset_pts: float = 8.0,
+    annotation_y_offset_pts: float = 8.0,
+    save_figure: bool = False,
+    output_dir: Optional[str] = None,
+    output_filename: Optional[str] = None,
+    figure_dpi: int = FIGURE_DPI,
+) -> Optional[plt.Figure]:
+    """Build the full N-row economic-adoption dot-plot figure.
+
+    Consolidates what used to be duplicated per-cell code in the main
+    notebook's two adoption-dotplot cells (replacement-credit scope, and
+    rebate policy scenario): computing national fuel counts, looping over
+    measure packages to build each panel's data (``build_econ_plot_df``),
+    printing the National per-case summary, drawing the panel
+    (``plot_econ_adoption_panel``), adding the per-panel legend, and saving
+    the figure. Only what genuinely differs between the two notebook cells
+    stays a parameter: the ``build_econ_plot_df`` mode-specific keyword
+    arguments, the marker lookup, the legend handles, and the summary header
+    text.
+
+    The National-row summary print assumes ``build_econ_plot_df`` always
+    emits one row per case, in a fixed order, for the 'National -- Overall'
+    grouping -- true for both modes by construction (confirmed against
+    REPLACEMENT_CREDIT_CASES and REBATE_POLICY_SCENARIO_ORDER before this
+    function replaced the two cells' separate print loops).
+
+    Args:
+        measure_packages: Measure-package numbers to render as rows, in
+            order (``HEATING_MEASURE_PACKAGES`` in the notebook).
+        dataframes_by_mp: ``{mp: {discount_rate: DataFrame}}`` -- the main
+            notebook's ``DATAFRAMES_BY_MP``.
+        discount_rate: Discount-rate key to select from ``dataframes_by_mp``.
+        cost_scenario: Forwarded to ``build_econ_plot_df`` (retained for
+            caller compatibility; not embedded in column names).
+        mp_subtitles: Per-MP panel title lookup (``HEATING_MP_SUBTITLES``).
+        build_df_kwargs: Extra keyword arguments forwarded to
+            ``build_econ_plot_df`` beyond ``source_df``, ``mp``,
+            ``cost_scenario``, and ``discount_rate`` -- e.g.
+            ``{'rebate_vintage': 'unsub'}`` for the replacement-credit mode,
+            or ``{'shape_by': 'rebate_policy_scenario',
+            'fixed_replacement_credit_scenario': 'heatingLCC_coolingLCC'}``
+            for the rebate-policy mode.
+        custom_tier_markers: Marker-shape lookup for this figure's mode --
+            ``REPLACEMENT_CREDIT_MARKERS`` or
+            ``REBATE_POLICY_SCENARIO_MARKERS``.
+        legend_handles: Legend handles for this figure's mode, from
+            ``build_replacement_credit_legend_handles`` or
+            ``build_rebate_policy_scenario_legend_handles``. Built once by
+            the caller and reused for every panel's legend (the original
+            per-cell code rebuilt it on every loop iteration, which is
+            wasteful but harmless since the builder is a pure function --
+            reusing one set of handles changes nothing about what renders).
+        summary_header: Printed once per panel before its National summary
+            line, e.g. ``'economic adoption summary (National,
+            unsubsidized)'``.
+        annotation_x_offset_pts: Horizontal offset (points) for annotation
+            labels pushed left/right of their marker, forwarded to every
+            panel's ``plot_econ_adoption_panel`` call. Default 8, matching
+            prior behavior. Raise this when a dataset's markers sit close
+            enough together that labels overlap; lower it when markers are
+            well separated and the default leaves too much blank space.
+        annotation_y_offset_pts: Vertical offset (points) for annotation
+            labels above/below their marker, forwarded the same way.
+            Default 8.
+        save_figure: If True, save the figure. Requires ``output_dir`` and
+            ``output_filename``.
+        output_dir: Project root to save under (the file goes in
+            ``output_dir/figures/``).
+        output_filename: Bare filename stem (no extension); saved as both
+            ``.png`` and ``.pdf``.
+        figure_dpi: Resolution used when saving.
+
+    Returns:
+        The matplotlib Figure, or None if ``measure_packages`` is empty (the
+        caller is expected to print its own "skipping" message in that case,
+        since the two notebook cells word it differently).
+
+    Raises:
+        ValueError: If save_figure is True but output_dir or output_filename
+            is None.
+    """
+    if save_figure and (output_dir is None or output_filename is None):
+        raise ValueError(
+            "output_dir and output_filename are both required when "
+            "save_figure=True."
+        )
+    if not measure_packages:
+        return None
+
+    # National fuel counts, weighted to homes. The fuel mix is a property of
+    # the housing stock, not the measure package, so any MP's frame gives the
+    # same counts -- the first one is used.
+    _src = dataframes_by_mp[measure_packages[0]][discount_rate]
+    fuel_counts_millions = {
+        str(fuel): weighted_homes / 1_000_000
+        for fuel, weighted_homes in _src.groupby(
+            'base_heating_fuel', observed=True)['weight'].sum().items()
+    }
+
+    n_mps = len(measure_packages)
+    fig, axes = plt.subplots(
+        n_mps, 1, figsize=(12, 6 * n_mps), sharex=True, sharey=True,
+    )
+    if n_mps == 1:
+        axes = [axes]
+
+    for row_idx, mp in enumerate(measure_packages):
+        ax = axes[row_idx]
+        panel_title = mp_subtitles.get(mp, f'MP{mp}')
+        source_df = dataframes_by_mp[mp][discount_rate]
+
+        plot_df = build_econ_plot_df(
+            source_df, mp, cost_scenario=cost_scenario,
+            discount_rate=discount_rate, **build_df_kwargs,
+        )
+
+        # National per-case summary so the plotted values are visible on
+        # every run.
+        print(f"--- MP{mp} {summary_header} ---")
+        national = plot_df[plot_df['grouping'] == 'National -- Overall']
+        for _, row in national.iterrows():
+            print(f"  {row['tier_label']}: {row['case_b_pct']:.1f}%")
+        print()
+
+        plot_econ_adoption_panel(
+            plot_df, ax,
+            title=panel_title,
+            fuel_counts_millions=fuel_counts_millions,
+            custom_tier_markers=custom_tier_markers,
+            annotation_x_offset_pts=annotation_x_offset_pts,
+            annotation_y_offset_pts=annotation_y_offset_pts,
+        )
+        ax.tick_params(axis='both', labelsize=14)
+        ax.legend(
+            handles=legend_handles, loc='upper right', fontsize=14,
+            frameon=True,
+        )
+
+        if row_idx < n_mps - 1:
+            ax.set_xlabel('')
+
+    fig.tight_layout(rect=[0.0, 0.02, 1.0, 0.96])
+
+    if save_figure:
+        out_dir = os.path.join(output_dir, 'figures')
+        os.makedirs(out_dir, exist_ok=True)
+        for ext in ('png', 'pdf'):
+            fig.savefig(
+                os.path.join(out_dir, f'{output_filename}.{ext}'),
+                dpi=figure_dpi, bbox_inches='tight',
+            )
+        print(f"[OK] Saved {output_filename}.png / .pdf to {out_dir}")
+
+    plt.show()
+    return fig
 
 
 # ===================================================================

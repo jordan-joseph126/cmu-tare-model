@@ -94,7 +94,13 @@ def compute_scenario_demand(
     df_demand['elec_demand_change_kwh'] = (
         df_demand['retrofit_electric_kwh'] - df_demand['baseline_electric_kwh']
     )
-    # site_energy_change_kwh == elec_demand_change_kwh when using total electricity
+    # NAMING NOTE: this "site energy change" is an ALIAS of the electricity
+    # change, not an independent all-fuel quantity. Because the retrofit fully
+    # electrifies heating/cooling and both baseline and retrofit sides are read
+    # from the electricity total (ELEC_TOTAL_COL), the all-fuel site-energy
+    # change and the electricity change converge, so the alias is exact here.
+    # For an electricity metric use elec_demand_change_kwh; the site_energy_*
+    # columns are retained only for backward compatibility.
     df_demand['site_energy_change_kwh'] = df_demand['elec_demand_change_kwh']
 
     for col in [
@@ -197,6 +203,10 @@ def aggregate_demand(
         grouped['elec_change_gwh'] / grouped['baseline_elec_gwh'] * 100,
         np.nan,
     )
+    # Alias, matching site_energy_change_gwh above: with whole-home
+    # electrification measured on the electricity total, the site-energy percent
+    # change equals the electricity percent change. Prefer pct_elec_demand_change
+    # for an electricity read; this is not an independent all-fuel number.
     grouped['pct_site_energy_change'] = grouped['pct_elec_demand_change']
 
     _metric_cols = [

@@ -1,3 +1,22 @@
+"""
+Geospatial rendering for the adoption KPI choropleths (state and county maps).
+
+County geometry vintage is matched to the ResStock 2022.1.1 data vintage, which
+carries 2010-vintage geography (pre-2023 counties). The binding constraint is
+Connecticut: it replaced its eight counties (FIPS 09001-09015) with nine
+planning regions (09110-09190) starting with the 2022 Census cartographic
+boundary vintage, while ResStock still uses the eight county codes. Any geometry
+from 2022 on finds no polygon for those codes and drops all of Connecticut from
+the county join. The layer therefore uses the 2021 cartographic boundary files
+(cb_2021_us_county_500k, cb_2021_us_state_500k) -- the newest clean vintage.
+
+The vintage is set once, in data_loading.py: COUNTY_GEOMETRY_PRODUCT /
+COUNTY_GEOMETRY_VINTAGE / COUNTY_GEOMETRY_SCALE for counties and the matching
+STATE_GEOMETRY_* constants for the state overlay. Change those to repoint the
+maps; nothing here hardcodes a vintage.
+"""
+
+import os
 from typing import Dict, Optional, Tuple, Union
 import pandas as pd
 import numpy as np
@@ -7,6 +26,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
+from config import PROJECT_ROOT
 from cmu_tare_model.constants import (
     FIGURE_DPI,
     MAP_TITLE_FONT_SIZE,
@@ -16,6 +36,10 @@ from cmu_tare_model.constants import (
     MAP_LEGEND_FONT_SIZE,
 )
 from cmu_tare_model.adoption_kpis.thermal_cop import assign_breakeven_category
+from cmu_tare_model.adoption_kpis.visualize_tabular_data import (
+    make_symmetric_norm,
+    print_column_summary,
+)
 from cmu_tare_model.adoption_kpis.data_loading import SHAPEFILE_PATH
 
 # ============================================================================
@@ -301,6 +325,140 @@ def plot_combined_choropleth(
     plt.show()
 
 
+def plot_national_county_choropleth(
+    gdf_counties_raw: gpd.GeoDataFrame,
+    data_by_mp: dict,
+    column: str,
+    title_template: Union[str, Dict[int, str]],
+    cbar_label: str,
+    cmap,
+    norm,
+    selected_mps: list,
+    save_figure: bool,
+    output_filename: str,
+) -> None:
+    """Render one national county choropleth with this notebook's shared settings.
+
+    Thin wrapper around ``plot_combined_choropleth`` for the four national
+    county maps the main notebook builds (adoption rate, operating-cost %
+    change, demand GWh change, demand % change). All four calls always map
+    counties and save under the project root, so ``geo_level`` is fixed to
+    ``'county'`` here and ``output_path`` is built from ``PROJECT_ROOT`` plus a
+    bare filename instead of each call site repeating
+    ``os.path.join(PROJECT_ROOT, ...)``. ``title_template``, ``selected_mps``,
+    and ``save_figure`` stay as parameters because they are notebook-session
+    values (the discount rate and MP selection, the save-figures toggle), not
+    constants this module can hardcode.
+
+    Args:
+        gdf_counties_raw: Raw county boundary GeoDataFrame, as passed to
+            ``plot_combined_choropleth``.
+        data_by_mp: Dict mapping MP number -> DataFrame with the target
+            ``column`` and a county GISJOIN column.
+        column: Column name to choropleth-shade.
+        title_template: Per-panel title template or dict; see
+            ``plot_combined_choropleth``.
+        cbar_label: Colorbar axis label.
+        cmap: Matplotlib colormap (name string or Colormap instance).
+        norm: Matplotlib Normalize instance for this map's color scale.
+        selected_mps: Ordered list of MP keys to render as panels.
+        save_figure: If True, save the figure under ``output_filename``.
+        output_filename: Bare filename (e.g. ``'county_econ_adoption_rate_
+            combined.png'``); joined with ``PROJECT_ROOT`` to build the save path.
+
+    Returns:
+        None. Renders and, if requested, saves the figure -- same as
+        ``plot_combined_choropleth``.
+    """
+    plot_combined_choropleth(
+        gdf_counties_raw, data_by_mp,
+        column=column,
+        title_template=title_template,
+        cbar_label=cbar_label,
+        cmap=cmap,
+        norm=norm,
+        selected_mps=selected_mps,
+        geo_level='county',
+        save_figure=save_figure,
+        output_path=os.path.join(PROJECT_ROOT, output_filename),
+    )
+
+
+def plot_national_county_change_map(
+    gdf_counties_raw: gpd.GeoDataFrame,
+    data_by_mp: dict,
+    column: str,
+    cbar_label: str,
+    cmap,
+    title_template: Union[str, Dict[int, str]],
+    selected_mps: list,
+    positive_direction: str,
+    norm_label: str,
+    norm_unit: str,
+    save_figure: bool,
+    output_filename: str,
+) -> None:
+    """Print the summary + symmetric-norm line, then render one change map.
+
+    Consolidates the three near-identical blocks the main notebook's county
+    choropleth cells build (operating-cost % change, electricity demand GWh
+    change, electricity demand % change): compute a symmetric color norm
+    across all selected MPs, print it, print the per-MP min/median/mean/max
+    summary (``print_column_summary``), then render the map
+    (``plot_national_county_choropleth``). Skips with a warning instead of
+    raising when ``gdf_counties_raw`` is None (no county shapefile loaded),
+    matching the notebook's existing fallback behavior.
+
+    Args:
+        gdf_counties_raw: Raw county boundary GeoDataFrame, or None if the
+            shapefile failed to load.
+        data_by_mp: Dict mapping MP number -> DataFrame with the target
+            ``column`` and a county GISJOIN column.
+        column: Column name to choropleth-shade and summarize.
+        cbar_label: Colorbar axis label.
+        cmap: Matplotlib colormap (name string or Colormap instance).
+        title_template: Per-panel title template or dict; see
+            ``plot_combined_choropleth``.
+        selected_mps: Ordered list of MP keys to render as panels.
+        positive_direction: Forwarded to ``print_column_summary`` -- which
+            sign counts as "positive" in the printed share, e.g.
+            ``'increase'`` or ``'HP saves money (< 0)'``.
+        norm_label: Printed before " norm: [...]" (e.g. ``'Operating cost
+            %'``, ``'Demand GWh'``).
+        norm_unit: Printed after the norm's bracketed range (e.g. ``'%'``,
+            ``' GWh'`` -- include a leading space when the unit is a word,
+            not a percent sign).
+        save_figure: If True, save the figure under ``output_filename``.
+        output_filename: Bare filename; joined with ``PROJECT_ROOT`` to build
+            the save path.
+
+    Returns:
+        None.
+    """
+    if gdf_counties_raw is None:
+        print(f"[WARN] {norm_label} map skipped -- county shapefile not available")
+        return
+
+    all_values = pd.concat([data_by_mp[mp][column] for mp in selected_mps])
+    norm = make_symmetric_norm(all_values)
+    print(f"\n{norm_label} norm: [{norm.vmin:.1f}, 0, {norm.vmax:.1f}]{norm_unit}")
+
+    print_column_summary(
+        data_by_mp, column, norm_label, selected_mps, title_template,
+        positive_direction=positive_direction,
+    )
+    plot_national_county_choropleth(
+        gdf_counties_raw, data_by_mp,
+        column=column,
+        title_template=title_template,
+        cbar_label=cbar_label,
+        cmap=cmap, norm=norm,
+        selected_mps=selected_mps,
+        save_figure=save_figure,
+        output_filename=output_filename,
+    )
+
+
 
 # ============================================================================
 # Load County Boundaries and Merge with Analysis Data
@@ -318,16 +476,18 @@ def prepare_county_geodataframe(
     exclude_territories: Optional[list] = None,
 ) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
-    Merge county-level analysis results with TIGER county geometries.
+    Merge county-level analysis results with US county geometries.
 
     Converts GISJOIN codes (e.g. 'G4200030') to 5-digit FIPS (e.g. '42003')
-    and merges with the TIGER/Line county shapefile on the GEOID column.
+    and merges with the county geometry file on the GEOID column.
     Reprojects to US Albers Equal Area (ESRI:102003) and splits into
     CONUS and Alaska GeoDataFrames for inset plotting.
 
     Args:
-        gdf_counties: GeoDataFrame of US county boundaries loaded from
-            tl_2025_us_county.shp (any CRS). Must contain GEOID and STATEFP columns.
+        gdf_counties: GeoDataFrame of US county boundaries loaded from the
+            source named by COUNTY_SHAPEFILE_PATH in data_loading.py (product
+            and vintage set by the COUNTY_GEOMETRY_* constants there; any CRS).
+            Must contain GEOID and STATEFP columns.
         df_analysis: DataFrame with a county GISJOIN column and analysis columns.
         county_gisjoin_col: Column in df_analysis with GISJOIN county codes
             (e.g. 'G4200030' → FIPS '42003'). Default: 'county'.
@@ -335,6 +495,15 @@ def prepare_county_geodataframe(
 
     Returns:
         Tuple of (gdf_all, gdf_conus, gdf_alaska) — all in ESRI:102003.
+
+    Note:
+        The unmatched-polygon count printed here measures join coverage only:
+        polygons with no matching data row (counties with no ResStock sample).
+        It is not the total number of gray counties on the map. More counties
+        may render gray because a KPI function masks a small-sample county to
+        NaN downstream. Both are correct and measure different things -- this
+        count answers "did the geometry vintage match the data's county codes",
+        not "how many counties have a plottable value".
     """
     if exclude_territories is None:
         excl_fips = _TERRITORY_FIPS
@@ -369,6 +538,47 @@ def prepare_county_geodataframe(
     # Detect missing-data filter column
     numeric_cols = df_analysis.select_dtypes(include='number').columns.tolist()
     filter_col = numeric_cols[0] if numeric_cols else county_gisjoin_col
+
+    # Join-coverage check, reported before the notna() drop below.
+    # The merge above is a left join on the polygons, so a data row whose GEOID
+    # matches no polygon is dropped silently and its county renders in the
+    # missing-data color. Report both mismatch directions so a county geometry
+    # vintage that does not match the ResStock county codes fails loudly. The
+    # two directions are NOT symmetric:
+    #   - Unmatched DATA ROWS is the alarm (should be zero). A post-2021 vintage
+    #     drops all of Connecticut, whose ResStock codes (09001-09015) were
+    #     replaced by planning regions (09110-09190) starting in 2022.
+    #   - Unmatched POLYGONS is expected and benign: a few extreme low-population
+    #     counties have no ResStock sample, so they have a polygon but no data
+    #     row and correctly stay gray.
+    # Territories are excluded from both counts because they never render.
+    polygon_geoids = set(gdf_counties['GEOID'])
+    data_geoids = set(df_work['GEOID'])
+
+    unmatched_data = df_work[
+        (~df_work['GEOID'].isin(polygon_geoids))
+        & (~df_work['GEOID'].str[:2].isin(excl_fips))
+    ]
+    unmatched_poly = gdf_counties[
+        (~gdf_counties['GEOID'].isin(data_geoids))
+        & (~gdf_counties['STATEFP'].isin(excl_fips))
+    ]
+    unmatched_data_states = sorted(unmatched_data['GEOID'].str[:2].unique())
+    unmatched_poly_states = sorted(unmatched_poly['STATEFP'].unique())
+
+    if len(unmatched_data) > 0:
+        print(
+            f"[WARN] {len(unmatched_data)} county data row(s) matched no "
+            f"polygon and were dropped (state FIPS {unmatched_data_states}). "
+            f"The county geometry vintage (COUNTY_GEOMETRY_* in "
+            f"data_loading.py) likely does not match the ResStock county "
+            f"codes -- a post-2021 vintage drops all of Connecticut."
+        )
+    print(
+        f"[OK] Join coverage: {len(unmatched_poly)} polygon(s) matched no data "
+        f"row and stay gray (state FIPS {unmatched_poly_states}); expected for "
+        f"counties with no ResStock sample."
+    )
 
     gdf_filtered = gdf[
         (~gdf['STATEFP'].isin(excl_fips)) &

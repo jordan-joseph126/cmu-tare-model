@@ -20,40 +20,90 @@ from typing import Dict, Tuple
 import pandas as pd
 
 from config import PROJECT_ROOT
-from cmu_tare_model.constants import EQUIPMENT_SPECS, FUEL_MAPPING
+from cmu_tare_model.constants import (
+    ANCHOR_YEAR,
+    EQUIPMENT_SPECS,
+    FUEL_MAPPING,
+    PROJECTION_END_YEAR,
+)
 
 # Load degree-day factors from the new AEO2026 CSV artifact.
-# Year column headers arrive as strings from pd.read_csv — cast to int so that
-# division_data.get(year_label, 1.0) finds integer keys (Constraint 4).
+# Year column headers arrive as strings from pd.read_csv -- cast to int so the
+# per-year lookups below find integer keys.
 _DD_PATH = os.path.join(
     PROJECT_ROOT, "cmu_tare_model", "data", "projections",
     "aeo2026_degree_day_factors_2025_2050.csv"
 )
 
-try:
-    _df_dd = pd.read_csv(_DD_PATH)
-    _df_dd.columns = [int(c) if isinstance(c, str) and c.isdigit() else c
-                      for c in _df_dd.columns]
+_df_dd = pd.read_csv(_DD_PATH)
+_df_dd.columns = [int(c) if isinstance(c, str) and c.isdigit() else c
+                  for c in _df_dd.columns]
 
-    # Heating Degree Day (HDD) factors lookup
-    lookup_hdd_factor = (
-        _df_dd[_df_dd["dd_type"] == "hdd"]
-        .drop(columns="dd_type")
-        .set_index("census_division")
-        .to_dict("index")
-    )
+# Heating Degree Day (HDD) factors lookup
+lookup_hdd_factor = (
+    _df_dd[_df_dd["dd_type"] == "hdd"]
+    .drop(columns="dd_type")
+    .set_index("census_division")
+    .to_dict("index")
+)
 
-    # Cooling Degree Day (CDD) factors lookup
-    lookup_cdd_factor = (
-        _df_dd[_df_dd["dd_type"] == "cdd"]
-        .drop(columns="dd_type")
-        .set_index("census_division")
-        .to_dict("index")
-    )
-except Exception as e:
-    print(f"Warning: Could not load degree-day factors from {_DD_PATH}: {e}")
-    lookup_hdd_factor = {}
-    lookup_cdd_factor = {}
+# Cooling Degree Day (CDD) factors lookup
+lookup_cdd_factor = (
+    _df_dd[_df_dd["dd_type"] == "cdd"]
+    .drop(columns="dd_type")
+    .set_index("census_division")
+    .to_dict("index")
+)
+
+
+def _validate_degree_day_factors() -> None:
+    """Check the degree-day file covers the expected years and is anchored at 1.0.
+
+    Mirrors the check on the fuel-price projection file. Two things must hold,
+    and if either fails the model would still run while quietly mis-scaling
+    heating and cooling energy, so both are checked when this module is
+    imported:
+
+    1. Each census division's year keys are exactly ANCHOR_YEAR through
+       PROJECTION_END_YEAR, with no gaps and no year earlier than ANCHOR_YEAR.
+    2. Every ANCHOR_YEAR factor is exactly 1.0, for both heating and cooling
+       and every census division. That is what makes ANCHOR_YEAR the anchor:
+       energy use in that year is the ResStock value, unscaled.
+
+    Raises:
+        ValueError: If either lookup is empty, the year coverage is wrong, or
+            any ANCHOR_YEAR factor is not exactly 1.0.
+    """
+    expected_years = list(range(ANCHOR_YEAR, PROJECTION_END_YEAR + 1))
+
+    for dd_type, lookup in (("hdd", lookup_hdd_factor),
+                            ("cdd", lookup_cdd_factor)):
+        if not lookup:
+            raise ValueError(
+                f"No '{dd_type}' rows found in the degree-day file. "
+                f"File: {_DD_PATH}")
+
+        for division, year_factors in lookup.items():
+            years = sorted(y for y in year_factors if isinstance(y, int))
+            if years != expected_years:
+                missing = sorted(set(expected_years) - set(years))
+                unexpected = sorted(set(years) - set(expected_years))
+                raise ValueError(
+                    f"Degree-day years for '{division}' ({dd_type}) must be "
+                    f"exactly {ANCHOR_YEAR}-{PROJECTION_END_YEAR} with no "
+                    f"gaps. Missing: {missing}. Unexpected: {unexpected}. "
+                    f"File: {_DD_PATH}")
+
+            if year_factors[ANCHOR_YEAR] != 1.0:
+                raise ValueError(
+                    f"Every {ANCHOR_YEAR} degree-day factor must be exactly "
+                    f"1.0 ({ANCHOR_YEAR} is the anchor year, so its energy "
+                    f"use is unscaled). Got "
+                    f"{year_factors[ANCHOR_YEAR]} for '{division}' "
+                    f"({dd_type}). File: {_DD_PATH}")
+
+
+_validate_degree_day_factors()
 
 
 def get_hdd_factor_for_year(
@@ -66,34 +116,51 @@ def get_hdd_factor_for_year(
     
     Args:
         df: DataFrame containing census_division column.
-        year_label: Year for calculation (e.g., 2024, 2025).
-        
+        year_label: Year for calculation (e.g., 2025, 2026).
+
     Returns:
         Series of HDD adjustment factors.
-        
+
     Raises:
-        KeyError: If census_division column missing.
-        ValueError: If year_label invalid.
+        KeyError: If census_division column missing, or a home's census
+            division has no heating factor for year_label.
+        ValueError: If year_label is not an integer in the projection range.
     """
     # Fail-fast validation
     if 'census_division' not in df.columns:
         raise KeyError("Required column 'census_division' not found in DataFrame")
-    
-    if not isinstance(year_label, int) or year_label < 2024 or year_label > 2050:
-        raise ValueError(f"Invalid year_label: {year_label}. Must be integer between 2024-2050")
-    
-    # Apply exact logic from precompute_hdd_factors.py
+
+    if (not isinstance(year_label, int)
+            or year_label < ANCHOR_YEAR or year_label > PROJECTION_END_YEAR):
+        raise ValueError(
+            f"Invalid year_label: {year_label}. Must be an integer between "
+            f"{ANCHOR_YEAR} and {PROJECTION_END_YEAR}")
+
     def get_factor_for_division(division):
-        """Get HDD factor for census division with exact fallback logic."""
-        # Try specific division first
+        """Get the heating factor for one census division, or fail loudly.
+
+        Falls back to the National row for a division the file does not list,
+        which is a deliberate allowance for an unfamiliar region. A missing
+        YEAR is not allowed to fall back: a factor of 1.0 would read as a real
+        answer meaning "no degree-day adjustment" and would quietly leave that
+        year's heating energy unscaled.
+        """
         division_data = lookup_hdd_factor.get(division)
         if division_data is None:
-            # Fallback to National
-            division_data = lookup_hdd_factor.get('National', {})
-        # Get year factor, default to 1.0
-        return division_data.get(year_label, 1.0)
-    
-    return df['census_division'].map(get_factor_for_division).fillna(1.0)
+            division_data = lookup_hdd_factor.get('National')
+        if division_data is None:
+            raise KeyError(
+                f"No heating degree-day factors for census division "
+                f"'{division}', and no 'National' row to fall back on. "
+                f"File: {_DD_PATH}")
+        if year_label not in division_data:
+            raise KeyError(
+                f"No heating degree-day factor for year {year_label} in "
+                f"census division '{division}'. The projection file covers "
+                f"{ANCHOR_YEAR}-{PROJECTION_END_YEAR}. File: {_DD_PATH}")
+        return division_data[year_label]
+
+    return df['census_division'].map(get_factor_for_division)
 
 
 def get_cdd_factor_for_year(
@@ -106,34 +173,51 @@ def get_cdd_factor_for_year(
     
     Args:
         df: DataFrame containing census_division column.
-        year_label: Year for calculation (e.g., 2024, 2025).
-        
+        year_label: Year for calculation (e.g., 2025, 2026).
+
     Returns:
         Series of CDD adjustment factors.
-        
+
     Raises:
-        KeyError: If census_division column missing.
-        ValueError: If year_label invalid.
+        KeyError: If census_division column missing, or a home's census
+            division has no cooling factor for year_label.
+        ValueError: If year_label is not an integer in the projection range.
     """
     # Fail-fast validation
     if 'census_division' not in df.columns:
         raise KeyError("Required column 'census_division' not found in DataFrame")
-    
-    if not isinstance(year_label, int) or year_label < 2024 or year_label > 2050:
-        raise ValueError(f"Invalid year_label: {year_label}. Must be integer between 2024-2050")
-    
-    # Apply exact logic from get_hdd_factor_for_year() but for CDD
+
+    if (not isinstance(year_label, int)
+            or year_label < ANCHOR_YEAR or year_label > PROJECTION_END_YEAR):
+        raise ValueError(
+            f"Invalid year_label: {year_label}. Must be an integer between "
+            f"{ANCHOR_YEAR} and {PROJECTION_END_YEAR}")
+
     def get_factor_for_division(division):
-        """Get CDD factor for census division with exact fallback logic."""
-        # Try specific division first
+        """Get the cooling factor for one census division, or fail loudly.
+
+        Same rule as the heating version: an unfamiliar census division may
+        fall back to the National row, but a missing YEAR may not, because a
+        factor of 1.0 would read as a real answer meaning "no degree-day
+        adjustment" and would quietly leave that year's cooling energy
+        unscaled.
+        """
         division_data = lookup_cdd_factor.get(division)
         if division_data is None:
-            # Fallback to National
-            division_data = lookup_cdd_factor.get('National', {})
-        # Get year factor, default to 1.0
-        return division_data.get(year_label, 1.0)
-    
-    return df['census_division'].map(get_factor_for_division).fillna(1.0)
+            division_data = lookup_cdd_factor.get('National')
+        if division_data is None:
+            raise KeyError(
+                f"No cooling degree-day factors for census division "
+                f"'{division}', and no 'National' row to fall back on. "
+                f"File: {_DD_PATH}")
+        if year_label not in division_data:
+            raise KeyError(
+                f"No cooling degree-day factor for year {year_label} in "
+                f"census division '{division}'. The projection file covers "
+                f"{ANCHOR_YEAR}-{PROJECTION_END_YEAR}. File: {_DD_PATH}")
+        return division_data[year_label]
+
+    return df['census_division'].map(get_factor_for_division)
 
 
 # def apply_hdd_adjustment(

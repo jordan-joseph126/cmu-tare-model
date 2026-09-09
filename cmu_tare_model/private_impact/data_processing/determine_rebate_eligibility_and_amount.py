@@ -485,7 +485,7 @@ def calculate_rebate_program(
             2024, june2026-tokened for June 2026); float64, NaN for excluded
             homes and 0.0 for valid-but-ineligible homes.
           - the program eligibility column named by the config
-            ('HEEHR' | 'HOMES' | 'None'; NaN for excluded homes).
+            ('HEEHR' | 'HOMES' | 'Not Eligible'; NaN for excluded homes).
 
     Raises:
         ValueError: If category has no rebate mapping, or guidance is unknown.
@@ -524,7 +524,7 @@ def calculate_rebate_program(
     df_copy.loc[valid_mask, rebate_col] = 0.0
     category_columns_to_mask.append(rebate_col)
 
-    # Eligibility label: NaN for excluded homes, 'None' for valid homes.
+    # Eligibility label: NaN for excluded homes, 'Not Eligible' for valid homes.
     eligibility_col = config['eligibility_col'].format(mp=menu_mp)
     df_copy[eligibility_col] = pd.Series(
         np.nan, index=df_copy.index, dtype=object)
@@ -680,8 +680,8 @@ def calculate_rebate_june2026(
         The DataFrame with two new columns:
           - mp{menu_mp}_heating_rebate_amount_june2026_{cost_scenario} (float64;
             NaN for excluded homes, 0.0 for valid-but-ineligible)
-          - mp{menu_mp}_rebate_eligibility_june2026 ('HEEHR' | 'HOMES' | 'None';
-            NaN for excluded homes)
+          - mp{menu_mp}_rebate_eligibility_june2026 ('HEEHR' | 'HOMES' | 'Not
+            Eligible'; NaN for excluded homes)
 
     Raises:
         ValueError: If category has no rebate mapping.

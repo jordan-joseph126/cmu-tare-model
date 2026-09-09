@@ -77,6 +77,18 @@ def calculate_replacement_installed_cost(
 
     Routes to REMDB v3 (probabilistic) or v4 (regression) based on ``cost_scenario``.
 
+    FIXED 20 Aug 2026 (v4 only) -- the v4 path's pm1_euss capacity, built in
+    add_remdb_metrics, now reads the existing system's own size
+    (base_size_heating_system_primary_k_btu_h / base_size_cooling_...),
+    added in process_euss_data.py's df_enduse_refactored. See
+    docs/SESSION_CHANGELOG_2026-08-20.md for the before/after numbers.
+
+    The v3 path below (_calculate_replacement_cost_per_row) still reads
+    size_heating_system_primary_k_btu_h, the retrofit heat pump's capacity,
+    not the old system's -- same bug, not fixed. This is harmless today
+    because REMDB_COST_SCENARIO_KEYS only runs 'v4MID' (constants.py), so v3
+    never executes. Apply the same fix there if v3 is ever turned back on.
+
     Args:
         df: DataFrame with home data and prepared metrics.
         df_detailed: Detailed DataFrame with regression parameters (v4) or cost lookup data.

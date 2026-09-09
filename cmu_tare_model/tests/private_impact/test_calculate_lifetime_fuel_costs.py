@@ -1,13 +1,12 @@
 """Tests for calculate_lifetime_fuel_costs (private_impact/calculate_lifetime_fuel_costs.py).
 
-FOLLOW-UP (flagged, not yet addressed):
-    These tests are order-dependent. They pass in isolation, in two-file combos,
-    and in the full suite, but fail with a KeyError on 'waterHeating' when the
-    private_impact folder is run on its own -- another test file in that folder
-    leaks monkeypatched shared state (e.g. EQUIPMENT_SPECS / FUEL_MAPPING) that
-    is not restored before these run. The fix is to isolate the polluting
-    fixture, not to change this module. Reproduce with:
-        pytest cmu_tare_model/tests/private_impact/
+The order dependence flagged here previously (a KeyError on 'waterHeating' when
+the private_impact folder ran on its own) was fixed on 12 Aug 2026. The cause
+was not a leaking fixture: the module under test and validation_framework.py
+each copy EQUIPMENT_SPECS into their own namespace at import time, so patching
+only cmu_tare_model.constants left those copies alone, and the outcome depended
+on which test file imported them first. mock_constants below now patches every
+copy.
 """
 
 import pytest
@@ -29,11 +28,27 @@ MODULE = 'cmu_tare_model.private_impact.calculate_lifetime_fuel_costs'
 
 @pytest.fixture(autouse=True)
 def mock_constants(monkeypatch):
-    """Mock constants with full production lifetimes."""
+    """Mock constants with full production lifetimes.
+
+    Both the module under test and validation_framework.py copy these names
+    into their own namespace with `from cmu_tare_model.constants import ...`
+    when they are first imported, so patching cmu_tare_model.constants alone
+    leaves those copies pointing at the real two-category spec. Every copy is
+    patched here so the result does not depend on which test file imported
+    these modules first.
+    """
     monkeypatch.setattr('cmu_tare_model.constants.EQUIPMENT_SPECS', FULL_EQUIPMENT_SPECS)
     monkeypatch.setattr('cmu_tare_model.constants.UPGRADE_COLUMNS', FULL_UPGRADE_COLUMNS)
     monkeypatch.setattr('cmu_tare_model.constants.FUEL_MAPPING', FULL_FUEL_MAPPING)
     monkeypatch.setattr('cmu_tare_model.constants.VERBOSE', False)
+    monkeypatch.setattr(f'{MODULE}.EQUIPMENT_SPECS', FULL_EQUIPMENT_SPECS)
+    monkeypatch.setattr(f'{MODULE}.FUEL_MAPPING', FULL_FUEL_MAPPING)
+    monkeypatch.setattr(
+        'cmu_tare_model.utils.validation_framework.EQUIPMENT_SPECS',
+        FULL_EQUIPMENT_SPECS)
+    monkeypatch.setattr(
+        'cmu_tare_model.utils.validation_framework.UPGRADE_COLUMNS',
+        FULL_UPGRADE_COLUMNS)
 
 
 @pytest.fixture
@@ -84,7 +99,7 @@ def fuel_prices():
         prices[loc] = {}
         for fuel in ['electricity', 'naturalGas', 'fuelOil', 'propane']:
             prices[loc][fuel] = {}
-            for scenario in ['No Inflation Reduction Act', 'AEO2023 Reference Case']:
+            for scenario in ['2025 Reference Case']:
                 prices[loc][fuel][scenario] = {}
                 for year in range(BASE_YEAR, BASE_YEAR + 16):
                     prices[loc][fuel][scenario][year] = 0.10 + (year - BASE_YEAR) * 0.002
@@ -108,7 +123,7 @@ def test_fuel_costs_empty_dataframe():
     from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import calculate_lifetime_fuel_costs
 
     df_main, df_detailed = calculate_lifetime_fuel_costs(
-        pd.DataFrame(), menu_mp=0, policy_scenario='AEO2023 Reference Case', verbose=False
+        pd.DataFrame(), menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
     )
     assert df_main.empty
     assert df_detailed.empty
@@ -124,11 +139,11 @@ def test_baseline_fuel_costs_output_structure(fuel_cost_df, fuel_prices):
 
     with patch(f'{MODULE}.define_scenario_params') as mock_params, \
          patch(f'{MODULE}.get_hdd_adjusted_consumption') as mock_hdd:
-        mock_params.return_value = ('baseline_', 'MidCase', {}, {}, {}, fuel_prices)
+        mock_params.return_value = ('baseline_', 'MidCase', {}, {}, fuel_prices)
         mock_hdd.return_value = pd.Series(1000.0, index=fuel_cost_df.index)
 
         df_main, df_detailed = calculate_lifetime_fuel_costs(
-            fuel_cost_df, menu_mp=0, policy_scenario='AEO2023 Reference Case', verbose=False
+            fuel_cost_df, menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
         )
 
     assert isinstance(df_main, pd.DataFrame)
@@ -146,11 +161,11 @@ def test_baseline_invalid_homes_get_nan(fuel_cost_df, fuel_prices):
 
     with patch(f'{MODULE}.define_scenario_params') as mock_params, \
          patch(f'{MODULE}.get_hdd_adjusted_consumption') as mock_hdd:
-        mock_params.return_value = ('baseline_', 'MidCase', {}, {}, {}, fuel_prices)
+        mock_params.return_value = ('baseline_', 'MidCase', {}, {}, fuel_prices)
         mock_hdd.return_value = pd.Series(1000.0, index=fuel_cost_df.index)
 
         df_main, _ = calculate_lifetime_fuel_costs(
-            fuel_cost_df, menu_mp=0, policy_scenario='AEO2023 Reference Case', verbose=False
+            fuel_cost_df, menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
         )
 
     for cat in FULL_EQUIPMENT_SPECS:
@@ -168,11 +183,11 @@ def test_baseline_lifetime_is_sum_of_yearly(fuel_cost_df, fuel_prices):
 
     with patch(f'{MODULE}.define_scenario_params') as mock_params, \
          patch(f'{MODULE}.get_hdd_adjusted_consumption') as mock_hdd:
-        mock_params.return_value = ('baseline_', 'MidCase', {}, {}, {}, fuel_prices)
+        mock_params.return_value = ('baseline_', 'MidCase', {}, {}, fuel_prices)
         mock_hdd.return_value = pd.Series(1000.0, index=fuel_cost_df.index)
 
         df_main, df_detailed = calculate_lifetime_fuel_costs(
-            fuel_cost_df, menu_mp=0, policy_scenario='AEO2023 Reference Case', verbose=False
+            fuel_cost_df, menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
         )
 
     for cat, lifetime in FULL_EQUIPMENT_SPECS.items():
@@ -205,15 +220,15 @@ def test_mp_fuel_costs_uses_scenario_prefix(fuel_cost_df, fuel_prices):
 
     with patch(f'{MODULE}.define_scenario_params') as mock_params, \
          patch(f'{MODULE}.get_hdd_adjusted_consumption') as mock_hdd:
-        mock_params.return_value = ('iraRef_mp8_', 'MidCase', {}, {}, {}, fuel_prices)
+        mock_params.return_value = ('ref2025_mp8_', 'MidCase', {}, {}, fuel_prices)
         mock_hdd.return_value = pd.Series(1000.0, index=fuel_cost_df.index)
 
         df_main, _ = calculate_lifetime_fuel_costs(
-            fuel_cost_df, menu_mp=8, policy_scenario='AEO2023 Reference Case', verbose=False
+            fuel_cost_df, menu_mp=8, policy_scenario='2025 Reference Case', verbose=False
         )
 
     for cat in FULL_EQUIPMENT_SPECS:
-        expected_col = f'iraRef_mp8_{cat}_lifetime_fuel_cost'
+        expected_col = f'ref2025_mp8_{cat}_lifetime_fuel_cost'
         assert expected_col in df_main.columns, f"Missing {expected_col}"
 
 
@@ -227,11 +242,11 @@ def test_all_lifetime_columns_are_tracked(fuel_cost_df, fuel_prices):
 
     with patch(f'{MODULE}.define_scenario_params') as mock_params, \
          patch(f'{MODULE}.get_hdd_adjusted_consumption') as mock_hdd:
-        mock_params.return_value = ('baseline_', 'MidCase', {}, {}, {}, fuel_prices)
+        mock_params.return_value = ('baseline_', 'MidCase', {}, {}, fuel_prices)
         mock_hdd.return_value = pd.Series(1000.0, index=fuel_cost_df.index)
 
         df_main, _ = calculate_lifetime_fuel_costs(
-            fuel_cost_df, menu_mp=0, policy_scenario='AEO2023 Reference Case', verbose=False
+            fuel_cost_df, menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
         )
 
     for cat in FULL_EQUIPMENT_SPECS:
@@ -254,9 +269,9 @@ def test_missing_state_column_raises(fuel_cost_df, fuel_prices):
     df_no_state = fuel_cost_df.drop(columns=['state'])
     with pytest.raises((KeyError, RuntimeError)):
         with patch(f'{MODULE}.define_scenario_params') as mock_params:
-            mock_params.return_value = ('baseline_', 'MidCase', {}, {}, {}, fuel_prices)
+            mock_params.return_value = ('baseline_', 'MidCase', {}, {}, fuel_prices)
             calculate_lifetime_fuel_costs(
-                df_no_state, menu_mp=0, policy_scenario='AEO2023 Reference Case', verbose=False
+                df_no_state, menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
             )
 
 
@@ -270,11 +285,11 @@ def test_all_years_processed_for_full_lifetime(fuel_cost_df, fuel_prices):
 
     with patch(f'{MODULE}.define_scenario_params') as mock_params, \
          patch(f'{MODULE}.get_hdd_adjusted_consumption') as mock_hdd:
-        mock_params.return_value = ('baseline_', 'MidCase', {}, {}, {}, fuel_prices)
+        mock_params.return_value = ('baseline_', 'MidCase', {}, {}, fuel_prices)
         mock_hdd.return_value = pd.Series(1000.0, index=fuel_cost_df.index)
 
         _, df_detailed = calculate_lifetime_fuel_costs(
-            fuel_cost_df, menu_mp=0, policy_scenario='AEO2023 Reference Case', verbose=False
+            fuel_cost_df, menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
         )
 
     for cat, lifetime in FULL_EQUIPMENT_SPECS.items():
