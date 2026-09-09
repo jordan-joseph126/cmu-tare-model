@@ -315,8 +315,8 @@ def plot_county_demand_grid(
         peak_results_by_mp: ``{mp: {'100pct': peak_dict, 'constrained':
             peak_dict}}`` -- the matching peak dicts from the same calls.
         selected_mps: Measure-package numbers to render as rows, in order.
-        mp_labels: Row label per MP (e.g. ``{3: 'MIN-efficiency ASHP
-            Retrofit'}``). Defaults to the MP3/MP4 labels this notebook uses.
+        mp_labels: Row label per MP (e.g. ``{3: 'Minimum-Efficiency Heat
+            Pump'}``). Defaults to the MP3/MP4 labels this notebook uses.
         county_display_name: County name shown in the legend box title.
         save_figure: If True and ``output_dir`` is set, save the figure.
         output_dir: Directory the figure is saved under (the file goes in
@@ -334,12 +334,12 @@ def plot_county_demand_grid(
 
     if mp_labels is None:
         mp_labels = {
-            3: "MIN-efficiency ASHP Retrofit",
-            4: "HIGH-efficiency ASHP Retrofit",
+            3: "Minimum-efficiency heat pump",
+            4: "High-efficiency heat pump",
         }
 
     scenarios = ["constrained", "100pct"]
-    scenario_labels = ["ONLY Economic Adopters", "100% Adoption"]
+    scenario_labels = ["Only Economic Adopters", "100% Adoption"]
     subplot_title_fontsize = 18
     tick_label_fontsize = 16
 
@@ -374,8 +374,9 @@ def plot_county_demand_grid(
                 peak_result = peak_results_by_mp[mp][scenario]
                 plot_demand_panel(ax, df_profile, peak_result, mp, scenario_label)
                 ax.set_title(
-                    f"{mp_labels.get(mp, f'MP{mp}')} | {scenario_label}",
+                    f"{mp_labels.get(mp, f'MP{mp}')} ({scenario_label})",
                     fontsize=subplot_title_fontsize,
+                    fontweight="bold",
                 )
 
                 # --- Override x-axis to months + enlarge tick labels ---

@@ -871,8 +871,17 @@ def plot_adoption_panel(
             if item.get('skip_annotation'):
                 continue
 
-            # Choose horizontal alignment and x-offset.
-            if item.get('shift') == 'cluster_left':
+            # Choose horizontal alignment and x-offset. A zero offset means
+            # the caller wants every label centered on its own marker
+            # regardless of clustering or edge position -- left/right
+            # alignment with no offset would still visually shift the text
+            # to one side of the marker (ha controls which way the text
+            # grows from its anchor point, independent of the point offset),
+            # so skip the cluster/edge branches entirely in that case.
+            if annotation_x_offset_pts == 0:
+                ha = 'center'
+                x_text = 0
+            elif item.get('shift') == 'cluster_left':
                 # Leftmost marker of a close cluster  --  label goes LEFT.
                 ha = 'right'
                 x_text = -annotation_x_offset_pts
@@ -1051,20 +1060,24 @@ def plot_econ_adoption_panel(
     title: str,
     fuel_counts_millions: Dict[str, float],
     custom_tier_markers: Dict[str, str],
+    annotation_x_offset_pts: float = 8.0,
+    annotation_y_offset_pts: float = 8.0,
 ) -> plt.Axes:
     """Draw one economic-adoption dot-plot panel with the main notebook's styling.
 
-    Thin wrapper around ``plot_adoption_panel`` that bakes in the eight keyword
+    Thin wrapper around ``plot_adoption_panel`` that bakes in the six keyword
     values the main notebook's two adoption-dotplot cells (replacement-credit
     scope, and rebate policy scenario) always pass identically:
     ``grouping_order=NATIONAL_FUEL_GROUPING_ORDER``, ``title_fontsize=16``,
-    ``ytick_fontsize=14``, ``annotation_fontsize=14``,
-    ``annotation_x_offset_pts=26``, ``annotation_y_offset_pts=8``,
-    ``xlim_margin=20``, and ``fill_markers=False``. Only the arguments that
-    differ between the two calls -- ``plot_df``, ``ax``, ``title``,
-    ``fuel_counts_millions``, and ``custom_tier_markers`` -- stay as
-    parameters. The paired legend-handle builder
-    (``build_replacement_credit_legend_handles`` or
+    ``ytick_fontsize=14``, ``annotation_fontsize=14``, ``xlim_margin=20``, and
+    ``fill_markers=False``. The remaining arguments -- ``plot_df``, ``ax``,
+    ``title``, ``fuel_counts_millions``, ``custom_tier_markers``, and the two
+    annotation offsets -- stay as parameters. The annotation offsets default
+    to 8 points each (the value both notebook cells used before this became
+    configurable) so existing callers that omit them are unaffected; pass a
+    different value when one dataset's markers sit close enough together that
+    the default offset causes overlapping labels. The paired legend-handle
+    builder (``build_replacement_credit_legend_handles`` or
     ``build_rebate_policy_scenario_legend_handles``) is a separate call at the
     notebook cell's ``ax.legend(...)`` line, not wrapped here.
 
@@ -1076,6 +1089,12 @@ def plot_econ_adoption_panel(
             y-axis home-count annotations.
         custom_tier_markers: Marker-shape lookup for this call's mode --
             ``REPLACEMENT_CREDIT_MARKERS`` or ``REBATE_POLICY_SCENARIO_MARKERS``.
+        annotation_x_offset_pts: Horizontal offset (points) for annotation
+            labels pushed left/right of their marker -- see
+            ``plot_adoption_panel``. Default 8.
+        annotation_y_offset_pts: Vertical offset (points) for annotation
+            labels above/below their marker -- see ``plot_adoption_panel``.
+            Default 8.
 
     Returns:
         The same Axes, per ``plot_adoption_panel``.
@@ -1087,8 +1106,8 @@ def plot_econ_adoption_panel(
         title_fontsize=16,
         ytick_fontsize=14,
         annotation_fontsize=14,
-        annotation_x_offset_pts=26,
-        annotation_y_offset_pts=8,
+        annotation_x_offset_pts=annotation_x_offset_pts,
+        annotation_y_offset_pts=annotation_y_offset_pts,
         xlim_margin=20,
         fuel_counts_millions=fuel_counts_millions,
         custom_tier_markers=custom_tier_markers,
@@ -1106,6 +1125,8 @@ def plot_econ_adoption_dotplot_figure(
     custom_tier_markers: Dict[str, str],
     legend_handles: List[mlines.Line2D],
     summary_header: str,
+    annotation_x_offset_pts: float = 8.0,
+    annotation_y_offset_pts: float = 8.0,
     save_figure: bool = False,
     output_dir: Optional[str] = None,
     output_filename: Optional[str] = None,
@@ -1159,6 +1180,15 @@ def plot_econ_adoption_dotplot_figure(
         summary_header: Printed once per panel before its National summary
             line, e.g. ``'economic adoption summary (National,
             unsubsidized)'``.
+        annotation_x_offset_pts: Horizontal offset (points) for annotation
+            labels pushed left/right of their marker, forwarded to every
+            panel's ``plot_econ_adoption_panel`` call. Default 8, matching
+            prior behavior. Raise this when a dataset's markers sit close
+            enough together that labels overlap; lower it when markers are
+            well separated and the default leaves too much blank space.
+        annotation_y_offset_pts: Vertical offset (points) for annotation
+            labels above/below their marker, forwarded the same way.
+            Default 8.
         save_figure: If True, save the figure. Requires ``output_dir`` and
             ``output_filename``.
         output_dir: Project root to save under (the file goes in
@@ -1224,6 +1254,8 @@ def plot_econ_adoption_dotplot_figure(
             title=panel_title,
             fuel_counts_millions=fuel_counts_millions,
             custom_tier_markers=custom_tier_markers,
+            annotation_x_offset_pts=annotation_x_offset_pts,
+            annotation_y_offset_pts=annotation_y_offset_pts,
         )
         ax.tick_params(axis='both', labelsize=14)
         ax.legend(
