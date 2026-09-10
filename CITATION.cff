@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "TARE Model: Tradeoff Analysis of Residential Energy"
+version: "3.0"
+date-released: "2026-09-09"
+authors:
+  - family-names: "Joseph"
+    given-names: "Jordan"
+    affiliation: "Carnegie Mellon University"
+    email: "jordanjo@andrew.cmu.edu"
+repository-code: "https://github.com/jordan-joseph126/cmu-tare-model"
+license: "GPL-3.0-or-later"
+keywords:
+  - heat pumps
+  - residential electrification
+  - energy equity
+  - ResStock
+  - building energy modeling

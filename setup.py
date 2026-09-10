@@ -18,7 +18,7 @@ setup(
         'matplotlib',
         'seaborn',
     ],
-    description="Tradeoff Analysis of Residential retrofits for Energy equity (TARE) Model",
+    description="Tradeoff Analysis of Residential Energy (TARE) Model",
     # Read as UTF-8 explicitly. Without this, Python on Windows uses the
     # platform default (cp1252) and setup.py crashes on any non-cp1252
     # character in the README, which breaks `python setup.py --version`.
@@ -26,11 +26,12 @@ setup(
     long_description_content_type="text/markdown",
     author="Jordan Joseph",
     author_email="jordanjo@andrew.cmu.edu",
-    url="https://github.com/jordanjoseph/cmu-tare-model",
+    url="https://github.com/jordan-joseph126/cmu-tare-model",
+    license="GPL-3.0-or-later",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3.8",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: OS Independent",
         "Intended Audience :: Developers",
         "Topic :: Scientific/Engineering"
