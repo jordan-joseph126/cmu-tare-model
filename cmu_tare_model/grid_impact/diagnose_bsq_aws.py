@@ -530,13 +530,22 @@ def stage_6_bsq_init() -> Optional[Any]:
     from buildstock_query import BuildStockQuery
 
     try:
+        # my_run = BuildStockQuery(
+        #     workgroup=WORKGROUP,
+        #     db_name=DB_NAME,
+        #     table_name=TABLE_NAME_STEM,
+        #     db_schema=DB_SCHEMA,
+        #     buildstock_type=BUILDSTOCK_TYPE,
+        #     skip_reports=True,
+        # )
         my_run = BuildStockQuery(
-            workgroup=WORKGROUP,
-            db_name=DB_NAME,
-            table_name=TABLE_NAME_STEM,
-            db_schema=DB_SCHEMA,
-            buildstock_type=BUILDSTOCK_TYPE,
+            workgroup="resstock-euss",
+            db_name="euss-oedi",
+            table_name="resstock_amy2018_release_1_1",
+            db_schema="resstock_oedi",
+            buildstock_type="resstock",
             skip_reports=True,
+            query_unload_s3_bucket="tamar-resstock-euss",
         )
     except Exception as exc:
         # BuildStockQuery raises driver-level errors of many types here
