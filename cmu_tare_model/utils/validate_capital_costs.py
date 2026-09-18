@@ -35,10 +35,14 @@ Usage (from notebook):
 
 import numpy as np
 import pandas as pd
+from matplotlib.figure import Figure
+from openpyxl import Workbook
+from openpyxl.styles import Font
 from typing import Dict, List, Optional, Tuple
 
 from cmu_tare_model.constants import REMDB_COST_SCENARIO_KEYS
 from cmu_tare_model.utils.column_names import create_cost_col
+from cmu_tare_model.utils.data_visualization_histograms import create_subplot_grid_histogram
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -354,9 +358,14 @@ def _analyze_ashp(df: pd.DataFrame, menu_mp: int, cost_scenarios: List[str],
     else:
         return pd.DataFrame(), {}
         
-    if 'size_heating_system_primary_k_btu_h' not in df_f.columns:
+    # Capacity source depends on cost_type: replacement costs are now priced
+    # off the OLD system's own size (see calculate_equipment_replacement_costs.py,
+    # 20 Aug 2026 fix); upgrade costs are priced off the new heat pump's size.
+    capacity_col = ('base_size_heating_system_primary_k_btu_h' if cost_type == 'replacement'
+                    else 'size_heating_system_primary_k_btu_h')
+    if capacity_col not in df_f.columns:
         return pd.DataFrame(), {}
-    cap = _capacity_tons(df_f['size_heating_system_primary_k_btu_h'])
+    cap = _capacity_tons(df_f[capacity_col])
 
     results, outliers = _bin_group_summarize(
         df_f, eff, cap,
@@ -406,9 +415,14 @@ def _analyze_central_ac(df: pd.DataFrame, menu_mp: int, cost_scenarios: List[str
     else:
         return pd.DataFrame(), {}
 
-    if 'size_cooling_system_primary_k_btu_h' not in df_f.columns:
+    # Capacity source depends on cost_type: replacement costs are now priced
+    # off the OLD system's own size (see calculate_equipment_replacement_costs.py,
+    # 20 Aug 2026 fix); upgrade costs are priced off the new heat pump's size.
+    capacity_col = ('base_size_cooling_system_primary_k_btu_h' if cost_type == 'replacement'
+                    else 'size_cooling_system_primary_k_btu_h')
+    if capacity_col not in df_f.columns:
         return pd.DataFrame(), {}
-    cap = _capacity_tons(df_f['size_cooling_system_primary_k_btu_h'])
+    cap = _capacity_tons(df_f[capacity_col])
 
     results, outliers = _bin_group_summarize(
         df_f, eff, cap,
@@ -464,9 +478,14 @@ def _analyze_furnace(df: pd.DataFrame, menu_mp: int, cost_scenarios: List[str],
     else:
         return pd.DataFrame(), {}
 
-    if 'size_heating_system_primary_k_btu_h' not in df_f.columns:
+    # Capacity source depends on cost_type: replacement costs are now priced
+    # off the OLD system's own size (see calculate_equipment_replacement_costs.py,
+    # 20 Aug 2026 fix); upgrade costs are priced off the new heat pump's size.
+    capacity_col = ('base_size_heating_system_primary_k_btu_h' if cost_type == 'replacement'
+                    else 'size_heating_system_primary_k_btu_h')
+    if capacity_col not in df_f.columns:
         return pd.DataFrame(), {}
-    cap = df_f['size_heating_system_primary_k_btu_h']
+    cap = df_f[capacity_col]
 
     results, outliers = _bin_group_summarize(
         df_f, eff, cap,
@@ -817,3 +836,322 @@ def run_capital_cost_validation(
     print(f"{'#' * 110}\n")
 
     return results_structured
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Population filters (shared by the distribution figure and the disaggregation
+# tables above, so both describe the same homes for a given equipment type)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def get_ashp_upgrade_homes(df: pd.DataFrame) -> pd.DataFrame:
+    """Homes in the ASHP heating-upgrade population.
+
+    heating_upgrade_pm2_euss is populated for nearly every row regardless of
+    adoption eligibility -- the new heat pump's spec doesn't depend on the
+    home's baseline -- so include_heating is applied explicitly here.
+    _analyze_ashp's own N counts stay correct without this gate because they
+    group on the cost column (NaN for ineligible homes), not on this
+    population directly.
+
+    Args:
+        df: Home-level DataFrame with heating_upgrade_pm2_euss and
+            include_heating columns.
+
+    Returns:
+        The subset of df in the ASHP upgrade population.
+    """
+    pm2_col = 'heating_upgrade_pm2_euss'
+    mask = df[pm2_col].notna() & (df[pm2_col] > 0) & df['include_heating']
+    return df.loc[mask]
+
+
+def get_central_ac_replacement_homes(df: pd.DataFrame) -> pd.DataFrame:
+    """Homes in the baseline Central AC replacement population.
+
+    Args:
+        df: Home-level DataFrame with hvac_cooling_type and include_cooling
+            columns.
+
+    Returns:
+        The subset of df with a baseline Central AC.
+    """
+    return df.loc[(df['hvac_cooling_type'] == 'Central AC') & df['include_cooling']]
+
+
+def get_natural_gas_furnace_replacement_homes(df: pd.DataFrame) -> pd.DataFrame:
+    """Homes in the baseline natural gas furnace replacement population.
+
+    A plain 'Furnace' substring match on heating_type also catches Wall/Floor
+    Furnace homes, which are excluded from the modeled population (invalid
+    heating tech -- include_heating = False), so that gate is applied here.
+
+    Args:
+        df: Home-level DataFrame with base_heating_fuel, heating_type, and
+            include_heating columns.
+
+    Returns:
+        The subset of df with a baseline natural gas furnace.
+    """
+    mask = (
+        (df['base_heating_fuel'] == 'Natural Gas')
+        & df['heating_type'].str.contains('Furnace', case=False, na=False)
+        & df['include_heating']
+    )
+    return df.loc[mask]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Distribution figure
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_capital_cost_distribution_figure(
+    df_mp3: pd.DataFrame,
+    df_mp4: pd.DataFrame,
+    figure_size: Tuple[int, int] = (28, 16),
+    bin_number: str = 'auto',
+    lower_percentile: float = 2.5,
+    upper_percentile: float = 97.5,
+) -> Figure:
+    """Build the ASHP / Central AC / NG Furnace consumption-and-size grid.
+
+    One figure, 3 equipment rows (ASHP upgrade, Central AC replacement,
+    natural gas Furnace replacement) x 4 columns (MP3 consumption, MP3 size,
+    MP4 consumption, MP4 size), color-coded by base_heating_fuel. Each row
+    uses the same population as the matching table from
+    run_capital_cost_validation, via get_ashp_upgrade_homes,
+    get_central_ac_replacement_homes, and
+    get_natural_gas_furnace_replacement_homes.
+
+    Each panel's display range is trimmed to [lower_percentile,
+    upper_percentile] of that panel's own column -- the full min-max range
+    compresses every panel near zero because of a long right tail of
+    outliers, so a default 95% CI view (2.5-97.5) keeps the visible bins
+    informative. This only affects what's plotted; the underlying
+    populations and cost tables are unchanged.
+
+    Args:
+        df_mp3: MP3 home-level DataFrame (e.g. DATAFRAMES_BY_MP[3]['fixed_base']).
+        df_mp4: MP4 home-level DataFrame (e.g. DATAFRAMES_BY_MP[4]['fixed_base']).
+        figure_size: Figure (width, height) in inches.
+        bin_number: Passed through to create_subplot_grid_histogram.
+        lower_percentile: Lower bound (0-100) of each panel's display range.
+        upper_percentile: Upper bound (0-100) of each panel's display range.
+
+    Returns:
+        The matplotlib Figure.
+    """
+    df_ashp_mp3 = get_ashp_upgrade_homes(df_mp3)
+    df_ashp_mp4 = get_ashp_upgrade_homes(df_mp4)
+    df_cac_mp3 = get_central_ac_replacement_homes(df_mp3)
+    df_cac_mp4 = get_central_ac_replacement_homes(df_mp4)
+    df_furnace_mp3 = get_natural_gas_furnace_replacement_homes(df_mp3)
+    df_furnace_mp4 = get_natural_gas_furnace_replacement_homes(df_mp4)
+
+    print(f"ASHP upgrade population:      MP3 {len(df_ashp_mp3):,} | MP4 {len(df_ashp_mp4):,}")
+    print(f"Central AC replacement pop.:  MP3 {len(df_cac_mp3):,} | MP4 {len(df_cac_mp4):,}")
+    print(f"NG Furnace replacement pop.:  MP3 {len(df_furnace_mp3):,} | MP4 {len(df_furnace_mp4):,}")
+
+    dataframes = [
+        df_ashp_mp3, df_ashp_mp4,
+        df_cac_mp3, df_cac_mp4,
+        df_furnace_mp3, df_furnace_mp4,
+    ]
+    subplot_positions = [
+        (0, 0), (0, 1), (0, 2), (0, 3),
+        (1, 0), (1, 1), (1, 2), (1, 3),
+        (2, 0), (2, 1), (2, 2), (2, 3),
+    ]
+    dataframe_indices = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5]
+    x_cols = [
+        'mp3_heating_consumption', 'size_heating_system_primary_k_btu_h',
+        'mp4_heating_consumption', 'size_heating_system_primary_k_btu_h',
+        'base_electricity_cooling_consumption', 'base_size_cooling_system_primary_k_btu_h',
+        'base_electricity_cooling_consumption', 'base_size_cooling_system_primary_k_btu_h',
+        'base_naturalGas_heating_consumption', 'base_size_heating_system_primary_k_btu_h',
+        'base_naturalGas_heating_consumption', 'base_size_heating_system_primary_k_btu_h',
+    ]
+    subplot_titles = [
+        'ASHP Heating Consumption (MP3)', 'ASHP Heating Size (MP3)',
+        'ASHP Heating Consumption (MP4)', 'ASHP Heating Size (MP4)',
+        'Central AC Cooling Consumption (MP3)', 'Central AC Cooling Size (MP3)',
+        'Central AC Cooling Consumption (MP4)', 'Central AC Cooling Size (MP4)',
+        'NG Furnace Heating Consumption (MP3)', 'NG Furnace Heating Size (MP3)',
+        'NG Furnace Heating Consumption (MP4)', 'NG Furnace Heating Size (MP4)',
+    ]
+    x_labels = [
+        'Heating Consumption (kWh)', 'Heating Size (kBTU/h)',
+        'Heating Consumption (kWh)', 'Heating Size (kBTU/h)',
+        'Cooling Consumption (kWh)', 'Cooling Size (kBTU/h)',
+        'Cooling Consumption (kWh)', 'Cooling Size (kBTU/h)',
+        'Heating Consumption (therms)', 'Heating Size (kBTU/h)',
+        'Heating Consumption (therms)', 'Heating Size (kBTU/h)',
+    ]
+
+    suptitle = (
+        'ASHP / Central AC / Furnace (NG) -- Consumption and Size Distributions '
+        f'(each panel shown at its {lower_percentile:g}-{upper_percentile:g} percentile range)'
+    )
+    return create_subplot_grid_histogram(
+        dataframes=dataframes,
+        dataframe_indices=dataframe_indices,
+        subplot_positions=subplot_positions,
+        x_cols=x_cols,
+        x_labels=x_labels,
+        subplot_titles=subplot_titles,
+        suptitle=suptitle,
+        figure_size=figure_size,
+        color_code='base_heating_fuel',
+        bin_number=bin_number,
+        lower_percentile=lower_percentile,
+        upper_percentile=upper_percentile,
+        show_legend=False,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Disaggregation workbook (matches the Equipment_Installed_TARE reference
+# workbook's sheet names and block layout, minus its v3 columns)
+# ─────────────────────────────────────────────────────────────────────────────
+
+DEFAULT_CAPITAL_COST_MP_LABELS: Dict[int, str] = {
+    3: 'MP3 - Min Efficiency',
+    4: 'MP4 - High Efficiency',
+}
+
+
+def _write_capital_cost_block(
+    ws,
+    start_row: int,
+    df_result: pd.DataFrame,
+    menu_mp: int,
+    technology: str,
+    cost_type_label: str,
+    id_cols: List[str],
+    row_label: str,
+    mp_labels: Dict[int, str],
+) -> int:
+    """Write one MP block (title, header, data rows) to an Excel worksheet.
+
+    Mirrors the Equipment_Installed_TARE reference workbook's block layout:
+    a bold title row naming the row count, a blank row, a bold header row,
+    then one row per capacity x efficiency bin.
+
+    Args:
+        ws: openpyxl worksheet to write into.
+        start_row: 1-indexed row to start this block at.
+        df_result: One equipment/cost-type table from
+            run_capital_cost_validation's structured results.
+        menu_mp: Measure package number, used to look up mp_labels.
+        technology: Display string for the 'technology' column.
+        cost_type_label: Display string for the 'cost type' column.
+        id_cols: The capacity/efficiency identifier columns, in display order.
+        row_label: Prefix for the block's title row (e.g. 'MP3, ashp, upgrade').
+        mp_labels: Menu package number -> EUSS Measure Package display label.
+
+    Returns:
+        The next free row after this block (for chaining the next block).
+    """
+    n_rows = len(df_result)
+    bold = Font(bold=True)
+    ws.cell(row=start_row, column=1, value=f'{row_label}: {n_rows} rows').font = bold
+
+    header_row = start_row + 2
+    columns = ['index', 'EUSS Measure Package', 'technology', 'cost type'] + id_cols + [
+        'v4MID N', 'v4MID P10', 'v4MID P50', 'v4MID P90',
+    ]
+    for col_idx, col_name in enumerate(columns, start=1):
+        ws.cell(row=header_row, column=col_idx, value=col_name).font = bold
+
+    df_sorted = df_result.sort_values(id_cols).reset_index(drop=True)
+    data_start_row = header_row + 1
+    for i, row in df_sorted.iterrows():
+        r = data_start_row + i
+        ws.cell(row=r, column=1, value=i)
+        ws.cell(row=r, column=2, value=mp_labels[menu_mp])
+        ws.cell(row=r, column=3, value=technology)
+        ws.cell(row=r, column=4, value=cost_type_label)
+        for j, id_col in enumerate(id_cols):
+            ws.cell(row=r, column=5 + j, value=row[id_col])
+        base_col = 5 + len(id_cols)
+        ws.cell(row=r, column=base_col + 0, value=row['v4MID N'])
+        ws.cell(row=r, column=base_col + 1, value=row['v4MID P10'])
+        ws.cell(row=r, column=base_col + 2, value=row['v4MID P50'])
+        ws.cell(row=r, column=base_col + 3, value=row['v4MID P90'])
+
+    return data_start_row + n_rows + 2  # blank row + next block's title row
+
+
+def build_capital_cost_disaggregation_workbook(
+    results_mp3: Dict,
+    results_mp4: Dict,
+    mp_labels: Optional[Dict[int, str]] = None,
+) -> Workbook:
+    """Build the 3-sheet REMDB v4MID capital-cost disaggregation workbook.
+
+    Combines the ASHP upgrade, Central AC replacement, and natural gas
+    Furnace replacement tables (from run_capital_cost_validation, MP3 and
+    MP4) into one workbook whose sheet names, block layout, and column order
+    match the Equipment_Installed_TARE reference workbook, minus its v3
+    columns.
+
+    Args:
+        results_mp3: Structured results dict from
+            run_capital_cost_validation(df=..., menu_mp=3, cost_scenarios=['v4MID']).
+        results_mp4: Same, for menu_mp=4.
+        mp_labels: Menu package number -> EUSS Measure Package display label.
+            Defaults to DEFAULT_CAPITAL_COST_MP_LABELS.
+
+    Returns:
+        An openpyxl Workbook with sheets TARE_Disag_Capex_ASHP,
+        TARE_Disag_Capex_CAC, TARE_Disag_Capex_Furnace.
+    """
+    if mp_labels is None:
+        mp_labels = DEFAULT_CAPITAL_COST_MP_LABELS
+
+    ashp_mp3 = results_mp3['heating']['ashp']['upgrade']
+    ashp_mp4 = results_mp4['heating']['ashp']['upgrade']
+    cac_mp3 = results_mp3['cooling']['central_ac']['replacement']
+    cac_mp4 = results_mp4['cooling']['central_ac']['replacement']
+    fur_mp3 = results_mp3['heating']['gas_furnace']['replacement']
+    fur_mp4 = results_mp4['heating']['gas_furnace']['replacement']
+
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    ws_ashp = wb.create_sheet('TARE_Disag_Capex_ASHP')
+    row = _write_capital_cost_block(
+        ws_ashp, 1, ashp_mp3, menu_mp=3, technology='ASHP',
+        cost_type_label='Upgrade (MP3)', id_cols=['Capacity (tons)', 'SEER'],
+        row_label='MP3, ashp, upgrade', mp_labels=mp_labels,
+    )
+    _write_capital_cost_block(
+        ws_ashp, row, ashp_mp4, menu_mp=4, technology='ASHP',
+        cost_type_label='Upgrade (MP4)', id_cols=['Capacity (tons)', 'SEER'],
+        row_label='MP4, ashp, upgrade', mp_labels=mp_labels,
+    )
+
+    ws_cac = wb.create_sheet('TARE_Disag_Capex_CAC')
+    row = _write_capital_cost_block(
+        ws_cac, 1, cac_mp3, menu_mp=3, technology='Central AC',
+        cost_type_label='Replacement (MP0)', id_cols=['Capacity (tons)', 'SEER'],
+        row_label='MP3, central ac, replacement', mp_labels=mp_labels,
+    )
+    _write_capital_cost_block(
+        ws_cac, row, cac_mp4, menu_mp=4, technology='Central AC',
+        cost_type_label='Replacement (MP0)', id_cols=['Capacity (tons)', 'SEER'],
+        row_label='MP4, central ac, replacement', mp_labels=mp_labels,
+    )
+
+    ws_furnace = wb.create_sheet('TARE_Disag_Capex_Furnace')
+    row = _write_capital_cost_block(
+        ws_furnace, 1, fur_mp3, menu_mp=3, technology='Furnace (Natural Gas)',
+        cost_type_label='Replacement (MP0)', id_cols=['Capacity (kBTU/h)', 'AFUE'],
+        row_label='MP3, gas_furnace, replacement', mp_labels=mp_labels,
+    )
+    _write_capital_cost_block(
+        ws_furnace, row, fur_mp4, menu_mp=4, technology='Furnace (Natural Gas)',
+        cost_type_label='Replacement (MP0)', id_cols=['Capacity (kBTU/h)', 'AFUE'],
+        row_label='MP4, gas_furnace, replacement', mp_labels=mp_labels,
+    )
+
+    return wb
