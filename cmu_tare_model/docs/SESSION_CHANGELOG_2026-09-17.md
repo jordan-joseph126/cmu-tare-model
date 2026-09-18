@@ -194,3 +194,253 @@ Five findings, each of which changes a later task:
 
 **Status:** audit only. No code changed. This changelog file is the session's
 only new file so far.
+
+---
+
+## Task 2 -- Custom weighting as an additive option
+
+### What changed and why
+
+Two clarifications from the researcher, made at the start of this task, are
+folded in because they turned out to be load-bearing, not cosmetic: the
+grid-impact notebook cells hardcoded "Allegheny" into six variable names, and
+imported the county FIPS as a fixed constant (`TEST_FIPS`). Task 1's audit had
+already found that the custom-weighting matched subset lives in two Colorado
+counties, not Allegheny -- so those two things had to change for
+`custom_weighting=True` to make sense at all, not as a separate style pass.
+
+**`compute_county_scenario_profile`** (`peak_load_functions.py`) gained two
+keyword-only parameters, `custom_weighting` and `weight_dict`. Before, it
+assumed every kWh value handed to it was already multiplied by BuildStockQuery's
+own sample weight. Now it still assumes that when `custom_weighting=False` (the
+default) -- byte-identical to before, confirmed two ways: multiplying a float by
+`1.0` introduces no floating-point rounding (a mathematical guarantee, not just
+an empirical check), and the project's own 32-test suite for this module passes
+unchanged. When `custom_weighting=True`, the function instead trusts nothing is
+pre-weighted: it restricts every input (baseline buildings, upgrade buildings,
+and the adopter list) to only the buildings present in `weight_dict`, reports
+how many were excluded from each, and multiplies each row's kWh by that
+building's dict weight before summing. A building missing from the dict is
+dropped, never defaulted to the uniform weight or to zero.
+
+**A new function, `build_weight_dict_from_mapping`** (`build_parcel_frame.py`)
+turns Tamar's tax-parcel match file into the `{bldg_id: weight}` dict the
+function above needs. The weight is the count of real tax parcels matched to
+each representative building -- the same number `build_parcel_frame` already
+uses to row-duplicate its frame, just packaged as a lookup dict instead of row
+duplication, because the new aggregation multiplies rather than duplicates.
+Checked against the real data: 169 buildings, weights 1 to 1,341, summing to
+the 37,663 matched parcels -- matching Task 1's audit numbers exactly.
+
+**The notebook's BSQ query cell** (handed over as cell text, not a live edit,
+per this project's `.ipynb` convention) now threads a `CUSTOM_WEIGHTING` flag
+through the building-selection, query, and profile-computation steps:
+  - `False`: prompts for a county FIPS interactively (`input()`), instead of
+    importing the fixed `TEST_FIPS` constant -- so the section now runs for any
+    county, not only the Allegheny County case study used in the paper.
+    `TEST_FIPS` itself is untouched in `constants.py` (other code still uses
+    it); the grid-impact cells just stopped importing it.
+  - `True`: loads Tamar's mapping file, builds the weight dict, and queries
+    BuildStockQuery with `sample_weight_override=1` (raw kWh) instead of the
+    default (BSQ's own uniform weighting).
+  - Six variables renamed from an `allegheny_*` prefix to a `case_study_*`
+    prefix, matching wording already used in this codebase's archived
+    comments ("Allegheny County case study panel").
+
+Two more things were added at the researcher's request while touching this
+cell:
+  - `my_run.save_cache()`, called once after the queries succeed. BSQ already
+    caches every query result in memory and loads whatever is on disk
+    automatically when constructed, but nothing writes that cache back to disk
+    on its own -- so without this call, every kernel restart re-runs the
+    roughly 10-minute baseline/upgrade queries from scratch even though the
+    same queries have been run many times before. This one line makes the next
+    run reuse the saved cache instead.
+  - A comment at the `BuildStockQuery(...)` call noting that this project is
+    pinned to buildstock_query 0.2.0 (confirmed via the installed
+    dist-info), which has no `query_unload_s3_bucket` parameter -- that was
+    added in the 0.30 release a colleague is using on a related effort. Not a
+    bug to fix; a version difference to not accidentally "fix" into a
+    `TypeError`.
+
+**A judgment call, flagged rather than made silently:** the fuel-distribution
+table cell (cell 32) is keyed to a single county's FIPS, which only exists
+when `CUSTOM_WEIGHTING=False` (the matched subset spans two counties, so
+there's no single FIPS to key it by). Rather than build new multi-county
+aggregation logic for it -- which the original task list explicitly reserves
+for Task 7 as documentation-only, no logic change -- it's guarded to run only
+in the default weighting mode, printing a one-line skip notice under custom
+weighting. Handed to the researcher as a flagged decision, not applied as a
+foregone conclusion.
+
+**A pre-existing bug found and fixed in passing:** the project's own test
+module (`test_peak_load_functions.py`) imported `BSQ_ELEC_COL` from
+`peak_load_functions.py`, but that module never imported it from
+`constants.py` in the first place -- confirmed via `git show HEAD` that this
+predates this session. All 32 tests in that file failed to even collect
+before this fix. Fixed by adding `BSQ_ELEC_COL` to the module's existing
+import from `constants.py` (the same pattern already used for `BLDG_ID_COL`),
+with a `# noqa: F401` comment explaining it is imported for re-export, not
+local use.
+
+### Verification
+
+- The project's own pytest suite for this module: 32 passed, 0 failed (was 0
+  collected, 1 error, before the import fix).
+- A manual synthetic-data script (four checks, since the pre-existing test
+  file did not yet cover `custom_weighting`): `custom_weighting=False`
+  reproduces the exact pre-existing aggregation; `custom_weighting=True`
+  applies the dict weight and excludes an uncovered building rather than
+  defaulting it; excluding a building from `weight_dict` also removes it from
+  the adopter set, not just the totals; a missing or empty `weight_dict` with
+  `custom_weighting=True` raises `ValueError`.
+- `build_weight_dict_from_mapping` run against the real
+  `PSM_output_buildYear07_09_2026.csv`: 169 buildings, sum of weights 37,663.0
+  (exactly the matched-parcel count), min/max 1.0/1,341.0 -- matches Task 1's
+  audit.
+- Line length (<=88 chars) and no alignment padding (E221/E241) checked on
+  both edited files; no violations in the new code.
+- The notebook cell text has not been run against live AWS/BSQ this session
+  (that would issue real, billed Athena queries) -- it is handed to the
+  researcher to paste in and run.
+
+### Correction: comment style
+
+The first pass of this task's edits put each block's explanation in one large
+comment ahead of the code it described -- a two-mode explanation in
+`compute_county_scenario_profile`'s docstring, and multi-line header blocks at
+the top of the notebook cells. The researcher pointed out this made the
+notebook cells hard to follow: a reader has to hold the whole explanation in
+mind before reaching the code it refers to, rather than reading each line
+next to the sentence that explains it.
+
+Fixed in both places: `compute_county_scenario_profile`'s docstring keeps only
+the standard Args/Returns/Raises sections, and the "two weighting modes"
+explanation was broken into short comments sitting directly above the specific
+lines each part describes (the weight-dict filter, the adopter-set
+intersection, the weight-multiplier branch). The notebook cell text handed to
+the researcher was rewritten the same way -- no header block longer than two
+or three lines, with an explanation next to each non-trivial line instead.
+This was a comment-only change; re-ran the project's test suite (32 passed)
+and the manual verification script to confirm nothing else moved.
+
+### Correction: a dropped print line, and a pre-existing print-formatting bug
+
+The researcher ran the handed-over cell 29 against live AWS and reported two
+problems from the real output.
+
+The first was introduced by the comment-restructuring pass just above: while
+rewriting the Step 6 loop's comments, the `Hours/bldg`, `kWh range (wtd)`, and
+`Query time (s)` print lines were dropped entirely, so the MP3/MP4 summaries
+printed only `Rows` and `Buildings` -- missing the same information the Step 5
+baseline summary still printed. Fixed by restoring the three lines to the
+handed-over cell text.
+
+The second predates this session: `check_athena_output_location`
+(`diagnose_bsq_aws.py`) and the notebook's own AWS-credentials print both
+used a triple-quoted f-string starting with a bare newline after the opening
+`"""` (no backslash), with each content line indented to match the
+surrounding code's indentation level. That produces exactly what the
+researcher saw -- a blank line before the message, every line pushed right by
+the code's own indentation, and a trailing whitespace-only line before the
+closing `"""`. Fixed `diagnose_bsq_aws.py` to follow this project's own
+print-statement convention (a backslash right after the opening quotes, and
+content starting at column 0) -- confirmed clean with a standalone
+reproduction using the researcher's own printed values. Fixed the same
+pattern in the handed-over AWS-credentials block. Neither fix touches any
+computed value; both are print-formatting only.
+
+### Removed a redundant AWS preflight check, and factored the BSQ query cell
+
+The researcher asked to remove the AWS-credentials print and
+`check_athena_output_location` call from the BSQ query cell, since the
+`RUN_BSQ_DIAGNOSTIC` cell above it already checks both. Checked
+`diagnose_bsq_aws.py` directly before agreeing: its stages 2, 3, and 4
+already cover AWS credentials and the Athena bucket-write check, but the
+module's own docstring said the query cell was supposed to call
+`check_athena_output_location` too, as a second, independent preflight. That
+was a real design tradeoff (a kernel restart that skips the diagnostic cell
+gets a less friendly BSQ error instead of a fast, named one), not a mistake
+to fix silently -- flagged it and asked which way to go. The researcher chose
+to remove both checks and rely on the diagnostic cell alone. Removed the
+block from the query cell (plus its now-unused `boto3`/`botocore` imports)
+and corrected `diagnose_bsq_aws.py`'s docstring so it no longer claims the
+query cell calls it directly.
+
+The researcher also pointed out three repeated or under-explained blocks in
+the same cell and asked for them to become shared functions instead. Added
+to `peak_load_functions.py`:
+
+  - `prepare_bsq_timeseries` -- the rename/downcast/hour-index cleanup that
+    both the baseline and each MP's upgrade query needed, previously written
+    out twice.
+  - `summarize_hourly_timeseries` -- the printed summary (rows, buildings,
+    hours per building, kWh range, query time) and the full-year check,
+    previously duplicated with two slightly different formats (the upgrade
+    version was also missing three of the five lines, from the earlier
+    print-fix correction above) and using a bare `assert` for the check.
+    Both call sites now share one implementation, one format, and raise
+    `ValueError` on an incomplete year instead of `assert` (matching how
+    `compute_county_scenario_profile` already handles the same check --
+    `assert` can be silently skipped under Python's `-O` flag).
+  - `check_upgrade_building_coverage` -- the baseline-vs-upgrade
+    building-set comparison and its associated note/error.
+
+All three verified against synthetic data mirroring real BSQ output shape
+(rename/downcast/sort/hour-index correctness, the summary printing and
+raising on incomplete coverage, the coverage check's note and its error),
+plus the project's 32-test suite, unaffected by this change.
+
+### Correction: comment density in the handed-over cell text
+
+The researcher gave a concrete example of the comment density they want --
+short, stating what a block does and why in one or two lines, not a
+mechanism walkthrough -- using the `save_cache()` comment as the model. Several
+comments added earlier this session (in `compute_county_scenario_profile` and
+the new functions above) were longer than that. Tightened all of them to
+match -- the same one-two-line density already used, unedited, in
+`plot_demand_panel`/`plot_county_demand_grid` elsewhere in this module, which
+turned out to be the right reference point for this project's existing
+voice. Comment-only change; re-ran the 32-test suite to confirm.
+
+### Cleaned up the heating-fuel table cell and moved its call
+
+The heating-fuel distribution cell (the researcher's own name for it:
+"GRID IMPACT -- Allegheny County baseline heating-fuel distribution table")
+had accumulated exactly the problems flagged this session before: single-
+letter-prefixed throwaway variable names (`_mp`, `_df_tare`, `_fuel_results`,
+`_col_width`), several temporary variables that existed only to be unpacked
+once, and almost no comments explaining what the block of print statements
+was building toward.
+
+Moved its logic, unchanged, into a new function,
+`print_heating_fuel_distribution_table` (`peak_load_functions.py`) --
+real variable names, a docstring, and comments at the density the researcher
+asked for. The only two intentional differences from the original: it takes
+`case_study_fips` as a parameter instead of the hardcoded `TEST_FIPS`
+constant (so it works for whichever county was entered at the prompt, not
+only Allegheny), and its column-divider width is computed from
+`len(selected_mps)` instead of a hardcoded `4` (a latent assumption of
+exactly two measure packages in the original). Neither changes what prints
+for today's two-MP case.
+
+Verified against the real 2026-09-17_19-38 National MP3/MP4 output for
+Allegheny County: ran the original cell's logic and the new function side
+by side and diffed their printed output line by line. The header and footer
+wording differ on purpose (no more hardcoded "Allegheny"); the entire table
+body -- divider, headers, every fuel row, the TOTAL row -- is identical.
+
+The call moved into the weighting-mode-and-scope cell's default-mode branch,
+right after `case_study_fips` and `case_study_bldg_ids` are established and
+before the BSQ queries run -- so the fuel mix behind the case study is
+visible immediately, without waiting on a ~10-minute AWS query first. The
+table only ever covered one county, so it is not called from the
+custom-weighting branch (which has no single FIPS); the researcher asked
+for a direct cleanup and move, not new logic to make the table span the
+matched subset's multiple counties -- flagged as a possible follow-up, not
+built. The old standalone cell is now redundant and should be deleted by
+the researcher; leaving both in place would print the table twice.
+
+Also saved a memory (`feedback_concise_inline_comments`) recording the
+comment-density preference from the correction above, so it carries into
+future sessions on this project.

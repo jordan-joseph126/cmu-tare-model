@@ -15,7 +15,12 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.lines import Line2D
 
-from cmu_tare_model.constants import BLDG_ID_COL, FIGURE_DPI
+from cmu_tare_model.constants import (
+    BLDG_ID_COL,
+    BSQ_ELEC_COL,
+    FIGURE_DPI,
+    TIMESTAMP_COL,
+)
 from cmu_tare_model.utils.column_names import BASE_CASE_NPV_CASE
 
 
@@ -152,25 +157,189 @@ def extract_adopter_ids(
     return result
 
 
+def print_heating_fuel_distribution_table(
+    df_by_mp: Dict[int, pd.DataFrame],
+    adopter_ids_by_mp: Dict[int, Dict[str, Dict[str, list]]],
+    selected_mps: list,
+    case_study_fips: str,
+    *,
+    fuel_col: str = "base_heating_fuel",
+) -> None:
+    """Print baseline heating-fuel counts and shares for one county.
+
+    One column pair per measure package -- economic adopters (constrained)
+    and every filtered building (100% adoption) -- so the fuel mix behind
+    each grid-impact scenario is visible at a glance.
+
+    Args:
+        df_by_mp: {mp: df} -- one TARE output dataframe per measure
+            package, indexed by bldg_id.
+        adopter_ids_by_mp: {mp: {fips: {"all_filtered": [...],
+            "constrained": [...]}}}, built once nationally.
+        selected_mps: Measure-package numbers to show as column pairs.
+        case_study_fips: County FIPS this table reports on.
+        fuel_col: Column holding each building's baseline heating fuel.
+
+    Raises:
+        KeyError: If case_study_fips is not found for a measure package.
+    """
+    # Count each fuel type for the constrained and 100% adoption sets, per MP.
+    fuel_results = {}
+    for mp in selected_mps:
+        df_tare = df_by_mp[mp]
+        if case_study_fips not in adopter_ids_by_mp[mp]:
+            raise KeyError(
+                f"MP{mp}: county FIPS {case_study_fips} not in "
+                "adopter_ids_by_mp."
+            )
+        for scenario, key in [("constrained", "constrained"),
+                               ("100pct", "all_filtered")]:
+            bldg_ids = set(adopter_ids_by_mp[mp][case_study_fips][key])
+            counts = (
+                df_tare.loc[df_tare.index.isin(bldg_ids), fuel_col]
+                .value_counts()
+                .sort_index()
+            )
+            fuel_results[(mp, scenario)] = {
+                "n": len(bldg_ids),
+                "counts": counts,
+                "pcts": counts / counts.sum() * 100,
+            }
+
+    all_fuels = sorted(
+        set().union(*(r["counts"].index for r in fuel_results.values()))
+    )
+
+    # Column widths generalized to any number of MPs (the original version
+    # hardcoded 4 columns, assuming exactly two).
+    fuel_col_width = 20
+    data_col_width = 26
+    n_columns = len(selected_mps) * 2
+    divider_width = fuel_col_width + data_col_width * n_columns + 3
+
+    print(f"County FIPS {case_study_fips} -- Baseline Heating Fuel Distribution")
+    print("=" * divider_width)
+
+    # Header row -- one Constrained and one 100% column per measure package.
+    headers = []
+    for mp in selected_mps:
+        n_con = fuel_results[(mp, "constrained")]["n"]
+        n_all = fuel_results[(mp, "100pct")]["n"]
+        headers.append(f"MP{mp} Constrained (n={n_con:,})")
+        headers.append(f"MP{mp} 100% (n={n_all:,})")
+
+    print(f"{'Fuel':<{fuel_col_width}}", end="")
+    for header in headers:
+        print(f"  {header:>{data_col_width - 2}}", end="")
+    print()
+
+    print(f"{'-' * fuel_col_width}", end="")
+    for _ in headers:
+        print(f"  {'-' * (data_col_width - 2)}", end="")
+    print()
+
+    # One row per fuel type, one cell per (MP, scenario) column.
+    for fuel in all_fuels:
+        print(f"{fuel:<{fuel_col_width}}", end="")
+        for mp in selected_mps:
+            for scenario in ("constrained", "100pct"):
+                result = fuel_results[(mp, scenario)]
+                count = result["counts"].get(fuel, 0)
+                pct = result["pcts"].get(fuel, 0.0)
+                cell_text = f"{count:,} ({pct:.1f}%)"
+                print(f"  {cell_text:>{data_col_width - 2}}", end="")
+        print()
+
+    print(f"{'-' * fuel_col_width}", end="")
+    for _ in headers:
+        print(f"  {'-' * (data_col_width - 2)}", end="")
+    print()
+
+    print(f"{'TOTAL':<{fuel_col_width}}", end="")
+    for mp in selected_mps:
+        for scenario in ("constrained", "100pct"):
+            n = fuel_results[(mp, scenario)]["n"]
+            print(f"  {f'{n:,} (100.0%)':>{data_col_width - 2}}", end="")
+    print()
+
+    print(f"\n[OK] County FIPS {case_study_fips} heating fuel table complete")
+
+
 def compute_county_scenario_profile(
     df_baseline: pd.DataFrame,
     df_upgrade: pd.DataFrame,
     adopter_bldg_ids: list[int],
+    *,
+    custom_weighting: bool = False,
+    weight_dict: Optional[Dict[int, float]] = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Compute hourly baseline and scenario demand profiles for one county.
 
     Args:
-        df_baseline: Columns [bldg_id, hour, baseline_kwh]. 8,760 rows per building.
-            Values are weight-applied (kWh × BSQ weight) from aggregate_timeseries.
-        df_upgrade: Columns [bldg_id, hour, retrofit_kwh]. May be a subset of baseline.
-            Values are weight-applied (kWh × BSQ weight) from aggregate_timeseries.
+        df_baseline: Columns [bldg_id, hour, baseline_kwh]. 8,760 rows per
+            building. kWh is weight-applied when custom_weighting is False,
+            raw (unweighted) when custom_weighting is True.
+        df_upgrade: Columns [bldg_id, hour, retrofit_kwh]. May be a subset of
+            baseline. Same weighting convention as df_baseline.
         adopter_bldg_ids: Buildings that adopt the retrofit.
+        custom_weighting: If True, apply the per-building weights in
+            weight_dict instead of trusting BSQ's own weighting. See the
+            comments below for what changes, step by step, in each mode.
+        weight_dict: Required when custom_weighting is True. Maps bldg_id to
+            its custom weight (e.g. the count of tax parcels matched to that
+            representative building). Ignored when custom_weighting is
+            False.
 
     Returns:
         (df_profile, peak_dict) where df_profile has
         [hour, baseline_mw, scenario_mw, delta_mw].
+
+    Raises:
+        ValueError: If custom_weighting is True and weight_dict is None or
+            empty, or if the resulting profile does not have exactly 8,760
+            hourly rows.
     """
+    # custom_weighting=True requires a weight to apply.
+    if custom_weighting and not weight_dict:
+        raise ValueError(
+            "weight_dict is required and must be non-empty when "
+            "custom_weighting=True."
+        )
+
     adopter_set: set[int] = set(adopter_bldg_ids)
+
+    if custom_weighting:
+        # Unmatched buildings have no valid weight -- excluded, never
+        # defaulted to the uniform weight or to zero.
+        weighted_bldg_ids = set(weight_dict.keys())
+
+        # Drop unmatched baseline buildings; report how many were dropped.
+        n_baseline_before = df_baseline[BLDG_ID_COL].nunique()
+        df_baseline = df_baseline[
+            df_baseline[BLDG_ID_COL].isin(weighted_bldg_ids)
+        ]
+        n_baseline_dropped = (
+            n_baseline_before - df_baseline[BLDG_ID_COL].nunique()
+        )
+        if n_baseline_dropped:
+            print(
+                f"  custom_weighting: {n_baseline_dropped:,d} baseline "
+                f"building(s) have no entry in weight_dict -- excluded."
+            )
+
+        # Same for upgrade buildings.
+        df_upgrade = df_upgrade[df_upgrade[BLDG_ID_COL].isin(weighted_bldg_ids)]
+
+        # Same for the adopter list -- an unmatched adopter is removed too.
+        n_adopters_before = len(adopter_set)
+        adopter_set = adopter_set & weighted_bldg_ids
+        n_adopters_dropped = n_adopters_before - len(adopter_set)
+        if n_adopters_dropped:
+            print(
+                f"  custom_weighting: {n_adopters_dropped:,d} adopter "
+                f"building(s) have no entry in weight_dict -- excluded."
+            )
+
     all_baseline_bldgs: set[int] = set(df_baseline[BLDG_ID_COL].unique())
     upgrade_bldgs: set[int] = set(df_upgrade[BLDG_ID_COL].unique())
 
@@ -178,11 +347,11 @@ def compute_county_scenario_profile(
     if adopters_missing_upgrade:
         print(
             f"  {len(adopters_missing_upgrade):,d} adopter bldg_ids "
-            f"have no upgrade data — using baseline."
+            f"have no upgrade data -- using baseline."
         )
     effective_adopters: set[int] = adopter_set & upgrade_bldgs
 
-    # Left-join baseline ← upgrade
+    # Left-join baseline <- upgrade
     df_merged: pd.DataFrame = df_baseline.merge(
         df_upgrade[[BLDG_ID_COL, "hour", "retrofit_kwh"]],
         on=[BLDG_ID_COL, "hour"],
@@ -196,13 +365,29 @@ def compute_county_scenario_profile(
         is_effective_adopter, retrofit_filled, df_merged["baseline_kwh"]
     )
 
-    # Aggregate across buildings → hourly county profile (MW)
-    # BSQ values are already weight-applied, so just ÷ 1000 → MW
+    if custom_weighting:
+        # Every remaining row is guaranteed to be in weight_dict by the
+        # filtering above, so this lookup cannot produce a NaN weight.
+        weight_multiplier = (
+            df_merged[BLDG_ID_COL].map(weight_dict).astype("float64")
+        )
+    else:
+        # BSQ already applied its weight -- 1.0 is a no-op multiply, so this
+        # matches the pre-custom-weighting behavior exactly.
+        weight_multiplier = 1.0
+    df_merged["weighted_baseline_kwh"] = (
+        df_merged["baseline_kwh"] * weight_multiplier
+    )
+    df_merged["weighted_scenario_kwh"] = (
+        df_merged["scenario_kwh"] * weight_multiplier
+    )
+
+    # Aggregate across buildings -> hourly county profile (MW)
     df_profile: pd.DataFrame = (
         df_merged.groupby("hour", as_index=False)
         .agg(
-            baseline_kwh=("baseline_kwh", "sum"),
-            scenario_kwh=("scenario_kwh", "sum"),
+            baseline_kwh=("weighted_baseline_kwh", "sum"),
+            scenario_kwh=("weighted_scenario_kwh", "sum"),
         )
     )
     df_profile["baseline_mw"] = df_profile["baseline_kwh"] / 1000.0
@@ -233,6 +418,158 @@ def compute_county_scenario_profile(
     }
 
     return df_profile, peak_dict
+
+
+def prepare_bsq_timeseries(
+    df_ts_raw: pd.DataFrame,
+    kwh_col_name: str,
+    *,
+    bsq_col: str = BSQ_ELEC_COL,
+    bldg_id_col: str = BLDG_ID_COL,
+    timestamp_col: str = TIMESTAMP_COL,
+) -> pd.DataFrame:
+    """Clean up one raw BuildStockQuery hourly timeseries result.
+
+    The baseline (upgrade_id="0") query and each measure package's upgrade
+    query return the same raw shape, and both need the same three fixes
+    before compute_county_scenario_profile can use them. Factored out so
+    both call sites share one implementation instead of repeating it.
+
+    Args:
+        df_ts_raw: Raw aggregate_timeseries() result -- one row per
+            building-hour, with a bsq_col column and a timestamp_col column.
+        kwh_col_name: Name to give the renamed kWh column (e.g.
+            "baseline_kwh" or "retrofit_kwh").
+        bsq_col: BSQ's own column name for the electricity total (BSQ
+            strips the "out." prefix off the enduse name it was queried
+            with).
+        bldg_id_col: Building id column name.
+        timestamp_col: Timestamp column name BSQ returns.
+
+    Returns:
+        A copy of df_ts_raw, sorted by [bldg_id_col, timestamp_col], with
+        the kWh column renamed and downcast to float32, plus a new "hour"
+        column numbered 1..N per building.
+    """
+    # Rename to a name this notebook controls; downcast to float32 to halve
+    # memory use with no meaningful precision loss for kWh at this scale.
+    df_prepared = df_ts_raw.rename(columns={bsq_col: kwh_col_name})
+    df_prepared[kwh_col_name] = df_prepared[kwh_col_name].astype(np.float32)
+
+    # Sort into time order so the hour numbering below comes out correct.
+    df_prepared = df_prepared.sort_values(
+        [bldg_id_col, timestamp_col]
+    ).reset_index(drop=True)
+
+    # BSQ returns a timestamp, not an hour index -- number each building's
+    # rows 1..N.
+    df_prepared["hour"] = df_prepared.groupby(bldg_id_col).cumcount() + 1
+
+    return df_prepared
+
+
+def summarize_hourly_timeseries(
+    df_ts: pd.DataFrame,
+    kwh_col: str,
+    label: str,
+    query_time_s: float,
+    *,
+    bldg_id_col: str = BLDG_ID_COL,
+    expected_hours_per_bldg: int = 8760,
+) -> None:
+    """Print a summary of one prepared BSQ timeseries and check its coverage.
+
+    Used for both the baseline query and each measure package's upgrade
+    query, so the two summaries always report the same statistics and are
+    checked against the same full-year requirement.
+
+    Args:
+        df_ts: A timeseries dataframe already processed by
+            prepare_bsq_timeseries (must have an "hour" column).
+        kwh_col: Name of the kWh column to summarize (e.g. "baseline_kwh").
+        label: Short label printed in the summary header (e.g.
+            "df_ts_baseline_case_study" or "df_ts_upgrade_case_study (MP3)").
+        query_time_s: How long the query took, for the printed summary.
+        bldg_id_col: Building id column name.
+        expected_hours_per_bldg: Required row count per building --
+            compute_county_scenario_profile assumes a full 8,760-hour year.
+
+    Raises:
+        ValueError: If any building does not have exactly
+            expected_hours_per_bldg rows. Raised rather than asserted, so
+            this check cannot be silently skipped (Python's -O flag strips
+            assert statements).
+    """
+    n_bldgs = df_ts[bldg_id_col].nunique()
+    n_hours_per_bldg = df_ts.groupby(bldg_id_col).size()
+
+    print(f"\n========== {label} summary ==========")
+    print(f"  Rows       : {len(df_ts):,d}")
+    print(f"  Buildings  : {n_bldgs:,d}")
+    print(
+        f"  Hours/bldg : {n_hours_per_bldg.min():,d} - "
+        f"{n_hours_per_bldg.max():,d}"
+    )
+    print(
+        f"  kWh range  : {df_ts[kwh_col].min():.3f} to "
+        f"{df_ts[kwh_col].max():.3f}"
+    )
+    print(f"  Query time : {query_time_s:.2f} s")
+
+    if (
+        n_hours_per_bldg.min() != expected_hours_per_bldg
+        or n_hours_per_bldg.max() != expected_hours_per_bldg
+    ):
+        raise ValueError(
+            f"{label}: expected exactly {expected_hours_per_bldg:,d} hours "
+            f"per building, got a range of {n_hours_per_bldg.min():,d} - "
+            f"{n_hours_per_bldg.max():,d}."
+        )
+
+
+def check_upgrade_building_coverage(
+    baseline_bldg_ids: set,
+    upgrade_bldg_ids: set,
+    mp: int,
+) -> set:
+    """Compare which buildings a baseline and an upgrade query cover.
+
+    Both queries are built from the same restrict=[("bldg_id", ...)] list,
+    so they should cover the same buildings.
+
+    Args:
+        baseline_bldg_ids: Building ids present in the baseline query.
+        upgrade_bldg_ids: Building ids present in this MP's upgrade query.
+        mp: Measure-package number, used only in the printed note and the
+            error message.
+
+    Returns:
+        The set of buildings present in baseline but missing from the
+        upgrade query. This is expected occasionally -- ResStock does not
+        model every upgrade for every building -- and
+        compute_county_scenario_profile already falls back to that
+        building's baseline value for these.
+
+    Raises:
+        ValueError: If any building appears in the upgrade query but not in
+            the baseline query. This should never happen with a shared
+            restrict list, so it is treated as an error rather than a note.
+    """
+    only_in_baseline = baseline_bldg_ids - upgrade_bldg_ids
+    only_in_upgrade = upgrade_bldg_ids - baseline_bldg_ids
+
+    if only_in_baseline:
+        print(
+            f"  Note: {len(only_in_baseline):,d} buildings have no MP{mp} "
+            "upgrade data and will use baseline."
+        )
+    if only_in_upgrade:
+        raise ValueError(
+            f"MP{mp}: {len(only_in_upgrade):,d} upgrade buildings "
+            "missing baseline."
+        )
+
+    return only_in_baseline
 
 
 def plot_demand_panel(

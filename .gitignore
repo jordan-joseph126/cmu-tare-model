@@ -29,6 +29,12 @@ __pycache__/
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
+# BuildStockQuery's local query-result cache (multi-GB binary; save_cache()
+# writes it wherever the kernel's cwd was, so ignore it at both known spots)
+.bsq_cache/
+cmu_tare_model/.bsq_cache/
+cmu_tare_model/grid_impact/.bsq_cache/
+
 # Large figure output files (save locally, do not commit)
 figures/
 cmu_tare_model/figures/

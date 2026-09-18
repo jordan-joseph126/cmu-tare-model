@@ -8,7 +8,7 @@ real per-parcel frame instead of synthetic or stale data. See CLAUDE.md,
 weighting regimes (sampled frame vs. row-duplicated frame) must not be mixed.
 """
 
-from typing import List
+from typing import Dict, List
 
 import pandas as pd
 
@@ -153,3 +153,57 @@ def build_parcel_frame(
     )
 
     return df_parcel
+
+
+def build_weight_dict_from_mapping(df_mapping: pd.DataFrame) -> Dict[int, float]:
+    """Build a per-building custom weight dict from the tax-parcel mapping.
+
+    Each representative building's custom weight is the number of real tax
+    parcels matched to it -- the same quantity build_parcel_frame uses to
+    row-duplicate its frame, returned here as a lookup dict instead, for
+    callers (compute_county_scenario_profile's custom_weighting mode) that
+    need to multiply a building's own kWh by its weight rather than
+    duplicate rows.
+
+    Args:
+        df_mapping: The tax-parcel-to-representative-building match mapping
+            (e.g. PSM_output_buildYear07_09_2026.csv), with tax_parcel_ID and
+            representative_ID columns. representative_ID is NaN for
+            unmatched parcels.
+
+    Returns:
+        Dict mapping each matched representative building's bldg_id (int) to
+        its weight (float): the count of tax parcels matched to it. Only
+        buildings with at least one matched parcel appear -- there is no
+        zero or default entry for anything else.
+
+    Raises:
+        TypeError: If df_mapping is not a DataFrame.
+        KeyError: If df_mapping is missing tax_parcel_ID or representative_ID.
+    """
+    # Step 1 -- validate inputs before any computation.
+    if not isinstance(df_mapping, pd.DataFrame):
+        raise TypeError(
+            f"df_mapping must be a DataFrame, got {type(df_mapping)!r}"
+        )
+
+    required_cols = ["tax_parcel_ID", "representative_ID"]
+    missing = [c for c in required_cols if c not in df_mapping.columns]
+    if missing:
+        raise KeyError(f"df_mapping is missing required column(s): {missing}")
+
+    # Step 2 -- drop unmatched parcels (no representative_ID) before
+    # counting -- same as build_parcel_frame's Step 2.
+    df_matched = df_mapping.dropna(subset=["representative_ID"]).copy()
+
+    # Step 3 -- representative_ID reads from CSV as float64 (the NaN rows
+    # upcast the whole column); cast to int64 so the dict keys match
+    # bldg_id's dtype in the TARE output.
+    df_matched["representative_ID"] = df_matched["representative_ID"].astype(
+        "int64"
+    )
+
+    # Step 4 -- count parcels per representative building and return as a
+    # plain dict, ready for a per-row .map() lookup.
+    parcel_counts = df_matched.groupby("representative_ID")["tax_parcel_ID"].size()
+    return {int(bldg_id): float(count) for bldg_id, count in parcel_counts.items()}
