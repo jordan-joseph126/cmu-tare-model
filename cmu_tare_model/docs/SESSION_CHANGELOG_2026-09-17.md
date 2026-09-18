@@ -444,3 +444,50 @@ the researcher; leaving both in place would print the table twice.
 Also saved a memory (`feedback_concise_inline_comments`) recording the
 comment-density preference from the correction above, so it carries into
 future sessions on this project.
+
+---
+
+## Interim refactoring guide -- reconciliation session (18 Sep 2026)
+
+A separate continuation-session prompt asked for progress to be reconciled and an interim
+refactoring guide produced, without executing Task 3 or any later task. Two things were
+done first, in order, before writing anything: an independent re-audit of the actual
+codebase (not trusting the changelog above, Jordan's status report, or the continuation
+prompt's own "Current state" claims), and a summary of this session's real back-and-forth,
+capturing every point where execution departed from a task's original contract.
+
+The re-audit found two claims in the continuation prompt that do not match the actual
+repository: the AWS/BSQ setup is described there as fully resolved with
+`query_unload_s3_bucket` now set wherever `BuildStockQuery` is constructed, but the
+installed package is still confirmed `buildstock_query-0.2.0`, which has no such parameter
+at all -- this session's own code comment (still live in the notebook) explains exactly
+why. And the colleague's in-progress BSQ code, described as already running against a
+matched subset, still was not found anywhere in this repository -- same as Task 1's
+original finding. Both are called out explicitly rather than carried forward as fact.
+
+The re-audit also found two new TODO comments the researcher added directly to the
+notebook outside this session's conversation (commit `438b197`, "Added TODO placeholders
+for Tamar to resume"): a note that custom weighting may eventually need a
+feeder -> building -> weight structure, not just building -> weight, and a note to
+parameterize the hardcoded `BuildStockQuery(...)` constructor arguments as user input.
+Neither is implemented or was previously scoped; both are flagged for whoever resumes
+Task 3 onward to raise with the researcher.
+
+Confirmed unchanged and still valid: Task 5's contract remains wrong as originally
+written (no legacy annual-MWh code exists to port -- unchanged from Task 1's original
+finding), Task 3's contract is fully intact (no season-peak keys exist yet in
+`peak_dict`), Task 6's contract is fully intact (only a comment scaffold exists, no
+functional loop), and the 32-test suite still passes.
+
+The guide itself lives at `cmu_tare_model/docs/GRID_IMPACT_REFACTORING_GUIDE.md` --
+the same file Task 8 will later finalize, not a second document. It marks Objective 1
+(Task 2) complete with a full what-changed walkthrough; Objectives 2-4 (Tasks 3, 4, 5,
+6) as not started, each with next steps and an explicit note on whether that task's
+contract still holds; Objective 5 (Task 7) as complete only for code that currently
+exists, since it cannot be more complete than the code it documents; a "Where the plan
+changed" section capturing every deviation from this session (the Allegheny-naming and
+TEST_FIPS generalization turning out to be load-bearing, the two pre-existing bugs found
+and fixed, the regression introduced and caught, the AWS-check removal, the three new
+helper functions, the heating-fuel-table rewrite and relocation, the two rounds of
+comment-density correction, and the pre-commit git-hygiene catch); and states plainly
+that Task 4's test results are not available, rather than omitting that section.
