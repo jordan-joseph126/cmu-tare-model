@@ -427,7 +427,7 @@ BSQ_ELEC_COL: str = "electricity.total.energy_consumption"
 METADATA_TABLE: str = "resstock_amy2018_release_1_1_metadata"
 COUNTY_COL: str = "in.county"     # GISJOIN format
 STATE_COL: str = "in.state"       # 2-char state code
-WEIGHT_COL: str = "weight"        # BSQ reads per-row from metadata
+WEIGHT_COL: str = "weight"        # BSQ reads per-row from metadata (see about changing this to match count)
 
 # Minimum sample count per county/state for spatial aggregation.
 # Set to 1 — all counties are included regardless of sample size.
