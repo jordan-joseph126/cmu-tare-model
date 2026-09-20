@@ -2,16 +2,23 @@ import os
 import pandas as pd
 import numpy as np
 import re
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from config import PROJECT_ROOT
-from cmu_tare_model.constants import EQUIPMENT_SPECS, VALID_CATEGORIES, VERBOSE
+from cmu_tare_model.constants import (
+    EQUIPMENT_SPECS,
+    VALID_CATEGORIES,
+    VERBOSE,
+    RESSTOCK_RELEASE,
+    RESSTOCK_RELEASE_AND_MP,
+    )
 
 from cmu_tare_model.utils.validation_framework import get_valid_calculation_mask
 from cmu_tare_model.utils.calculation_utils import (
     get_all_possible_fuel_columns,
     identify_valid_homes
     )
+from cmu_tare_model.utils.resstock_schema import resstock_col
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -47,6 +54,121 @@ _df_county_gea["county_fips"] = (
 COUNTY_TO_GEA = dict(
     zip(_df_county_gea["county_fips"], _df_county_gea["Cambium GEA"])
 )
+
+
+def read_resstock_2025_1_parquet(mp: int) -> pd.DataFrame:
+    """Reads one ResStock 2025.1 national AMY2018 parquet file.
+
+    2025.1 file names do not follow the 2022.1.1 'upgradeNN' zero-padded
+    convention (mp_to_upgrade), so this builds the path directly: the
+    baseline is upgrade0.parquet and Upgrade 05 is upgrade5.parquet, with no
+    padding. The parquet file also does not carry bldg_id as an index the
+    way the 2022.1.1 CSV read does (index_col="bldg_id"), so it is set here
+    after the read.
+
+    Args:
+        mp: Measure package number under the '2025.1' release (0 for the
+            baseline, 5 for the dual-fuel Upgrade 05).
+
+    Returns:
+        The raw ResStock 2025.1 frame, indexed by bldg_id.
+
+    Raises:
+        ValueError: If mp is not 0 and not in RESSTOCK_RELEASE_AND_MP['2025.1'].
+    """
+    if mp != 0 and mp not in RESSTOCK_RELEASE_AND_MP['2025.1']:
+        raise ValueError(
+            f"mp={mp} is not a loadable 2025.1 package; expected 0 (baseline) "
+            f"or one of {RESSTOCK_RELEASE_AND_MP['2025.1']}")
+    filename = f"upgrade{mp}.parquet"
+    file_path = os.path.join(
+        PROJECT_ROOT, "data", "resstock_2025_1", filename)
+    df_raw = pd.read_parquet(file_path)
+    return df_raw.set_index("bldg_id")
+
+
+# Backup fuel abbreviations published in the dual-fuel upgrade string, mapped
+# to the same fuel labels FUEL_MAPPING and this module use elsewhere
+# ('Natural Gas', not the abbreviation 'NG'). Only 'NG' has been observed in
+# the published data (Phase 1 audit, Section B.7); the other entries are
+# here so a future dual-fuel package with a different backup fuel fails
+# loudly instead of silently mapping to the wrong fuel.
+_DUAL_FUEL_BACKUP_FUEL_LABELS = {
+    'NG': 'Natural Gas',
+    'FO': 'Fuel Oil',
+    'LPG': 'Propane',
+    'Electric': 'Electricity',
+}
+
+# Matches strings like:
+#   "Dual-Fuel ASHP, SEER 15.2, 7.8 HSPF2, Integrated Backup, 92.5% AFUE NG, 35F switchover"
+# Both published AFUE tiers (92.5 and 95.0 percent) fit this same pattern;
+# only the numeric fields and the backup fuel abbreviation vary.
+_DUAL_FUEL_HEATING_EFFICIENCY_PATTERN = re.compile(
+    r'^Dual-Fuel ASHP, SEER ([\d.]+), ([\d.]+) HSPF2, Integrated Backup, '
+    r'([\d.]+)% AFUE (\w+), (\d+)F switchover$'
+)
+
+
+def parse_dual_fuel_heating_efficiency(spec: str) -> Dict[str, Any]:
+    """Parses a ResStock 2025.1 dual-fuel upgrade.hvac_heating_efficiency string.
+
+    The dual-fuel package (Upgrade 05) publishes one option string per home
+    that packs the heat pump's SEER2/HSPF2 rating, the backup furnace's fuel
+    and AFUE, and the outdoor temperature at which the system switches from
+    the heat pump to the backup furnace. This is a dedicated parser for that
+    format -- it must not be run through the MP3 ENERGY STAR override's
+    plain substring replace, which would match 'SEER 15' inside 'SEER 15.2'
+    and corrupt the value (see the release guard on that override, below).
+
+    Args:
+        spec: The raw upgrade.hvac_heating_efficiency string, for example
+            "Dual-Fuel ASHP, SEER 15.2, 7.8 HSPF2, Integrated Backup, 92.5%
+            AFUE NG, 35F switchover".
+
+    Returns:
+        A dict with:
+            hp_seer2 (float): the heat pump's SEER2 rating.
+            hp_hspf2 (float): the heat pump's HSPF2 rating.
+            backup_fuel (str): the backup furnace's fuel, using the same
+                labels as FUEL_MAPPING ('Natural Gas', not 'NG').
+            backup_afue (float): the backup furnace's AFUE as a fraction
+                (0.925, not 92.5), matching the REMDB v4 AFUE convention.
+            switchover_f (float): the outdoor temperature, in degrees F, at
+                which the system switches from the heat pump to the backup
+                furnace.
+
+    Raises:
+        ValueError: If spec is not a string, does not match the published
+            dual-fuel format, or names a backup fuel abbreviation this
+            function does not recognize.
+    """
+    if not isinstance(spec, str):
+        raise ValueError(
+            f"Expected a dual-fuel heating efficiency string, got "
+            f"{type(spec).__name__}: {spec!r}")
+
+    match = _DUAL_FUEL_HEATING_EFFICIENCY_PATTERN.match(spec.strip())
+    if match is None:
+        raise ValueError(
+            f"'{spec}' does not match the published dual-fuel "
+            f"upgrade.hvac_heating_efficiency format")
+
+    seer2_str, hspf2_str, afue_pct_str, fuel_abbrev, switchover_str = match.groups()
+
+    if fuel_abbrev not in _DUAL_FUEL_BACKUP_FUEL_LABELS:
+        raise ValueError(
+            f"Unrecognized dual-fuel backup fuel abbreviation "
+            f"'{fuel_abbrev}' in '{spec}'; expected one of "
+            f"{sorted(_DUAL_FUEL_BACKUP_FUEL_LABELS)}")
+
+    return {
+        'hp_seer2': float(seer2_str),
+        'hp_hspf2': float(hspf2_str),
+        'backup_fuel': _DUAL_FUEL_BACKUP_FUEL_LABELS[fuel_abbrev],
+        'backup_afue': float(afue_pct_str) / 100,
+        'switchover_f': float(switchover_str),
+    }
 
 
 def extract_city_name(row: str) -> str:
@@ -168,7 +290,8 @@ def preprocess_fuel_data(df: pd.DataFrame,
 
 def df_enduse_refactored(
     df_baseline: pd.DataFrame,
-    verbose: bool = VERBOSE
+    verbose: bool = VERBOSE,
+    release: str = RESSTOCK_RELEASE
 ) -> pd.DataFrame:
     """Creates a standardized energy usage DataFrame and applies data quality filters.
 
@@ -179,6 +302,10 @@ def df_enduse_refactored(
     Args:
         df_baseline: The baseline DataFrame containing raw EUSS/ResStock data.
         verbose: Whether to print detailed processing information.
+        release: ResStock release the frame was loaded from ('2022.1.1' or
+            '2025.1'). Selects which physical column names to read via
+            RESSTOCK_COLUMN_MAP. Defaults to RESSTOCK_RELEASE, so existing
+            2022.1.1 callers that don't pass this argument are unaffected.
 
     Returns:
         A standardized DataFrame with processed consumption data and data quality flags.
@@ -199,35 +326,42 @@ def df_enduse_refactored(
         return df_baseline
 
     # Standardize fuel names in the base columns
-    df_baseline = preprocess_fuel_data(df_baseline, 'in.clothes_dryer')
-    df_baseline = preprocess_fuel_data(df_baseline, 'in.cooking_range')
+    df_baseline = preprocess_fuel_data(
+        df_baseline, resstock_col(release, 'clothes_dryer_type'))
+    df_baseline = preprocess_fuel_data(
+        df_baseline, resstock_col(release, 'cooking_range_type'))
 
     # ===== STEP 1: Initialize with common columns (always present) =====
+    # Every physical column name below is looked up by its logical name so
+    # this function works unchanged on both ResStock releases; weight is not
+    # looked up because its name is identical in both releases.
     df_enduse = pd.DataFrame({
         'weight': df_baseline['weight'],
-        'square_footage': df_baseline['in.sqft'],
-        'census_region': df_baseline['in.census_region'],
-        'census_division': df_baseline['in.census_division'],
-        'census_division_recs': df_baseline['in.census_division_recs'],
-        'building_america_climate_zone': df_baseline['in.building_america_climate_zone'],
-        'reeds_balancing_area': df_baseline['in.reeds_balancing_area'],
-        'state': df_baseline['in.state'],
-        'city': df_baseline['in.city'].apply(extract_city_name),
-        'urbanicity': df_baseline['in.puma_metro_status'].apply(map_metro_status),
-        'county': df_baseline['in.county'],
-        'county_fips': df_baseline['in.county'].apply(lambda x: x[1:3] + x[4:7]),
-        'puma': df_baseline['in.puma'],
-        'county_and_puma': df_baseline['in.county_and_puma'],
-        'weather_file_city': df_baseline['in.weather_file_city'],
-        'Longitude': df_baseline['in.weather_file_longitude'],
-        'Latitude': df_baseline['in.weather_file_latitude'],
-        'building_type': df_baseline['in.geometry_building_type_recs'],
-        'income': df_baseline['in.income'],
-        'federal_poverty_level': df_baseline['in.federal_poverty_level'],
-        'occupancy': df_baseline['in.occupants'],
-        'tenure': df_baseline['in.tenure'],
-        'vacancy_status': df_baseline['in.vacancy_status'],
-        'vintage': df_baseline['in.vintage']
+        'square_footage': df_baseline[resstock_col(release, 'floor_area_sqft')],
+        'census_region': df_baseline[resstock_col(release, 'census_region')],
+        'census_division': df_baseline[resstock_col(release, 'census_division')],
+        'census_division_recs': df_baseline[resstock_col(release, 'census_division_recs')],
+        'building_america_climate_zone': df_baseline[resstock_col(release, 'climate_zone_ba')],
+        'climate_zone_iecc': df_baseline[resstock_col(release, 'climate_zone_iecc')],
+        'reeds_balancing_area': df_baseline[resstock_col(release, 'reeds_balancing_area')],
+        'state': df_baseline[resstock_col(release, 'state')],
+        'city': df_baseline[resstock_col(release, 'city')].apply(extract_city_name),
+        'urbanicity': df_baseline[resstock_col(release, 'metro_status')].apply(map_metro_status),
+        'county': df_baseline[resstock_col(release, 'county')],
+        'county_fips': df_baseline[resstock_col(release, 'county')].apply(
+            lambda x: x[1:3] + x[4:7]),
+        'puma': df_baseline[resstock_col(release, 'puma')],
+        'county_and_puma': df_baseline[resstock_col(release, 'county_and_puma')],
+        'weather_file_city': df_baseline[resstock_col(release, 'weather_city')],
+        'Longitude': df_baseline[resstock_col(release, 'longitude')],
+        'Latitude': df_baseline[resstock_col(release, 'latitude')],
+        'building_type': df_baseline[resstock_col(release, 'building_type')],
+        'income': df_baseline[resstock_col(release, 'income')],
+        'federal_poverty_level': df_baseline[resstock_col(release, 'federal_poverty_level')],
+        'occupancy': df_baseline[resstock_col(release, 'occupants')],
+        'tenure': df_baseline[resstock_col(release, 'tenure')],
+        'vacancy_status': df_baseline[resstock_col(release, 'vacancy_status')],
+        'vintage': df_baseline[resstock_col(release, 'vintage')]
     })
 
     # ===== STEP 1b: Assign the new Cambium GEA region from the county crosswalk =====
@@ -250,58 +384,66 @@ def df_enduse_refactored(
             f"Climate damages for these homes will be NaN."
         )
 
+    # ===== STEP 1c: Electric panel service rating (2025.1 only) =====
+    # A home's main panel amperage, published starting ResStock 2025.1.
+    # There is no 2022.1.1 counterpart, so this column is simply absent from
+    # a 2022.1.1 call's output rather than filled with a placeholder.
+    if release == '2025.1':
+        df_enduse['panel_service_rating_amps'] = (
+            df_baseline[resstock_col(release, 'panel_service_rating')])
+
     # ===== STEP 2: Conditionally add category-specific columns =====
     
     # HEATING - only if in scope
     if 'heating' in VALID_CATEGORIES:
-        df_enduse['base_heating_fuel'] = df_baseline['in.heating_fuel']
-        df_enduse['heating_type'] = df_baseline['in.hvac_heating_type_and_fuel']
-        df_enduse['base_heating_efficiency'] = df_baseline['in.hvac_heating_efficiency']
+        df_enduse['base_heating_fuel'] = df_baseline[resstock_col(release, 'heating_fuel')]
+        df_enduse['heating_type'] = df_baseline[resstock_col(release, 'heating_type_and_fuel')]
+        df_enduse['base_heating_efficiency'] = df_baseline[resstock_col(release, 'heating_efficiency')]
         # The home's existing heating system's own size, straight from the
         # ResStock baseline run -- not the retrofit heat pump's size. This is
         # what the avoided-replacement cost should be priced from (see
         # add_remdb_metrics in remdb_v4_installed_cost_utils.py).
         df_enduse['base_size_heating_system_primary_k_btu_h'] = (
-            df_baseline['out.params.size_heating_system_primary_k_btu_h'])
-        df_enduse['base_electricity_heating_consumption'] = df_baseline['out.electricity.heating.energy_consumption.kwh']
-        df_enduse['base_fuelOil_heating_consumption'] = df_baseline['out.fuel_oil.heating.energy_consumption.kwh']
-        df_enduse['base_naturalGas_heating_consumption'] = df_baseline['out.natural_gas.heating.energy_consumption.kwh']
-        df_enduse['base_propane_heating_consumption'] = df_baseline['out.propane.heating.energy_consumption.kwh']
+            df_baseline[resstock_col(release, 'size_heating_primary')])
+        df_enduse['base_electricity_heating_consumption'] = df_baseline[resstock_col(release, 'heating_electricity')]
+        df_enduse['base_fuelOil_heating_consumption'] = df_baseline[resstock_col(release, 'heating_fuel_oil')]
+        df_enduse['base_naturalGas_heating_consumption'] = df_baseline[resstock_col(release, 'heating_natural_gas')]
+        df_enduse['base_propane_heating_consumption'] = df_baseline[resstock_col(release, 'heating_propane')]
 
     # COOLING - only if in scope
     if 'cooling' in VALID_CATEGORIES:
         df_enduse['base_cooling_fuel'] = 'Electricity'  # Cooling is always electric
-        df_enduse['cooling_type'] = df_baseline['in.hvac_cooling_type']
-        df_enduse['base_cooling_efficiency'] = df_baseline['in.hvac_cooling_efficiency']
+        df_enduse['cooling_type'] = df_baseline[resstock_col(release, 'cooling_type')]
+        df_enduse['base_cooling_efficiency'] = df_baseline[resstock_col(release, 'cooling_efficiency')]
         # The home's existing cooling system's own size, straight from the
         # ResStock baseline run -- not the retrofit heat pump's size. Same
         # reasoning as base_size_heating_system_primary_k_btu_h above.
         df_enduse['base_size_cooling_system_primary_k_btu_h'] = (
-            df_baseline['out.params.size_cooling_system_primary_k_btu_h'])
-        df_enduse['base_electricity_cooling_consumption'] = df_baseline['out.electricity.cooling.energy_consumption.kwh']
+            df_baseline[resstock_col(release, 'size_cooling_primary')])
+        df_enduse['base_electricity_cooling_consumption'] = df_baseline[resstock_col(release, 'cooling_electricity')]
 
     # WATER HEATING - only if in scope
     if 'waterHeating' in VALID_CATEGORIES:
-        df_enduse['base_waterHeating_fuel'] = df_baseline['in.water_heater_fuel']
-        df_enduse['waterHeating_type'] = df_baseline['in.water_heater_efficiency']
-        df_enduse['base_electricity_waterHeating_consumption'] = df_baseline['out.electricity.hot_water.energy_consumption.kwh']
-        df_enduse['base_fuelOil_waterHeating_consumption'] = df_baseline['out.fuel_oil.hot_water.energy_consumption.kwh']
-        df_enduse['base_naturalGas_waterHeating_consumption'] = df_baseline['out.natural_gas.hot_water.energy_consumption.kwh']
-        df_enduse['base_propane_waterHeating_consumption'] = df_baseline['out.propane.hot_water.energy_consumption.kwh']
-    
+        df_enduse['base_waterHeating_fuel'] = df_baseline[resstock_col(release, 'water_heater_fuel')]
+        df_enduse['waterHeating_type'] = df_baseline[resstock_col(release, 'water_heater_efficiency')]
+        df_enduse['base_electricity_waterHeating_consumption'] = df_baseline[resstock_col(release, 'hot_water_electricity')]
+        df_enduse['base_fuelOil_waterHeating_consumption'] = df_baseline[resstock_col(release, 'hot_water_fuel_oil')]
+        df_enduse['base_naturalGas_waterHeating_consumption'] = df_baseline[resstock_col(release, 'hot_water_natural_gas')]
+        df_enduse['base_propane_waterHeating_consumption'] = df_baseline[resstock_col(release, 'hot_water_propane')]
+
     # CLOTHES DRYING - only if in scope
     if 'clothesDrying' in VALID_CATEGORIES:
-        df_enduse['base_clothesDrying_fuel'] = df_baseline['in.clothes_dryer']
-        df_enduse['base_electricity_clothesDrying_consumption'] = df_baseline['out.electricity.clothes_dryer.energy_consumption.kwh']
-        df_enduse['base_naturalGas_clothesDrying_consumption'] = df_baseline['out.natural_gas.clothes_dryer.energy_consumption.kwh']
-        df_enduse['base_propane_clothesDrying_consumption'] = df_baseline['out.propane.clothes_dryer.energy_consumption.kwh']
-    
+        df_enduse['base_clothesDrying_fuel'] = df_baseline[resstock_col(release, 'clothes_dryer_type')]
+        df_enduse['base_electricity_clothesDrying_consumption'] = df_baseline[resstock_col(release, 'clothes_dryer_electricity')]
+        df_enduse['base_naturalGas_clothesDrying_consumption'] = df_baseline[resstock_col(release, 'clothes_dryer_natural_gas')]
+        df_enduse['base_propane_clothesDrying_consumption'] = df_baseline[resstock_col(release, 'clothes_dryer_propane')]
+
     # COOKING - only if in scope
     if 'cooking' in VALID_CATEGORIES:
-        df_enduse['base_cooking_fuel'] = df_baseline['in.cooking_range']
-        df_enduse['base_electricity_cooking_consumption'] = df_baseline['out.electricity.range_oven.energy_consumption.kwh']
-        df_enduse['base_naturalGas_cooking_consumption'] = df_baseline['out.natural_gas.range_oven.energy_consumption.kwh']
-        df_enduse['base_propane_cooking_consumption'] = df_baseline['out.propane.range_oven.energy_consumption.kwh']
+        df_enduse['base_cooking_fuel'] = df_baseline[resstock_col(release, 'cooking_range_type')]
+        df_enduse['base_electricity_cooking_consumption'] = df_baseline[resstock_col(release, 'cooking_electricity')]
+        df_enduse['base_naturalGas_cooking_consumption'] = df_baseline[resstock_col(release, 'cooking_natural_gas')]
+        df_enduse['base_propane_cooking_consumption'] = df_baseline[resstock_col(release, 'cooking_propane')]
 
     # ===== Whole-home baseline site energy (HOMES savings-fraction denominator) =====
     # The June 2026 HOMES rebate tiers key on the modeled whole-home percent
@@ -317,7 +459,7 @@ def df_enduse_refactored(
     # is correct ONLY as the savings-fraction denominator; do NOT feed it into
     # any electricity, demand, or peak metric -- those use the electricity total.
     df_enduse['baseline_total_site_consumption'] = (
-        df_baseline['out.site_energy.total.energy_consumption.kwh']
+        df_baseline[resstock_col(release, 'site_energy_total')]
     )
 
     # ===== Retain per-home peak demand + whole-home electricity (metadata) =====
@@ -334,16 +476,16 @@ def df_enduse_refactored(
     # Home-level values, so they are left unmasked by heating/cooling validity,
     # the same treatment as baseline_total_site_consumption above.
     df_enduse['base_peak_electricity_cooling_kw'] = (
-        df_baseline['out.electricity.peak_when_cooling.kw']
+        df_baseline[resstock_col(release, 'peak_electricity_cooling')]
     )
     df_enduse['base_peak_electricity_heating_kw'] = (
-        df_baseline['out.electricity.peak_when_heating.kw']
+        df_baseline[resstock_col(release, 'peak_electricity_heating')]
     )
     df_enduse['base_peak_load_cooling_kbtu_hr'] = (
-        df_baseline['out.load.cooling.peak.kbtu_hr']
+        df_baseline[resstock_col(release, 'peak_load_cooling')]
     )
     df_enduse['base_peak_load_heating_kbtu_hr'] = (
-        df_baseline['out.load.heating.peak.kbtu_hr']
+        df_baseline[resstock_col(release, 'peak_load_heating')]
     )
     # 'out.electricity.total.energy_consumption.kwh' is the whole-home
     # ELECTRICITY total (all electric end uses), NOT the all-fuel site energy
@@ -359,7 +501,7 @@ def df_enduse_refactored(
     # or category aggregate used in the cost/rebate pipeline
     # (baseline_total_site_consumption, baseline_{category}_consumption).
     df_enduse['base_total_electricity_consumption'] = (
-        df_baseline['out.electricity.total.energy_consumption.kwh']
+        df_baseline[resstock_col(release, 'electricity_total')]
     )
 
     # ===== STEP 3: Calculate total consumption for each category in scope =====
@@ -403,19 +545,20 @@ def df_enduse_refactored(
 
 
 def df_enduse_compare(
-    df_mp: pd.DataFrame, 
-    input_mp: str, 
-    menu_mp: int, 
-    df_baseline: pd.DataFrame, 
-    df_cooking_range: pd.DataFrame,
-    verbose: bool = VERBOSE
+    df_mp: pd.DataFrame,
+    input_mp: str,
+    menu_mp: int,
+    df_baseline: pd.DataFrame,
+    df_cooking_range: Optional[pd.DataFrame] = None,
+    verbose: bool = VERBOSE,
+    release: str = RESSTOCK_RELEASE
 ) -> pd.DataFrame:
     """Creates a comparison DataFrame by merging multiple DataFrames based on measure packages.
 
     This function constructs a new DataFrame (df_compare) that includes columns
     from df_mp, df_cooking_range, and merges them with df_baseline to compare
     baseline vs. measure package outputs.
-    
+
     Only includes columns for equipment categories present in EQUIPMENT_SPECS.
 
     Args:
@@ -423,18 +566,39 @@ def df_enduse_compare(
         input_mp: The input measure package ID (e.g., 'upgrade09', 'upgrade10').
         menu_mp: The menu measure package number.
         df_baseline: The baseline DataFrame to merge with df_compare.
-        df_cooking_range: Additional DataFrame for cooking range parameters/outputs.
+        df_cooking_range: Additional DataFrame for cooking range parameters and
+            outputs. Only required when 'cooking' is in EQUIPMENT_SPECS (it is
+            not, today); left as None otherwise.
         verbose: Whether to print detailed processing information.
+        release: ResStock release df_mp and df_baseline were loaded from
+            ('2022.1.1' or '2025.1'). Gates the MP3 ENERGY STAR override
+            below, since 2025.1 Upgrade 03 will later also load as mp=3.
+            Defaults to RESSTOCK_RELEASE, so existing 2022.1.1 callers that
+            don't pass this argument are unaffected.
 
     Returns:
         A merged DataFrame (df_compare) that includes relevant columns for
         baseline and measure packages comparison.
+
+    Raises:
+        ValueError: If 'cooking' is in EQUIPMENT_SPECS but df_cooking_range
+            is None.
     """
     # Updated to handle different enduses based on EQUIPMENT_SPECS.
     # - Rest of codebase updated so only initial columns created for cooling and replacement cost calculations performed
     # - This allows for a scenario where only heating is replaced AND one where heating and cooling systems are both replace with HP
     # - Resolves the excessive data columns and double counting with $8000 rebate. No longer need CDD projections.
     VALID_CATEGORIES = list(EQUIPMENT_SPECS.keys())
+
+    # Fail fast: cooking is inactive today (EQUIPMENT_SPECS has only heating
+    # and cooling), but if it is ever turned on, a caller that forgot
+    # df_cooking_range should get a clear error here, not a KeyError deep in
+    # STEP 2 or STEP 3 below.
+    if 'cooking' in VALID_CATEGORIES and df_cooking_range is None:
+        raise ValueError(
+            "df_cooking_range is required when 'cooking' is in "
+            "EQUIPMENT_SPECS, but None was passed."
+        )
 
     # ===== STEP 1: Initialize with common columns (always present) =====
     df_compare = pd.DataFrame({
@@ -445,10 +609,12 @@ def df_enduse_compare(
     
     # HEATING - only if in scope
     if 'heating' in VALID_CATEGORIES:
-        df_compare['hvac_heating_type_and_fuel'] = df_mp['in.hvac_heating_type_and_fuel']
-        df_compare['hvac_heating_efficiency'] = df_mp['in.hvac_heating_efficiency']
-        # df_compare['size_heat_pump_backup_k_btu_h'] = df_mp['out.params.size_heat_pump_backup_primary_k_btu_h']
-        # This is the retrofit heat pump's capacity for THIS measure package,
+        df_compare['hvac_heating_type_and_fuel'] = df_mp[resstock_col(release, 'heating_type_and_fuel')]
+        df_compare['hvac_heating_efficiency'] = df_mp[resstock_col(release, 'heating_efficiency')]
+        # The heat pump's own backup-coil (or, for mp=5, backup furnace)
+        # capacity for THIS measure package. Carried as a plain pass-through;
+        # no cost is attached to it here (a later phase will price the mp=5
+        # backup furnace from it). This is the retrofit heat pump's capacity,
         # not the baseline furnace's nameplate size. ResStock autosizes
         # equipment separately for every upgrade run (out.params.* comes from
         # df_mp, the MP3/MP4 upgrade output), so the value varies by measure
@@ -459,9 +625,10 @@ def df_enduse_compare(
         # cost of replacing the OLD furnace/boiler) is priced off
         # base_size_heating_system_primary_k_btu_h instead, added in
         # df_enduse_refactored. See docs/SESSION_CHANGELOG_2026-08-20.md.
-        df_compare['size_heating_system_primary_k_btu_h'] = df_mp['out.params.size_heating_system_primary_k_btu_h']
+        df_compare['size_heat_pump_backup_primary_k_btu_h'] = df_mp[resstock_col(release, 'size_heat_pump_backup')]
+        df_compare['size_heating_system_primary_k_btu_h'] = df_mp[resstock_col(release, 'size_heating_primary')]
         # df_compare['size_heating_secondary_k_btu_h'] = df_mp['out.params.size_heating_system_secondary_k_btu_h']
-        df_compare['upgrade_hvac_heating_efficiency'] = df_mp['upgrade.hvac_heating_efficiency']
+        df_compare['upgrade_hvac_heating_efficiency'] = df_mp[resstock_col(release, 'upgrade_heating_efficiency')]
 
         # ENERGY STAR override (MP3 only). MP3's modeled heat pump is
         # SEER 15 / 9.0 HSPF -- just below the ENERGY STAR minimum
@@ -472,7 +639,13 @@ def df_enduse_compare(
         # modestly; HSPF is bumped for spec accuracy but has no cost lever in
         # this model. Energy use is unchanged (it comes from the ResStock
         # simulation, not from this string).
-        if menu_mp == 3:
+        # Release guard: this override is tuned to the exact 2022.1.1 MP3
+        # string ("...SEER 15, 9.0 HSPF..."). 2025.1 Upgrade 03 will later
+        # load under the same mp=3 number, but with a different string
+        # format; without this guard the override would fire on that
+        # package too and silently corrupt it (the same way it would
+        # corrupt the dual-fuel string -- see parse_dual_fuel_heating_efficiency).
+        if release == '2022.1.1' and menu_mp == 3:
             df_compare['upgrade_hvac_heating_efficiency'] = (
                 df_compare['upgrade_hvac_heating_efficiency']
                 .str.replace('SEER 15', 'SEER 16', regex=False)
@@ -481,8 +654,8 @@ def df_enduse_compare(
     
     # COOLING - only if in scope
     if 'cooling' in VALID_CATEGORIES:
-        df_compare['hvac_cooling_type'] = df_mp['in.hvac_cooling_type']
-        df_compare['hvac_cooling_efficiency'] = df_mp['in.hvac_cooling_efficiency']
+        df_compare['hvac_cooling_type'] = df_mp[resstock_col(release, 'cooling_type')]
+        df_compare['hvac_cooling_efficiency'] = df_mp[resstock_col(release, 'cooling_efficiency')]
         # Same retrofit heat-pump capacity as size_heating_system_primary_k_btu_h
         # above -- one heat pump serves both loads, so heating and cooling
         # capacity are identical for every home. Not the baseline air
@@ -491,15 +664,16 @@ def df_enduse_compare(
         # of replacing the OLD air conditioner) is priced off
         # base_size_cooling_system_primary_k_btu_h instead, added in
         # df_enduse_refactored. See docs/SESSION_CHANGELOG_2026-08-20.md.
-        df_compare['size_cooling_system_primary_k_btu_h'] = df_mp['out.params.size_cooling_system_primary_k_btu_h']
-        df_compare['upgrade_hvac_cooling_efficiency'] = df_mp['upgrade.hvac_cooling_efficiency']
+        df_compare['size_cooling_system_primary_k_btu_h'] = df_mp[resstock_col(release, 'size_cooling_primary')]
+        df_compare['upgrade_hvac_cooling_efficiency'] = df_mp[resstock_col(release, 'upgrade_cooling_efficiency')]
 
         # ENERGY STAR override (MP3 only), parallel to the heating override above
         # so the two upgrade-spec columns stay consistent. ResStock records the
         # MP3 cooling upgrade as the bare "Heat Pump" label (no SEER encoded), so
         # this replace is a no-op today; it keeps the columns in sync if a future
         # data vintage carries a numeric cooling spec.
-        if menu_mp == 3:
+        # Same release guard as the heating override above.
+        if release == '2022.1.1' and menu_mp == 3:
             df_compare['upgrade_hvac_cooling_efficiency'] = (
                 df_compare['upgrade_hvac_cooling_efficiency']
                 .str.replace('SEER 15', 'SEER 16', regex=False)
@@ -530,7 +704,7 @@ def df_enduse_compare(
             # Special handling for measure packages 9 and 10 (MP9, MP10) with enclosure upgrades
             if input_mp == 'upgrade09':
                 menu_mp = 9
-                df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp['out.electricity.heating.energy_consumption.kwh'].round(2)
+                df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp[resstock_col(release, 'heating_electricity')].round(2)
 
                 # Basic Enclosure Package
                 df_compare['base_insulation_atticFloor'] = df_mp['in.insulation_ceiling']
@@ -549,7 +723,7 @@ def df_enduse_compare(
 
             elif input_mp == 'upgrade10':
                 menu_mp = 10
-                df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp['out.electricity.heating.energy_consumption.kwh'].round(2)
+                df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp[resstock_col(release, 'heating_electricity')].round(2)
 
                 # Basic Enclosure Package (same as MP9)
                 df_compare['base_insulation_atticFloor'] = df_mp['in.insulation_ceiling']
@@ -581,10 +755,27 @@ def df_enduse_compare(
 
             else:
                 # Standard heating consumption (no enclosure upgrades)
-                df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp['out.electricity.heating.energy_consumption.kwh'].round(2)
+                df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp[resstock_col(release, 'heating_electricity')].round(2)
+
+            # New pass-through columns capturing the rest of the heat pump's
+            # heating-related electricity and, for a dual-fuel retrofit
+            # (mp=5), the backup furnace's natural gas use. TARE previously
+            # assumed fan and auxiliary electricity were the same before and
+            # after the retrofit and left them out of both figures;
+            # capturing heating_fans_pumps here removes that assumption
+            # instead of continuing it, since the two systems' fan draws are
+            # not actually the same. Both columns also exist in 2022.1.1 --
+            # heating_fans_pumps has real nonzero values there too (every
+            # ducted ASHP draws blower electricity), while the natural-gas
+            # backup column is always zero in 2022.1.1 (no 2022.1.1 package
+            # models a fossil backup).
+            df_compare[f'mp{menu_mp}_heating_fans_pumps_consumption'] = (
+                df_mp[resstock_col(release, 'heating_fans_pumps')].round(2))
+            df_compare[f'mp{menu_mp}_heating_hp_bkup_naturalGas_consumption'] = (
+                df_mp[resstock_col(release, 'heating_hp_backup_natural_gas')].round(2))
 
         elif category == 'cooling':
-            df_compare[f'mp{menu_mp}_cooling_consumption'] = df_mp['out.electricity.cooling.energy_consumption.kwh'].round(2)
+            df_compare[f'mp{menu_mp}_cooling_consumption'] = df_mp[resstock_col(release, 'cooling_electricity')].round(2)
 
         elif category == 'waterHeating':
             df_compare[f'mp{menu_mp}_waterHeating_consumption'] = df_mp['out.electricity.hot_water.energy_consumption.kwh'].round(2)
@@ -610,33 +801,51 @@ def df_enduse_compare(
     #     baseline-vs-retrofit electricity change.
     # Home-level values; they are not added to any columns_to_mask list below, so
     # STEP 6 category validation leaves them intact.
+    # 2022.1.1's peak columns are conditioned on the end use running that hour;
+    # 2025.1's are conditioned on the calendar season instead, so the two
+    # releases' zero counts differ even though both represent "the peak."
     df_compare[f'mp{menu_mp}_peak_electricity_cooling_kw'] = (
-        df_mp['out.electricity.peak_when_cooling.kw']
+        df_mp[resstock_col(release, 'peak_electricity_cooling')]
     )
     df_compare[f'mp{menu_mp}_peak_electricity_heating_kw'] = (
-        df_mp['out.electricity.peak_when_heating.kw']
+        df_mp[resstock_col(release, 'peak_electricity_heating')]
     )
     df_compare[f'mp{menu_mp}_peak_electricity_cooling_kw_savings'] = (
-        df_mp['out.electricity.peak_when_cooling.kw.savings']
+        df_mp[resstock_col(release, 'peak_electricity_cooling_savings')]
     )
     df_compare[f'mp{menu_mp}_peak_electricity_heating_kw_savings'] = (
-        df_mp['out.electricity.peak_when_heating.kw.savings']
+        df_mp[resstock_col(release, 'peak_electricity_heating_savings')]
     )
     df_compare[f'mp{menu_mp}_peak_load_cooling_kbtu_hr'] = (
-        df_mp['out.load.cooling.peak.kbtu_hr']
+        df_mp[resstock_col(release, 'peak_load_cooling')]
     )
     df_compare[f'mp{menu_mp}_peak_load_heating_kbtu_hr'] = (
-        df_mp['out.load.heating.peak.kbtu_hr']
+        df_mp[resstock_col(release, 'peak_load_heating')]
     )
     df_compare[f'mp{menu_mp}_peak_load_cooling_kbtu_hr_savings'] = (
-        df_mp['out.load.cooling.peak.kbtu_hr.savings']
+        df_mp[resstock_col(release, 'peak_load_cooling_savings')]
     )
     df_compare[f'mp{menu_mp}_peak_load_heating_kbtu_hr_savings'] = (
-        df_mp['out.load.heating.peak.kbtu_hr.savings']
+        df_mp[resstock_col(release, 'peak_load_heating_savings')]
     )
     df_compare[f'mp{menu_mp}_total_electricity_consumption'] = (
-        df_mp['out.electricity.total.energy_consumption.kwh']
+        df_mp[resstock_col(release, 'electricity_total')]
     )
+
+    # ===== STEP 3c: Post-upgrade electrical panel constraint flags (2025.1) =====
+    # Reporting-only pass-through: whether the new equipment runs into an
+    # existing panel's capacity or breaker-space limit under the 2023 NEC
+    # existing-dwelling load calculation. No panel upgrade cost is modeled
+    # from these flags (see CLAUDE.md's capital-cost scope limitation); they
+    # are carried so a later phase can decide whether to price one. Only
+    # published starting ResStock 2025.1, so this block is release-gated.
+    if release == '2025.1':
+        df_compare[f'mp{menu_mp}_panel_constraint_overall'] = (
+            df_mp[resstock_col(release, 'panel_constraint_overall')])
+        df_compare[f'mp{menu_mp}_panel_constraint_capacity'] = (
+            df_mp[resstock_col(release, 'panel_constraint_capacity')])
+        df_compare[f'mp{menu_mp}_panel_constraint_breaker_space'] = (
+            df_mp[resstock_col(release, 'panel_constraint_breaker_space')])
 
     # ===== STEP 4: Merge with baseline DataFrame =====
     df_compare = pd.merge(df_baseline, df_compare, how='inner', left_index=True, right_index=True)

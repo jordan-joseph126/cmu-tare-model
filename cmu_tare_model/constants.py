@@ -81,6 +81,18 @@ VALID_MENU_MPS = [
     # 10
     ]
 
+# ResStock release this run reads. MP numbers repeat across releases (2025.1
+# Upgrades 03/04 will later load as mp=3/4, unlike 2022.1.1 MP3/MP4), so any
+# check on an MP number must also check the release.
+RESSTOCK_RELEASE = '2022.1.1'
+
+# Measure packages available in each release. Add 2025.1 Upgrades 04 and 03
+# to the '2025.1' list once Upgrade 05 has finished every phase.
+RESSTOCK_RELEASE_AND_MP = {
+    '2022.1.1': [3, 4],
+    '2025.1': [5],
+}
+
 # Short key identifiers for discount rates (used in dictionaries and user-facing code)
 PRIVATE_DISCOUNT_RATE_SHORT_KEYS = [
     # 'fixed_low',

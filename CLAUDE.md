@@ -131,6 +131,16 @@ Just make and save the file changes, and leave them in the working tree for
 the researcher to stage and commit. A summary or a suggested commit message
 can go in the chat — but don't act on it.
 
+### Regression guarantee — dropped for the ResStock 2025.1 integration (19 Sep 2026)
+
+The 2022.1.1 MP3/MP4 pipeline is no longer required to reproduce `2026-09-02_19-04`
+byte-identically, on any task or at any phase boundary, including a final check at the end of
+this integration. This branch exists to move onto ResStock 2025.1; the 2022.1.1 analysis is
+preserved in a separate, already-archived branch and will not be run from here. The 2022.1.1
+code path is still left alone by default -- this is not license to break it for no reason -- but
+it is not verified, proven, or reconciled going forward. Work already done under the old
+guarantee (through Phase 2 Task 6) is unaffected and does not need to be redone.
+
 ---
 
 ## Hard-coded Values
@@ -223,6 +233,15 @@ A wrong key returns silently as zero — no error, just wrong output.
 col_base = define_scenario_params(mp, policy)[0]   # → 'ref2025_mp3_'
 mp_str   = f'mp{mp}'                               # '3' or '4' — never 'mp3' literal
 ```
+
+### Raw ResStock source columns (both releases)
+
+A simple rename must never read as a new column. When a downstream frame (like
+`df_enduse`) carries a field sourced from a column the map marks `renamed`, give it a
+stable, release-invariant key -- never the raw physical name from either release, and
+never a `RESSTOCK_COLUMN_MAP` logical_name. `df_enduse_refactored`'s existing keys
+(`base_heating_fuel`, `square_footage`, ...) already follow this; extend the same
+pattern for the new 2025.1-only pass-through columns Task 6 adds.
 
 **NPV cases (nine per MP: three scopes x three rebate policy scenarios, as of the 11 July 2026 session):**
 ```

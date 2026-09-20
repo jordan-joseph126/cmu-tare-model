@@ -7,6 +7,12 @@ Heating System package, with the same outputs it produces today for MP3 and MP4 
 ResStock 2022.1.1.
 **Status:** Planning document. Nothing here has been applied to the codebase.
 
+**Superseded 19 Sep 2026:** the byte-identical-2022.1.1 regression guarantee described in
+Section 1 and referenced throughout the phase task lists below no longer applies. See
+CLAUDE.md's "Regression guarantee -- dropped" section and
+`docs/NEXT_STEPS_2026-09-19_DualFuel_ResStock2025_1.md` for the current requirement (none)
+before drafting any future phase's session prompt from this guide.
+
 > CLAUDE.md is the source of truth for conventions, file rules, reference values, coding
 > standards, and non-negotiables. This guide only adds what CLAUDE.md does not already know:
 > what changed in the data, what that breaks, the decisions that must be made first, and an
