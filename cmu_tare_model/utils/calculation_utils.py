@@ -222,6 +222,139 @@ def identify_valid_homes(
     return df
 
 
+# Fuel bucket order shared by compute_funnel_stage_row and
+# print_masking_funnel_stage, so the two funnel-reporting entry points can
+# never drift out of sync on which buckets exist or what order they print in.
+_FUNNEL_FUEL_ORDER = [
+    'Electricity', 'Electricity ASHP', 'Fuel Oil', 'Natural Gas', 'Propane']
+
+
+def compute_funnel_stage_row(
+    df: pd.DataFrame,
+    stage_label: str,
+    stage_mask: Optional[pd.Series] = None,
+    weight_col: str = 'weight',
+    heating_fuel_col: str = 'base_heating_fuel',
+    heating_type_col: str = 'heating_type',
+) -> Dict[str, Union[str, int, float]]:
+    """Computes one row of the masking filter funnel, without printing it.
+
+    Holds the rdu-count/weighted-count/fuel-share math in exactly one place,
+    shared by print_masking_funnel_stage (console reporting) and any caller
+    that accumulates funnel stages into a DataFrame instead (for example
+    load_and_filter_2025_1_upgrade's df_funnel).
+
+    Existing electric heat pumps ('Electricity ASHP' and its variants, such
+    as MSHP) are broken out of the general 'Electricity' fuel bucket, since
+    CLAUDE.md treats "any variant" of an existing heat pump as excluded for
+    a different reason than a home's baseline fuel (Documented Limitation
+    8).
+
+    Args:
+        df: The DataFrame at this filter stage.
+        stage_label: A short name for this stage, e.g. 'applicability'.
+        stage_mask: Optional boolean mask aligned to df's index; if given,
+            only rows where True are counted, so a stage can be reported
+            without pre-filtering df itself. If None, every row in df is
+            counted.
+        weight_col: Name of the dwelling-unit weight column.
+        heating_fuel_col: Name of the baseline heating fuel column.
+        heating_type_col: Name of the baseline heating type-and-fuel column
+            (used only to identify existing heat pumps).
+
+    Returns:
+        A dict with keys 'stage', 'rdu_count', 'weighted_count', and one
+        '{fuel}_pct' key per bucket in _FUNNEL_FUEL_ORDER.
+
+    Raises:
+        KeyError: If a required column is missing from df.
+    """
+    required_cols = [weight_col, heating_fuel_col, heating_type_col]
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        raise KeyError(
+            f"compute_funnel_stage_row requires columns {required_cols}, "
+            f"missing: {missing_cols}")
+
+    df_stage = df if stage_mask is None else df.loc[stage_mask]
+
+    rdu_count = len(df_stage)
+    weighted_count = df_stage[weight_col].sum()
+
+    is_existing_heat_pump = df_stage[heating_type_col].isin(
+        ['Electricity ASHP', 'Electricity MSHP'])
+    fuel_bucket = df_stage[heating_fuel_col].where(
+        ~is_existing_heat_pump, 'Electricity ASHP')
+
+    weight_by_fuel = df_stage.groupby(fuel_bucket)[weight_col].sum()
+    share_by_fuel = {
+        fuel: (weight_by_fuel.get(fuel, 0.0) / weighted_count * 100
+               if weighted_count > 0 else 0.0)
+        for fuel in _FUNNEL_FUEL_ORDER
+    }
+
+    row: Dict[str, Union[str, int, float]] = {
+        'stage': stage_label,
+        'rdu_count': rdu_count,
+        'weighted_count': weighted_count,
+    }
+    row.update({f'{fuel}_pct': share_by_fuel[fuel] for fuel in _FUNNEL_FUEL_ORDER})
+    return row
+
+
+def print_masking_funnel_stage(
+    df: pd.DataFrame,
+    stage_label: str,
+    stage_mask: Optional[pd.Series] = None,
+    weight_col: str = 'weight',
+    heating_fuel_col: str = 'base_heating_fuel',
+    heating_type_col: str = 'heating_type',
+) -> None:
+    """Prints one row of the 2025.1 masking filter funnel.
+
+    A thin console-reporting wrapper around compute_funnel_stage_row -- see
+    that function's docstring for the rdu/weighted-count/fuel-share math and
+    the existing-heat-pump bucketing rule.
+
+    The applicability, occupancy, and housing-type filter stages run on the
+    raw ResStock parquet, before df_enduse_refactored/df_enduse_compare have
+    renamed anything -- so their fuel and technology columns are still the
+    raw names ('in.heating_fuel', 'in.hvac_heating_type_and_fuel'). Later
+    stages run on the TARE-side frame, where those columns are renamed to
+    'base_heating_fuel'/'heating_type'. heating_fuel_col and heating_type_col
+    let the same funnel call report either.
+
+    Args:
+        df: The DataFrame at this filter stage.
+        stage_label: A short name for this stage, e.g. 'applicability'.
+        stage_mask: Optional boolean mask aligned to df's index; if given,
+            only rows where True are counted, so a stage can be reported
+            without pre-filtering df itself. If None, every row in df is
+            counted.
+        weight_col: Name of the dwelling-unit weight column.
+        heating_fuel_col: Name of the baseline heating fuel column.
+        heating_type_col: Name of the baseline heating type-and-fuel column
+            (used only to identify existing heat pumps).
+
+    Returns:
+        None. Prints the funnel row.
+
+    Raises:
+        KeyError: If a required column is missing from df.
+    """
+    row = compute_funnel_stage_row(
+        df, stage_label, stage_mask,
+        weight_col=weight_col, heating_fuel_col=heating_fuel_col,
+        heating_type_col=heating_type_col)
+
+    share_str = " | ".join(
+        f"{fuel}={row[f'{fuel}_pct']:.2f}%" for fuel in _FUNNEL_FUEL_ORDER)
+
+    print(
+        f"[FUNNEL] {row['stage']}: {row['rdu_count']:,} rdu | "
+        f"{row['weighted_count']:,.0f} weighted homes | {share_str}")
+
+
 def mask_invalid_data(
     df: pd.DataFrame,
     menu_mp: Optional[int] = None,

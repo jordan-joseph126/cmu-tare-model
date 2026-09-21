@@ -7,9 +7,11 @@ from cmu_tare_model.constants import (
     ANCHOR_YEAR,
     EQUIPMENT_SPECS,
     PRIVATE_DISCOUNTING_METHOD_SUFFIXES,
-    REBATE_ELIGIBLE_HEATING_MPS,
     REBATE_GUIDANCE_JUNE2026,
     REMDB_COST_SCENARIO_KEYS,
+)
+from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import (
+    get_rebate_eligible_mps,
 )
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.discounting import calculate_discount_factors
@@ -317,7 +319,7 @@ def calculate_private_npv(
     # Compute the raw unsubsidized net capital first, then subtract the rebate
     # to obtain the subsidized values. This is more intuitive than adding the
     # rebate back to an already-subsidized number.
-    if menu_mp in REBATE_ELIGIBLE_HEATING_MPS:
+    if menu_mp in get_rebate_eligible_mps():
         rebate_col = create_rebate_col(menu_mp=menu_mp, category='heating', cost_scenario=cost_scenario)
         rebate_amount = df_copy[rebate_col].fillna(0.0).where(heating_valid_mask, other=0.0)
     else:
@@ -592,7 +594,7 @@ def calculate_capital_costs(
             required_cols.append(create_weatherization_rebate_col(cost_scenario=cost_scenario))
 
         # Only high-efficiency MPs are eligible for heating rebates.
-        if menu_mp in REBATE_ELIGIBLE_HEATING_MPS:
+        if menu_mp in get_rebate_eligible_mps():
             required_cols.append(create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario))
 
     else:
@@ -626,7 +628,7 @@ def calculate_capital_costs(
             + weatherization_cost)
 
         # Only high-efficiency MPs are eligible for heating rebates.
-        if menu_mp in REBATE_ELIGIBLE_HEATING_MPS:
+        if menu_mp in get_rebate_eligible_mps():
             rebate_amount = df_copy[create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)].fillna(0)
         else:
             rebate_amount = 0.0

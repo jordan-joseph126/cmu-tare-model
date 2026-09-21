@@ -27,6 +27,15 @@ def mock_constants(monkeypatch):
         'private_discount_rate_fixed_high': '_fixed_high',
         'private_discount_rate_variable': '_variable',
     })
+    # This file's fixtures use MP3/MP8 (2022.1.1-style numbering) throughout.
+    # get_rebate_eligible_mps() is keyed on RESSTOCK_RELEASE_THIS_RUN, so the
+    # release context has to be pinned explicitly -- see test_rebate_june2026's
+    # mock_release fixture for the same pattern and why this is the module to
+    # patch.
+    monkeypatch.setattr(
+        'cmu_tare_model.private_impact.data_processing.'
+        'determine_rebate_eligibility_and_amount.RESSTOCK_RELEASE_THIS_RUN',
+        '2022.1.1')
 
 
 @pytest.fixture

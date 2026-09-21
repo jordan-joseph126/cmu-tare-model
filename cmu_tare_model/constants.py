@@ -31,17 +31,20 @@ ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached']
 ALLOWED_TECHNOLOGIES = {
     # in.hvac_heating_type_and_fuel exclude existing heat pump options
     'heating': [
-        'Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace', 
+        'Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace',
         # 'Electricity ASHP',
-        'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace', 
+        'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace',
         'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
         'Propane Fuel Boiler', 'Propane Fuel Furnace'
     ],
-    # in.hvac_cooling_type exclude existing heat pump options
-    'cooling': [
-        'Central AC',
-        'Room AC'
-    ],
+    # Cooling technology filter removed (Phase 3, D4, researcher's 19 Sep
+    # 2026 decision): both releases now rely on `applicability` (2025.1) and
+    # the fuel-only check (identify_valid_homes's fail-open branch, since
+    # base_cooling_fuel is hardcoded to 'Electricity') for cooling scope,
+    # instead of an ALLOWED_TECHNOLOGIES allowlist. This is a deliberate,
+    # acknowledged change to 2022.1.1's masked cooling count too -- no
+    # byte-identity proof is required (see CLAUDE.md's dropped regression
+    # guarantee).
     # in.water_heater_efficiency exclude heat pump options, tankless, other fuel (e.g., solar), and indirect fuel oil
     # 'waterHeating': [
     #     'Electric Premium', 'Electric Standard',
@@ -70,28 +73,36 @@ EQUIPMENT_SPECS = {
     }
 VALID_CATEGORIES = list(EQUIPMENT_SPECS.keys())
 
-# Run the model for all measure packages (MPs) or a specific MP
-# Enclosure upgrades (MP9 and MP10) are excluded for now since they are not yet included in the REMDB v4 code.
-VALID_MENU_MPS = [
-    0,
-    3,
-    4,
-    # 8,
-    # 9,
-    # 10
-    ]
-
 # ResStock release this run reads. MP numbers repeat across releases (2025.1
 # Upgrades 03/04 will later load as mp=3/4, unlike 2022.1.1 MP3/MP4), so any
 # check on an MP number must also check the release.
-RESSTOCK_RELEASE = '2022.1.1'
+RESSTOCK_RELEASE_THIS_RUN = '2025.1'  # '2022.1.1' or '2025.1'
 
 # Measure packages available in each release. Add 2025.1 Upgrades 04 and 03
 # to the '2025.1' list once Upgrade 05 has finished every phase.
 RESSTOCK_RELEASE_AND_MP = {
-    '2022.1.1': [3, 4],
-    '2025.1': [5],
+    '2022.1.1': [0, 3, 4],
+    '2025.1': [0, 5],
 }
+
+# Run the model for all measure packages (MPs) or a specific MP
+# Enclosure upgrades (MP9 and MP10) are excluded for now since they are not yet included in the REMDB v4 code.
+VALID_MENU_MPS = RESSTOCK_RELEASE_AND_MP[RESSTOCK_RELEASE_THIS_RUN]
+
+# States excluded from the 2025.1 dual-fuel study (researcher's 19 Sep 2026
+# decision). Hawaii has limited natural gas infrastructure and essentially no
+# heating demand, so a dual-fuel package has almost nothing to act on there.
+# Alaska has gas available but fuel-oil heating dominates, and a very high
+# electricity-to-gas price ratio combined with very high heating demand makes
+# it a poor candidate for either a dual-fuel or a cold-climate heat pump
+# relative to other states. This also matches the 49-state-plus-DC footprint
+# the 2022.1.1 pipeline already has by construction (it has no AK/HI rows).
+# Two-letter USPS abbreviations, matching the `state` column. Applying this
+# filter also avoids a silent bug: 2025.1's AK/HI counties are name strings
+# (for example "HI, Honolulu County"), not the GISJOIN format the county-FIPS
+# parse in process_euss_data.py expects, so an unfiltered AK/HI row gets a
+# garbage FIPS key instead of raising an error.
+EXCLUDED_STATES = {'AK', 'HI'}
 
 # Short key identifiers for discount rates (used in dictionaries and user-facing code)
 PRIVATE_DISCOUNT_RATE_SHORT_KEYS = [
@@ -219,13 +230,10 @@ REBATE_MAPPING = {
 # =============================================================
 # CONSTANTS: IRA REBATE ELIGIBILITY BY MEASURE PACKAGE
 # =============================================================
-# Only ENERGY STAR-certified heat pumps qualify for the federal rebates.
-# MP3's modeled heat pump (SEER 15 / 9.0 HSPF) sits just below the ENERGY STAR
-# minimum, but is re-specified to the ENERGY STAR floor (>= 16.0 SEER1 /
-# >= 9.5 HSPF1) in process_euss_data.df_enduse_compare so it qualifies -- and
-# its capital cost reflects that ENERGY STAR install. MP4/MP8/MP9/MP10 use
-# high-efficiency ASHP (SEER 24+) and qualify as modeled.
-REBATE_ELIGIBLE_HEATING_MPS = [3, 4, 8, 9, 10]
+# Rebate eligibility is release-aware (2022.1.1 MP3/MP4/MP8/MP9/MP10 vs.
+# 2025.1 MP5), so it can't be one flat, release-unaware list here -- see
+# get_rebate_eligible_mps() in
+# private_impact/data_processing/determine_rebate_eligibility_and_amount.py.
 
 # =============================================================
 # CONSTANTS: REBATE-POLICY-SCENARIO SENSITIVITY AXIS (2024 vs June 2026 DOE guidance)

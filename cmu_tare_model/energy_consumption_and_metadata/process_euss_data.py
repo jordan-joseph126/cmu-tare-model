@@ -2,21 +2,25 @@ import os
 import pandas as pd
 import numpy as np
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from config import PROJECT_ROOT
 from cmu_tare_model.constants import (
     EQUIPMENT_SPECS,
     VALID_CATEGORIES,
     VERBOSE,
-    RESSTOCK_RELEASE,
+    RESSTOCK_RELEASE_THIS_RUN,
     RESSTOCK_RELEASE_AND_MP,
+    ALLOWED_HOUSING_TYPES,
+    EXCLUDED_STATES,
     )
 
 from cmu_tare_model.utils.validation_framework import get_valid_calculation_mask
 from cmu_tare_model.utils.calculation_utils import (
     get_all_possible_fuel_columns,
-    identify_valid_homes
+    identify_valid_homes,
+    compute_funnel_stage_row,
+    print_masking_funnel_stage,
     )
 from cmu_tare_model.utils.resstock_schema import resstock_col
 
@@ -74,17 +78,144 @@ def read_resstock_2025_1_parquet(mp: int) -> pd.DataFrame:
         The raw ResStock 2025.1 frame, indexed by bldg_id.
 
     Raises:
-        ValueError: If mp is not 0 and not in RESSTOCK_RELEASE_AND_MP['2025.1'].
+        ValueError: If mp is not in RESSTOCK_RELEASE_AND_MP['2025.1'].
     """
-    if mp != 0 and mp not in RESSTOCK_RELEASE_AND_MP['2025.1']:
+    if mp not in RESSTOCK_RELEASE_AND_MP['2025.1']:
         raise ValueError(
-            f"mp={mp} is not a loadable 2025.1 package; expected 0 (baseline) "
-            f"or one of {RESSTOCK_RELEASE_AND_MP['2025.1']}")
+            f"mp={mp} is not a loadable 2025.1 package; expected one of "
+            f"{sorted(RESSTOCK_RELEASE_AND_MP['2025.1'])}")
     filename = f"upgrade{mp}.parquet"
     file_path = os.path.join(
         PROJECT_ROOT, "data", "resstock_2025_1", filename)
     df_raw = pd.read_parquet(file_path)
     return df_raw.set_index("bldg_id")
+
+
+def load_and_filter_2025_1_upgrade(
+    menu_mp: int,
+    state: Optional[str] = None,
+    city: Optional[str] = None,
+    verbose: bool = VERBOSE,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Loads one ResStock 2025.1 upgrade file and applies TARE's scope filters.
+
+    Reorganizes the inline filtering that both the baseline and MP5 notebook
+    cells duplicated into one reusable function, and adds two new filter
+    stages ahead of the existing ones (D3, Phase 3): ResStock's own
+    applicability flag and the Alaska/Hawaii exclusion. Every existing
+    filter's logic and order is unchanged -- occupancy, housing type, and
+    the state/city filter all run exactly as they did inline in the
+    notebook cells, just routed through resstock_col() instead of hardcoded
+    'in.*' literals.
+
+    Filter order:
+        1. Load -- no filter; the starting population for the funnel.
+        2. Applicability -- ResStock's own upgrade_applicable flag (D3, the
+           new leading filter; a no-op for menu_mp=0, where every row is
+           True).
+        3. Occupancy -- unchanged from the existing notebook cells.
+        4. Housing type -- unchanged from the existing notebook cells.
+        5. Alaska/Hawaii exclusion -- new; see EXCLUDED_STATES.
+        6. Geographic filter -- unchanged from the existing notebook cells,
+           now driven by the state/city arguments instead of the notebook's
+           own input_state/input_cityFilter globals. Only recorded as a
+           funnel stage when state is given, since a National analysis
+           (state=None) leaves the population unchanged from stage 5.
+
+    Every stage is recorded as a funnel row via
+    calculation_utils.compute_funnel_stage_row and returned as a DataFrame,
+    instead of being reported only as loose print statements.
+
+    Args:
+        menu_mp: The measure package to load (0 for baseline, or one of
+            RESSTOCK_RELEASE_AND_MP['2025.1']).
+        state: Two-letter state abbreviation to filter to, or None for the
+            full (49-state-plus-DC, after the AK/HI exclusion) national
+            footprint.
+        city: City name to filter to within state, matching the 'in.city'
+            column's 'ST, CityName' format, or None. Ignored if state is
+            None.
+        verbose: Whether to also print each filter stage's funnel row as it
+            runs, via print_masking_funnel_stage.
+
+    Returns:
+        A tuple of (df_filtered, df_funnel):
+            df_filtered: The frame after every filter stage above, still
+                carrying raw ResStock column names -- this function runs
+                before df_enduse_refactored/df_enduse_compare rename
+                anything.
+            df_funnel: One row per filter stage (stage label, rdu count,
+                weighted homes, and a percent-share column per baseline
+                heating fuel bucket), in stage order.
+
+    Raises:
+        ValueError: If city is given but state is None.
+    """
+    if city is not None and state is None:
+        raise ValueError(
+            "city was given without state; a city filter requires a state.")
+
+    release = '2025.1'
+    weight_col = 'weight'
+    heating_fuel_col = resstock_col(release, 'heating_fuel')
+    heating_type_col = resstock_col(release, 'heating_type_and_fuel')
+
+    funnel_rows = []
+
+    def record_stage(df_stage: pd.DataFrame, label: str) -> pd.DataFrame:
+        # Computes the row once and both accumulates it into df_funnel and
+        # (optionally) prints it, so the funnel math is never duplicated --
+        # see compute_funnel_stage_row in calculation_utils.py.
+        funnel_rows.append(compute_funnel_stage_row(
+            df_stage, label,
+            weight_col=weight_col, heating_fuel_col=heating_fuel_col,
+            heating_type_col=heating_type_col))
+        if verbose:
+            print_masking_funnel_stage(
+                df_stage, label,
+                weight_col=weight_col, heating_fuel_col=heating_fuel_col,
+                heating_type_col=heating_type_col)
+        return df_stage
+
+    # ===== Stage 1: Load =====
+    df_filtered = read_resstock_2025_1_parquet(menu_mp)
+    record_stage(df_filtered, 'load')
+
+    # ===== Stage 2: Applicability (new, D3) =====
+    applicable_col = resstock_col(release, 'upgrade_applicable')
+    is_applicable = df_filtered[applicable_col].astype(bool)
+    df_filtered = df_filtered.loc[is_applicable]
+    record_stage(df_filtered, 'applicability')
+
+    # ===== Stage 3: Occupancy (unchanged) =====
+    vacancy_col = resstock_col(release, 'vacancy_status')
+    is_occupied = df_filtered[vacancy_col] == 'Occupied'
+    df_filtered = df_filtered.loc[is_occupied]
+    record_stage(df_filtered, 'occupancy')
+
+    # ===== Stage 4: Housing type (unchanged) =====
+    building_type_col = resstock_col(release, 'building_type')
+    is_allowed_housing = df_filtered[building_type_col].isin(ALLOWED_HOUSING_TYPES)
+    df_filtered = df_filtered.loc[is_allowed_housing]
+    record_stage(df_filtered, 'housing_type')
+
+    # ===== Stage 5: Alaska/Hawaii exclusion (new) =====
+    state_col = resstock_col(release, 'state')
+    is_included_state = ~df_filtered[state_col].isin(EXCLUDED_STATES)
+    df_filtered = df_filtered.loc[is_included_state]
+    record_stage(df_filtered, 'exclude_AK_HI')
+
+    # ===== Stage 6: Geographic filter (unchanged) =====
+    if state is not None:
+        df_filtered = df_filtered.loc[df_filtered[state_col].eq(state)]
+        if city is not None:
+            city_col = resstock_col(release, 'city')
+            df_filtered = df_filtered.loc[
+                df_filtered[city_col].eq(f"{state}, {city}")]
+        record_stage(df_filtered, 'geographic_filter')
+
+    df_funnel = pd.DataFrame(funnel_rows)
+    return df_filtered, df_funnel
 
 
 # Backup fuel abbreviations published in the dual-fuel upgrade string, mapped
@@ -291,7 +422,7 @@ def preprocess_fuel_data(df: pd.DataFrame,
 def df_enduse_refactored(
     df_baseline: pd.DataFrame,
     verbose: bool = VERBOSE,
-    release: str = RESSTOCK_RELEASE
+    release: str = RESSTOCK_RELEASE_THIS_RUN
 ) -> pd.DataFrame:
     """Creates a standardized energy usage DataFrame and applies data quality filters.
 
@@ -304,8 +435,9 @@ def df_enduse_refactored(
         verbose: Whether to print detailed processing information.
         release: ResStock release the frame was loaded from ('2022.1.1' or
             '2025.1'). Selects which physical column names to read via
-            RESSTOCK_COLUMN_MAP. Defaults to RESSTOCK_RELEASE, so existing
-            2022.1.1 callers that don't pass this argument are unaffected.
+            RESSTOCK_COLUMN_MAP. Defaults to RESSTOCK_RELEASE_THIS_RUN, so
+            existing 2022.1.1 callers that don't pass this argument are
+            unaffected.
 
     Returns:
         A standardized DataFrame with processed consumption data and data quality flags.
@@ -551,7 +683,7 @@ def df_enduse_compare(
     df_baseline: pd.DataFrame,
     df_cooking_range: Optional[pd.DataFrame] = None,
     verbose: bool = VERBOSE,
-    release: str = RESSTOCK_RELEASE
+    release: str = RESSTOCK_RELEASE_THIS_RUN
 ) -> pd.DataFrame:
     """Creates a comparison DataFrame by merging multiple DataFrames based on measure packages.
 
@@ -573,8 +705,8 @@ def df_enduse_compare(
         release: ResStock release df_mp and df_baseline were loaded from
             ('2022.1.1' or '2025.1'). Gates the MP3 ENERGY STAR override
             below, since 2025.1 Upgrade 03 will later also load as mp=3.
-            Defaults to RESSTOCK_RELEASE, so existing 2022.1.1 callers that
-            don't pass this argument are unaffected.
+            Defaults to RESSTOCK_RELEASE_THIS_RUN, so existing 2022.1.1
+            callers that don't pass this argument are unaffected.
 
     Returns:
         A merged DataFrame (df_compare) that includes relevant columns for
@@ -846,6 +978,19 @@ def df_enduse_compare(
             df_mp[resstock_col(release, 'panel_constraint_capacity')])
         df_compare[f'mp{menu_mp}_panel_constraint_breaker_space'] = (
             df_mp[resstock_col(release, 'panel_constraint_breaker_space')])
+
+    # ===== STEP 3d: ResStock's own applicability flag (2025.1) =====
+    # Whether ResStock actually ran this upgrade on this home -- distinct from
+    # any of TARE's own fuel/technology masks. Coerced to bool defensively on
+    # read: the guide notes this column's dtype was a string in some upgrade
+    # parquets before a 2025-07-08 ResStock fix, even though it reads as a
+    # real bool in the published 2025.1 files TARE loads today. Carried as a
+    # plain pass-through column here; Phase 3's masking funnel is the first
+    # place that filters on it. Only published starting ResStock 2025.1, so
+    # this block is release-gated like the panel columns above.
+    if release == '2025.1':
+        df_compare[f'mp{menu_mp}_resstock_applicable'] = (
+            df_mp[resstock_col(release, 'upgrade_applicable')].astype(bool))
 
     # ===== STEP 4: Merge with baseline DataFrame =====
     df_compare = pd.merge(df_baseline, df_compare, how='inner', left_index=True, right_index=True)

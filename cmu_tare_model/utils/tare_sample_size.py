@@ -257,6 +257,12 @@ def summarize_cooling_scope(
     and its cooling columns are blank. This is reported so documentation can
     say how many homes have cooling in scope without implying it is a filter.
 
+    As of Phase 3 (D4), there is no cooling-technology allowlist at all --
+    every cooling system is in scope, since base_cooling_fuel is hardcoded
+    to 'Electricity' and identify_valid_homes falls back to a fuel-only
+    check once a category has no entry in ALLOWED_TECHNOLOGIES. The
+    'in_scope' column is kept for a stable output shape, but is always True.
+
     Args:
         df_raw: Raw frame from load_raw_euss_baseline.
 
@@ -272,16 +278,11 @@ def summarize_cooling_scope(
 
     rows = []
     for cooling_system, count in counts.items():
-        if pd.isna(cooling_system):
-            label = "(no cooling recorded)"
-            in_scope = False
-        else:
-            label = cooling_system
-            in_scope = cooling_system in ALLOWED_TECHNOLOGIES["cooling"]
+        label = "(no cooling recorded)" if pd.isna(cooling_system) else cooling_system
         rows.append({
             "cooling_system": label,
             "homes": int(count),
-            "in_scope": in_scope,
+            "in_scope": True,
         })
 
     return pd.DataFrame(rows)

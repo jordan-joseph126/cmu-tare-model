@@ -5,7 +5,8 @@ from typing import Dict, List, Optional, Tuple, Union, Callable
 
 from cmu_tare_model.constants import (
     REBATE_MAPPING,
-    REBATE_ELIGIBLE_HEATING_MPS,
+    RESSTOCK_RELEASE_THIS_RUN,
+    RESSTOCK_RELEASE_AND_MP,
     REBATE_GUIDANCE_IRA2024,
     REBATE_GUIDANCE_JUNE2026,
     REBATE_RULE_CONFIG,
@@ -436,6 +437,40 @@ def _homes_rebate_amount(
     return pd.Series(amount, index=df_copy.index, dtype=float), qualifies_savings
 
 
+def get_rebate_eligible_mps() -> List[int]:
+    """Returns the measure package numbers eligible for federal rebates.
+
+    Only ENERGY STAR-certified heat pumps qualify. Under 2022.1.1, MP3's
+    modeled heat pump (SEER 15 / 9.0 HSPF) sits just below the ENERGY STAR
+    minimum, but is re-specified to the ENERGY STAR floor (>= 16.0 SEER1 /
+    >= 9.5 HSPF1) in process_euss_data.df_enduse_compare so it qualifies --
+    and its capital cost reflects that ENERGY STAR install. MP4/MP8/MP9/MP10
+    use high-efficiency ASHP (SEER 24+) and qualify as modeled. Under
+    2025.1, MP5 (dual fuel) is registered eligible per D8 (Phase 3) -- this
+    only marks the package as participating, not the June 2026 HEEHR
+    fossil-baseline fuel-gate exception itself, which is Phase 7.
+
+    Keyed on RESSTOCK_RELEASE_THIS_RUN rather than a flat, release-unaware
+    list, since 2025.1 Upgrades 03/04 will later reuse the mp=3/mp=4 numbers
+    for different packages than 2022.1.1's MP3/MP4.
+
+    Returns:
+        A list of measure package numbers eligible for a federal rebate
+        under the active release.
+
+    Raises:
+        ValueError: If RESSTOCK_RELEASE_THIS_RUN is not a known release.
+    """
+    if RESSTOCK_RELEASE_THIS_RUN == '2022.1.1':
+        return [3, 4, 8, 9, 10]
+    elif RESSTOCK_RELEASE_THIS_RUN == '2025.1':
+        return [5]
+    else:
+        raise ValueError(
+            f"Unknown RESSTOCK_RELEASE_THIS_RUN '{RESSTOCK_RELEASE_THIS_RUN}'; "
+            f"expected one of {sorted(RESSTOCK_RELEASE_AND_MP)}")
+
+
 def calculate_rebate_program(
     df_results_IRA: pd.DataFrame,
     category: str,
@@ -460,7 +495,7 @@ def calculate_rebate_program(
     REBATE_RULE_CONFIG[guidance] -- see constants.py for the field meanings.
 
     Gates applied before program routing (all vintages):
-      - Efficiency (ENERGY STAR): only REBATE_ELIGIBLE_HEATING_MPS qualify.
+      - Efficiency (ENERGY STAR): only get_rebate_eligible_mps() qualify.
       - State participation: homes in a never-participating state (e.g. South
         Dakota) get 0 / 'None'.
     HEEHR additionally applies a fuel gate under June 2026 (only existing
@@ -532,7 +567,7 @@ def calculate_rebate_program(
 
     # Step 3 -- efficiency gate: only high-efficiency (ENERGY STAR) MPs qualify.
     # Applies to BOTH programs. Ineligible MPs stay at 0.0 / 'None'.
-    if menu_mp not in REBATE_ELIGIBLE_HEATING_MPS:
+    if menu_mp not in get_rebate_eligible_mps():
         if verbose:
             print(f"  MP{menu_mp} is NOT rebate-eligible ({guidance}, standard "
                   f"efficiency). All amounts 0, eligibility 'None'.")
@@ -658,7 +693,7 @@ def calculate_rebate_june2026(
         doubling is unreachable and only the non-LMI amounts apply.
 
     June 2026 gates, applied before routing:
-      - Efficiency (ENERGY STAR): only REBATE_ELIGIBLE_HEATING_MPS qualify, both
+      - Efficiency (ENERGY STAR): only get_rebate_eligible_mps() qualify, both
         programs. MP3 gets no rebate.
       - Fuel: rebates may not fund removing a fossil heating system. TARE models
         only full electrification, so only existing electric-resistance homes

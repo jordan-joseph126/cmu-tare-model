@@ -21,6 +21,24 @@ from cmu_tare_model.utils.column_names import create_rebate_col
 COST = 'v4MID'
 
 
+@pytest.fixture(autouse=True)
+def mock_release(monkeypatch):
+    """Every test here exercises MP3/MP4, the 2022.1.1-style numbering.
+
+    get_rebate_eligible_mps() (determine_rebate_eligibility_and_amount.py)
+    is keyed on RESSTOCK_RELEASE_THIS_RUN, so tests need to pin that release
+    explicitly rather than rely on whatever the module-level default happens
+    to be. Patching it here, in the module get_rebate_eligible_mps() reads
+    it from, reaches every caller (this file's calls and
+    calculate_lifetime_private_impact.py's) -- it's a function, not a
+    re-exported constant, so one patch is enough.
+    """
+    monkeypatch.setattr(
+        'cmu_tare_model.private_impact.data_processing.'
+        'determine_rebate_eligibility_and_amount.RESSTOCK_RELEASE_THIS_RUN',
+        '2022.1.1')
+
+
 def _rebate_col(mp):
     return f'mp{mp}_heating_rebate_amount_june2026_{COST}'
 
