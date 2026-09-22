@@ -983,8 +983,8 @@ def build_capital_cost_distribution_figure(
         'Heating Consumption (kWh)', 'Heating Size (kBTU/h)',
         'Cooling Consumption (kWh)', 'Cooling Size (kBTU/h)',
         'Cooling Consumption (kWh)', 'Cooling Size (kBTU/h)',
-        'Heating Consumption (therms)', 'Heating Size (kBTU/h)',
-        'Heating Consumption (therms)', 'Heating Size (kBTU/h)',
+        'Heating Consumption (kWh)', 'Heating Size (kBTU/h)',
+        'Heating Consumption (kWh)', 'Heating Size (kBTU/h)',
     ]
 
     suptitle = (
@@ -1005,6 +1005,141 @@ def build_capital_cost_distribution_figure(
         lower_percentile=lower_percentile,
         upper_percentile=upper_percentile,
         show_legend=False,
+    )
+
+
+def build_furnace_ashp_metric_comparison_figure(
+    df_mp3: pd.DataFrame,
+    df_mp4: pd.DataFrame,
+    baseline_col: str,
+    mp3_col: str,
+    mp4_col: str,
+    x_label: str,
+    metric_label: str,
+    figure_size: Tuple[int, int] = (24, 8),
+    bin_number: int = 30,
+    lower_percentile: float = 2.5,
+    upper_percentile: float = 97.5,
+) -> Figure:
+    """Build a 1x3 NG-furnace-vs-ASHP comparison for any per-home metric.
+
+    One row, three columns -- NG furnace baseline, ASHP MP3, ASHP MP4 --
+    for whichever column is passed in (heating consumption, heating
+    capacity, operating cost, and so on). Each panel uses its own
+    population, the same ones as the matching panels in
+    build_capital_cost_distribution_figure (get_natural_gas_furnace_replacement_homes
+    for the baseline panel, get_ashp_upgrade_homes for the MP3/MP4 panels),
+    stacked and color-coded by base_heating_fuel with one shared legend. Each
+    panel's display range is trimmed independently to its own
+    [lower_percentile, upper_percentile] range, same as
+    build_capital_cost_distribution_figure -- the three populations have
+    different scales (the ASHP populations are much larger and span a wider
+    tail than the furnace-only population), so a shared axis compresses the
+    ASHP panels down to a sliver.
+
+    Args:
+        df_mp3: MP3 home-level DataFrame (e.g. DATAFRAMES_BY_MP[3]['fixed_base']).
+        df_mp4: MP4 home-level DataFrame (e.g. DATAFRAMES_BY_MP[4]['fixed_base']).
+        baseline_col: Column name plotted for the NG furnace panel, read
+            from the natural gas furnace replacement population.
+        mp3_col: Column name plotted for the ASHP MP3 panel, read from the
+            MP3 ASHP upgrade population.
+        mp4_col: Column name plotted for the ASHP MP4 panel, read from the
+            MP4 ASHP upgrade population.
+        x_label: Axis label shown under all three panels, e.g.
+            'Heating Consumption (kWh)', 'Heating Capacity (kBTU/h)', or
+            'Annual Heating Cost ($)'.
+        metric_label: Short name for the metric being compared, used in the
+            panel titles and the figure's suptitle, e.g.
+            'Heating Consumption', 'Heating Capacity', 'Annual Heating Cost'.
+        figure_size: Figure (width, height) in inches.
+        bin_number: Number of bins per panel.
+        lower_percentile: Lower bound (0-100) of each panel's own display range.
+        upper_percentile: Upper bound (0-100) of each panel's own display range.
+
+    Returns:
+        The matplotlib Figure.
+    """
+    df_furnace = get_natural_gas_furnace_replacement_homes(df_mp3)
+    df_ashp_mp3 = get_ashp_upgrade_homes(df_mp3)
+    df_ashp_mp4 = get_ashp_upgrade_homes(df_mp4)
+
+    print(
+        f"NG Furnace baseline population: {len(df_furnace):,} | "
+        f"ASHP upgrade population: MP3 {len(df_ashp_mp3):,} | "
+        f"MP4 {len(df_ashp_mp4):,}"
+    )
+
+    dataframes = [df_furnace, df_ashp_mp3, df_ashp_mp4]
+    dataframe_indices = [0, 1, 2]
+    subplot_positions = [(0, 0), (0, 1), (0, 2)]
+    x_cols = [baseline_col, mp3_col, mp4_col]
+    x_labels = [x_label] * 3
+    subplot_titles = [
+        f'NG Furnace {metric_label} (Baseline)',
+        f'ASHP {metric_label} (MP3)',
+        f'ASHP {metric_label} (MP4)',
+    ]
+
+    suptitle = (
+        f'NG Furnace Baseline vs. ASHP (MP3/MP4) -- {metric_label} '
+        f'(each panel shown at its {lower_percentile:g}-{upper_percentile:g} '
+        'percentile range)'
+    )
+    return create_subplot_grid_histogram(
+        dataframes=dataframes,
+        dataframe_indices=dataframe_indices,
+        subplot_positions=subplot_positions,
+        x_cols=x_cols,
+        x_labels=x_labels,
+        subplot_titles=subplot_titles,
+        suptitle=suptitle,
+        figure_size=figure_size,
+        color_code='base_heating_fuel',
+        bin_number=bin_number,
+        lower_percentile=lower_percentile,
+        upper_percentile=upper_percentile,
+        show_legend=False,
+    )
+
+
+def build_furnace_ashp_consumption_comparison_figure(
+    df_mp3: pd.DataFrame,
+    df_mp4: pd.DataFrame,
+    figure_size: Tuple[int, int] = (24, 8),
+    bin_number: int = 30,
+    lower_percentile: float = 2.5,
+    upper_percentile: float = 97.5,
+) -> Figure:
+    """Build the 1x3 heating consumption comparison: NG furnace vs. ASHP.
+
+    A thin wrapper around build_furnace_ashp_metric_comparison_figure that
+    fills in the heating consumption columns, kept so existing notebook
+    cells calling this name do not need to change.
+
+    Args:
+        df_mp3: MP3 home-level DataFrame (e.g. DATAFRAMES_BY_MP[3]['fixed_base']).
+        df_mp4: MP4 home-level DataFrame (e.g. DATAFRAMES_BY_MP[4]['fixed_base']).
+        figure_size: Figure (width, height) in inches.
+        bin_number: Number of bins per panel.
+        lower_percentile: Lower bound (0-100) of each panel's own display range.
+        upper_percentile: Upper bound (0-100) of each panel's own display range.
+
+    Returns:
+        The matplotlib Figure.
+    """
+    return build_furnace_ashp_metric_comparison_figure(
+        df_mp3=df_mp3,
+        df_mp4=df_mp4,
+        baseline_col='base_naturalGas_heating_consumption',
+        mp3_col='mp3_heating_consumption',
+        mp4_col='mp4_heating_consumption',
+        x_label='Heating Consumption (kWh)',
+        metric_label='Heating Consumption',
+        figure_size=figure_size,
+        bin_number=bin_number,
+        lower_percentile=lower_percentile,
+        upper_percentile=upper_percentile,
     )
 
 

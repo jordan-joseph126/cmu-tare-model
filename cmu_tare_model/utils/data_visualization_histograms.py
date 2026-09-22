@@ -58,7 +58,8 @@ def create_subplot_grid_histogram(
     color_code: Optional[str] = None,
     statistic: str = 'count',
     include_zero: bool = False,
-    show_legend: bool = False
+    show_legend: bool = False,
+    shared_xlim: Optional[Tuple[float, float]] = None
 ) -> plt.Figure:
     """
     Creates a grid of histograms with support for single or multiple DataFrames.
@@ -91,6 +92,12 @@ def create_subplot_grid_histogram(
         statistic: Statistic to compute ('count', 'density', 'frequency', 'probability').
         include_zero: Whether to include zero values in the histogram.
         show_legend: Whether to show legend on individual subplots.
+        shared_xlim: Optional (lower, upper) bounds applied to every subplot's
+            bins and x-axis limits, overriding the per-subplot percentile
+            calculation below. Needed whenever sharex=True is meant to produce
+            a genuinely comparable shared axis -- without this, each subplot
+            would still compute its own quantile-based limits, and the last
+            subplot drawn would silently win for the whole shared axis group.
 
     Returns:
         Matplotlib Figure containing the histogram grid.
@@ -205,12 +212,20 @@ def create_subplot_grid_histogram(
                 df_plot[x_col] = df_plot[x_col].replace(0, np.nan)
         
         # Calculate bins based on display range when percentiles are specified
-        # This ensures the specified number of bins appears within the visible range
-        if lower_percentile is not None and upper_percentile is not None:
+        # This ensures the specified number of bins appears within the visible range.
+        # shared_xlim takes priority so every panel gets identical bin edges and
+        # x-axis limits (see the shared_xlim docstring entry above).
+        if shared_xlim is not None:
+            lower_limit, upper_limit = shared_xlim
+            if isinstance(bin_number, int):
+                display_bins = np.linspace(lower_limit, upper_limit, bin_number + 1)
+            else:
+                display_bins = bin_number
+        elif lower_percentile is not None and upper_percentile is not None:
             # Calculate the actual display limits
             lower_limit = df_plot[x_col].quantile(lower_percentile / 100)
             upper_limit = df_plot[x_col].quantile(upper_percentile / 100)
-            
+
             # Create bins spanning only the display range
             if isinstance(bin_number, int):
                 # Create exactly bin_number bins within the percentile range
@@ -244,8 +259,10 @@ def create_subplot_grid_histogram(
         if subplot_titles and idx < len(subplot_titles):
             ax.set_title(subplot_titles[idx], fontsize=24, fontweight='bold')
         
-        # Set display limits based on percentiles (now matches bin calculation)
-        if lower_percentile is not None and upper_percentile is not None:
+        # Set display limits (now matches bin calculation)
+        if shared_xlim is not None or (
+            lower_percentile is not None and upper_percentile is not None
+        ):
             ax.set_xlim(left=lower_limit, right=upper_limit)
         
         # Add reference line at x=0
