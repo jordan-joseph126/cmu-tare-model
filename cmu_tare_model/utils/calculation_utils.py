@@ -94,6 +94,79 @@ def get_post_retrofit_columns(
     return [f'mp{menu_mp}_{category}_consumption']
 
 
+# Energy ResStock reports separately from a system's primary heating or cooling
+# energy, as (fuel, column token, ResStock logical name). Counted on BOTH the
+# baseline and retrofit side. Earlier versions of this model compared primary
+# energy only, assuming these components were the same before and after the
+# retrofit. They are not: a furnace blower is not a heat pump's fan, and a
+# dual-fuel heat pump's backup furnace burns gas. So every component is counted.
+CONSUMPTION_COMPONENTS: Dict[str, List[Tuple[str, str, str]]] = {
+    'heating': [
+        ('electricity', 'fansPumps', 'heating_fans_pumps'),
+        ('electricity', 'hpBackup', 'heating_hp_backup_electricity'),
+        ('electricity', 'hpBackupFans', 'heating_hp_backup_fans'),
+        ('naturalGas', 'hpBackup', 'heating_hp_backup_natural_gas'),
+        ('propane', 'hpBackup', 'heating_hp_backup_propane'),
+        ('fuelOil', 'hpBackup', 'heating_hp_backup_fuel_oil'),
+    ],
+    'cooling': [
+        ('electricity', 'fansPumps', 'cooling_fans_pumps'),
+    ],
+}
+
+
+def get_consumption_component_columns(
+    category: str,
+    menu_mp: int
+) -> List[Tuple[str, str]]:
+    """Returns every (fuel, column) pair that makes up one category's energy use.
+
+    Covers the primary heating or cooling energy plus each separately reported
+    component in CONSUMPTION_COMPONENTS, for the baseline (menu_mp=0) or one
+    measure package's retrofit. Summing a fuel's columns gives that fuel's full
+    energy use for the category.
+
+    Args:
+        category: Equipment category name.
+        menu_mp: Measure package number; 0 for the baseline.
+
+    Returns:
+        List of (fuel, column name) pairs, with fuel spelled as in
+        FUEL_MAPPING's values (e.g. 'naturalGas'). A fuel can appear more
+        than once.
+
+    Raises:
+        TypeError: If menu_mp is not an integer.
+        ValueError: If category is invalid or menu_mp is negative.
+    """
+    if not isinstance(menu_mp, (int, np.integer)):
+        raise TypeError(
+            f"menu_mp must be an integer, got {type(menu_mp).__name__}")
+    if menu_mp < 0:
+        raise ValueError(f"menu_mp must be 0 or greater, got {menu_mp}")
+
+    # Step 1 -- primary energy. The baseline may use any fuel valid for the
+    # category; every retrofit's primary heating or cooling energy is electric.
+    if menu_mp == 0:
+        baseline_cols = get_all_possible_fuel_columns(category)
+        pairs = [
+            (fuel, f'base_{fuel}_{category}_consumption')
+            for fuel in FUEL_MAPPING.values()
+            if f'base_{fuel}_{category}_consumption' in baseline_cols
+        ]
+        prefix = 'base'
+    else:
+        pairs = [('electricity', col)
+                 for col in get_post_retrofit_columns(category, menu_mp)]
+        prefix = f'mp{menu_mp}'
+
+    # Step 2 -- separately reported components (fans, heat-pump backup)
+    for fuel, component, _ in CONSUMPTION_COMPONENTS.get(category, []):
+        pairs.append(
+            (fuel, f'{prefix}_{fuel}_{category}_{component}_consumption'))
+    return pairs
+
+
 def identify_valid_homes(
     df: pd.DataFrame,
     verbose: bool = VERBOSE

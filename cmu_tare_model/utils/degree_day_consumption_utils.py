@@ -26,6 +26,9 @@ from cmu_tare_model.constants import (
     FUEL_MAPPING,
     PROJECTION_END_YEAR,
 )
+from cmu_tare_model.utils.calculation_utils import (
+    get_consumption_component_columns,
+)
 
 # Load degree-day factors from the new AEO2026 CSV artifact.
 # Year column headers arrive as strings from pd.read_csv -- cast to int so the
@@ -424,5 +427,74 @@ def get_total_baseline_consumption(
             )
                 
             total_consumption += fuel_consumption
-    
+
     return total_consumption
+
+
+def get_degree_day_adjusted_consumption_by_fuel(
+        df: pd.DataFrame,
+        category: str,
+        year_label: int,
+        menu_mp: int) -> Dict[str, pd.Series]:
+    """Degree-day-adjusted energy use for one category, kept separate by fuel.
+
+    Sums every column get_consumption_component_columns names for the
+    category -- primary energy plus fans, pumps, and heat-pump backup -- within
+    each fuel, then scales heating by the HDD factor and cooling by the CDD
+    factor for year_label. Works for the baseline (menu_mp=0) and any retrofit.
+
+    Unlike get_hdd_adjusted_consumption, which returns primary energy only as a
+    single total, this counts every component and keeps fuels apart, so a
+    caller can price or weight each fuel on its own (for example a dual-fuel
+    heat pump's electricity and its backup furnace's natural gas).
+
+    Args:
+        df: DataFrame holding the component columns and census_division.
+        category: Equipment category.
+        year_label: Year for calculation.
+        menu_mp: Measure package number; 0 for the baseline.
+
+    Returns:
+        Dict of fuel (e.g. 'electricity', 'naturalGas') to a Series of
+        adjusted consumption. A home is NaN for a fuel only when every one of
+        that fuel's columns is NaN (a masked home); otherwise NaN counts as 0.
+
+    Raises:
+        ValueError: If category is invalid or year_label is out of range.
+        KeyError: If any component column or census_division is missing.
+    """
+    # Step 1 -- validate inputs and collect each fuel's columns
+    if category not in EQUIPMENT_SPECS:
+        raise ValueError(
+            f"Invalid category: {category}. "
+            f"Must be one of {list(EQUIPMENT_SPECS.keys())}")
+
+    fuel_columns: Dict[str, list] = {}
+    for fuel, col in get_consumption_component_columns(category, menu_mp):
+        fuel_columns.setdefault(fuel, []).append(col)
+
+    all_columns = [col for cols in fuel_columns.values() for col in cols]
+    missing_columns = [col for col in all_columns if col not in df.columns]
+    if missing_columns:
+        raise KeyError(
+            f"Missing consumption columns for {category}, mp{menu_mp}: "
+            f"{missing_columns}")
+
+    # Step 2 -- one degree-day factor for the whole category. Every fuel gets
+    # the same factor, so the electricity/natural-gas split of a dual-fuel
+    # heat pump stays at ResStock's base-year split in every projected year.
+    hdd_factor = None
+    cdd_factor = None
+    if category == 'heating':
+        hdd_factor = get_hdd_factor_for_year(df, year_label)
+    elif category == 'cooling':
+        cdd_factor = get_cdd_factor_for_year(df, year_label)
+
+    # Step 3 -- sum within each fuel, then scale
+    consumption_by_fuel = {}
+    for fuel, cols in fuel_columns.items():
+        fuel_total = df[cols].sum(axis=1, min_count=1)
+        consumption_by_fuel[fuel] = apply_degree_day_adjustment(
+            fuel_total, category, hdd_factor=hdd_factor, cdd_factor=cdd_factor)
+
+    return consumption_by_fuel

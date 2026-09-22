@@ -17,12 +17,14 @@ from cmu_tare_model.constants import (
 
 from cmu_tare_model.utils.validation_framework import get_valid_calculation_mask
 from cmu_tare_model.utils.calculation_utils import (
+    CONSUMPTION_COMPONENTS,
     get_all_possible_fuel_columns,
+    get_consumption_component_columns,
     identify_valid_homes,
     compute_funnel_stage_row,
     print_masking_funnel_stage,
     )
-from cmu_tare_model.utils.resstock_schema import resstock_col
+from cmu_tare_model.utils.resstock_schema import RESSTOCK_COLUMN_MAP, resstock_col
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -577,6 +579,22 @@ def df_enduse_refactored(
         df_enduse['base_naturalGas_cooking_consumption'] = df_baseline[resstock_col(release, 'cooking_natural_gas')]
         df_enduse['base_propane_cooking_consumption'] = df_baseline[resstock_col(release, 'cooking_propane')]
 
+    # ===== Separately reported heating/cooling components (fans, backup) =====
+    # One column per CONSUMPTION_COMPONENTS entry. These used to be left out on
+    # both sides on the assumption they did not change with the retrofit; they
+    # now count on both sides (see CONSUMPTION_COMPONENTS in calculation_utils).
+    # A component the release does not publish (2022.1.1 has no heat-pump
+    # backup fan column) is set to 0.0, so later sums can require every column.
+    for category, components in CONSUMPTION_COMPONENTS.items():
+        if category not in VALID_CATEGORIES:
+            continue
+        for fuel, component, logical_name in components:
+            col = f'base_{fuel}_{category}_{component}_consumption'
+            if logical_name in RESSTOCK_COLUMN_MAP[release]:
+                df_enduse[col] = df_baseline[resstock_col(release, logical_name)]
+            else:
+                df_enduse[col] = 0.0
+
     # ===== Whole-home baseline site energy (HOMES savings-fraction denominator) =====
     # The June 2026 HOMES rebate tiers key on the modeled whole-home percent
     # savings. TARE only changes heating and cooling, but the savings fraction
@@ -661,7 +679,12 @@ def df_enduse_refactored(
         # Apply masking to consumption columns
         columns_to_mask = get_all_possible_fuel_columns(category)
         columns_to_mask.append(f'baseline_{category}_consumption')
-        
+        # Component columns too (fans, heat-pump backup), so an invalid home's
+        # components are masked the same as its primary energy.
+        columns_to_mask.extend(
+            col for _, col in get_consumption_component_columns(category, 0)
+            if col not in columns_to_mask)
+
         # Apply masking
         for col in columns_to_mask:
             if col in df_enduse.columns:
@@ -889,23 +912,6 @@ def df_enduse_compare(
                 # Standard heating consumption (no enclosure upgrades)
                 df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp[resstock_col(release, 'heating_electricity')].round(2)
 
-            # New pass-through columns capturing the rest of the heat pump's
-            # heating-related electricity and, for a dual-fuel retrofit
-            # (mp=5), the backup furnace's natural gas use. TARE previously
-            # assumed fan and auxiliary electricity were the same before and
-            # after the retrofit and left them out of both figures;
-            # capturing heating_fans_pumps here removes that assumption
-            # instead of continuing it, since the two systems' fan draws are
-            # not actually the same. Both columns also exist in 2022.1.1 --
-            # heating_fans_pumps has real nonzero values there too (every
-            # ducted ASHP draws blower electricity), while the natural-gas
-            # backup column is always zero in 2022.1.1 (no 2022.1.1 package
-            # models a fossil backup).
-            df_compare[f'mp{menu_mp}_heating_fans_pumps_consumption'] = (
-                df_mp[resstock_col(release, 'heating_fans_pumps')].round(2))
-            df_compare[f'mp{menu_mp}_heating_hp_bkup_naturalGas_consumption'] = (
-                df_mp[resstock_col(release, 'heating_hp_backup_natural_gas')].round(2))
-
         elif category == 'cooling':
             df_compare[f'mp{menu_mp}_cooling_consumption'] = df_mp[resstock_col(release, 'cooling_electricity')].round(2)
 
@@ -917,6 +923,24 @@ def df_enduse_compare(
 
         elif category == 'cooking':
             df_compare[f'mp{menu_mp}_cooking_consumption'] = df_cooking_range['out.electricity.range_oven.energy_consumption.kwh'].round(2)
+
+    # ===== STEP 3a: Separately reported heating/cooling components =====
+    # Retrofit side of the component columns df_enduse_refactored adds for the
+    # baseline (see CONSUMPTION_COMPONENTS in calculation_utils). For a
+    # dual-fuel retrofit (mp=5) the backup furnace's natural gas lands here --
+    # most of that package's heating energy. The fuel-oil and propane backup
+    # columns exist in 2022.1.1 but are always zero there (no 2022.1.1 package
+    # has a fossil backup); heating fans and pumps are real in both releases.
+    # Unpublished components are 0.0, as on the baseline.
+    for category, components in CONSUMPTION_COMPONENTS.items():
+        if category not in VALID_CATEGORIES:
+            continue
+        for fuel, component, logical_name in components:
+            col = f'mp{menu_mp}_{fuel}_{category}_{component}_consumption'
+            if logical_name in RESSTOCK_COLUMN_MAP[release]:
+                df_compare[col] = df_mp[resstock_col(release, logical_name)].round(2)
+            else:
+                df_compare[col] = 0.0
 
     # ===== STEP 3b: Retain per-home peak demand + whole-home electricity =====
     # Post-retrofit counterparts of the baseline pass-through columns added in
@@ -1025,7 +1049,13 @@ def df_enduse_compare(
         mp_col = f'mp{menu_mp}_{category}_consumption'
         if mp_col in df_compare.columns:
             category_cols.append(mp_col)
-        
+
+        # Component columns (fans, heat-pump backup), baseline and retrofit
+        for mp_value in (0, menu_mp):
+            category_cols.extend(
+                col for _, col in get_consumption_component_columns(category, mp_value)
+                if col in df_compare.columns and col not in category_cols)
+
         # Apply masking
         for col in category_cols:
             non_nan_before = df_compare[col].notna().sum()
