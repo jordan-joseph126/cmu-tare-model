@@ -41,6 +41,7 @@ from openpyxl.styles import Font
 from typing import Dict, List, Optional, Tuple
 
 from cmu_tare_model.constants import REMDB_COST_SCENARIO_KEYS
+from cmu_tare_model.utils.calculation_utils import get_consumption_component_columns
 from cmu_tare_model.utils.column_names import create_cost_col
 from cmu_tare_model.utils.data_visualization_histograms import create_subplot_grid_histogram
 
@@ -1103,6 +1104,39 @@ def build_furnace_ashp_metric_comparison_figure(
     )
 
 
+def _with_annual_heating_consumption(df: pd.DataFrame, menu_mp: int) -> pd.DataFrame:
+    """Returns df with the all-component annual heating totals, adding any missing.
+
+    Runs made before these columns existed still carry every component column,
+    so the totals are rebuilt from them: the same sum df_enduse_compare stores
+    (every factor is 1.0 at ANCHOR_YEAR). A home with no values stays NaN.
+
+    Args:
+        df: Home-level DataFrame for one measure package.
+        menu_mp: That package's number.
+
+    Returns:
+        df, or a copy with 'baseline_heating_annual_consumption_kwh' and
+        'mp{menu_mp}_heating_annual_consumption_kwh' added.
+
+    Raises:
+        KeyError: If a total is missing and so is a component column it needs.
+    """
+    totals = {}
+    for mp, total_col in [(0, 'baseline_heating_annual_consumption_kwh'),
+                          (menu_mp, f'mp{menu_mp}_heating_annual_consumption_kwh')]:
+        if total_col in df.columns:
+            continue
+        component_cols = [col for _, col in get_consumption_component_columns('heating', mp)]
+        missing = [col for col in component_cols if col not in df.columns]
+        if missing:
+            raise KeyError(
+                f"'{total_col}' is missing and cannot be rebuilt; missing "
+                f"component columns: {missing}")
+        totals[total_col] = df[component_cols].sum(axis=1, min_count=1)
+    return df.assign(**totals) if totals else df
+
+
 def build_furnace_ashp_consumption_comparison_figure(
     df_mp3: pd.DataFrame,
     df_mp4: pd.DataFrame,
@@ -1115,7 +1149,9 @@ def build_furnace_ashp_consumption_comparison_figure(
 
     A thin wrapper around build_furnace_ashp_metric_comparison_figure that
     fills in the heating consumption columns, kept so existing notebook
-    cells calling this name do not need to change.
+    cells calling this name do not need to change. Counts every component:
+    the furnace's gas and blower electricity, and the heat pump's
+    electricity, backup heat and fans.
 
     Args:
         df_mp3: MP3 home-level DataFrame (e.g. DATAFRAMES_BY_MP[3]['fixed_base']).
@@ -1129,17 +1165,153 @@ def build_furnace_ashp_consumption_comparison_figure(
         The matplotlib Figure.
     """
     return build_furnace_ashp_metric_comparison_figure(
-        df_mp3=df_mp3,
-        df_mp4=df_mp4,
-        baseline_col='base_naturalGas_heating_consumption',
-        mp3_col='mp3_heating_consumption',
-        mp4_col='mp4_heating_consumption',
-        x_label='Heating Consumption (kWh)',
+        df_mp3=_with_annual_heating_consumption(df_mp3, 3),
+        df_mp4=_with_annual_heating_consumption(df_mp4, 4),
+        baseline_col='baseline_heating_annual_consumption_kwh',
+        mp3_col='mp3_heating_annual_consumption_kwh',
+        mp4_col='mp4_heating_annual_consumption_kwh',
+        x_label='Annual Heating Energy, all fuels and components (kWh)',
         metric_label='Heating Consumption',
         figure_size=figure_size,
         bin_number=bin_number,
         lower_percentile=lower_percentile,
         upper_percentile=upper_percentile,
+    )
+
+
+def build_ashp_primary_vs_total_consumption_figure(
+    df_mp3: pd.DataFrame,
+    df_mp4: pd.DataFrame,
+    figure_size: Tuple[int, int] = (24, 16),
+    bin_number: int = 30,
+    lower_percentile: float = 2.5,
+    upper_percentile: float = 97.5,
+    sharex: bool = True,
+    sharey: bool = False,
+) -> Figure:
+    """Build a 2x2 grid of ASHP heating use: primary energy only vs. every component.
+
+    Top row: primary heat-pump electricity only, the amount earlier versions
+    of the model counted. Bottom row: the all-component total, which adds
+    electric backup heat and fans. Columns are MP3 (left) and MP4 (right).
+    Every panel uses the ASHP upgrade population (get_ashp_upgrade_homes),
+    stacked and color-coded by base_heating_fuel.
+
+    By default all four panels share one x-axis so the shift from primary to
+    total reads directly. The shared range runs from the lowest panel's
+    lower_percentile to the highest panel's upper_percentile, so each panel's
+    own central range stays fully in view. With sharex=False, each panel is
+    trimmed to its own percentile range instead.
+
+    Args:
+        df_mp3: MP3 home-level DataFrame (e.g. DATAFRAMES_BY_MP[3]['fixed_base']).
+        df_mp4: MP4 home-level DataFrame (e.g. DATAFRAMES_BY_MP[4]['fixed_base']).
+        figure_size: Figure (width, height) in inches.
+        bin_number: Number of bins per panel, spread over the display range.
+        lower_percentile: Lower percentile (0-100) of the display range.
+        upper_percentile: Upper percentile (0-100) of the display range.
+        sharex: Whether all panels share one x-axis range and bin edges.
+        sharey: Whether all panels share one y-axis range.
+
+    Returns:
+        The matplotlib Figure.
+
+    Raises:
+        ValueError: If the percentiles are out of order or outside 0-100.
+        KeyError: If a total is missing and so is a component column it needs.
+    """
+    if not 0 <= lower_percentile < upper_percentile <= 100:
+        raise ValueError(
+            "Expected 0 <= lower_percentile < upper_percentile <= 100, got "
+            f"{lower_percentile} and {upper_percentile}")
+
+    df_ashp_mp3 = get_ashp_upgrade_homes(_with_annual_heating_consumption(df_mp3, 3))
+    df_ashp_mp4 = get_ashp_upgrade_homes(_with_annual_heating_consumption(df_mp4, 4))
+    print(
+        f"ASHP upgrade population: MP3 {len(df_ashp_mp3):,} rdu | "
+        f"MP4 {len(df_ashp_mp4):,} rdu"
+    )
+
+    dataframes = [df_ashp_mp3, df_ashp_mp4]
+    dataframe_indices = [0, 1, 0, 1]
+    subplot_positions = [(0, 0), (0, 1), (1, 0), (1, 1)]
+    x_cols = [
+        'mp3_heating_consumption', 'mp4_heating_consumption',
+        'mp3_heating_annual_consumption_kwh', 'mp4_heating_annual_consumption_kwh',
+    ]
+    subplot_titles = [
+        'ASHP Primary Heating Consumption (MP3)',
+        'ASHP Primary Heating Consumption (MP4)',
+        'ASHP Total Heating Consumption (MP3)',
+        'ASHP Total Heating Consumption (MP4)',
+    ]
+    x_labels = [
+        'Primary Heating Energy (kWh)', 'Primary Heating Energy (kWh)',
+        'Total Heating Energy, incl. backup and fans (kWh)',
+        'Total Heating Energy, incl. backup and fans (kWh)',
+    ]
+
+    # Without a shared range, each panel would work out its own limits and the
+    # last one drawn would set the axis for all of them.
+    # Zeros are dropped before plotting (include_zero=False), so drop them here
+    # too; the stats and shared range then describe exactly what each panel shows.
+    panel_values = [
+        dataframes[i][col].replace(0, np.nan).dropna()
+        for i, col in zip(dataframe_indices, x_cols)
+    ]
+
+    # Summary stats per panel, all fuels pooled. "Min" and "Max" are the trim
+    # bounds, not the true extremes, which are long-tail outliers.
+    min_label = f'Min (P{lower_percentile:g})'
+    max_label = f'Max (P{upper_percentile:g})'
+    stats_rows = {
+        title: {
+            'N (rdu)': len(values),
+            'Mean': values.mean(),
+            min_label: values.quantile(lower_percentile / 100),
+            'P25': values.quantile(0.25),
+            'P50': values.quantile(0.50),
+            'P75': values.quantile(0.75),
+            max_label: values.quantile(upper_percentile / 100),
+        }
+        for title, values in zip(subplot_titles, panel_values)
+    }
+    # Pair each package's primary row with its total row (MP3, then MP4).
+    stats_order = [subplot_titles[i] for i in (0, 2, 1, 3)]
+    stats_rows = {title: stats_rows[title] for title in stats_order}
+    df_stats = pd.DataFrame.from_dict(stats_rows, orient='index')
+    print('\nHeating consumption summary (kWh, all baseline fuels):')
+    print(df_stats.to_string(float_format=lambda x: f'{x:,.0f}'))
+
+    shared_xlim = None
+    if sharex:
+        shared_xlim = (
+            min(v.quantile(lower_percentile / 100) for v in panel_values),
+            max(v.quantile(upper_percentile / 100) for v in panel_values),
+        )
+
+    axis_note = 'shared axis' if sharex else 'each panel'
+    suptitle = (
+        'ASHP Heating Consumption -- Primary Energy Only vs. All Components '
+        f'({axis_note}, {lower_percentile:g}-{upper_percentile:g} percentile range)'
+    )
+    return create_subplot_grid_histogram(
+        dataframes=dataframes,
+        dataframe_indices=dataframe_indices,
+        subplot_positions=subplot_positions,
+        x_cols=x_cols,
+        x_labels=x_labels,
+        subplot_titles=subplot_titles,
+        suptitle=suptitle,
+        figure_size=figure_size,
+        sharex=sharex,
+        sharey=sharey,
+        shared_xlim=shared_xlim,
+        color_code='base_heating_fuel',
+        bin_number=bin_number,
+        lower_percentile=lower_percentile,
+        upper_percentile=upper_percentile,
+        show_legend=False,
     )
 
 

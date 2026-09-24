@@ -12,13 +12,12 @@ from cmu_tare_model.constants import (
 )
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.column_names import (
-    create_lifetime_damages_col, 
-    create_avoided_damages_col
+    create_lifetime_damages_col,
+    create_avoided_damages_col,
+    create_annual_fuel_consumption_col,
 )
-from cmu_tare_model.utils.degree_day_consumption_utils import (
-    get_electricity_consumption_for_year,
-    get_hdd_adjusted_consumption,
-    get_total_baseline_consumption
+from cmu_tare_model.energy_consumption_and_metadata.projected_consumption import (
+    build_projected_consumption,
 )
 # Add imports for validation utility functions
 from cmu_tare_model.utils.validation_framework import (
@@ -40,6 +39,7 @@ def calculate_lifetime_climate_impacts(
         menu_mp: int,
         policy_scenario: str,
         df_baseline_damages: Optional[pd.DataFrame] = None,
+        df_consumption: Optional[pd.DataFrame] = None,
         verbose: bool = VERBOSE) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Calculate lifetime climate impacts (CO2e emissions and climate damages) for each
@@ -65,6 +65,9 @@ def calculate_lifetime_climate_impacts(
         menu_mp (int): Measure package identifier (0 for baseline, nonzero for different scenarios).
         policy_scenario (str): Single policy scenario. Must equal '2025 Reference Case'.
         df_baseline_damages (pd.DataFrame, optional): Baseline damages for computing avoided emissions/damages.
+        df_consumption (pd.DataFrame, optional): This scenario's table from
+            build_projected_consumption. Built here from df if not given; pass
+            the one fuel costs used so both steps share one table.
         verbose (bool, optional): Whether to print detailed progress messages. Defaults to False.
 
     Returns:
@@ -100,6 +103,14 @@ def calculate_lifetime_climate_impacts(
 
     # Retrieve scenario-specific params for electricity/fossil-fuel emissions
     scenario_prefix, cambium_scenario, lookup_emissions_fossil_fuel, lookup_emissions_electricity_climate, _ = define_scenario_params(menu_mp, policy_scenario)
+
+    # One consumption table for every year and category: the single source of
+    # the electricity and fossil fuel use below.
+    if df_consumption is None:
+        df_consumption = build_projected_consumption(df_copy, menu_mp, verbose=verbose)
+    if not df_consumption.index.equals(df_copy.index):
+        raise ValueError(
+            "df_consumption must have the same homes, in the same order, as df.")
 
     # Initialize dictionary to track columns for masking verification by category
     all_columns_to_mask = {category: [] for category in EQUIPMENT_SPECS}
@@ -160,6 +171,8 @@ def calculate_lifetime_climate_impacts(
                         year_label=year_label,  # ADDED: Missing year_label parameter
                         lookup_emissions_fossil_fuel=lookup_emissions_fossil_fuel,
                         menu_mp=menu_mp,
+                        df_consumption=df_consumption,
+                        scenario_prefix=scenario_prefix,
                         retrofit_mask=valid_mask,
                         verbose=verbose
                     ) 
@@ -173,7 +186,8 @@ def calculate_lifetime_climate_impacts(
                         cambium_scenario=cambium_scenario,
                         total_fossil_fuel_emissions=total_fossil_fuel_emissions,
                         scenario_prefix=scenario_prefix,
-                        menu_mp=menu_mp
+                        menu_mp=menu_mp,
+                        df_consumption=df_consumption
                     )
 
                     # ===== STEP 3 & 4: Store annual emissions and damages in lists =====
@@ -325,7 +339,8 @@ def calculate_climate_emissions_and_damages(
     cambium_scenario: str,
     total_fossil_fuel_emissions: dict,
     scenario_prefix: str,
-    menu_mp: int
+    menu_mp: int,
+    df_consumption: pd.DataFrame
 ) -> Tuple[dict, dict, dict]:
     """
     Calculate climate-related emissions (CO2e) and damages for a given category/year.
@@ -343,6 +358,8 @@ def calculate_climate_emissions_and_damages(
         total_fossil_fuel_emissions (dict): Fossil fuel CO2e amounts (keyed by pollutant).
         scenario_prefix (str): Prefix for output column naming.
         menu_mp (int): Measure package identifier (0 for baseline, nonzero for a measure scenario).
+        df_consumption (pd.DataFrame): This scenario's table from
+            build_projected_consumption, indexed like df.
 
     Returns:
         Tuple[dict, dict, dict]:
@@ -418,13 +435,13 @@ def calculate_climate_emissions_and_damages(
         'srmer': df['gea_region'].map(get_emission_factor_srmer)
     }
     
-    # Get electricity consumption with HDD adjustment applied automatically
-    electricity_consumption = get_electricity_consumption_for_year(
-        df=df,
-        category=category,
-        year_label=year_label,
-        menu_mp=menu_mp
-    )
+    # Electricity use from the consumption table: every electric component
+    # (primary, fans and pumps, heat-pump backup), degree-day adjusted.
+    electricity_col = create_annual_fuel_consumption_col(
+        scenario_prefix, year_label, category, 'electricity')
+    if electricity_col not in df_consumption.columns:
+        raise ValueError(f"'{electricity_col}' not found in df_consumption")
+    electricity_consumption = df_consumption[electricity_col]
 
     # Calculate annual emissions for each mer_type type
     for mer_type in MER_TYPES:

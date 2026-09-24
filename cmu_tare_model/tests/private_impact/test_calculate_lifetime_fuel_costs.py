@@ -106,6 +106,21 @@ def fuel_prices():
     return prices
 
 
+def _fake_consumption_table(df: pd.DataFrame, menu_mp: int,
+                            verbose: bool = False) -> pd.DataFrame:
+    """Stand-in for build_projected_consumption: 1,000 kWh of electricity per
+    home, every category and year, 0 for the other fuels."""
+    prefix = 'baseline_' if menu_mp == 0 else f'ref2025_mp{menu_mp}_'
+    columns = {}
+    for cat, lifetime in FULL_EQUIPMENT_SPECS.items():
+        for year in range(BASE_YEAR, BASE_YEAR + lifetime):
+            for fuel in FULL_FUEL_MAPPING.values():
+                use = 1000.0 if fuel == 'electricity' else 0.0
+                columns[f'{prefix}{year}_{cat}_{fuel}_consumption'] = use
+            columns[f'{prefix}{year}_{cat}_consumption'] = 1000.0
+    return pd.DataFrame(columns, index=df.index)
+
+
 # =============================================================================
 # PARAMETER VALIDATION
 # =============================================================================
@@ -138,9 +153,9 @@ def test_baseline_fuel_costs_output_structure(fuel_cost_df, fuel_prices):
     from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import calculate_lifetime_fuel_costs
 
     with patch(f'{MODULE}.define_scenario_params') as mock_params, \
-         patch(f'{MODULE}.get_hdd_adjusted_consumption') as mock_hdd:
+         patch(f'{MODULE}.build_projected_consumption',
+               side_effect=_fake_consumption_table):
         mock_params.return_value = ('baseline_', 'MidCase', {}, {}, fuel_prices)
-        mock_hdd.return_value = pd.Series(1000.0, index=fuel_cost_df.index)
 
         df_main, df_detailed = calculate_lifetime_fuel_costs(
             fuel_cost_df, menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
@@ -160,9 +175,9 @@ def test_baseline_invalid_homes_get_nan(fuel_cost_df, fuel_prices):
     from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import calculate_lifetime_fuel_costs
 
     with patch(f'{MODULE}.define_scenario_params') as mock_params, \
-         patch(f'{MODULE}.get_hdd_adjusted_consumption') as mock_hdd:
+         patch(f'{MODULE}.build_projected_consumption',
+               side_effect=_fake_consumption_table):
         mock_params.return_value = ('baseline_', 'MidCase', {}, {}, fuel_prices)
-        mock_hdd.return_value = pd.Series(1000.0, index=fuel_cost_df.index)
 
         df_main, _ = calculate_lifetime_fuel_costs(
             fuel_cost_df, menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
@@ -182,9 +197,9 @@ def test_baseline_lifetime_is_sum_of_yearly(fuel_cost_df, fuel_prices):
     from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import calculate_lifetime_fuel_costs
 
     with patch(f'{MODULE}.define_scenario_params') as mock_params, \
-         patch(f'{MODULE}.get_hdd_adjusted_consumption') as mock_hdd:
+         patch(f'{MODULE}.build_projected_consumption',
+               side_effect=_fake_consumption_table):
         mock_params.return_value = ('baseline_', 'MidCase', {}, {}, fuel_prices)
-        mock_hdd.return_value = pd.Series(1000.0, index=fuel_cost_df.index)
 
         df_main, df_detailed = calculate_lifetime_fuel_costs(
             fuel_cost_df, menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
@@ -219,9 +234,9 @@ def test_mp_fuel_costs_uses_scenario_prefix(fuel_cost_df, fuel_prices):
     from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import calculate_lifetime_fuel_costs
 
     with patch(f'{MODULE}.define_scenario_params') as mock_params, \
-         patch(f'{MODULE}.get_hdd_adjusted_consumption') as mock_hdd:
+         patch(f'{MODULE}.build_projected_consumption',
+               side_effect=_fake_consumption_table):
         mock_params.return_value = ('ref2025_mp8_', 'MidCase', {}, {}, fuel_prices)
-        mock_hdd.return_value = pd.Series(1000.0, index=fuel_cost_df.index)
 
         df_main, _ = calculate_lifetime_fuel_costs(
             fuel_cost_df, menu_mp=8, policy_scenario='2025 Reference Case', verbose=False
@@ -241,9 +256,9 @@ def test_all_lifetime_columns_are_tracked(fuel_cost_df, fuel_prices):
     from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import calculate_lifetime_fuel_costs
 
     with patch(f'{MODULE}.define_scenario_params') as mock_params, \
-         patch(f'{MODULE}.get_hdd_adjusted_consumption') as mock_hdd:
+         patch(f'{MODULE}.build_projected_consumption',
+               side_effect=_fake_consumption_table):
         mock_params.return_value = ('baseline_', 'MidCase', {}, {}, fuel_prices)
-        mock_hdd.return_value = pd.Series(1000.0, index=fuel_cost_df.index)
 
         df_main, _ = calculate_lifetime_fuel_costs(
             fuel_cost_df, menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
@@ -284,9 +299,9 @@ def test_all_years_processed_for_full_lifetime(fuel_cost_df, fuel_prices):
     from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import calculate_lifetime_fuel_costs
 
     with patch(f'{MODULE}.define_scenario_params') as mock_params, \
-         patch(f'{MODULE}.get_hdd_adjusted_consumption') as mock_hdd:
+         patch(f'{MODULE}.build_projected_consumption',
+               side_effect=_fake_consumption_table):
         mock_params.return_value = ('baseline_', 'MidCase', {}, {}, fuel_prices)
-        mock_hdd.return_value = pd.Series(1000.0, index=fuel_cost_df.index)
 
         _, df_detailed = calculate_lifetime_fuel_costs(
             fuel_cost_df, menu_mp=0, policy_scenario='2025 Reference Case', verbose=False
@@ -297,3 +312,32 @@ def test_all_years_processed_for_full_lifetime(fuel_cost_df, fuel_prices):
             annual_col = f'baseline_{year}_{cat}_fuel_cost'
             assert annual_col in df_detailed.columns, \
                 f"Missing annual column {annual_col} — not all {lifetime} years processed"
+
+
+# =============================================================================
+# PER-FUEL PRICING
+# =============================================================================
+
+def test_each_fuel_priced_at_its_own_price(fuel_prices):
+    """A home using two fuels pays each at its own price (electricity by state,
+    fuel oil by census division), not both at one price."""
+    from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import calculate_annual_fuel_costs
+
+    df = pd.DataFrame({'state': ['CA'], 'census_division': ['Pacific']})
+    prices = {region: {fuel: {sc: dict(years) for sc, years in by_sc.items()}
+                       for fuel, by_sc in by_fuel.items()}
+              for region, by_fuel in fuel_prices.items()}
+    prices['CA']['electricity']['2025 Reference Case'][BASE_YEAR] = 0.20
+    prices['Pacific']['fuelOil']['2025 Reference Case'][BASE_YEAR] = 0.05
+    table = pd.DataFrame({
+        f'baseline_{BASE_YEAR}_heating_electricity_consumption': [100.0],
+        f'baseline_{BASE_YEAR}_heating_fuelOil_consumption': [1000.0],
+        f'baseline_{BASE_YEAR}_heating_consumption': [1100.0],
+    })
+
+    annual_costs, cost = calculate_annual_fuel_costs(
+        df, 'heating', BASE_YEAR, 0, prices, '2025 Reference Case',
+        'baseline_', df_consumption=table)
+
+    assert cost.iloc[0] == pytest.approx(100.0 * 0.20 + 1000.0 * 0.05)
+    assert annual_costs[f'baseline_{BASE_YEAR}_heating_consumption'].iloc[0] == 1100.0

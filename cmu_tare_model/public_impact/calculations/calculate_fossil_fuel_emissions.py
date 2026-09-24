@@ -2,14 +2,17 @@ import pandas as pd
 from typing import Dict, Optional
 
 from cmu_tare_model.constants import POLLUTANTS, EQUIPMENT_SPECS, VERBOSE
-from cmu_tare_model.utils.degree_day_consumption_utils import (
-    get_hdd_factor_for_year,
-    apply_degree_day_adjustment
+from cmu_tare_model.utils.column_names import (
+    create_annual_consumption_col,
+    create_annual_fuel_consumption_col,
 )
 from cmu_tare_model.utils.validation_framework import (
     get_retrofit_homes_mask,
     create_retrofit_only_series,
 )
+
+# Fuels burned on site. Electricity is covered separately, by grid emission factors.
+FOSSIL_FUELS = ('naturalGas', 'propane', 'fuelOil')
 
 
 def calculate_fossil_fuel_emissions(
@@ -18,19 +21,31 @@ def calculate_fossil_fuel_emissions(
     year_label: int,
     lookup_emissions_fossil_fuel: Dict[str, Dict[str, float]],
     menu_mp: int,
+    df_consumption: pd.DataFrame,
+    scenario_prefix: str,
     retrofit_mask: Optional[pd.Series] = None,
     verbose: bool = VERBOSE
 ) -> Dict[str, pd.Series]:
     """
     Calculate fossil fuel emissions (SO2, NOx, PM2.5, and CO2e) for a given category and scenario.
 
+    Reads this scenario's natural gas, propane, and fuel oil use from
+    df_consumption (already degree-day adjusted, every component counted), for
+    the baseline and measure packages alike: a dual-fuel heat pump's backup
+    furnace still burns gas after the retrofit. For an all-electric package
+    these columns are zero.
+
     Args:
-        df (pd.DataFrame): DataFrame containing region- and fuel-specific consumption data.
-        category (str): Category of energy use (e.g., 'heating', 'cooking').
-        year_label (int): The year for calculation (e.g., 2024).
-        lookup_emissions_fossil_fuel (Dict[str, Dict[str, float]]): 
-            Dictionary mapping fuel → (pollutant → emission factor).
+        df (pd.DataFrame): DataFrame with the inclusion flags used for masking.
+        category (str): Category of energy use (e.g., 'heating').
+        year_label (int): The year for calculation (e.g., 2025).
+        lookup_emissions_fossil_fuel (Dict[str, Dict[str, float]]):
+            Dictionary mapping fuel -> (pollutant -> emission factor).
         menu_mp (int): Measure package identifier (0 indicates baseline).
+        df_consumption (pd.DataFrame): This scenario's table from
+            build_projected_consumption, indexed like df.
+        scenario_prefix (str): Scenario prefix of the table's columns
+            (e.g. 'baseline_', 'ref2025_mp3_').
         retrofit_mask (Optional[pd.Series]): Pre-computed retrofit mask. If None, it will be calculated.
         verbose (bool): Whether to print detailed information.
 
@@ -39,14 +54,19 @@ def calculate_fossil_fuel_emissions(
               representing emissions for that pollutant.
 
     Raises:
-        ValueError: If category is invalid or menu_mp is negative.
-        KeyError: If required consumption columns are missing.
+        ValueError: If category is invalid, menu_mp is negative, or
+            df_consumption has no columns for this scenario, category and year.
     """
     # Validate inputs
     if category not in EQUIPMENT_SPECS:
         raise ValueError(f"Invalid category: {category}. Must be one of {list(EQUIPMENT_SPECS.keys())}")
     if not isinstance(menu_mp, int) or menu_mp < 0:
         raise ValueError(f"Invalid menu_mp: {menu_mp}. Must be a non-negative integer.")
+    total_col = create_annual_consumption_col(scenario_prefix, year_label, category)
+    if total_col not in df_consumption.columns:
+        raise ValueError(
+            f"df_consumption has no '{total_col}' column; build it with "
+            f"build_projected_consumption for menu_mp={menu_mp}.")
 
     # Determine retrofit mask
     if retrofit_mask is None:
@@ -58,38 +78,16 @@ def calculate_fossil_fuel_emissions(
         for pollutant in POLLUTANTS
     }
 
-    # Only calculate baseline fossil fuel emissions (menu_mp=0)
-    if menu_mp == 0:
-        # Prepare HDD factor for the year
-        hdd_factor = get_hdd_factor_for_year(df, year_label)
-
-        # Determine applicable fuels for this category. Cooling is always
-        # electric, so it has no fossil fuel consumption and contributes zero
-        # fossil emissions (the series stay at their initialized zeros).
-        if category == 'cooling':
-            fuels = []
-        else:
-            fuels = ['naturalGas', 'propane']
-            # Fuel oil is not used for cooking or clothes drying.
-            if category not in ['cooking', 'clothesDrying']:
-                fuels.append('fuelOil')
-
-        for fuel in fuels:
-            consumption_col = f'base_{fuel}_{category}_consumption'
-            if consumption_col not in df.columns:
-                raise KeyError(f"Required column '{consumption_col}' not found in DataFrame")
-
-            # Base consumption, filling missing values with zero
-            fuel_consumption = df[consumption_col].fillna(0)
-
-            # Apply HDD adjustment (only affects 'heating' category)
-            fuel_consumption = apply_degree_day_adjustment(
-                fuel_consumption, category, hdd_factor=hdd_factor
-            )
-
-            # Compute emissions for each pollutant
-            for pollutant in POLLUTANTS:
-                emis_factor = lookup_emissions_fossil_fuel.get(fuel, {}).get(pollutant, 0)
-                total_fossil_emissions[pollutant] += fuel_consumption * emis_factor
+    # A category's table has a column only for fuels it can use (cooling has
+    # electricity only), so a missing fossil column means zero use.
+    for fuel in FOSSIL_FUELS:
+        consumption_col = create_annual_fuel_consumption_col(
+            scenario_prefix, year_label, category, fuel)
+        if consumption_col not in df_consumption.columns:
+            continue
+        fuel_consumption = df_consumption[consumption_col].fillna(0)
+        for pollutant in POLLUTANTS:
+            emis_factor = lookup_emissions_fossil_fuel.get(fuel, {}).get(pollutant, 0)
+            total_fossil_emissions[pollutant] += fuel_consumption * emis_factor
 
     return total_fossil_emissions

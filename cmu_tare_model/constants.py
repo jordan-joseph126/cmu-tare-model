@@ -29,7 +29,13 @@ ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached']
 # enumeration_dictionary.tsv provides additional details on the allowed technologies for each equipment category.
 # Trane GC focuses on heating and cooling. Cooling category is used for initial replacement cost estimates.
 ALLOWED_TECHNOLOGIES = {
-    # in.hvac_heating_type_and_fuel exclude existing heat pump options
+    # in.hvac_heating_type_and_fuel: this list defines the study sample (with
+    # the fuel rule: electricity, natural gas, propane, fuel oil). The study
+    # models replacing a home's existing heating system with a heat pump, so:
+    # - existing heat pumps (ASHP; MSHP in 2025.1) are left out: nothing to replace;
+    # - wall/floor furnaces and shared heating are left out: there is no cost
+    #   data to estimate their replacement cost.
+    # 2022.1.1 result: 260,211 rdu (63.0M homes) in the study sample.
     'heating': [
         'Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace',
         # 'Electricity ASHP',
@@ -37,14 +43,21 @@ ALLOWED_TECHNOLOGIES = {
         'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
         'Propane Fuel Boiler', 'Propane Fuel Furnace'
     ],
-    # Cooling technology filter removed (Phase 3, D4, researcher's 19 Sep
-    # 2026 decision): both releases now rely on `applicability` (2025.1) and
-    # the fuel-only check (identify_valid_homes's fail-open branch, since
-    # base_cooling_fuel is hardcoded to 'Electricity') for cooling scope,
-    # instead of an ALLOWED_TECHNOLOGIES allowlist. This is a deliberate,
-    # acknowledged change to 2022.1.1's masked cooling count too -- no
-    # byte-identity proof is required (see CLAUDE.md's dropped regression
-    # guarantee).
+    # in.hvac_cooling_type: central and room AC only, as in the submitted
+    # 2022.1.1 analysis. Same list for both releases, so both share one scope.
+    # This list does NOT remove homes from the study sample: a home with valid
+    # heating but no central or room AC (38,910 rdu, 9.42M homes in 2022.1.1)
+    # stays in, with its cooling counted as zero and no AC replacement offset.
+    # PLACEHOLDER -- may change for the 2025.1 dual-fuel analysis: whether homes
+    # with no AC (the heat pump adds cooling they never had) and existing heat
+    # pump homes ('Ducted Heat Pump' / 'Non-Ducted Heat Pump' in 2025.1) belong
+    # in cooling scope is still open. Dropping this list puts both groups in
+    # scope; in 2022.1.1 that added 38,910 heating-valid rdu (9.42M homes) with
+    # no AC and lowered adoption by 0.20-1.56 pp.
+    'cooling': [
+        'Central AC',
+        'Room AC'
+    ],
     # in.water_heater_efficiency exclude heat pump options, tankless, other fuel (e.g., solar), and indirect fuel oil
     # 'waterHeating': [
     #     'Electric Premium', 'Electric Standard',
@@ -76,7 +89,7 @@ VALID_CATEGORIES = list(EQUIPMENT_SPECS.keys())
 # ResStock release this run reads. MP numbers repeat across releases (2025.1
 # Upgrades 03/04 will later load as mp=3/4, unlike 2022.1.1 MP3/MP4), so any
 # check on an MP number must also check the release.
-RESSTOCK_RELEASE_THIS_RUN = '2025.1'  # '2022.1.1' or '2025.1'
+RESSTOCK_RELEASE_THIS_RUN = '2022.1.1'  # '2022.1.1' or '2025.1'
 
 # Measure packages available in each release. Add 2025.1 Upgrades 04 and 03
 # to the '2025.1' list once Upgrade 05 has finished every phase.

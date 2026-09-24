@@ -78,6 +78,33 @@ def create_annual_consumption_col(
     return f'{scenario_prefix}{year_label}_{category}_consumption'
 
 
+def create_annual_fuel_consumption_col(
+    scenario_prefix: str,
+    year_label: int,
+    category: str,
+    fuel: str) -> str:
+    """Build the per-year, per-fuel projected consumption column name.
+
+    The per-fuel version of create_annual_consumption_col: the fuel sits
+    between the category and 'consumption'. Each value is that fuel's full use
+    for the category (primary energy plus fans, pumps, and heat-pump backup),
+    so a reader can price each fuel at its own price. The per-fuel columns for
+    one home, year and category add up to the create_annual_consumption_col
+    total.
+
+    Args:
+        scenario_prefix: Scenario prefix (e.g. 'baseline_', 'ref2025_mp3_').
+        year_label: Calendar year (e.g. 2025).
+        category: Equipment category (e.g. 'heating').
+        fuel: Fuel as spelled in FUEL_MAPPING's values (e.g. 'naturalGas').
+
+    Returns:
+        Column name string, e.g.
+        'ref2025_mp3_2039_heating_electricity_consumption'.
+    """
+    return f'{scenario_prefix}{year_label}_{category}_{fuel}_consumption'
+
+
 def create_cost_col(
     menu_mp: int,
     category: str,

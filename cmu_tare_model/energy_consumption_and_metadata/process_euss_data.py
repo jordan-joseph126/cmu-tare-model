@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from config import PROJECT_ROOT
 from cmu_tare_model.constants import (
+    ANCHOR_YEAR,
     EQUIPMENT_SPECS,
     VALID_CATEGORIES,
     VERBOSE,
@@ -25,6 +26,9 @@ from cmu_tare_model.utils.calculation_utils import (
     print_masking_funnel_stage,
     )
 from cmu_tare_model.utils.resstock_schema import RESSTOCK_COLUMN_MAP, resstock_col
+from cmu_tare_model.utils.degree_day_consumption_utils import (
+    get_degree_day_adjusted_consumption_by_fuel,
+)
 
 """
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -93,13 +97,44 @@ def read_resstock_2025_1_parquet(mp: int) -> pd.DataFrame:
     return df_raw.set_index("bldg_id")
 
 
-def load_and_filter_2025_1_upgrade(
+def read_resstock_2022_1_1_csv(mp: int) -> pd.DataFrame:
+    """Reads one ResStock 2022.1.1 (EUSS) national AMY2018 CSV file.
+
+    2022.1.1 names the baseline 'baseline_metadata_and_annual_results.csv' and
+    each package 'upgradeNN_metadata_and_annual_results.csv', zero-padded.
+
+    Args:
+        mp: Measure package number under the '2022.1.1' release (0 for the
+            baseline, 3 or 4 for the heat-pump packages).
+
+    Returns:
+        The raw ResStock 2022.1.1 frame, indexed by bldg_id.
+
+    Raises:
+        ValueError: If mp is not in RESSTOCK_RELEASE_AND_MP['2022.1.1'].
+    """
+    if mp not in RESSTOCK_RELEASE_AND_MP['2022.1.1']:
+        raise ValueError(
+            f"mp={mp} is not a loadable 2022.1.1 package; expected one of "
+            f"{sorted(RESSTOCK_RELEASE_AND_MP['2022.1.1'])}")
+    file_prefix = 'baseline' if mp == 0 else f'upgrade{mp:02d}'
+    filename = f"{file_prefix}_metadata_and_annual_results.csv"
+    file_path = os.path.join(
+        PROJECT_ROOT, "cmu_tare_model", "data", "euss_data",
+        "resstock_amy2018_release_1.1", "national", "csv", filename)
+    # low_memory=False reads the whole file before choosing column types, so
+    # mixed-type columns come back as text instead of raising a DtypeWarning.
+    return pd.read_csv(file_path, low_memory=False, index_col="bldg_id")
+
+
+def load_and_filter_upgrade(
     menu_mp: int,
     state: Optional[str] = None,
     city: Optional[str] = None,
     verbose: bool = VERBOSE,
+    release: str = RESSTOCK_RELEASE_THIS_RUN,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Loads one ResStock 2025.1 upgrade file and applies TARE's scope filters.
+    """Loads one ResStock upgrade file (either release) and applies TARE's scope filters.
 
     Reorganizes the inline filtering that both the baseline and MP5 notebook
     cells duplicated into one reusable function, and adds two new filter
@@ -114,10 +149,12 @@ def load_and_filter_2025_1_upgrade(
         1. Load -- no filter; the starting population for the funnel.
         2. Applicability -- ResStock's own upgrade_applicable flag (D3, the
            new leading filter; a no-op for menu_mp=0, where every row is
-           True).
+           True). Applied to both releases so the two samples use the same
+           scope filters; for 2022.1.1 MP3/MP4 it removes no in-scope homes.
         3. Occupancy -- unchanged from the existing notebook cells.
         4. Housing type -- unchanged from the existing notebook cells.
-        5. Alaska/Hawaii exclusion -- new; see EXCLUDED_STATES.
+        5. Alaska/Hawaii exclusion -- new; see EXCLUDED_STATES. A no-op for
+           2022.1.1, which covers only the lower 48 states and DC.
         6. Geographic filter -- unchanged from the existing notebook cells,
            now driven by the state/city arguments instead of the notebook's
            own input_state/input_cityFilter globals. Only recorded as a
@@ -130,7 +167,7 @@ def load_and_filter_2025_1_upgrade(
 
     Args:
         menu_mp: The measure package to load (0 for baseline, or one of
-            RESSTOCK_RELEASE_AND_MP['2025.1']).
+            RESSTOCK_RELEASE_AND_MP[release]).
         state: Two-letter state abbreviation to filter to, or None for the
             full (49-state-plus-DC, after the AK/HI exclusion) national
             footprint.
@@ -139,6 +176,8 @@ def load_and_filter_2025_1_upgrade(
             None.
         verbose: Whether to also print each filter stage's funnel row as it
             runs, via print_masking_funnel_stage.
+        release: ResStock release to load ('2022.1.1' or '2025.1'). Defaults
+            to RESSTOCK_RELEASE_THIS_RUN.
 
     Returns:
         A tuple of (df_filtered, df_funnel):
@@ -151,13 +190,16 @@ def load_and_filter_2025_1_upgrade(
                 heating fuel bucket), in stage order.
 
     Raises:
-        ValueError: If city is given but state is None.
+        ValueError: If city is given but state is None, or release is unknown.
     """
     if city is not None and state is None:
         raise ValueError(
             "city was given without state; a city filter requires a state.")
+    if release not in RESSTOCK_RELEASE_AND_MP:
+        raise ValueError(
+            f"Unknown release '{release}'; expected one of "
+            f"{sorted(RESSTOCK_RELEASE_AND_MP)}")
 
-    release = '2025.1'
     weight_col = 'weight'
     heating_fuel_col = resstock_col(release, 'heating_fuel')
     heating_type_col = resstock_col(release, 'heating_type_and_fuel')
@@ -180,10 +222,15 @@ def load_and_filter_2025_1_upgrade(
         return df_stage
 
     # ===== Stage 1: Load =====
-    df_filtered = read_resstock_2025_1_parquet(menu_mp)
+    if release == '2025.1':
+        df_filtered = read_resstock_2025_1_parquet(menu_mp)
+    else:
+        df_filtered = read_resstock_2022_1_1_csv(menu_mp)
     record_stage(df_filtered, 'load')
 
     # ===== Stage 2: Applicability (new, D3) =====
+    # Applied to both releases so the two samples use the same scope filters.
+    # For 2022.1.1 MP3/MP4 it removes no in-scope homes.
     applicable_col = resstock_col(release, 'upgrade_applicable')
     is_applicable = df_filtered[applicable_col].astype(bool)
     df_filtered = df_filtered.loc[is_applicable]
@@ -987,6 +1034,12 @@ def df_enduse_compare(
     df_compare[f'mp{menu_mp}_total_electricity_consumption'] = (
         df_mp[resstock_col(release, 'electricity_total')]
     )
+    # Whole-home site energy after the retrofit, all fuels (the retrofit side
+    # of baseline_total_site_consumption). Used only for the savings check
+    # column in STEP 7.
+    df_compare[f'mp{menu_mp}_total_site_consumption'] = (
+        df_mp[resstock_col(release, 'site_energy_total')]
+    )
 
     # ===== STEP 3c: Post-upgrade electrical panel constraint flags (2025.1) =====
     # Reporting-only pass-through: whether the new equipment runs into an
@@ -1067,35 +1120,57 @@ def df_enduse_compare(
                 print(f"  {col}: Masked {masked_count} values")
 
     # ===== STEP 7: Whole-home modeled savings fraction (HOMES rebate tiers) =====
-    # Whole-home percent savings = (HVAC energy delta) / whole-home baseline site
-    # energy. Only heating and cooling change under a retrofit, so the numerator
-    # is the heating+cooling consumption drop; the denominator is the unchanged
-    # whole-home baseline total. Consumed only for electric-resistance homes in
-    # the June 2026 HOMES rebate, where every quantity is electric kWh.
-    #
-    # NOTE: the heating/cooling terms are TARE's degree-day-adjusted consumption
-    # while the denominator is raw ResStock site energy; this small
-    # adjusted-vs-raw mismatch is an accepted approximation.
-    heating_col = f'mp{menu_mp}_heating_consumption'
-    cooling_col = f'mp{menu_mp}_cooling_consumption'
-    savings_frac_col = f'mp{menu_mp}_modeled_savings_frac'
+    # Numerator: annual drop in heating + cooling energy, counting every
+    # component on both sides (primary energy, fans and pumps, heat-pump
+    # backup) and every fuel. Earlier versions counted primary energy only,
+    # which left out backup heat and fans and overstated savings. Read at
+    # ANCHOR_YEAR, where every degree-day factor is 1.0, so these are
+    # ResStock's own annual values. Denominator: whole-home baseline site
+    # energy, all fuels.
+    def _annual_use(category: str, mp: int) -> pd.Series:
+        """All-fuel annual use for one category; NaN for homes left out."""
+        by_fuel = get_degree_day_adjusted_consumption_by_fuel(
+            df_compare, category, ANCHOR_YEAR, mp)
+        return pd.concat(by_fuel.values(), axis=1).sum(axis=1, min_count=1)
 
-    # Heating delta propagates NaN for homes without valid heating (which are
-    # excluded from any rebate anyway). Cooling delta is 0 when a home has no
-    # cooling, so a heating-only home still gets a heating-based fraction.
-    heating_delta = (
-        df_compare['baseline_heating_consumption'] - df_compare[heating_col]
-    )
-    if cooling_col in df_compare.columns:
-        cooling_delta = (
-            df_compare['baseline_cooling_consumption'].fillna(0.0)
-            - df_compare[cooling_col].fillna(0.0)
-        )
+    # Heating savings stay NaN for homes without valid heating (never
+    # eligible for a rebate). Cooling savings are 0 for a home without
+    # cooling, so a heating-only home still gets a fraction.
+    # Annual heating use before and after, every fuel and component (a gas
+    # furnace's gas plus its blower; a heat pump's electricity plus backup and
+    # fans). Kept as columns for the furnace-vs-heat-pump comparison figure.
+    df_compare['baseline_heating_annual_consumption_kwh'] = _annual_use('heating', 0)
+    df_compare[f'mp{menu_mp}_heating_annual_consumption_kwh'] = (
+        _annual_use('heating', menu_mp))
+    heating_savings = (df_compare['baseline_heating_annual_consumption_kwh']
+                       - df_compare[f'mp{menu_mp}_heating_annual_consumption_kwh'])
+    if 'cooling' in VALID_CATEGORIES:
+        cooling_savings = (_annual_use('cooling', 0).fillna(0.0)
+                           - _annual_use('cooling', menu_mp).fillna(0.0))
     else:
-        cooling_delta = 0.0
+        cooling_savings = 0.0
 
+    hvac_savings_col = f'mp{menu_mp}_hvac_energy_savings_kwh'
+    savings_frac_col = f'mp{menu_mp}_modeled_savings_frac'
+    df_compare[hvac_savings_col] = (
+        heating_savings + cooling_savings).astype('float64')
     df_compare[savings_frac_col] = (
-        (heating_delta + cooling_delta)
+        df_compare[hvac_savings_col]
+        / df_compare['baseline_total_site_consumption']
+    ).astype('float64')
+
+    # Check only, used in no calculation: ResStock's own whole-home change in
+    # site energy. It runs a few percent below the HVAC savings above because
+    # it includes the cooling the heat pump adds in homes outside cooling scope
+    # (no central or room AC), which TARE counts as zero; hot water and
+    # refrigerator side effects make up the small rest.
+    whole_home_col = f'mp{menu_mp}_whole_home_energy_savings_kwh'
+    df_compare[whole_home_col] = (
+        df_compare['baseline_total_site_consumption']
+        - df_compare[f'mp{menu_mp}_total_site_consumption']
+    ).where(heating_savings.notna()).astype('float64')
+    df_compare[f'{savings_frac_col}_whole_home'] = (
+        df_compare[whole_home_col]
         / df_compare['baseline_total_site_consumption']
     ).astype('float64')
 

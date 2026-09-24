@@ -1,14 +1,13 @@
 """Tests for cmu_tare_model.public_impact.calculations.calculate_fossil_fuel_emissions module.
 
-Verifies fossil fuel emissions calculations for baseline (menu_mp=0) and
-retrofit (menu_mp>0) scenarios, including pollutant-specific outputs and
-HDD adjustment behavior.
+Verifies fossil fuel emissions for baseline (menu_mp=0) and retrofit (menu_mp>0)
+scenarios, read from the consumption table (build_projected_consumption), which
+is already degree-day adjusted and counts every component.
 """
 
 import pytest
 import pandas as pd
 import numpy as np
-from unittest.mock import patch, MagicMock
 
 from cmu_tare_model.constants import ANCHOR_YEAR
 
@@ -52,6 +51,21 @@ def fossil_fuel_lookup():
     }
 
 
+def _table(df: pd.DataFrame, prefix: str, category: str,
+           year: int = ANCHOR_YEAR, source_prefix: str = 'base') -> pd.DataFrame:
+    """Consumption-table columns for one category and year, built from the
+    fixture's per-fuel columns. A fuel with no column gets no table column."""
+    columns = {}
+    total = pd.Series(0.0, index=df.index)
+    for fuel in ['electricity', 'naturalGas', 'propane', 'fuelOil']:
+        src = f'{source_prefix}_{fuel}_{category}_consumption'
+        if src in df.columns:
+            columns[f'{prefix}{year}_{category}_{fuel}_consumption'] = df[src]
+            total = total + df[src].fillna(0)
+    columns[f'{prefix}{year}_{category}_consumption'] = total
+    return pd.DataFrame(columns, index=df.index)
+
+
 # ── Validation ───────────────────────────────────────────────────────────────
 
 def test_invalid_category_raises(mock_constants, emissions_df, fossil_fuel_lookup):
@@ -60,7 +74,9 @@ def test_invalid_category_raises(mock_constants, emissions_df, fossil_fuel_looku
     )
     with pytest.raises(ValueError, match="Invalid category"):
         calculate_fossil_fuel_emissions(
-            emissions_df, 'invalid', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=0)
+            emissions_df, 'invalid', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=0,
+            df_consumption=_table(emissions_df, 'baseline_', 'heating'),
+            scenario_prefix='baseline_')
 
 
 def test_negative_menu_mp_raises(mock_constants, emissions_df, fossil_fuel_lookup):
@@ -69,7 +85,9 @@ def test_negative_menu_mp_raises(mock_constants, emissions_df, fossil_fuel_looku
     )
     with pytest.raises(ValueError, match="Invalid menu_mp"):
         calculate_fossil_fuel_emissions(
-            emissions_df, 'heating', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=-1)
+            emissions_df, 'heating', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=-1,
+            df_consumption=_table(emissions_df, 'baseline_', 'heating'),
+            scenario_prefix='baseline_')
 
 
 # ── Baseline (menu_mp=0) ────────────────────────────────────────────────────
@@ -79,7 +97,9 @@ def test_baseline_returns_all_pollutants(mock_constants, emissions_df, fossil_fu
         calculate_fossil_fuel_emissions,
     )
     result = calculate_fossil_fuel_emissions(
-        emissions_df, 'heating', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=0)
+        emissions_df, 'heating', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=0,
+        df_consumption=_table(emissions_df, 'baseline_', 'heating'),
+        scenario_prefix='baseline_')
     assert isinstance(result, dict)
     for pollutant in ['so2', 'nox', 'pm25', 'co2e']:
         assert pollutant in result
@@ -92,38 +112,64 @@ def test_baseline_emissions_nonzero_for_fossil_fuel_homes(mock_constants, emissi
         calculate_fossil_fuel_emissions,
     )
     result = calculate_fossil_fuel_emissions(
-        emissions_df, 'heating', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=0)
-    # First home has naturalGas heating consumption=2000 -> should have nonzero emissions
-    assert result['co2e'].iloc[0] > 0
+        emissions_df, 'heating', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=0,
+        df_consumption=_table(emissions_df, 'baseline_', 'heating'),
+        scenario_prefix='baseline_')
+    # First home burns 2,000 kWh of natural gas for heating.
+    assert result['co2e'].iloc[0] == pytest.approx(2000.0 * 2.285e-4)
 
 
-def test_baseline_cooking_excludes_fuelOil(mock_constants, emissions_df, fossil_fuel_lookup):
-    """Cooking should NOT include fuelOil in its fuel list."""
+def test_fuel_without_table_column_adds_nothing(mock_constants, emissions_df, fossil_fuel_lookup):
+    """Cooking's table has no fuel oil column, so cooking CO2e comes only from
+    natural gas and propane."""
     from cmu_tare_model.public_impact.calculations.calculate_fossil_fuel_emissions import (
         calculate_fossil_fuel_emissions,
     )
-    # Add fuelOil column for cooking - if it's included it would add emissions
-    emissions_df['base_fuelOil_cooking_consumption'] = [1000.0] * 5
     result = calculate_fossil_fuel_emissions(
-        emissions_df, 'cooking', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=0)
-    # The code skips fuelOil for cooking/clothesDrying, so this column should be ignored
-    # Emissions should only come from naturalGas and propane
-    assert isinstance(result, dict)
+        emissions_df, 'cooking', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=0,
+        df_consumption=_table(emissions_df, 'baseline_', 'cooking'),
+        scenario_prefix='baseline_')
+    valid = emissions_df['include_cooking']
+    expected = (emissions_df['base_naturalGas_cooking_consumption'] * 2.285e-4
+                + emissions_df['base_propane_cooking_consumption'] * 2.758e-4)
+    np.testing.assert_allclose(result['co2e'][valid], expected[valid])
 
 
 # ── Retrofit (menu_mp>0) ────────────────────────────────────────────────────
 
-def test_retrofit_returns_zero_emissions(mock_constants, emissions_df, fossil_fuel_lookup):
-    """For menu_mp>0, fossil fuel emissions should be zero (all-electric retrofit)."""
+def test_all_electric_retrofit_has_zero_fossil_emissions(mock_constants, emissions_df, fossil_fuel_lookup):
+    """An all-electric retrofit's table has zero fossil use, so zero emissions."""
     from cmu_tare_model.public_impact.calculations.calculate_fossil_fuel_emissions import (
         calculate_fossil_fuel_emissions,
     )
+    table = _table(emissions_df, 'ref2025_mp8_', 'heating')
+    for col in table.columns:
+        table[col] = 0.0
     result = calculate_fossil_fuel_emissions(
-        emissions_df, 'heating', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=8)
+        emissions_df, 'heating', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=8,
+        df_consumption=table, scenario_prefix='ref2025_mp8_')
+    valid = emissions_df['include_heating']
     for pollutant in ['so2', 'nox', 'pm25', 'co2e']:
-        # For valid retrofit homes, emissions should be 0.0 (not NaN)
-        valid = emissions_df['include_heating']
         assert (result[pollutant][valid] == 0.0).all()
+
+
+def test_dual_fuel_retrofit_counts_gas_backup(mock_constants, emissions_df, fossil_fuel_lookup):
+    """A retrofit that still burns gas (a dual-fuel heat pump's backup furnace)
+    gets emissions from that gas."""
+    from cmu_tare_model.public_impact.calculations.calculate_fossil_fuel_emissions import (
+        calculate_fossil_fuel_emissions,
+    )
+    prefix = 'ref2025_mp8_'
+    table = pd.DataFrame({
+        f'{prefix}{ANCHOR_YEAR}_heating_electricity_consumption': 3000.0,
+        f'{prefix}{ANCHOR_YEAR}_heating_naturalGas_consumption': 1000.0,
+        f'{prefix}{ANCHOR_YEAR}_heating_consumption': 4000.0,
+    }, index=emissions_df.index)
+    result = calculate_fossil_fuel_emissions(
+        emissions_df, 'heating', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=8,
+        df_consumption=table, scenario_prefix=prefix)
+    valid = emissions_df['include_heating']
+    np.testing.assert_allclose(result['co2e'][valid], 1000.0 * 2.285e-4)
 
 
 # ── Retrofit mask ────────────────────────────────────────────────────────────
@@ -136,7 +182,8 @@ def test_custom_retrofit_mask(mock_constants, emissions_df, fossil_fuel_lookup):
     custom_mask = pd.Series([True, True, False, False, True], index=emissions_df.index)
     result = calculate_fossil_fuel_emissions(
         emissions_df, 'heating', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=0,
-        retrofit_mask=custom_mask)
+        df_consumption=_table(emissions_df, 'baseline_', 'heating'),
+        scenario_prefix='baseline_', retrofit_mask=custom_mask)
     assert isinstance(result, dict)
     # Row index 2 and 3 are False in mask -> their emissions should be NaN
     for pollutant in ['so2', 'nox', 'pm25', 'co2e']:
@@ -144,17 +191,13 @@ def test_custom_retrofit_mask(mock_constants, emissions_df, fossil_fuel_lookup):
         assert pd.isna(result[pollutant].iloc[3])
 
 
-def test_missing_consumption_column_raises(mock_constants, fossil_fuel_lookup):
-    """Should raise KeyError if required consumption column is missing."""
+def test_missing_consumption_column_raises(mock_constants, emissions_df, fossil_fuel_lookup):
+    """A table without this scenario's columns raises, rather than giving zero."""
     from cmu_tare_model.public_impact.calculations.calculate_fossil_fuel_emissions import (
         calculate_fossil_fuel_emissions,
     )
-    df = pd.DataFrame({
-        'census_division': ['Pacific'],
-        'include_heating': [True],
-        'base_heating_fuel': ['Natural Gas'],
-        'upgrade_hvac_heating_efficiency': ['ASHP'],
-        # Missing base_naturalGas_heating_consumption etc.
-    })
-    with pytest.raises(KeyError, match="Required column"):
-        calculate_fossil_fuel_emissions(df, 'heating', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=0)
+    wrong_prefix_table = _table(emissions_df, 'ref2025_mp8_', 'heating')
+    with pytest.raises(ValueError, match="build_projected_consumption"):
+        calculate_fossil_fuel_emissions(
+            emissions_df, 'heating', ANCHOR_YEAR, fossil_fuel_lookup, menu_mp=0,
+            df_consumption=wrong_prefix_table, scenario_prefix='baseline_')

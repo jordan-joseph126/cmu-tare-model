@@ -131,15 +131,14 @@ Just make and save the file changes, and leave them in the working tree for
 the researcher to stage and commit. A summary or a suggested commit message
 can go in the chat — but don't act on it.
 
-### Regression guarantee — dropped for the ResStock 2025.1 integration (19 Sep 2026)
+### Both releases must run (22 Sep 2026)
 
-The 2022.1.1 MP3/MP4 pipeline is no longer required to reproduce `2026-09-02_19-04`
-byte-identically, on any task or at any phase boundary, including a final check at the end of
-this integration. This branch exists to move onto ResStock 2025.1; the 2022.1.1 analysis is
-preserved in a separate, already-archived branch and will not be run from here. The 2022.1.1
-code path is still left alone by default -- this is not license to break it for no reason -- but
-it is not verified, proven, or reconciled going forward. Work already done under the old
-guarantee (through Phase 2 Task 6) is unaffected and does not need to be redone.
+This branch runs ResStock 2022.1.1 (MP3/MP4, the Nature Comms analysis) and 2025.1
+(MP5, dual fuel), chosen with `RESSTOCK_RELEASE_THIS_RUN`. Both must run end to end.
+Byte-identity with the submitted run (`2026-08-19_20-56`) is NOT required: the
+consumption fix (see Masking and Validation Rules) moves 2022.1.1 results on purpose.
+Any other change that moves 2022.1.1 values must be flagged and made in its own commit.
+The branch `joseph-2026-nature-comms-submission` is frozen as the as-submitted reference.
 
 ---
 
@@ -346,13 +345,29 @@ performance-based) may still fund replacing a fossil system.
 **Rounding note:** `heehr_python_round` preserves a legacy Python-vs-numpy
 rounding difference between the two vintages (sub-cent only).
 
-**Whole-home savings fraction:** the numerator is TARE's degree-day-adjusted
-heating + cooling energy delta; the denominator is ResStock's
-`baseline_total_site_consumption` (propagated from
-`out.site_energy.total.energy_consumption.kwh`). Mixing an adjusted numerator
-with a raw denominator is an accepted approximation. Now that 2024 HOMES is
-fuel-neutral, this fraction is also used for fossil-fuel HOMES recipients, not
-just electric-resistance homes — so the approximation applies to them too.
+**Whole-home savings fraction** (`mp{mp}_modeled_savings_frac`, the HOMES tier input):
+
+Savings fraction = energy the retrofit saves ÷ energy the whole home used before the retrofit
+
+- Energy saved: the home's annual heating + cooling energy before the retrofit
+  minus after (`mp{mp}_hvac_energy_savings_kwh`), every fuel and every component
+  counted. Only heating and cooling change, so the rest of the home cancels out.
+- Whole-home energy before: `baseline_total_site_consumption`, all fuels and all
+  end uses, because HOMES asks what share of the whole home's energy is saved.
+
+Example home:
+
+- Before: 20,000 kWh of gas heating, 3,000 kWh of AC, 12,000 kWh of everything
+  else, so 35,000 kWh in total.
+- After: 7,000 kWh of heat-pump heating, 2,500 kWh of cooling, the same 12,000 kWh
+  for everything else.
+- Savings = (20,000 + 3,000) − (7,000 + 2,500) = 13,500 kWh.
+- Fraction = 13,500 ÷ 35,000 = 38.6%, which reaches the upper HOMES tier (35% or more).
+
+A check column, `mp{mp}_whole_home_energy_savings_kwh` (ResStock's own whole-home
+change), runs a few percent below the savings above, mostly because it includes the
+cooling the heat pump adds in homes outside cooling scope (see Limitation 11). The
+fraction is used for fossil and electric HOMES recipients alike.
 
 **Reporting / verification helpers** (both in
 `determine_rebate_eligibility_and_amount.py`):
@@ -376,9 +391,11 @@ modeled — not an actual disbursement amount.
 **Documented limitations (carry into the manuscript):**
 
 1. Weatherization prerequisite is not enforced (state criteria not finalized).
-2. Dual-fuel systems are not modeled, so fossil-baseline homes lose HEEHR
-   under June 2026 (see Fuel gate, above) but can still earn fuel-neutral
-   HOMES above 150% AMI.
+2. The 2022.1.1 analysis (MP3/MP4) models no dual-fuel systems, so its
+   fossil-baseline homes lose HEEHR under June 2026 (see Fuel gate, above) but
+   can still earn fuel-neutral HOMES above 150% AMI. The 2025.1 dual-fuel
+   package (MP5) is modeled, but its June 2026 HEEHR treatment is not yet set
+   (Phase 7).
 3. Only one program per home — HEEHR or HOMES, never both.
 4. State-level funding caps are not applied (allocations aren't finalized
    yet; see the Atlas Buildings Hub tracker).
@@ -394,6 +411,17 @@ modeled — not an actual disbursement amount.
 7. Uncertainty surrounding fuel switiching and project eligibility. Will need to update logic with new federal guidance. We use guidance as of June 2026.
 8. Our analysis is focused marginal NPV (replacing existing fossil fuel systems with heat pumps) and does not include homes with existing heat pump systems.
 9. The capital cost estimation is currently performed for homes outside of the NRL REMDB regression cost formula bounds. Plans to update this and be more clear about the sample size after each filtering step and why the homes were removed. 
+10. For a dual-fuel heat pump (MP5), the split between heat-pump electricity
+    and backup-furnace gas is fixed by ResStock's own base-year hours above and
+    below the 35 F switchover. Degree-day factors scale each fuel by the same
+    amount, so a projected year's total heating load moves but the split does
+    not (`get_degree_day_adjusted_consumption_by_fuel`, Step 2 comment in
+    `degree_day_consumption_utils.py`). The split is exact only in `ANCHOR_YEAR`.
+11. Homes outside cooling scope (no central or room AC) have their cooling
+    counted as zero before and after the retrofit, even though the heat pump
+    can cool them. In 2022.1.1 that leaves out about 25.5 TWh/yr (MP3) and
+    15.1 TWh/yr (MP4) of added cooling across 38,910 heating-valid rdu
+    (9.42M homes). See the cooling-scope placeholder in `constants.py`.
 
 ---
 
@@ -448,6 +476,15 @@ out negative.
 transitions from fossil-fuel heating to an ASHP — a home that already has an
 ASHP has no fossil-fuel system left to replace. If you find an existing-ASHP
 entry in `constants.py`, flag it and remove it.
+
+**Consumption counts every component (22 Sep 2026).** Heating and cooling energy
+include primary energy, fans and pumps, and heat-pump backup, on both the baseline and
+retrofit side (`CONSUMPTION_COMPONENTS` in `calculation_utils.py`). Earlier versions
+counted primary energy only, which dropped MP3/MP4's electric backup heat and every
+system's fans. `build_projected_consumption` (`projected_consumption.py`) stores each
+home's use by fuel and year (degree-day adjusted, 2025-2039) and is the single source
+for fuel costs (each fuel at its own price), climate emissions, and the savings
+fraction. The supplemental fuel-cost CSV carries its per-fuel columns.
 
 ---
 

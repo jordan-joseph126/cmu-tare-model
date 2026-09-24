@@ -53,7 +53,8 @@ FUNCTIONS: AMI AND INCOME GROUP DESIGNATION FOR REBATE ELIGIBILITY
 """
 
 
-def generate_household_medianIncome_2025(row: pd.Series) -> float:
+def generate_household_medianIncome_2025(
+        row: pd.Series, random_seed: int = 42) -> float:
     """
     Generate a household median income value in USD2025 using a probabilistic
     approach.
@@ -61,8 +62,16 @@ def generate_household_medianIncome_2025(row: pd.Series) -> float:
     Samples from a normal distribution based on income range bounds, then
     ensures the final value remains within the valid income range.
 
+    Each home's draw comes from its own random stream, keyed by random_seed and
+    the home's bldg_id (the row's index label). So a home gets the same income
+    in every run -- national, state, or county, and whichever other homes are
+    filtered in or out. A single shared stream drawn in row order would give a
+    home a different income whenever the rows before it changed.
+
     Args:
-        row: DataFrame row containing income_low, income_high, and income values
+        row: DataFrame row containing income_low, income_high, and income
+            values, with the home's bldg_id as its index label (row.name).
+        random_seed: Seed shared by every home; combined with bldg_id.
 
     Returns:
         float: Generated median income value in 2025 dollars
@@ -76,8 +85,9 @@ def generate_household_medianIncome_2025(row: pd.Series) -> float:
     # Calculate std assuming 10th and 90th percentiles
     std = (high - low) / (norm.ppf(0.90) - norm.ppf(0.10))
 
-    # Sample from the normal distribution
-    ami_2025 = np.random.normal(loc=mean, scale=std)
+    # Sample from the normal distribution, using this home's own stream
+    home_rng = np.random.default_rng([random_seed, int(row.name)])
+    ami_2025 = home_rng.normal(loc=mean, scale=std)
 
     # Ensure the generated income is within the bounds
     ami_2025 = max(low, min(high, ami_2025))
@@ -137,7 +147,8 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame, random_seed: int = 42) -
                        - Other demographic/geographic columns for median income lookup
         random_seed: Random seed for reproducible income sampling. Ensures consistent
                     income classifications across different measure package runs (e.g.,
-                    MP4 and MP8 produce identical rebate eligibility). Default: 42.
+                    MP3 and MP4 produce identical rebate eligibility), and across
+                    national, state, and county runs. Default: 42.
 
     Returns:
         DataFrame: Modified DataFrame with additional columns:
@@ -149,7 +160,16 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame, random_seed: int = 42) -
         
     Raises:
         ValueError: If an unexpected income format is encountered during processing
+        TypeError: If the DataFrame index is not integer bldg_id values.
     """
+    # Each home's income draw is keyed by its bldg_id (the index), so the
+    # index must hold the integer building IDs.
+    if not pd.api.types.is_integer_dtype(df_results_IRA.index):
+        raise TypeError(
+            "calculate_percent_AMI needs the DataFrame indexed by integer "
+            f"bldg_id; got an index of dtype {df_results_IRA.index.dtype} "
+            f"named {df_results_IRA.index.name!r}.")
+
     # Create a mapping for special income ranges
     income_map = {
         '<10000': (9999.0, 9999.0),
@@ -185,14 +205,11 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame, random_seed: int = 42) -
     df_results_IRA['income_low'], df_results_IRA['income_high'] = zip(*income_ranges)
     df_results_IRA['income'] = (df_results_IRA['income_low'] + df_results_IRA['income_high']) / 2
     
-    # Set random seed for reproducible income sampling across MP runs.
-    # This ensures identical income classifications (and thus identical rebate
-    # eligibility) for the same homes regardless of which measure package is
-    # being processed — critical for MP4 vs MP8 result consistency.
-    np.random.seed(random_seed)
-    
-    # Apply the generate_household_medianIncome_2025 function
-    df_results_IRA['household_income'] = df_results_IRA.apply(generate_household_medianIncome_2025, axis=1)
+    # Draw each home's income from its own seeded stream (seed + bldg_id), so
+    # the same home gets the same income in every measure package and every
+    # geographic run -- see generate_household_medianIncome_2025.
+    df_results_IRA['household_income'] = df_results_IRA.apply(
+        generate_household_medianIncome_2025, axis=1, random_seed=random_seed)
 
     # Drop the intermediate columns
     df_results_IRA.drop(['income_low', 'income_high'], axis=1, inplace=True)
