@@ -54,6 +54,7 @@ def climate_df():
         'census_division': ['Pacific', 'WSC', 'MA', 'SA', 'ENC', 'Pacific'],
         'gea_region': ['CAL', 'TXS', 'NYC', 'FLA', 'CEN', 'CAL'],
         'include_heating': [True, True, False, True, True, False],
+        'include_sample': True,
         'include_waterHeating': [True, False, True, True, False, True],
         'include_clothesDrying': [True, True, True, False, True, True],
         'include_cooking': [True, True, True, True, False, True],

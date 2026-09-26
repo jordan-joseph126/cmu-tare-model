@@ -36,6 +36,7 @@ KWH_TO_GWH: float = 1e6
 def compute_scenario_demand(
     df_baseline: pd.DataFrame,
     df_upgrade: pd.DataFrame,
+    sample_bldg_ids: pd.Index,
     fuel_filter: Optional[str] = None,
     verbose: bool = False,
 ) -> pd.DataFrame:
@@ -57,6 +58,10 @@ def compute_scenario_demand(
         df_upgrade: EUSS upgrade DataFrame (indexed by bldg_id,
             already filtered to ``applicability == True``).
             Must contain ``ELEC_TOTAL_COL``.
+        sample_bldg_ids: The study sample, TARE_SAMPLE_IDS['all'] (or one
+            county's list from TARE_SAMPLE_IDS['by_county']). Only these homes
+            are counted, so the demand maps describe the same homes as the
+            adoption results.
         fuel_filter: Filter to this baseline heating fuel string
             (e.g., ``'Natural Gas'``). ``None`` includes all fuel types.
         verbose: If ``True``, print diagnostic summary.
@@ -70,7 +75,16 @@ def compute_scenario_demand(
 
     Raises:
         KeyError: If required columns are missing from either DataFrame.
+        TypeError: If sample_bldg_ids is not a pd.Index.
+        ValueError: If sample_bldg_ids is empty, or a sample home is missing
+            from the baseline or upgrade frame.
     """
+    if not isinstance(sample_bldg_ids, pd.Index):
+        raise TypeError(
+            f"sample_bldg_ids must be a pd.Index, got {type(sample_bldg_ids)}")
+    if sample_bldg_ids.empty:
+        raise ValueError("sample_bldg_ids is empty")
+
     baseline_total_elec = df_baseline[ELEC_TOTAL_COL].fillna(0)
     retrofit_total_elec = df_upgrade[ELEC_TOTAL_COL].fillna(0)
 
@@ -84,6 +98,15 @@ def compute_scenario_demand(
         retrofit_total_elec.rename('retrofit_electric_kwh'),
         how='inner',
     )
+
+    # Keep only the study sample. A sample home missing here means the ids and
+    # the ResStock files disagree (e.g., a different release), so stop.
+    missing = sample_bldg_ids.difference(df_demand.index)
+    if not missing.empty:
+        raise ValueError(
+            f"{len(missing):,} sample homes are missing from the baseline or "
+            f"upgrade frame (first few: {list(missing[:5])})")
+    df_demand = df_demand.loc[sample_bldg_ids]
 
     if fuel_filter is not None:
         n_before = len(df_demand)

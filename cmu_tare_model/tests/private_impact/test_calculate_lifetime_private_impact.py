@@ -47,6 +47,7 @@ def private_impact_df():
         'state': ['CA', 'TX', 'NY', 'FL', 'IL', 'CA'],
         'census_division': ['Pacific', 'WSC', 'MA', 'SA', 'ENC', 'Pacific'],
         'include_heating': [True, True, False, True, True, False],
+        'include_sample': True,
         'include_waterHeating': [True, False, True, True, False, True],
         'include_clothesDrying': [True, True, True, False, True, True],
         'include_cooking': [True, True, True, True, False, True],
@@ -215,6 +216,7 @@ def npv_cases_df():
     n = 6
     data = {
         'include_heating': [True, True, True, True, False, True],
+        'include_sample': True,
         'valid_fuel_heating': [True, True, True, True, False, True],
         'valid_tech_heating': [True, True, True, True, False, True],
         'upgrade_hvac_heating_efficiency': [

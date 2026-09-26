@@ -89,6 +89,9 @@ def create_sample_homes_df(n_homes=10, categories=None, base_year=ANCHOR_YEAR):
         data[f'include_{cat}'] = np.random.choice([True, False], n_homes, p=[0.7, 0.3])
         data[f'valid_fuel_{cat}'] = data[f'include_{cat}']
         data[f'base_{cat}_fuel'] = np.random.choice(fuels, n_homes)
+    # Every fixture home is in the study sample; set without drawing random
+    # numbers so the other columns' draws are unchanged.
+    data['include_sample'] = np.ones(n_homes, dtype=bool)
 
     # Technology type columns for heating
     if 'heating' in categories:

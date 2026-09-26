@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 import re
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from config import PROJECT_ROOT
 from cmu_tare_model.constants import (
@@ -470,6 +470,7 @@ def preprocess_fuel_data(df: pd.DataFrame,
 
 def df_enduse_refactored(
     df_baseline: pd.DataFrame,
+    applicable_bldg_ids: List[pd.Index],
     verbose: bool = VERBOSE,
     release: str = RESSTOCK_RELEASE_THIS_RUN
 ) -> pd.DataFrame:
@@ -481,6 +482,10 @@ def df_enduse_refactored(
 
     Args:
         df_baseline: The baseline DataFrame containing raw EUSS/ResStock data.
+        applicable_bldg_ids: One index per measure package in the run: the
+            bldg_ids ResStock applied that package to. A home is in the study
+            sample (include_sample) only if it is in every one, so all packages
+            compare the same homes.
         verbose: Whether to print detailed processing information.
         release: ResStock release the frame was loaded from ('2022.1.1' or
             '2025.1'). Selects which physical column names to read via
@@ -492,7 +497,9 @@ def df_enduse_refactored(
         A standardized DataFrame with processed consumption data and data quality flags.
 
     Raises:
-        ValueError: If required columns are missing from the input DataFrame.
+        ValueError: If required columns are missing from the input DataFrame,
+            or applicable_bldg_ids is empty.
+        TypeError: If an entry of applicable_bldg_ids is not a pd.Index.
     """
     # Updated to handle different enduses based on EQUIPMENT_SPECS and VALID_CATEGORIES.
     # - Rest of codebase updated so only initial columns created for cooling and replacement cost calculations performed
@@ -500,6 +507,15 @@ def df_enduse_refactored(
     # - Resolves the excessive data columns and double counting with $8000 rebate. No longer need CDD projections.
     # valid_categories = list(EQUIPMENT_SPECS.keys())
     # valid_categories.append('cooling')
+
+    if not applicable_bldg_ids:
+        raise ValueError(
+            "applicable_bldg_ids needs one index per measure package in the run")
+    for package_ids in applicable_bldg_ids:
+        if not isinstance(package_ids, pd.Index):
+            raise TypeError(
+                "applicable_bldg_ids entries must be pd.Index, "
+                f"got {type(package_ids)}")
 
     # Initial check
     if df_baseline.empty:
@@ -716,7 +732,19 @@ def df_enduse_refactored(
     
     # ===== STEP 4: Create data quality flags =====
     df_enduse = identify_valid_homes(df_enduse)
-    
+
+    # ===== STEP 4b: Study sample flag =====
+    # The one definition of the study sample: a heating system the study can
+    # replace and cost, and applied in every package in the run. Set here once;
+    # get_valid_calculation_mask requires it, so every result is limited to it.
+    is_applicable = pd.Series(True, index=df_enduse.index)
+    for package_ids in applicable_bldg_ids:
+        is_applicable &= df_enduse.index.isin(package_ids)
+    df_enduse['include_sample'] = df_enduse['include_heating'] & is_applicable
+    n_sample = int(df_enduse['include_sample'].sum())
+    print(f"Study sample: {n_sample:,} rdu "
+          f"({df_enduse.loc[df_enduse['include_sample'], 'weight'].sum():,.0f} homes)")
+
     # ===== STEP 5: Apply validation =====
     print("\nApplying data validation (baseline only):")
     for category in VALID_CATEGORIES:

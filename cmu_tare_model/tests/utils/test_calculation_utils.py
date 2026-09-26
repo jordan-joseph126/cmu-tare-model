@@ -183,6 +183,7 @@ def test_apply_temporary_validation_and_mask_basic():
 
     df_copy = pd.DataFrame({
         'include_heating': [True, False, True],
+        'include_sample': True,
         'valid_fuel_heating': [True, False, True],
         'existing_col': [1, 2, 3],
     })
@@ -210,6 +211,7 @@ def test_apply_temporary_validation_and_mask_removes_temp_columns():
 
     df_copy = pd.DataFrame({
         'include_heating': [True, False],
+        'include_sample': True,
         'valid_fuel_heating': [True, False],
         'valid_tech_heating': [True, False],
     })
@@ -228,6 +230,7 @@ def test_apply_temporary_validation_and_mask_overlapping_columns():
 
     df_copy = pd.DataFrame({
         'include_heating': [True, True],
+        'include_sample': True,
         'overlap_col': [1.0, 2.0],
     })
     df_new = pd.DataFrame({'overlap_col': [10.0, 20.0]})

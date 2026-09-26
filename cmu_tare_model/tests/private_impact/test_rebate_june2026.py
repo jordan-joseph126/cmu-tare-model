@@ -63,6 +63,7 @@ def june2026_df():
     n = 6
     data = {
         'include_heating': [True] * n,
+        'include_sample': True,
         'valid_fuel_heating': [True] * n,
         'valid_tech_heating': [True] * n,
         'upgrade_hvac_heating_efficiency': ['ASHP'] * n,
@@ -136,6 +137,7 @@ def test_june2026_excluded_home_is_nan():
     """An excluded home (no valid heating) is NaN, not 0, in both columns."""
     df = pd.DataFrame({
         'include_heating': [True, False],
+        'include_sample': True,
         'valid_fuel_heating': [True, False],
         'valid_tech_heating': [True, False],
         'upgrade_hvac_heating_efficiency': ['ASHP', None],
@@ -159,6 +161,7 @@ def test_june2026_south_dakota_excluded():
     """An otherwise-eligible electric MP4 home in SD gets no rebate."""
     df = pd.DataFrame({
         'include_heating': [True, True],
+        'include_sample': True,
         'valid_fuel_heating': [True, True],
         'valid_tech_heating': [True, True],
         'upgrade_hvac_heating_efficiency': ['ASHP', 'ASHP'],
@@ -186,6 +189,7 @@ def test_2024_south_dakota_excluded():
     )
     df = pd.DataFrame({
         'include_heating': [True, True],
+        'include_sample': True,
         'valid_fuel_heating': [True, True],
         'valid_tech_heating': [True, True],
         'upgrade_hvac_heating_efficiency': ['ASHP', 'ASHP'],

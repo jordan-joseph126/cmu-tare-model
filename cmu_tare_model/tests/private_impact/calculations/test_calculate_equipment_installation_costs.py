@@ -100,6 +100,7 @@ def test_upgrade_installed_cost_v4_output(mock_constants):
     prefix = 'heating_upgrade_'
     df = pd.DataFrame({
         'include_heating': [True, True, True, False, True],
+        'include_sample': True,
         'base_heating_fuel': ['Natural Gas'] * 5,
         'upgrade_hvac_heating_efficiency': ['ASHP', 'ASHP', 'ASHP', None, 'ASHP'],
     })
@@ -130,6 +131,7 @@ def test_upgrade_installed_cost_v3_requires_cost_dict(mock_constants):
     )
     df = pd.DataFrame({
         'include_heating': [True],
+        'include_sample': True,
         'base_heating_fuel': ['Natural Gas'],
         'upgrade_hvac_heating_efficiency': ['ASHP'],
     })

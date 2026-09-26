@@ -301,6 +301,9 @@ def identify_valid_homes(
 _FUNNEL_FUEL_ORDER = [
     'Electricity', 'Electricity ASHP', 'Fuel Oil', 'Natural Gas', 'Propane']
 
+# Existing heat pumps are excluded from the study (nothing to replace).
+EXISTING_HEAT_PUMP_TYPES = ['Electricity ASHP', 'Electricity MSHP']
+
 
 def compute_funnel_stage_row(
     df: pd.DataFrame,
@@ -355,7 +358,7 @@ def compute_funnel_stage_row(
     weighted_count = df_stage[weight_col].sum()
 
     is_existing_heat_pump = df_stage[heating_type_col].isin(
-        ['Electricity ASHP', 'Electricity MSHP'])
+        EXISTING_HEAT_PUMP_TYPES)
     fuel_bucket = df_stage[heating_fuel_col].where(
         ~is_existing_heat_pump, 'Electricity ASHP')
 

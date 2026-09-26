@@ -60,6 +60,7 @@ def fuel_cost_df():
         'state': np.random.choice(['CA', 'TX', 'NY', 'FL'], n),
         'census_division': np.random.choice(['Pacific', 'West South Central', 'Middle Atlantic', 'South Atlantic'], n),
         'include_heating': [True, True, False, True, True, False, True, True],
+        'include_sample': True,
         'include_waterHeating': [True, False, True, True, False, True, True, False],
         'include_clothesDrying': [True, True, True, False, True, True, False, True],
         'include_cooking': [True, True, True, True, False, True, True, False],

@@ -41,6 +41,7 @@ def basic_df():
     n = 8
     data = {
         'include_heating': [True, True, False, True, False, True, True, False],
+        'include_sample': True,
         'include_waterHeating': [True, False, True, True, False, True, False, True],
         'include_clothesDrying': [True, True, True, False, False, True, True, False],
         'include_cooking': [True, True, True, True, False, False, True, True],
@@ -59,6 +60,7 @@ def all_valid_df():
     data = {'upgrade_hvac_heating_efficiency': ['ASHP'] * n}
     for cat in FULL_EQUIPMENT_SPECS:
         data[f'include_{cat}'] = [True] * n
+    data['include_sample'] = [True] * n
     for col in FULL_UPGRADE_COLUMNS.values():
         if col not in data:
             data[col] = ['SomeTech'] * n
@@ -72,6 +74,7 @@ def all_invalid_df():
     data = {}
     for cat in FULL_EQUIPMENT_SPECS:
         data[f'include_{cat}'] = [False] * n
+    data['include_sample'] = [True] * n
     for col in FULL_UPGRADE_COLUMNS.values():
         data[col] = [None] * n
     return pd.DataFrame(data)
@@ -172,6 +175,7 @@ def test_get_valid_calculation_mask_baseline_string():
 
     df = pd.DataFrame({
         'include_heating': [True, False, True],
+        'include_sample': True,
         'upgrade_hvac_heating_efficiency': ['ASHP', None, 'ASHP'],
     })
     mask_0 = get_valid_calculation_mask(df, 'heating', menu_mp=0, verbose=False)
@@ -325,6 +329,7 @@ def test_apply_final_masking_masks_invalid_homes():
 
     df = pd.DataFrame({
         'include_heating': [True, False, True, False],
+        'include_sample': True,
         'include_waterHeating': [True, True, False, False],
         'heating_result': [1.0, 2.0, 3.0, 4.0],
         'waterHeating_result': [10.0, 20.0, 30.0, 40.0],
@@ -352,6 +357,7 @@ def test_apply_final_masking_nonexistent_columns_ignored():
 
     df = pd.DataFrame({
         'include_heating': [True, False],
+        'include_sample': True,
         'heating_result': [1.0, 2.0],
     })
     all_cols = {
@@ -370,6 +376,7 @@ def test_apply_final_masking_empty_tracking():
 
     df = pd.DataFrame({
         'include_heating': [True, False],
+        'include_sample': True,
         'some_col': [1.0, 2.0],
     })
     all_cols = {cat: [] for cat in FULL_EQUIPMENT_SPECS}
@@ -387,6 +394,7 @@ def test_mask_category_specific_data_basic():
 
     df = pd.DataFrame({
         'include_heating': [True, False, True],
+        'include_sample': True,
         'cost': [100.0, 200.0, 300.0],
         'savings': [10.0, 20.0, 30.0],
     })
@@ -586,3 +594,50 @@ def test_apply_validation_mask_mp_masks_invalid():
     assert result.iloc[0] == 1.0
     assert np.isnan(result.iloc[1])
     assert result.iloc[2] == 3.0
+
+# =============================================================================
+# Study sample flag (include_sample)
+# =============================================================================
+
+def test_get_valid_calculation_mask_requires_include_sample(basic_df):
+    """A frame without the study-sample flag raises instead of using every home."""
+    from cmu_tare_model.utils.validation_framework import get_valid_calculation_mask
+
+    df = basic_df.drop(columns=['include_sample'])
+    with pytest.raises(ValueError, match='include_sample'):
+        get_valid_calculation_mask(df, 'heating', menu_mp=0, verbose=False)
+
+
+@pytest.mark.parametrize('menu_mp', [0, 8])
+def test_get_valid_calculation_mask_excludes_out_of_sample(basic_df, menu_mp):
+    """A home with valid heating but outside the sample is never calculated."""
+    from cmu_tare_model.utils.validation_framework import get_valid_calculation_mask
+
+    basic_df['include_sample'] = [False] + [True] * (len(basic_df) - 1)
+    assert basic_df.loc[0, 'include_heating']
+    mask = get_valid_calculation_mask(
+        basic_df, 'heating', menu_mp=menu_mp, verbose=False)
+    assert not mask[0]
+
+
+def test_mask_category_specific_data_masks_out_of_sample():
+    """The final mask also blanks a home with valid heating outside the sample."""
+    from cmu_tare_model.utils.validation_framework import mask_category_specific_data
+
+    df = pd.DataFrame({
+        'include_heating': [True, True],
+        'include_sample': [True, False],
+        'cost': [100.0, 200.0],
+    })
+    result = mask_category_specific_data(df, ['cost'], 'heating', verbose=False, inplace=False)
+    assert result.loc[0, 'cost'] == 100.0
+    assert np.isnan(result.loc[1, 'cost'])
+
+
+def test_mask_category_specific_data_requires_include_sample():
+    """A frame without the study-sample flag raises."""
+    from cmu_tare_model.utils.validation_framework import mask_category_specific_data
+
+    df = pd.DataFrame({'include_heating': [True], 'cost': [100.0]})
+    with pytest.raises(ValueError, match='include_sample'):
+        mask_category_specific_data(df, ['cost'], 'heating', verbose=False)
