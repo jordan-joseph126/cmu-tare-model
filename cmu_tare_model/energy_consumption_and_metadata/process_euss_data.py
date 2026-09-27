@@ -18,7 +18,7 @@ from cmu_tare_model.constants import (
 
 from cmu_tare_model.utils.validation_framework import get_valid_calculation_mask
 from cmu_tare_model.utils.calculation_utils import (
-    CONSUMPTION_COMPONENTS,
+    find_enduse_columns,
     get_all_possible_fuel_columns,
     get_consumption_component_columns,
     identify_valid_homes,
@@ -643,20 +643,19 @@ def df_enduse_refactored(
         df_enduse['base_propane_cooking_consumption'] = df_baseline[resstock_col(release, 'cooking_propane')]
 
     # ===== Separately reported heating/cooling components (fans, backup) =====
-    # One column per CONSUMPTION_COMPONENTS entry. These used to be left out on
-    # both sides on the assumption they did not change with the retrofit; they
-    # now count on both sides (see CONSUMPTION_COMPONENTS in calculation_utils).
-    # A component the release does not publish (2022.1.1 has no heat-pump
-    # backup fan column) is set to 0.0, so later sums can require every column.
-    for category, components in CONSUMPTION_COMPONENTS.items():
+    # Every part the ResStock file publishes for heating and cooling (fans and
+    # pumps, heat-pump backup), one column per fuel and part, read from the file
+    # itself. Primary-system energy is added above; parts do not overlap, so a
+    # fuel's full use is its primary-system column plus its parts.
+    for category in ('heating', 'cooling'):
         if category not in VALID_CATEGORIES:
             continue
-        for fuel, component, logical_name in components:
-            col = f'base_{fuel}_{category}_{component}_consumption'
-            if logical_name in RESSTOCK_COLUMN_MAP[release]:
-                df_enduse[col] = df_baseline[resstock_col(release, logical_name)]
-            else:
-                df_enduse[col] = 0.0
+        for fuel, part, resstock_column in find_enduse_columns(
+                df_baseline.columns, category):
+            if part == 'primary_system':
+                continue
+            col = f'base_{fuel}_{category}_{part}_consumption'
+            df_enduse[col] = df_baseline[resstock_column]
 
     # ===== Whole-home baseline site energy (HOMES savings-fraction denominator) =====
     # The June 2026 HOMES rebate tiers key on the modeled whole-home percent
@@ -757,7 +756,8 @@ def df_enduse_refactored(
         # Component columns too (fans, heat-pump backup), so an invalid home's
         # components are masked the same as its primary energy.
         columns_to_mask.extend(
-            col for _, col in get_consumption_component_columns(category, 0)
+            col for _, col in get_consumption_component_columns(
+                category, 0, columns=df_enduse.columns)
             if col not in columns_to_mask)
 
         # Apply masking
@@ -1001,21 +1001,19 @@ def df_enduse_compare(
 
     # ===== STEP 3a: Separately reported heating/cooling components =====
     # Retrofit side of the component columns df_enduse_refactored adds for the
-    # baseline (see CONSUMPTION_COMPONENTS in calculation_utils). For a
-    # dual-fuel retrofit (mp=5) the backup furnace's natural gas lands here --
-    # most of that package's heating energy. The fuel-oil and propane backup
-    # columns exist in 2022.1.1 but are always zero there (no 2022.1.1 package
-    # has a fossil backup); heating fans and pumps are real in both releases.
-    # Unpublished components are 0.0, as on the baseline.
-    for category, components in CONSUMPTION_COMPONENTS.items():
+    # baseline, read from the upgrade file. For a dual-fuel retrofit (mp=5) the
+    # backup furnace's natural gas lands here -- most of that package's heating
+    # energy. In 2022.1.1 the fuel-oil, propane, and gas backup columns exist
+    # but are always zero (no 2022.1.1 package has a fossil backup).
+    for category in ('heating', 'cooling'):
         if category not in VALID_CATEGORIES:
             continue
-        for fuel, component, logical_name in components:
-            col = f'mp{menu_mp}_{fuel}_{category}_{component}_consumption'
-            if logical_name in RESSTOCK_COLUMN_MAP[release]:
-                df_compare[col] = df_mp[resstock_col(release, logical_name)].round(2)
-            else:
-                df_compare[col] = 0.0
+        for fuel, part, resstock_column in find_enduse_columns(
+                df_mp.columns, category):
+            if part == 'primary_system':
+                continue
+            col = f'mp{menu_mp}_{fuel}_{category}_{part}_consumption'
+            df_compare[col] = df_mp[resstock_column].round(2)
 
     # ===== STEP 3b: Retain per-home peak demand + whole-home electricity =====
     # Post-retrofit counterparts of the baseline pass-through columns added in
@@ -1134,7 +1132,8 @@ def df_enduse_compare(
         # Component columns (fans, heat-pump backup), baseline and retrofit
         for mp_value in (0, menu_mp):
             category_cols.extend(
-                col for _, col in get_consumption_component_columns(category, mp_value)
+                col for _, col in get_consumption_component_columns(
+                    category, mp_value, columns=df_compare.columns)
                 if col in df_compare.columns and col not in category_cols)
 
         # Apply masking

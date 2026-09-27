@@ -1127,7 +1127,8 @@ def _with_annual_heating_consumption(df: pd.DataFrame, menu_mp: int) -> pd.DataF
                           (menu_mp, f'mp{menu_mp}_heating_annual_consumption_kwh')]:
         if total_col in df.columns:
             continue
-        component_cols = [col for _, col in get_consumption_component_columns('heating', mp)]
+        component_cols = [col for _, col in get_consumption_component_columns(
+            'heating', mp, columns=df.columns)]
         missing = [col for col in component_cols if col not in df.columns]
         if missing:
             raise KeyError(

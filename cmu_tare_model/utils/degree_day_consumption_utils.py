@@ -470,7 +470,8 @@ def get_degree_day_adjusted_consumption_by_fuel(
             f"Must be one of {list(EQUIPMENT_SPECS.keys())}")
 
     fuel_columns: Dict[str, list] = {}
-    for fuel, col in get_consumption_component_columns(category, menu_mp):
+    for fuel, col in get_consumption_component_columns(
+            category, menu_mp, columns=df.columns):
         fuel_columns.setdefault(fuel, []).append(col)
 
     all_columns = [col for cols in fuel_columns.values() for col in cols]

@@ -8,9 +8,11 @@ This module contains utilities that support specific calculation operations
 but aren't part of the core validation framework.
 """
 
+import re
+
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Tuple, Optional, Union, Callable
+from typing import Dict, Iterable, List, Tuple, Optional, Union, Callable
 from scipy.stats import norm
 
 from cmu_tare_model.constants import EQUIPMENT_SPECS, FUEL_MAPPING, ALLOWED_TECHNOLOGIES, VERBOSE
@@ -94,41 +96,101 @@ def get_post_retrofit_columns(
     return [f'mp{menu_mp}_{category}_consumption']
 
 
-# Energy ResStock reports separately from a system's primary heating or cooling
-# energy, as (fuel, column token, ResStock logical name). Counted on BOTH the
-# baseline and retrofit side. Earlier versions of this model compared primary
-# energy only, assuming these components were the same before and after the
-# retrofit. They are not: a furnace blower is not a heat pump's fan, and a
-# dual-fuel heat pump's backup furnace burns gas. So every component is counted.
-CONSUMPTION_COMPONENTS: Dict[str, List[Tuple[str, str, str]]] = {
-    'heating': [
-        ('electricity', 'fansPumps', 'heating_fans_pumps'),
-        ('electricity', 'hpBackup', 'heating_hp_backup_electricity'),
-        ('electricity', 'hpBackupFans', 'heating_hp_backup_fans'),
-        ('naturalGas', 'hpBackup', 'heating_hp_backup_natural_gas'),
-        ('propane', 'hpBackup', 'heating_hp_backup_propane'),
-        ('fuelOil', 'hpBackup', 'heating_hp_backup_fuel_oil'),
-    ],
-    'cooling': [
-        ('electricity', 'fansPumps', 'cooling_fans_pumps'),
-    ],
+# ResStock's fuel names, as they appear in 'out.{fuel}.{end use}...' columns,
+# mapped to the fuel spelling TARE uses in its own column names.
+RESSTOCK_FUEL_NAMES = {
+    'electricity': 'electricity',
+    'natural_gas': 'naturalGas',
+    'propane': 'propane',
+    'fuel_oil': 'fuelOil',
 }
+
+# TARE's name for each separately reported part of an end use. Only names the
+# parts; which parts count is decided by what the ResStock file contains. A
+# part not listed here raises, so a new one is named on purpose.
+# Every part counts on both the baseline and retrofit side: a furnace blower is
+# not a heat pump's fan, and a dual-fuel heat pump's backup furnace burns gas.
+ENDUSE_COMPONENT_NAMES = {
+    '': 'primary_system',
+    'fans_pumps': 'fansPumps',
+    'hp_bkup': 'hpBackup',
+    'hp_bkup_fa': 'hpBackupFans',
+}
+
+# 'out.{fuel}.{end use}{_part}.energy_consumption.kwh'; 2025.1 writes '..kwh'.
+# Anchored at both ends, so '.savings' columns and look-alikes such as
+# 'pool_heater' never match.
+_ENDUSE_COLUMN_PATTERN = re.compile(
+    r'^out\.(?P<fuel>[a-z_]+)\.(?P<end_use>[a-z]+?)(?:_(?P<part>[a-z_]+))?'
+    r'\.energy_consumption\.{1,2}kwh$')
+
+
+def find_enduse_columns(
+    resstock_columns: Iterable[str],
+    category: str,
+) -> List[Tuple[str, str, str]]:
+    """Finds every ResStock column that reports energy for one end use.
+
+    ResStock publishes each end use as separate parts -- primary-system
+    energy, fans and pumps, heat-pump backup -- one column per fuel and part,
+    and the parts do not overlap. Adding every part of a fuel gives that fuel's full
+    use for the end use. Reading the parts from the file, rather than from a
+    fixed list, picks up whatever a release publishes.
+
+    Args:
+        resstock_columns: Column names of a raw ResStock frame.
+        category: 'heating' or 'cooling'.
+
+    Returns:
+        (TARE fuel, TARE part name, ResStock column) for every match, in the
+        order the columns appear.
+
+    Raises:
+        ValueError: If category is not 'heating' or 'cooling', no
+            primary-system column is found, or a match has a fuel or part
+            TARE does not name.
+    """
+    if category not in ('heating', 'cooling'):
+        raise ValueError(f"category must be 'heating' or 'cooling', got {category!r}")
+
+    found = []
+    for col in resstock_columns:
+        match = _ENDUSE_COLUMN_PATTERN.match(col)
+        if not match or match['end_use'] != category:
+            continue
+        part = match['part'] or ''
+        if match['fuel'] not in RESSTOCK_FUEL_NAMES:
+            raise ValueError(f"{col}: fuel {match['fuel']!r} is not one TARE prices")
+        if part not in ENDUSE_COMPONENT_NAMES:
+            raise ValueError(
+                f"{col}: part {part!r} has no TARE name; add it to "
+                "ENDUSE_COMPONENT_NAMES")
+        found.append((RESSTOCK_FUEL_NAMES[match['fuel']],
+                      ENDUSE_COMPONENT_NAMES[part], col))
+
+    if not any(part == 'primary_system' for _, part, _ in found):
+        raise ValueError(
+            f"No primary-system {category} column found in the ResStock frame")
+    return found
 
 
 def get_consumption_component_columns(
     category: str,
-    menu_mp: int
+    menu_mp: int,
+    columns: Iterable[str],
 ) -> List[Tuple[str, str]]:
     """Returns every (fuel, column) pair that makes up one category's energy use.
 
     Covers the primary heating or cooling energy plus each separately reported
-    component in CONSUMPTION_COMPONENTS, for the baseline (menu_mp=0) or one
-    measure package's retrofit. Summing a fuel's columns gives that fuel's full
-    energy use for the category.
+    component (fans and pumps, heat-pump backup), for the baseline (menu_mp=0)
+    or one measure package's retrofit. Summing a fuel's columns gives that
+    fuel's full energy use for the category. The components are the ones
+    present in the frame (created from whatever the ResStock file publishes).
 
     Args:
         category: Equipment category name.
         menu_mp: Measure package number; 0 for the baseline.
+        columns: Column names of the frame the components will be read from.
 
     Returns:
         List of (fuel, column name) pairs, with fuel spelled as in
@@ -145,7 +207,7 @@ def get_consumption_component_columns(
     if menu_mp < 0:
         raise ValueError(f"menu_mp must be 0 or greater, got {menu_mp}")
 
-    # Step 1 -- primary energy. The baseline may use any fuel valid for the
+    # Step 1 -- primary-system energy. The baseline may use any fuel valid for the
     # category; every retrofit's primary heating or cooling energy is electric.
     if menu_mp == 0:
         baseline_cols = get_all_possible_fuel_columns(category)
@@ -161,9 +223,23 @@ def get_consumption_component_columns(
         prefix = f'mp{menu_mp}'
 
     # Step 2 -- separately reported components (fans, heat-pump backup)
-    for fuel, component, _ in CONSUMPTION_COMPONENTS.get(category, []):
-        pairs.append(
-            (fuel, f'{prefix}_{fuel}_{category}_{component}_consumption'))
+    # Read from the frame. Sorted by fuel, then part, in the order of
+    # RESSTOCK_FUEL_NAMES and ENDUSE_COMPONENT_NAMES, so the sum is always
+    # added up in the same order.
+    fuel_order = list(RESSTOCK_FUEL_NAMES.values())
+    part_order = [part for part in ENDUSE_COMPONENT_NAMES.values()
+                  if part != 'primary_system']
+    component_pattern = re.compile(
+        rf'^{prefix}_(?P<fuel>{"|".join(fuel_order)})_{category}_'
+        rf'(?P<part>{"|".join(part_order)})_consumption$')
+    found = []
+    for col in columns:
+        match = component_pattern.match(col)
+        if match:
+            found.append((fuel_order.index(match['fuel']),
+                          part_order.index(match['part']),
+                          match['fuel'], col))
+    pairs.extend((fuel, col) for _, _, fuel, col in sorted(found))
     return pairs
 
 
