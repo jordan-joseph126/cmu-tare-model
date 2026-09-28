@@ -753,7 +753,7 @@ def plot_county_demand_grid(
             bbox_to_anchor=(0.5, -0.03),
             ncol=2,
             fontsize=16,
-            title=f"Residential Electricity Load (MW) for {county_display_name}",
+            title=f"Residential Electricity Load (MW)",
             title_fontsize=17,
             frameon=True,
             fancybox=True,
