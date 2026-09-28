@@ -109,6 +109,12 @@ PUBLIC_DISCOUNTING_METHOD_SUFFIXES = {
     'public_discount_rate': ''
 }
 
+# Set True to run the REMDB v4MID capital-cost disaggregation figure/workbook (validate_capital_costs.py)
+CAPITAL_COST_VALIDATION = True  
+
+# Set True to run BSQ-based grid impact analysis
+GRID_IMPACT_ANALYSIS = True
+
 # =============================================================
 # CONSTANTS: TARE MODEL - GENERAL
 # =============================================================

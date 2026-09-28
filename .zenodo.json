@@ -1,0 +1,27 @@
+{
+  "title": "TARE Model: Tradeoff Analysis of Residential Energy",
+  "description": "The TARE Model estimates the private economic payback and electricity demand impacts of residential heat-pump electrification across U.S. counties, built on ResStock 2022.1.1 EUSS representative dwelling units.",
+  "upload_type": "software",
+  "creators": [
+    {
+      "name": "Joseph, Jordan",
+      "affiliation": "Carnegie Mellon University"
+    }
+  ],
+  "license": "GPL-3.0-or-later",
+  "keywords": [
+    "heat pumps",
+    "residential electrification",
+    "energy equity",
+    "ResStock",
+    "building energy modeling"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "10.5281/zenodo.17509167",
+      "relation": "requires",
+      "scheme": "doi",
+      "resource_type": "dataset"
+    }
+  ]
+}

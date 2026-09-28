@@ -1,5 +1,12 @@
 # cmu-tare-model
-The Tradeoff Analysis of residential Retrofits for energy Equity (TARE) Model v3.0
+The Tradeoff Analysis of Residential Energy (TARE) Model v3.0
+
+Copyright (C) 2021-2026 Jordan M. Joseph
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version. See [LICENSE](LICENSE) for the full text.
 
 <img width="8000" height="4500" alt="Figure_1" src="https://github.com/user-attachments/assets/f554ea06-0b03-4aab-823c-346b8f684c00" />
 
@@ -142,8 +149,7 @@ Or install via VS Code GUI: Extensions sidebar (`Ctrl+Shift+X`) → Search for e
 
 ## 1.2 Repository Access
 **Repository Location:** https://github.com/jordan-joseph126/cmu-tare-model  
-**Status:** Currently private (public release planned after documentation completion)
-**Getting Access:** Contact jordanjo@andrew.cmu.edu or jordanjoseph53@gmail.com for collaborator access
+**Status:** Public
 
 **Access Options:**
 
@@ -417,15 +423,15 @@ python setup.py --version
 
 ## 2.2 Licensing and Attribution
 
-**License:** MIT License (planned; to be finalized before public release)
+**License:** GNU General Public License v3.0 (GPLv3). See [LICENSE](LICENSE) for the full text.
 
 **Author:** Jordan Joseph  
 **Affiliation:** Carnegie Mellon University  
 **Contact:** jordanjo@andrew.cmu.edu, jordanjoseph53@gmail.com
 
-**Citation (Planned):**
+**Citation:** See [CITATION.cff](CITATION.cff), or use GitHub's "Cite this repository" button.
 ```
-Joseph, J. (2025). TARE Model: Tradeoff Analysis of Residential Retrofits for Energy Equity. 
+Joseph, J. (2026). TARE Model: Tradeoff Analysis of Residential Energy (Version 3.0).
 Carnegie Mellon University. https://github.com/jordan-joseph126/cmu-tare-model
 ```
 
@@ -433,7 +439,7 @@ Carnegie Mellon University. https://github.com/jordan-joseph126/cmu-tare-model
 - Research and academic use
 - Modification and extension for research purposes
 - Integration into other research projects
-- Commercial use permissions to be specified in final license
+- Any redistribution, including of modified versions, must remain under GPLv3 and stay open source
 
 **Attribution Requirements:**
 - Cite the TARE model in publications using the tool
@@ -445,7 +451,7 @@ Carnegie Mellon University. https://github.com/jordan-joseph126/cmu-tare-model
 ## Support and Questions
 
 - **Primary Contact:** jordanjo@andrew.cmu.edu, jordanjoseph53@gmail.com
-- **Repository Issues:** GitHub Issues (once public)
+- **Repository Issues:** GitHub Issues
 - **Documentation:** This README and inline code documentation (Google-style docstrings, type hints, comments)
 
 ---

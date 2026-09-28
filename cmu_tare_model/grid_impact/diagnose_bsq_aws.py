@@ -2,20 +2,21 @@
 
 This module does two jobs.
 
-1. `check_athena_output_location` is the preflight the grid-impact notebook cell
-   calls before it constructs BuildStockQuery. Athena writes a result file for
-   every query it runs, and where those files go is set by the Athena workgroup
-   -- BuildStockQuery takes no argument for it. A workgroup pointing at a bucket
-   the caller cannot write to therefore fails every query, however valid the
-   caller's credentials are. Without this check that failure surfaces late and
-   confusingly, inside a report query, naming a function rather than the bucket.
+1. `check_athena_output_location` checks that the Athena workgroup's query
+   result location is one the caller can actually write to. Athena writes a
+   result file for every query it runs, and where those files go is set by
+   the workgroup -- BuildStockQuery takes no argument for it. A workgroup
+   pointing at a bucket the caller cannot write to therefore fails every
+   query, however valid the caller's credentials are.
 
 2. Run as a script, it is a seven-stage diagnostic covering the whole setup:
 
        python -m cmu_tare_model.grid_impact.diagnose_bsq_aws
 
-   Stages 3 and 4 call the same `check_athena_output_location` used by the
-   notebook, so the bucket-write check has exactly one implementation.
+   Stages 2, 3, and 4 cover AWS credentials and the bucket-write check
+   above. This diagnostic (the RUN_BSQ_DIAGNOSTIC cell) is the grid-impact
+   notebook's preflight -- run it before the BuildStockQuery cell below,
+   rather than repeating these checks a second time inside that cell.
 
 The module imports only `boto3` and `buildstock_query`. It deliberately imports
 nothing else from `cmu_tare_model`, so it can be run before the rest of the
@@ -220,11 +221,10 @@ def check_athena_output_location(
             )
 
     if verbose:
-        print(f"""
-          [OK] Athena query result location writable
-            Workgroup : {workgroup}
-            Location  : {output_location}
-          """)
+        print(f"""\
+[OK] Athena query result location writable
+     Workgroup : {workgroup}
+     Location  : {output_location}""")
     return output_location
 
 
