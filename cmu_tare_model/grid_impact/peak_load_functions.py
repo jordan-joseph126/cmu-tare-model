@@ -494,6 +494,85 @@ def compute_county_scenario_profile_seasonal(
  
     return df_profile, peak_dict
 
+
+def peak_dicts_to_table(
+    scenario_peaks: dict[str, dict[str, Any]],
+    heating_season: str = "winter",
+    cooling_season: str = "summer",
+) -> pd.DataFrame:
+    """Summarize peak dicts from compute_county_scenario_profile_seasonal.
+ 
+    Produces one "Baseline" row followed by one row per scenario.
+ 
+    Column definitions:
+        Heating Peak (MW):        peak within the heating season's months
+        Cooling Peak (MW):        peak within the cooling season's months
+        Absolute Annual Peak (MW): highest single hour of the whole year
+                                  (the top-level peak in the peak dict)
+        Annual Consumption (MWh): annual energy
+        Peak Delta (MW):          scenario minus baseline absolute annual peak
+        Electricity Consumption Delta (MWh): scenario minus baseline energy
+ 
+    Args:
+        scenario_peaks: {row label: peak_dict}. All peak dicts must share the
+            same baseline (same county, weighting, and timeseries), since one
+            Baseline row is built from them.
+        heating_season: Name of the season in the peak dicts to report as
+            heating (a key of SEASONS).
+        cooling_season: Name of the season to report as cooling.
+ 
+    Returns:
+        DataFrame with a "scenario" column and the six columns above.
+ 
+    Raises:
+        ValueError: If scenario_peaks is empty, or the peak dicts disagree on
+            the baseline peak or baseline energy.
+    """
+    if not scenario_peaks:
+        raise ValueError("scenario_peaks is empty.")
+ 
+    first = next(iter(scenario_peaks.values()))
+ 
+    # One Baseline row is built from the first dict, so make sure the rest
+    # share that baseline rather than silently mixing counties or weightings.
+    for label, p in scenario_peaks.items():
+        if not (
+            np.isclose(p["baseline_peak_mw"], first["baseline_peak_mw"])
+            and np.isclose(p["baseline_mwh"], first["baseline_mwh"])
+        ):
+            raise ValueError(
+                f"Baseline for '{label}' differs from the other scenarios; "
+                "build separate tables for different counties or weightings."
+            )
+ 
+    rows = [
+        {
+            "scenario": "Baseline",
+            "Heating Peak (MW)": first[heating_season]["baseline_peak_mw"],
+            "Cooling Peak (MW)": first[cooling_season]["baseline_peak_mw"],
+            "Absolute Annual Peak (MW)": first["baseline_peak_mw"],
+            # "Annual Consumption (MWh)": first["baseline_mwh"],
+            "Annual Consumption (GWh)": first["baseline_mwh"] / 1000,
+            "Peak Delta (MW)": 0.0,
+            "Electricity Consumption Delta (GWh)": 0.0,
+        }
+    ]
+    for label, p in scenario_peaks.items():
+        rows.append(
+            {
+                "scenario": label,
+                "Heating Peak (MW)": p[heating_season]["scenario_peak_mw"],
+                "Cooling Peak (MW)": p[cooling_season]["scenario_peak_mw"],
+                "Absolute Annual Peak (MW)": p["scenario_peak_mw"],
+                "Peak Delta (MW)": p["delta_mw"],
+                "Annual Consumption (GWh)": p["scenario_mwh"] / 1000,
+                # "Annual Consumption (MWh)": p["scenario_mwh"],
+                "Electricity Consumption Delta (GWh)": p["delta_mwh"],
+            }
+        )
+ 
+    return pd.DataFrame(rows)
+
 def prepare_bsq_timeseries(
     df_ts_raw: pd.DataFrame,
     kwh_col_name: str,
