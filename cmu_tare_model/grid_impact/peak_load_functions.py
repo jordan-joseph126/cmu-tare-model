@@ -20,6 +20,7 @@ from cmu_tare_model.constants import (
     BSQ_ELEC_COL,
     FIGURE_DPI,
     TIMESTAMP_COL,
+    SEASONS
 )
 from cmu_tare_model.utils.column_names import BASE_CASE_NPV_CASE
 
@@ -403,11 +404,14 @@ def compute_county_scenario_profile(
 
     peak_dict: dict[str, Any] = {
         "peak_hour_baseline": int(
+            #Finds the hour at which the baseline_mw is the greatest 
             df_profile.loc[df_profile["baseline_mw"].idxmax(), "hour"]
         ),
         "peak_hour_scenario": int(
             df_profile.loc[df_profile["scenario_mw"].idxmax(), "hour"]
         ),
+
+        #finds the max mw peaks
         "baseline_peak_mw": float(df_profile["baseline_mw"].max()),
         "scenario_peak_mw": float(df_profile["scenario_mw"].max()),
         "delta_mw": float(
@@ -419,6 +423,76 @@ def compute_county_scenario_profile(
 
     return df_profile, peak_dict
 
+
+
+def compute_county_scenario_profile_seasonal(
+    df_baseline: pd.DataFrame,
+    df_upgrade: pd.DataFrame,
+    adopter_bldg_ids: list[int],
+    *,
+    custom_weighting: bool = False,
+    weight_dict: Optional[Dict[int, float]] = None,
+    seasons: Optional[Dict[str, tuple[int, ...]]] = None,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Hourly county profile plus annual and seasonal peaks and energy.
+ 
+    Calls compute_county_scenario_profile(), then adds annual
+    energy totals and per-season peak and energy statistics to the returned
+    peak dict.
+ 
+    Args:
+        df_baseline, df_upgrade, adopter_bldg_ids, custom_weighting,
+        weight_dict: See compute_county_scenario_profile.
+        seasons: {season_name: month numbers (1-12)}. Defaults to the
+            module-level SEASONS.
+ 
+    Returns:
+        (df_profile, peak_dict). peak_dict has everything the original
+        returns, plus:
+        - baseline_mwh, scenario_mwh, delta_mwh: annual energy (top level)
+        - one entry per season, e.g. peak_dict["winter"], containing
+          peak_hour_baseline, peak_hour_scenario, baseline_peak_mw,
+          scenario_peak_mw, delta_mw, baseline_mwh, scenario_mwh, delta_mwh
+    """
+    seasons = seasons or SEASONS
+ 
+    df_profile, peak_dict = compute_county_scenario_profile(
+        df_baseline,
+        df_upgrade,
+        adopter_bldg_ids,
+        custom_weighting=custom_weighting,
+        weight_dict=weight_dict,
+    )
+ 
+    # Each row is one hour, so MW summed over rows is MWh.
+    annual_baseline_mwh = df_profile["baseline_mw"].sum()
+    annual_scenario_mwh = df_profile["scenario_mw"].sum()
+    peak_dict["baseline_mwh"] = float(annual_baseline_mwh)
+    peak_dict["scenario_mwh"] = float(annual_scenario_mwh)
+    peak_dict["delta_mwh"] = float(annual_scenario_mwh - annual_baseline_mwh)
+ 
+    # df_profile is sorted by hour with exactly 8,760 rows (checked by the
+    # original function), so row i is hour i of a non-leap year.
+    month = pd.date_range("2001-01-01", periods=len(df_profile), freq="h").month
+ 
+    for name, months in seasons.items():
+        sub = df_profile[month.isin(months)]
+        baseline_peak = sub["baseline_mw"].max()
+        scenario_peak = sub["scenario_mw"].max()
+        baseline_mwh = sub["baseline_mw"].sum()
+        scenario_mwh = sub["scenario_mw"].sum()
+        peak_dict[name] = {
+            "peak_hour_baseline": int(sub.loc[sub["baseline_mw"].idxmax(), "hour"]),
+            "peak_hour_scenario": int(sub.loc[sub["scenario_mw"].idxmax(), "hour"]),
+            "baseline_peak_mw": float(baseline_peak),
+            "scenario_peak_mw": float(scenario_peak),
+            "delta_mw": float(scenario_peak - baseline_peak),
+            "baseline_mwh": float(baseline_mwh),
+            "scenario_mwh": float(scenario_mwh),
+            "delta_mwh": float(scenario_mwh - baseline_mwh),
+        }
+ 
+    return df_profile, peak_dict
 
 def prepare_bsq_timeseries(
     df_ts_raw: pd.DataFrame,

@@ -470,3 +470,8 @@ PA_COP_RANGES: dict = {
     'mp4': (2.5, 3.4),
 }
 
+#Defining summer and winter peak months
+#Summer is June through September
+#Winter is December thorugh March
+
+SEASONS =  {"winter": (12, 1, 2, 3), "summer": (6, 7, 8, 9)}
