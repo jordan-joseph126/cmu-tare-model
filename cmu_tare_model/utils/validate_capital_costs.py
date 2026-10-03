@@ -849,20 +849,20 @@ def get_ashp_upgrade_homes(df: pd.DataFrame) -> pd.DataFrame:
 
     heating_upgrade_pm2_euss is populated for nearly every row regardless of
     adoption eligibility -- the new heat pump's spec doesn't depend on the
-    home's baseline -- so include_heating is applied explicitly here.
+    home's baseline -- so include_sample is applied explicitly here.
     _analyze_ashp's own N counts stay correct without this gate because they
     group on the cost column (NaN for ineligible homes), not on this
     population directly.
 
     Args:
         df: Home-level DataFrame with heating_upgrade_pm2_euss and
-            include_heating columns.
+            include_sample columns.
 
     Returns:
         The subset of df in the ASHP upgrade population.
     """
     pm2_col = 'heating_upgrade_pm2_euss'
-    mask = df[pm2_col].notna() & (df[pm2_col] > 0) & df['include_heating']
+    mask = df[pm2_col].notna() & (df[pm2_col] > 0) & df['include_sample']
     return df.loc[mask]
 
 
@@ -870,13 +870,13 @@ def get_central_ac_replacement_homes(df: pd.DataFrame) -> pd.DataFrame:
     """Homes in the baseline Central AC replacement population.
 
     Args:
-        df: Home-level DataFrame with hvac_cooling_type and include_cooling
+        df: Home-level DataFrame with hvac_cooling_type and include_sample
             columns.
 
     Returns:
         The subset of df with a baseline Central AC.
     """
-    return df.loc[(df['hvac_cooling_type'] == 'Central AC') & df['include_cooling']]
+    return df.loc[(df['hvac_cooling_type'] == 'Central AC') & df['include_sample']]
 
 
 def get_natural_gas_furnace_replacement_homes(df: pd.DataFrame) -> pd.DataFrame:
@@ -884,11 +884,11 @@ def get_natural_gas_furnace_replacement_homes(df: pd.DataFrame) -> pd.DataFrame:
 
     A plain 'Furnace' substring match on heating_type also catches Wall/Floor
     Furnace homes, which are excluded from the modeled population (invalid
-    heating tech -- include_heating = False), so that gate is applied here.
+    heating tech -- include_sample = False), so that gate is applied here.
 
     Args:
         df: Home-level DataFrame with base_heating_fuel, heating_type, and
-            include_heating columns.
+            include_sample columns.
 
     Returns:
         The subset of df with a baseline natural gas furnace.
@@ -896,7 +896,7 @@ def get_natural_gas_furnace_replacement_homes(df: pd.DataFrame) -> pd.DataFrame:
     mask = (
         (df['base_heating_fuel'] == 'Natural Gas')
         & df['heating_type'].str.contains('Furnace', case=False, na=False)
-        & df['include_heating']
+        & df['include_sample']
     )
     return df.loc[mask]
 
@@ -1005,6 +1005,7 @@ def build_capital_cost_distribution_figure(
         bin_number=bin_number,
         lower_percentile=lower_percentile,
         upper_percentile=upper_percentile,
+        include_zero=True,
         show_legend=False,
     )
 
@@ -1021,6 +1022,7 @@ def build_furnace_ashp_metric_comparison_figure(
     bin_number: int = 30,
     lower_percentile: float = 2.5,
     upper_percentile: float = 97.5,
+    include_zero: bool = True,
 ) -> Figure:
     """Build a 1x3 NG-furnace-vs-ASHP comparison for any per-home metric.
 
@@ -1057,6 +1059,7 @@ def build_furnace_ashp_metric_comparison_figure(
         bin_number: Number of bins per panel.
         lower_percentile: Lower bound (0-100) of each panel's own display range.
         upper_percentile: Upper bound (0-100) of each panel's own display range.
+        include_zero: Whether to include zero values in each panel.
 
     Returns:
         The matplotlib Figure.
@@ -1100,6 +1103,7 @@ def build_furnace_ashp_metric_comparison_figure(
         bin_number=bin_number,
         lower_percentile=lower_percentile,
         upper_percentile=upper_percentile,
+        include_zero=include_zero,
         show_legend=False,
     )
 
@@ -1254,10 +1258,10 @@ def build_ashp_primary_vs_total_consumption_figure(
 
     # Without a shared range, each panel would work out its own limits and the
     # last one drawn would set the axis for all of them.
-    # Zeros are dropped before plotting (include_zero=False), so drop them here
+    # Zeros are kept when plotting (include_zero=True), so keep them here
     # too; the stats and shared range then describe exactly what each panel shows.
     panel_values = [
-        dataframes[i][col].replace(0, np.nan).dropna()
+        dataframes[i][col].dropna()
         for i, col in zip(dataframe_indices, x_cols)
     ]
 
@@ -1308,6 +1312,7 @@ def build_ashp_primary_vs_total_consumption_figure(
         sharex=sharex,
         sharey=sharey,
         shared_xlim=shared_xlim,
+        include_zero=True,
         color_code='base_heating_fuel',
         bin_number=bin_number,
         lower_percentile=lower_percentile,

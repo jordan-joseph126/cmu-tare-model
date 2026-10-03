@@ -164,6 +164,11 @@ These counts are reproducible: `cmu_tare_model/utils/tare_sample_size.py`
 recomputes the whole cascade from the raw ResStock files for any county, state,
 or the nation.
 
+> **Note (2 Oct 2026):** `tare_sample_size.py` has been retired and is no longer
+> in the codebase. The study-sample funnel is now built by `build_sample_funnel`
+> (`energy_consumption_and_metadata/study_sample.py`) and saved with each run
+> under `output_results/baseline_summary/sample_funnel/`.
+
 ### 3.2 Exactly which dwelling units were dropped, and why
 
 A row is dropped when `include_heating` is `False`. That flag is the AND of two
@@ -907,6 +912,7 @@ Checked on both MP3 and MP4:
   254 removed as not applicable, 1,356 exported; the county table filters to
   exactly one row.
 - The filter cascade in section 3.1 recomputed from the raw ResStock files by
-  `cmu_tare_model/utils/tare_sample_size.py`, matching at every step.
+  `cmu_tare_model/utils/tare_sample_size.py`, matching at every step. (That
+  module has since been retired; see the note in section 3.1.)
 - A scope the run does not contain is skipped with a message rather than
   writing an empty file; a mistyped county code raises an error.

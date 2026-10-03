@@ -218,6 +218,10 @@ The researcher asked for a filter breakdown for a README. Added
 `cmu_tare_model/utils/tare_sample_size.py`, which recomputes the cascade from
 the raw ResStock files for any county, state, or the nation. Read-only.
 
+> **Note (2 Oct 2026):** `tare_sample_size.py` has since been retired; the
+> study-sample funnel is now `build_sample_funnel`
+> (`energy_consumption_and_metadata/study_sample.py`).
+
 | Step | Allegheny rdu | Allegheny homes | National rdu | National homes | % of stock |
 |---|---|---|---|---|---|
 | Sampled units, no filters | 2,434 | 589,347 | 548,916 | 132,909,587 | 100.00% |
@@ -303,7 +307,7 @@ notebook cells to backport.
 | `private_impact/calculate_lifetime_private_impact.py` | +32, persists 2 savings columns and the applied credit |
 | `utils/export_tepper_csv.py` | +362, 154-column list, two-frame merge, scope filter, source-data copies |
 | `utils/export_model_run_results.py` | +15, `df_annual_consumption` passthrough |
-| `utils/tare_sample_size.py` | new, filter cascade from raw ResStock files |
+| `utils/tare_sample_size.py` | new, filter cascade from raw ResStock files (retired 2 Oct 2026) |
 | `docs/tare_tepper_exports_data_dictionary.md` | rewritten |
 | `utils/tepper_export_data_dictionary.md` | deleted, duplicate |
 | `CLAUDE.md` | `_EXPORT` rule, rdu terminology section, two anti-patterns |

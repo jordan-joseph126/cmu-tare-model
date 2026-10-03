@@ -102,6 +102,9 @@ item 10.
 | `utils/export_tepper_csv.py:232`, `utils/inventory_tare_columns.py:62`, `visuals_adoption_dotplot.py:324-325, 1224`, `determine_rebate_eligibility_and_amount.py:703, 772`, `scripts/verify_june2026_rebate_fossil_gate.py:32` | `weight`, on post-rename frames | `applicability` at `export_tepper_csv.py:262` is a Python list name, not the column. |
 | `tare_model_main_v3_0_EXPORT_3Sep2026.py:615` | `df_baseline["weight"].median()` | |
 
+> **Note (2 Oct 2026):** `utils/tare_sample_size.py`, listed above, has since been
+> retired and is no longer in the codebase.
+
 `determine_economic_adoption_potential.py`, `adoption_kpis/visualize_geospatial_data.py`, and
 `utils/validate_capital_costs.py` contain no `out.`, `in.`, or `upgrade.` literal. The
 geospatial module keys on `state`, `county`, `GEOID`, `STATEFP`, and `STUSPS` instead.
@@ -201,6 +204,9 @@ docstring examples.
 | `VALID_MENU_MPS` | `constants.py:75-81`: `[0, 3, 4]` | Both cost modules at lines 176 and 234; `load_exported_results_to_df.py:95`; EXPORT lines 39, 195; `tare_run_simulation_v3_0.ipynb` cells 9-23 |
 | `FUEL_MAPPING` | `constants.py:127`: four fuels; no Wood, Other Fuel or None | `calculate_lifetime_fuel_costs.py:186`; `calculation_utils.py:50-61`; `degree_day_consumption_utils.py:26`; `tare_sample_size.py:223, 310` |
 | `UPGRADE_COLUMNS` | `constants.py:191-196`: `{'heating': 'upgrade_hvac_heating_efficiency'}` | `validation_framework.py:21` |
+
+> **Note (2 Oct 2026):** `tare_sample_size.py`, listed above as a consumer of
+> `ALLOWED_TECHNOLOGIES` and `FUEL_MAPPING`, has since been retired.
 
 ### A.9 Alaska and Hawaii in the state-keyed inputs
 
