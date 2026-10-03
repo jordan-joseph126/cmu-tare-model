@@ -45,15 +45,13 @@ ALLOWED_TECHNOLOGIES = {
     ],
     # in.hvac_cooling_type: central and room AC only, as in the submitted
     # 2022.1.1 analysis. Same list for both releases, so both share one scope.
-    # This list does NOT remove homes from the study sample: a home with valid
-    # heating but no central or room AC (38,910 rdu, 9.42M homes in 2022.1.1)
-    # stays in, with its cooling counted as zero and no AC replacement offset.
-    # PLACEHOLDER -- may change for the 2025.1 dual-fuel analysis: whether homes
-    # with no AC (the heat pump adds cooling they never had) and existing heat
-    # pump homes ('Ducted Heat Pump' / 'Non-Ducted Heat Pump' in 2025.1) belong
-    # in cooling scope is still open. Dropping this list puts both groups in
-    # scope; in 2022.1.1 that added 38,910 heating-valid rdu (9.42M homes) with
-    # no AC and lowered adoption by 0.20-1.56 pp.
+    # This list also limits the study sample: a home with valid heating but no
+    # central or room AC (38,910 rdu, 9.42M homes in 2022.1.1) is left out,
+    # because the heat pump would add cooling it never had (CLAUDE.md
+    # Limitation 11).
+    # PLACEHOLDER -- a future session may bring no-AC homes back, modeling the
+    # added cooling as a new service, and decide whether existing heat pump
+    # homes ('Ducted Heat Pump' / 'Non-Ducted Heat Pump' in 2025.1) belong here.
     'cooling': [
         'Central AC',
         'Room AC'

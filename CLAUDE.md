@@ -365,8 +365,9 @@ Example home:
 - Fraction = 13,500 ÷ 35,000 = 38.6%, which reaches the upper HOMES tier (35% or more).
 
 A check column, `mp{mp}_whole_home_energy_savings_kwh` (ResStock's own whole-home
-change), runs a few percent below the savings above, mostly because it includes the
-cooling the heat pump adds in homes outside cooling scope (see Limitation 11). The
+change), runs below the savings above mostly because ResStock's hot-water use also
+changes when the heating and cooling equipment changes (an interaction ResStock
+documents); TARE counts heating and cooling only. The
 fraction is used for fossil and electric HOMES recipients alike.
 
 **Reporting / verification helpers** (both in
@@ -417,11 +418,14 @@ modeled — not an actual disbursement amount.
     amount, so a projected year's total heating load moves but the split does
     not (`get_degree_day_adjusted_consumption_by_fuel`, Step 2 comment in
     `degree_day_consumption_utils.py`). The split is exact only in `ANCHOR_YEAR`.
-11. Homes outside cooling scope (no central or room AC) have their cooling
-    counted as zero before and after the retrofit, even though the heat pump
-    can cool them. In 2022.1.1 that leaves out about 25.5 TWh/yr (MP3) and
-    15.1 TWh/yr (MP4) of added cooling across 38,910 heating-valid rdu
-    (9.42M homes). See the cooling-scope placeholder in `constants.py`.
+11. Homes with no central or room AC are excluded from the study sample
+    (38,910 rdu, 9.42M homes in 2022.1.1). For them the heat pump adds cooling
+    the home never had, so any cooling cost is for a new service, not a change
+    to an existing one; the same is partly true for room-AC homes, whose heat
+    pump cools the whole house. Keeping no-AC homes in with cooling set to zero
+    did not make sense. PLACEHOLDER: a future session may bring them back,
+    modeling the added cooling as a new service. See the cooling-list comment
+    in `constants.py`.
 
 ---
 
@@ -435,7 +439,7 @@ modeled — not an actual disbursement amount.
 **Cooling:** `include_cooling = valid_fuel_cooling AND valid_tech_cooling`
 - `valid_fuel_cooling`: hardcoded True (cooling is always electric) — this flag is a no-op
 - `valid_tech_cooling`: technology is one of {Central AC, Room AC} — this is the ONLY cooling filter
-- Homes with no AC (`'None'`) or evaporative coolers are excluded here
+- Homes with no AC (`'None'`) or evaporative coolers are excluded here, and so are left out of the study sample (Limitation 11)
 
 **Cooling in NPV:** for homes where `include_cooling = False`, cooling savings and capital are both 0 — see NPV Ordering Checks, below, for the resulting identities.
 
@@ -496,7 +500,7 @@ Per home (for homes with AC, `include_cooling = True`):
 - No general ordering between `heatingLCC_coolingSavings` and `heatingSavings_coolingLCC`
   (depends on relative magnitude of heating vs cooling replacement costs)
 
-Per home (no AC, `include_cooling = False`):
+Per home (no AC, `include_cooling = False` -- not in the sample today; applies only if those homes return, see Limitation 11):
 - `heatingLCC_coolingLCC` == `heatingLCC_coolingSavings` (cooling LCC credit = 0)
 - Both exceed `heatingSavings_coolingLCC` (heating LCC credit is non-zero)
 

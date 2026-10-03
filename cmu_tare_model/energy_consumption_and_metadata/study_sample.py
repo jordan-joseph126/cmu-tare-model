@@ -5,7 +5,8 @@ A home is in the sample if its baseline heating system is one the study can
 replace and cost (include_heating = True: electricity, natural gas, propane, or
 fuel oil, heated by a furnace, boiler, or electric baseboard -- not an existing
 heat pump, wall/floor furnace, or shared system), and if ResStock applied every
-measure package in the run to it. df_enduse_refactored sets this once as the
+measure package in the run to it, and if it has central or room AC
+(include_cooling = True). df_enduse_refactored sets this once as the
 include_sample column; this module only reads that column, so the rule lives in
 one place. The ids are passed to results that do not use the TARE frame
 (county demand, peaks, custom weighting).
@@ -78,7 +79,7 @@ def build_sample_funnel(
 
     Returns:
         One row per step: stage, rdu_count, weighted_count, removed_rdu,
-        removed_homes, and each fuel's share; then the two AC rows.
+        removed_homes, and each fuel's share.
 
     Raises:
         ValueError: If the packages disagree at an early step, or the last step
@@ -94,37 +95,34 @@ def build_sample_funnel(
             f"Packages disagree at an early funnel step: {stage_counts_by_package}")
     df_scope = df_funnel_packages[0].copy()
 
-    # Step 2 -- heating steps on the homes left after those filters
+    # Step 2 -- heating and AC steps on the homes left after those filters
     in_scope_ids = df_enduse.index
     for package_ids in applicable_bldg_ids:
         in_scope_ids = in_scope_ids.intersection(package_ids)
     df_in_scope = df_enduse.loc[in_scope_ids]
     valid_fuel = df_in_scope['valid_fuel_heating'].astype(bool)
     no_heat_pump = ~df_in_scope['heating_type'].isin(EXISTING_HEAT_PUMP_TYPES)
-    heating_steps = [
+    replaceable_heating = df_in_scope['include_heating'].astype(bool)
+    has_ac = df_in_scope['include_cooling'].astype(bool)
+    scope_steps = [
         ('heating_fuel', valid_fuel),
         ('no_existing_heat_pump', valid_fuel & no_heat_pump),
-        ('replaceable_heating_system', df_in_scope['include_heating'].astype(bool)),
+        ('replaceable_heating_system', replaceable_heating),
+        ('central_or_room_ac', replaceable_heating & has_ac),
     ]
-    heating_rows = [compute_funnel_stage_row(df_in_scope, label, mask)
-                    for label, mask in heating_steps]
+    scope_rows = [compute_funnel_stage_row(df_in_scope, label, mask)
+                  for label, mask in scope_steps]
 
     # Step 3 -- the last step must be exactly the model's sample
-    sample = df_enduse['include_sample'].astype(bool)
-    n_sample = int(sample.sum())
-    if heating_rows[-1]['rdu_count'] != n_sample:
-        raise ValueError(f"Funnel ends at {heating_rows[-1]['rdu_count']:,} rdu but "
+    n_sample = int(df_enduse['include_sample'].astype(bool).sum())
+    if scope_rows[-1]['rdu_count'] != n_sample:
+        raise ValueError(f"Funnel ends at {scope_rows[-1]['rdu_count']:,} rdu but "
                          f"include_sample has {n_sample:,}")
 
-    # Step 4 -- removed counts, then the AC split of the sample (not filters)
-    df_funnel = pd.concat([df_scope, pd.DataFrame(heating_rows)], ignore_index=True)
+    # Step 4 -- removed counts
+    df_funnel = pd.concat([df_scope, pd.DataFrame(scope_rows)], ignore_index=True)
     # previous minus current, so a step that removes nothing shows 0, not -0.0
     df_funnel['removed_rdu'] = df_funnel['rdu_count'].shift() - df_funnel['rdu_count']
     df_funnel['removed_homes'] = (
         df_funnel['weighted_count'].shift() - df_funnel['weighted_count'])
-    has_ac = df_enduse['include_cooling'].astype(bool)
-    ac_rows = [
-        compute_funnel_stage_row(df_enduse, 'sample_with_ac', sample & has_ac),
-        compute_funnel_stage_row(df_enduse, 'sample_no_ac', sample & ~has_ac),
-    ]
-    return pd.concat([df_funnel, pd.DataFrame(ac_rows)], ignore_index=True)
+    return df_funnel

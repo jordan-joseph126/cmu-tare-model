@@ -734,12 +734,16 @@ def df_enduse_refactored(
 
     # ===== STEP 4b: Study sample flag =====
     # The one definition of the study sample: a heating system the study can
-    # replace and cost, and applied in every package in the run. Set here once;
+    # replace and cost, an existing central or room AC (include_cooling), and
+    # applied in every package in the run. Set here once;
     # get_valid_calculation_mask requires it, so every result is limited to it.
+    # Homes without AC are left out: the heat pump would add cooling they never
+    # had (CLAUDE.md Limitation 11).
     is_applicable = pd.Series(True, index=df_enduse.index)
     for package_ids in applicable_bldg_ids:
         is_applicable &= df_enduse.index.isin(package_ids)
-    df_enduse['include_sample'] = df_enduse['include_heating'] & is_applicable
+    df_enduse['include_sample'] = (
+        df_enduse['include_heating'] & df_enduse['include_cooling'] & is_applicable)
     n_sample = int(df_enduse['include_sample'].sum())
     print(f"Study sample: {n_sample:,} rdu "
           f"({df_enduse.loc[df_enduse['include_sample'], 'weight'].sum():,.0f} homes)")

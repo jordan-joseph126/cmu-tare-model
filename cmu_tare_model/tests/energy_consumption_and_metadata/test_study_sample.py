@@ -66,8 +66,8 @@ def test_empty_sample_raises(df_enduse):
 @pytest.fixture
 def funnel_inputs():
     """Six in-scope homes, each removed at a known step:
-    2 other fuel, 3 existing heat pump, 4 wall furnace, 6 package not applied.
-    Homes 1 and 5 are the sample; 1 has AC, 5 does not."""
+    2 other fuel, 3 existing heat pump, 4 wall furnace, 5 no AC,
+    6 package not applied. Home 1 is the sample."""
     df_enduse = pd.DataFrame({
         'bldg_id': [1, 2, 3, 4, 5, 6],
         'weight': [2.0] * 6,
@@ -78,7 +78,7 @@ def funnel_inputs():
                          'Natural Gas Fuel Furnace', 'Natural Gas Fuel Furnace'],
         'valid_fuel_heating': [True, False, True, True, True, True],
         'include_heating': [True, False, False, False, True, True],
-        'include_sample': [True, False, False, False, True, False],
+        'include_sample': [True, False, False, False, False, False],
         'include_cooling': [True, False, True, False, False, True],
     }).set_index('bldg_id')
     applicable_bldg_ids = [pd.Index([1, 2, 3, 4, 5])]
@@ -97,9 +97,9 @@ def test_funnel_steps_in_order(funnel_inputs):
     assert list(df_funnel['stage']) == [
         'load', 'applicability', 'housing_type', 'heating_fuel',
         'no_existing_heat_pump', 'replaceable_heating_system',
-        'sample_with_ac', 'sample_no_ac']
-    assert list(df_funnel['rdu_count']) == [9, 8, 5, 4, 3, 2, 1, 1]
-    assert list(df_funnel['removed_rdu'].iloc[1:6]) == [1, 3, 1, 1, 1]
+        'central_or_room_ac']
+    assert list(df_funnel['rdu_count']) == [9, 8, 5, 4, 3, 2, 1]
+    assert list(df_funnel['removed_rdu'].iloc[1:]) == [1, 3, 1, 1, 1, 1]
 
 
 def test_funnel_packages_must_agree(funnel_inputs):
@@ -113,6 +113,6 @@ def test_funnel_packages_must_agree(funnel_inputs):
 
 def test_funnel_must_end_at_sample(funnel_inputs):
     df_package, applicable_bldg_ids, df_enduse = funnel_inputs
-    df_enduse.loc[5, 'include_sample'] = False
+    df_enduse.loc[1, 'include_sample'] = False
     with pytest.raises(ValueError, match='include_sample'):
         build_sample_funnel([df_package], applicable_bldg_ids, df_enduse)
