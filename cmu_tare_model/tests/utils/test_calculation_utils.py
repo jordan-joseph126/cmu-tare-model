@@ -265,6 +265,27 @@ def test_identify_valid_homes_include_all_is_intersection(sample_df):
     pd.testing.assert_series_equal(result['include_all'], expected, check_names=False)
 
 
+def test_identify_valid_homes_leaves_out_shared_cooling(monkeypatch):
+    """A Central AC that is a shared system is not a valid cooling technology."""
+    from cmu_tare_model.utils.calculation_utils import identify_valid_homes
+
+    # The file's shared setup has no cooling category; this test needs only that.
+    monkeypatch.setattr(
+        'cmu_tare_model.utils.calculation_utils.EQUIPMENT_SPECS', {'cooling': 15})
+    df_homes = pd.DataFrame({
+        'base_cooling_fuel': ['Electricity'] * 3,
+        'cooling_type': ['Central AC', 'Central AC', 'None'],
+        'base_cooling_efficiency': ['AC, SEER 13', 'Shared Cooling', 'None'],
+    })
+    result = identify_valid_homes(df_homes.copy(), verbose=False)
+    assert list(result['valid_tech_cooling']) == [True, False, False]
+    assert list(result['include_cooling']) == [True, False, False]
+
+    with pytest.raises(KeyError, match='base_cooling_efficiency'):
+        identify_valid_homes(
+            df_homes.drop(columns=['base_cooling_efficiency']), verbose=False)
+
+
 # =============================================================================
 # filter_valid_tech_homes
 # =============================================================================

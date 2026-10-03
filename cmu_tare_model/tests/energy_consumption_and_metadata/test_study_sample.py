@@ -65,27 +65,32 @@ def test_empty_sample_raises(df_enduse):
 
 @pytest.fixture
 def funnel_inputs():
-    """Six in-scope homes, each removed at a known step:
+    """Seven homes, each removed at a known step:
     2 other fuel, 3 existing heat pump, 4 wall furnace, 5 no AC,
-    6 package not applied. Home 1 is the sample."""
+    6 package not applied, 7 shared cooling. Home 1 is the sample."""
     df_enduse = pd.DataFrame({
-        'bldg_id': [1, 2, 3, 4, 5, 6],
-        'weight': [2.0] * 6,
+        'bldg_id': [1, 2, 3, 4, 5, 6, 7],
+        'weight': [2.0] * 7,
         'base_heating_fuel': ['Natural Gas', 'Other Fuel', 'Electricity',
-                              'Natural Gas', 'Natural Gas', 'Natural Gas'],
+                              'Natural Gas', 'Natural Gas', 'Natural Gas',
+                              'Natural Gas'],
         'heating_type': ['Natural Gas Fuel Furnace', 'Other Fuel Furnace',
                          'Electricity ASHP', 'Natural Gas Fuel Wall/Floor Furnace',
-                         'Natural Gas Fuel Furnace', 'Natural Gas Fuel Furnace'],
-        'valid_fuel_heating': [True, False, True, True, True, True],
-        'include_heating': [True, False, False, False, True, True],
-        'include_sample': [True, False, False, False, False, False],
-        'include_cooling': [True, False, True, False, False, True],
+                         'Natural Gas Fuel Furnace', 'Natural Gas Fuel Furnace',
+                         'Natural Gas Fuel Furnace'],
+        'valid_fuel_heating': [True, False, True, True, True, True, True],
+        'include_heating': [True, False, False, False, True, True, True],
+        'include_sample': [True, False, False, False, False, False, False],
+        # Home 7 is a Central AC by type, but shared, so include_cooling is False.
+        'cooling_type': ['Central AC', 'None', 'Room AC', 'None', 'None',
+                         'Central AC', 'Central AC'],
+        'include_cooling': [True, False, True, False, False, True, False],
     }).set_index('bldg_id')
-    applicable_bldg_ids = [pd.Index([1, 2, 3, 4, 5])]
+    applicable_bldg_ids = [pd.Index([1, 2, 3, 4, 5, 7])]
     df_package = pd.DataFrame({
         'stage': ['load', 'applicability', 'housing_type'],
-        'rdu_count': [9, 8, 5],
-        'weighted_count': [18.0, 16.0, 10.0],
+        'rdu_count': [9, 8, 6],
+        'weighted_count': [18.0, 16.0, 12.0],
     })
     return df_package, applicable_bldg_ids, df_enduse
 
@@ -97,9 +102,9 @@ def test_funnel_steps_in_order(funnel_inputs):
     assert list(df_funnel['stage']) == [
         'load', 'applicability', 'housing_type', 'heating_fuel',
         'no_existing_heat_pump', 'replaceable_heating_system',
-        'central_or_room_ac']
-    assert list(df_funnel['rdu_count']) == [9, 8, 5, 4, 3, 2, 1]
-    assert list(df_funnel['removed_rdu'].iloc[1:]) == [1, 3, 1, 1, 1, 1]
+        'central_or_room_ac', 'no_shared_cooling']
+    assert list(df_funnel['rdu_count']) == [9, 8, 6, 5, 4, 3, 2, 1]
+    assert list(df_funnel['removed_rdu'].iloc[1:]) == [1, 2, 1, 1, 1, 1, 1]
 
 
 def test_funnel_packages_must_agree(funnel_inputs):

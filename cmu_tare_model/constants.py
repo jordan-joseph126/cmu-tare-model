@@ -35,7 +35,8 @@ ALLOWED_TECHNOLOGIES = {
     # - existing heat pumps (ASHP; MSHP in 2025.1) are left out: nothing to replace;
     # - wall/floor furnaces and shared heating are left out: there is no cost
     #   data to estimate their replacement cost.
-    # 2022.1.1 result: 260,211 rdu (63.0M homes) in the study sample.
+    # 2022.1.1 result: 260,211 rdu (63.0M homes) pass this heating rule; the
+    # cooling rule below brings the study sample to 221,205 rdu (53.56M homes).
     'heating': [
         'Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace',
         # 'Electricity ASHP',
@@ -49,6 +50,8 @@ ALLOWED_TECHNOLOGIES = {
     # central or room AC (38,910 rdu, 9.42M homes in 2022.1.1) is left out,
     # because the heat pump would add cooling it never had (CLAUDE.md
     # Limitation 11).
+    # Shared cooling is left out too (SHARED_COOLING_EFFICIENCY, below): ResStock
+    # files it under 'Central AC', so this list alone does not catch it.
     # PLACEHOLDER -- a future session may bring no-AC homes back, modeling the
     # added cooling as a new service, and decide whether existing heat pump
     # homes ('Ducted Heat Pump' / 'Non-Ducted Heat Pump' in 2025.1) belong here.
@@ -72,6 +75,11 @@ ALLOWED_TECHNOLOGIES = {
     #     'Gas', 'Propane'
     # ]
 } 
+
+# in.hvac_cooling_efficiency label for a cooling system shared between homes.
+# Left out of the study sample: no cost data for its replacement, as with
+# shared heating (96 rdu, 23,245 homes in 2022.1.1; all typed 'Central AC').
+SHARED_COOLING_EFFICIENCY = 'Shared Cooling'
 
 # Trane GC focuses on heating and cooling. Cooling category is used for initial replacement cost estimates.
 # Cooling is excluded from EQUIPMENT_SPECS and VALID_CATEGORIES because other calculations are not performed.

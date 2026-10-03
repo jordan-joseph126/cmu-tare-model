@@ -15,7 +15,13 @@ import numpy as np
 from typing import Dict, Iterable, List, Tuple, Optional, Union, Callable
 from scipy.stats import norm
 
-from cmu_tare_model.constants import EQUIPMENT_SPECS, FUEL_MAPPING, ALLOWED_TECHNOLOGIES, VERBOSE
+from cmu_tare_model.constants import (
+    EQUIPMENT_SPECS,
+    FUEL_MAPPING,
+    ALLOWED_TECHNOLOGIES,
+    SHARED_COOLING_EFFICIENCY,
+    VERBOSE,
+)
 from cmu_tare_model.utils.validation_framework import (
     apply_final_masking,
     get_valid_fuel_types,
@@ -258,6 +264,9 @@ def identify_valid_homes(
         
     Returns:
         DataFrame with added data quality flags.
+
+    Raises:
+        KeyError: If the frame has cooling_type but no base_cooling_efficiency.
     """    
     # Initialize the overall inclusion flag
     df['include_all'] = True
@@ -320,6 +329,11 @@ def identify_valid_homes(
                 
                 # Check if the technology type is in the allowed list
                 df[tech_flag] = df[tech_col].isin(ALLOWED_TECHNOLOGIES[category])
+                # Shared cooling is typed 'Central AC' but has no replacement
+                # cost, so it is not a cooling system the study can replace.
+                if category == 'cooling':
+                    df[tech_flag] &= (
+                        df['base_cooling_efficiency'] != SHARED_COOLING_EFFICIENCY)
 
                 # Invalid technology count and percentage
                 invalid_tech_count = (~df[tech_flag]).sum()

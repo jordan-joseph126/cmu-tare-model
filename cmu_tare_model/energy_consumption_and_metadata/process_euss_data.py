@@ -734,11 +734,12 @@ def df_enduse_refactored(
 
     # ===== STEP 4b: Study sample flag =====
     # The one definition of the study sample: a heating system the study can
-    # replace and cost, an existing central or room AC (include_cooling), and
-    # applied in every package in the run. Set here once;
+    # replace and cost, a central or room AC of the home's own
+    # (include_cooling), and applied in every package in the run. Set here once;
     # get_valid_calculation_mask requires it, so every result is limited to it.
     # Homes without AC are left out: the heat pump would add cooling they never
-    # had (CLAUDE.md Limitation 11).
+    # had (CLAUDE.md Limitation 11). Shared cooling is left out: it has no
+    # replacement cost (SHARED_COOLING_EFFICIENCY in constants.py).
     is_applicable = pd.Series(True, index=df_enduse.index)
     for package_ids in applicable_bldg_ids:
         is_applicable &= df_enduse.index.isin(package_ids)
