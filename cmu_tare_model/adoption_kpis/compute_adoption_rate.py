@@ -1,14 +1,16 @@
 """
 Adoption rate computation functions for the TARE model KPIs.
 
-Computes the weighted adoption rate -- the share of homes (by EUSS sampling
-weight) that are economic adopters -- aggregated to county or state level.
+Computes the weighted adoption rate -- the share of study-sample homes (by
+EUSS sampling weight) that are economic adopters -- aggregated to county or
+state level. Only homes with include_sample = True are counted, the same
+denominator as the national rates and the adoption dot plot.
 
 Adoption rate definition:
     adoption_rate = sum(w x is_adopter) / sum(w) x 100  (percent)
 
     is_adopter = True  if the economic-adopter column equals 1.0
-    is_adopter = False otherwise (0.0 non-adopter; NaN excluded homes)
+    is_adopter = False otherwise (0.0 non-adopter)
 
 For legacy tiered-adoption columns (string values), is_adopter is True when
 the tier is in adopter_tiers (Tier 1 or Tier 2 by default).
@@ -76,6 +78,9 @@ def compute_adoption_rate(
         adoption_rate_pct = Σ(w × is_adopter) / Σ(w) × 100
 
     where ``is_adopter = 1`` if ``adoption_col ∈ adopter_tiers``, else ``0``.
+    Both sums run over study-sample homes only (``include_sample`` is True),
+    so ``home_count`` is sample homes and a county with no sample home is
+    left out.
 
     The ``min_home_count`` threshold is applied to the **sample** count
     (number of rows), not the weighted population, to ensure statistical
@@ -115,7 +120,8 @@ def compute_adoption_rate(
         ValueError: If ``geo_level`` is not ``'county'`` or ``'state'``.
         KeyError: If ``adoption_col``, ``weight_col``, or ``county_col``
             (when ``geo_level='county'``) are missing from ``df`` and
-            cannot be resolved via aliases or ``df_euss``.
+            cannot be resolved via aliases or ``df_euss``, or if
+            ``include_sample`` is missing.
     """
     if geo_level not in ("county", "state"):
         raise ValueError(
@@ -151,7 +157,7 @@ def compute_adoption_rate(
         df = df.join(df_euss[[weight_col]], how="inner")
 
     # --- Validate remaining required columns ---
-    required = [adoption_col, weight_col]
+    required = [adoption_col, weight_col, 'include_sample']
     geo_key = _county_col if geo_level == "county" else _state_col
     required.append(geo_key)
 
@@ -170,7 +176,9 @@ def compute_adoption_rate(
     if has_state and group_col != _state_col:
         keep_cols.append(_state_col)
 
-    df_work = df[keep_cols].copy()
+    # Rates are shares of study-sample homes, like every other adoption result.
+    in_sample = df['include_sample'].astype(bool)
+    df_work = df.loc[in_sample, keep_cols].copy()
 
     # --- Adopter flag ---
     # ResStock uses uniform sampling weight (~242) for all buildings.
