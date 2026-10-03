@@ -60,4 +60,4 @@ dist/
 *.egg-info/
 
 # Session handoff notes (kept locally, not versioned)
-cmu_tare_model/docs/HANDOFF_2026-09-24_study_sample.md
+cmu_tare_model/docs/HANDOFF_*.md
