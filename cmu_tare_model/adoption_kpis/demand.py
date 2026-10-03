@@ -16,6 +16,7 @@ import pandas as pd
 
 from cmu_tare_model.adoption_kpis.data_loading import (
     ELEC_TOTAL_COL,
+    SITE_ENERGY_TOTAL_COL,
     COUNTY_COL,
 )
 from cmu_tare_model.constants import MIN_HOME_COUNT
@@ -48,16 +49,17 @@ def compute_scenario_demand(
 
     - ``elec_demand_change_kwh``: total electricity change (retrofit − baseline).
       Positive = more grid electricity needed after electrification.
-    - ``site_energy_change_kwh``: alias for ``elec_demand_change_kwh`` (with total
-      electricity, the two concepts converge; retained for backward compatibility).
+    - ``site_energy_change_kwh``: total site energy change, all fuels
+      (retrofit - baseline). Negative = less energy used overall after
+      electrification, because the fossil fuel is no longer burned.
 
     Args:
         df_baseline: EUSS baseline DataFrame (indexed by bldg_id).
             Must contain ``in.state``, ``in.county``, ``in.heating_fuel``,
-            ``weight``, and ``ELEC_TOTAL_COL``.
+            ``weight``, ``ELEC_TOTAL_COL``, and ``SITE_ENERGY_TOTAL_COL``.
         df_upgrade: EUSS upgrade DataFrame (indexed by bldg_id,
             already filtered to ``applicability == True``).
-            Must contain ``ELEC_TOTAL_COL``.
+            Must contain ``ELEC_TOTAL_COL`` and ``SITE_ENERGY_TOTAL_COL``.
         sample_bldg_ids: The study sample, TARE_SAMPLE_IDS['all'] (or one
             county's list from TARE_SAMPLE_IDS['by_county']). Only these homes
             are counted, so the demand maps describe the same homes as the
@@ -70,7 +72,8 @@ def compute_scenario_demand(
         DataFrame indexed by bldg_id with columns: ``in.state``,
         ``in.county``, ``in.heating_fuel``, ``weight``,
         ``baseline_electric_kwh``, ``retrofit_electric_kwh``,
-        ``elec_demand_change_kwh``, ``site_energy_change_kwh``, and
+        ``elec_demand_change_kwh``, ``baseline_site_energy_kwh``,
+        ``retrofit_site_energy_kwh``, ``site_energy_change_kwh``, and
         ``weighted_*`` variants.
 
     Raises:
@@ -87,6 +90,8 @@ def compute_scenario_demand(
 
     baseline_total_elec = df_baseline[ELEC_TOTAL_COL].fillna(0)
     retrofit_total_elec = df_upgrade[ELEC_TOTAL_COL].fillna(0)
+    baseline_site_energy = df_baseline[SITE_ENERGY_TOTAL_COL].fillna(0)
+    retrofit_site_energy = df_upgrade[SITE_ENERGY_TOTAL_COL].fillna(0)
 
     df_demand = pd.DataFrame({
         'in.state': df_baseline['in.state'],
@@ -94,8 +99,12 @@ def compute_scenario_demand(
         'in.heating_fuel': df_baseline['in.heating_fuel'],
         'weight': df_baseline['weight'],
         'baseline_electric_kwh': baseline_total_elec,
+        'baseline_site_energy_kwh': baseline_site_energy,
     }).join(
-        retrofit_total_elec.rename('retrofit_electric_kwh'),
+        pd.DataFrame({
+            'retrofit_electric_kwh': retrofit_total_elec,
+            'retrofit_site_energy_kwh': retrofit_site_energy,
+        }),
         how='inner',
     )
 
@@ -117,18 +126,18 @@ def compute_scenario_demand(
     df_demand['elec_demand_change_kwh'] = (
         df_demand['retrofit_electric_kwh'] - df_demand['baseline_electric_kwh']
     )
-    # NAMING NOTE: this "site energy change" is an ALIAS of the electricity
-    # change, not an independent all-fuel quantity. Because the retrofit fully
-    # electrifies heating/cooling and both baseline and retrofit sides are read
-    # from the electricity total (ELEC_TOTAL_COL), the all-fuel site-energy
-    # change and the electricity change converge, so the alias is exact here.
-    # For an electricity metric use elec_demand_change_kwh; the site_energy_*
-    # columns are retained only for backward compatibility.
-    df_demand['site_energy_change_kwh'] = df_demand['elec_demand_change_kwh']
+    # Site energy counts every fuel (gas/oil/propane in kWh-equivalent), so it
+    # is NOT the electricity change: electricity rises when a fossil system is
+    # replaced, while site energy falls because the fuel is no longer burned.
+    df_demand['site_energy_change_kwh'] = (
+        df_demand['retrofit_site_energy_kwh'] - df_demand['baseline_site_energy_kwh']
+    )
 
     for col in [
         'baseline_electric_kwh', 'retrofit_electric_kwh',
-        'elec_demand_change_kwh', 'site_energy_change_kwh',
+        'elec_demand_change_kwh',
+        'baseline_site_energy_kwh', 'retrofit_site_energy_kwh',
+        'site_energy_change_kwh',
     ]:
         df_demand[f'weighted_{col}'] = df_demand[col] * df_demand['weight']
 
@@ -159,6 +168,8 @@ def aggregate_demand(
     Uses EUSS sampling weights to produce population-representative totals.
     Percentage changes are computed at the aggregate level:
     ``(Σ weighted_retrofit - Σ weighted_baseline) / Σ weighted_baseline × 100``.
+    The electricity percent is taken against baseline electricity and the
+    site-energy percent against baseline site energy (all fuels).
 
     Args:
         df_demand: Per-building demand DataFrame from
@@ -179,7 +190,8 @@ def aggregate_demand(
         County-level also includes ``county`` and ``state``.
 
     Raises:
-        ValueError: If ``geo_level`` is not ``'state'`` or ``'county'``.
+        ValueError: If ``geo_level`` is not ``'state'`` or ``'county'``, or
+            the grouped totals do not add up to the per-home total.
         KeyError: If expected weighted columns are missing from ``df_demand``.
     """
     if geo_level not in ('state', 'county'):
@@ -203,6 +215,7 @@ def aggregate_demand(
         weighted_baseline_elec=('weighted_baseline_electric_kwh', 'sum'),
         weighted_retrofit_elec=('weighted_retrofit_electric_kwh', 'sum'),
         weighted_elec_change=('weighted_elec_demand_change_kwh', 'sum'),
+        weighted_baseline_site=('weighted_baseline_site_energy_kwh', 'sum'),
         weighted_site_change=('weighted_site_energy_change_kwh', 'sum'),
     ).reset_index()
 
@@ -226,11 +239,14 @@ def aggregate_demand(
         grouped['elec_change_gwh'] / grouped['baseline_elec_gwh'] * 100,
         np.nan,
     )
-    # Alias, matching site_energy_change_gwh above: with whole-home
-    # electrification measured on the electricity total, the site-energy percent
-    # change equals the electricity percent change. Prefer pct_elec_demand_change
-    # for an electricity read; this is not an independent all-fuel number.
-    grouped['pct_site_energy_change'] = grouped['pct_elec_demand_change']
+    # Site energy is its own all-fuel quantity, so its percent is taken against
+    # baseline site energy, not baseline electricity. Blank only if a county's
+    # baseline site energy is zero; zero-change homes still count.
+    grouped['pct_site_energy_change'] = np.where(
+        grouped['weighted_baseline_site'] != 0,
+        grouped['weighted_site_change'] / grouped['weighted_baseline_site'] * 100,
+        np.nan,
+    )
 
     _metric_cols = [
         'baseline_elec_gwh', 'retrofit_elec_gwh', 'elec_change_gwh',
@@ -245,9 +261,11 @@ def aggregate_demand(
     total_sum = df_demand['weighted_elec_demand_change_kwh'].sum()
     total_agg = grouped['weighted_elec_change'].sum()
     if not np.isclose(total_sum, total_agg, rtol=1e-6):
-        print(f"⚠ DEMAND ACCOUNTING MISMATCH: sum={total_sum:.0f}, agg={total_agg:.0f}")
-    elif verbose:
-        print("✓ Demand accounting check passed")
+        raise ValueError(
+            "Demand accounting mismatch: per-home total "
+            f"{total_sum:.0f} kWh vs grouped total {total_agg:.0f} kWh")
+    if verbose:
+        print("[OK] Demand accounting check passed")
 
     for col in ['baseline_elec_gwh', 'retrofit_elec_gwh', 'elec_change_gwh', 'site_energy_change_gwh']:
         grouped[col] = grouped[col].round(2)

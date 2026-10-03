@@ -18,9 +18,11 @@ from cmu_tare_model.constants import (
 
 from cmu_tare_model.utils.validation_framework import get_valid_calculation_mask
 from cmu_tare_model.utils.calculation_utils import (
+    RESSTOCK_FUEL_NAMES,
     find_enduse_columns,
     get_all_possible_fuel_columns,
     get_consumption_component_columns,
+    get_resstock_savings_column,
     identify_valid_homes,
     compute_funnel_stage_row,
     print_masking_funnel_stage,
@@ -780,6 +782,119 @@ def df_enduse_refactored(
     return df_enduse
 
 
+# Test (a) limit. Both sides add up the same ResStock numbers, so 1 kWh is far
+# above what number storage can explain and far below a part left out.
+SAVINGS_MATCH_TOLERANCE_KWH = 1.0
+
+# Share of a home's baseline use of a fuel by which ResStock's whole-home
+# savings, less the end uses below, may differ from TARE's heating + cooling
+# savings. Every occupied home in both releases is under 0.3%.
+WHOLE_HOME_SAVINGS_TOLERANCE = 0.01
+
+# End uses outside heating and cooling that ResStock itself changes when the
+# equipment changes (2025.1 refrigerators by up to 1,100 kWh). Test (b) takes
+# their savings out of the whole-home savings first.
+INTERACTING_END_USES = ('hot_water', 'hot_water_solar_th', 'refrigerator')
+
+
+def check_savings_against_resstock(
+    tare_savings_by_fuel: Dict[str, pd.Series],
+    df_mp: pd.DataFrame,
+    sample_bldg_ids: pd.Index,
+    menu_mp: int,
+    release: str = RESSTOCK_RELEASE_THIS_RUN,
+) -> pd.DataFrame:
+    """Checks TARE's heating + cooling savings against ResStock's savings columns.
+
+    Two tests for every study-sample home and fuel:
+    (a) TARE's savings equal the sum of ResStock's savings columns for the
+        heating and cooling parts of that fuel.
+    (b) ResStock's whole-home savings, less the savings of the end uses in
+        INTERACTING_END_USES, differ from TARE's savings by at most 1% of
+        the home's baseline use of the fuel.
+        A home that does not use the fuel must therefore show exactly zero.
+
+    Args:
+        tare_savings_by_fuel: TARE's annual heating + cooling savings (kWh,
+            baseline minus retrofit), one Series per fuel spelled as in
+            FUEL_MAPPING's values, indexed by bldg_id.
+        df_mp: Raw ResStock upgrade frame, indexed by bldg_id.
+        sample_bldg_ids: The study sample.
+        menu_mp: Measure package number, for the printed title.
+        release: ResStock release df_mp was loaded from.
+
+    Returns:
+        One row per fuel: rdu checked, the largest gap in each test, how many
+        rdu fail, and '[OK]' or '[WARNING]'.
+
+    Raises:
+        ValueError: If any sample home fails either test or has a blank.
+        KeyError: If df_mp lacks a savings column or a sample home, or
+            tare_savings_by_fuel lacks a fuel.
+    """
+    # Step 1 -- sample rows, and every heating and cooling part ResStock reports
+    df_sample_mp = df_mp.loc[sample_bldg_ids]
+    part_columns = [
+        (fuel, resstock_column)
+        for category in ('heating', 'cooling')
+        for fuel, _, resstock_column in find_enduse_columns(df_mp.columns, category)]
+
+    # Step 2 -- both tests, one fuel at a time
+    rows = []
+    for resstock_fuel, fuel in RESSTOCK_FUEL_NAMES.items():
+        tare_savings = tare_savings_by_fuel[fuel].loc[sample_bldg_ids]
+
+        # Test (a): ResStock's savings for this fuel's heating and cooling parts
+        part_savings_columns = [
+            get_resstock_savings_column(resstock_column)
+            for part_fuel, resstock_column in part_columns if part_fuel == fuel]
+        part_gap = (
+            tare_savings - df_sample_mp[part_savings_columns].sum(axis=1, skipna=False)
+        ).abs()
+
+        # Test (b): whole home less the end uses ResStock changes on its own.
+        # Baseline use is the upgrade total plus its savings, so the upgrade
+        # file alone is enough. Not every fuel has every end use (there is no
+        # gas refrigerator), so only the columns in the file are read.
+        total_column = resstock_col(release, f'{resstock_fuel}_total')
+        total_savings_column = get_resstock_savings_column(total_column)
+        total_savings = df_sample_mp[total_savings_column]
+        interaction_columns = [
+            total_savings_column.replace('.total.', f'.{end_use}.')
+            for end_use in INTERACTING_END_USES]
+        interaction_savings = df_sample_mp[[
+            column for column in interaction_columns if column in df_mp.columns
+        ]].sum(axis=1, skipna=False)
+        baseline_use = df_sample_mp[total_column] + total_savings
+        left_over = (total_savings - interaction_savings - tare_savings).abs()
+
+        # Written as "not <=" so a blank counts as a failure.
+        fails_parts = ~(part_gap <= SAVINGS_MATCH_TOLERANCE_KWH)
+        fails_whole_home = ~(left_over <= WHOLE_HOME_SAVINGS_TOLERANCE * baseline_use)
+        n_failed = int((fails_parts | fails_whole_home).sum())
+        rows.append({
+            'fuel': fuel,
+            'rdu': len(sample_bldg_ids),
+            'largest_part_gap_kwh': part_gap.max(),
+            'largest_left_over_kwh': left_over.max(),
+            'largest_left_over_pct': (100 * left_over / baseline_use).max(),
+            'rdu_failed': n_failed,
+            'status': '[OK]' if n_failed == 0 else '[WARNING]',
+        })
+
+    # Step 3 -- print the table, then stop the run if any home failed
+    df_check = pd.DataFrame(rows)
+    print(f"\nMP{menu_mp} heating + cooling savings vs ResStock's savings columns:")
+    print(df_check.to_string(index=False))
+    df_failed = df_check[df_check['rdu_failed'] > 0]
+    if not df_failed.empty:
+        raise ValueError(
+            f"MP{menu_mp} heating + cooling savings do not match ResStock's "
+            "savings columns for "
+            f"{dict(zip(df_failed['fuel'], df_failed['rdu_failed']))} (fuel: rdu)")
+    return df_check
+
+
 def df_enduse_compare(
     df_mp: pd.DataFrame,
     input_mp: str,
@@ -1160,15 +1275,20 @@ def df_enduse_compare(
     # ANCHOR_YEAR, where every degree-day factor is 1.0, so these are
     # ResStock's own annual values. Denominator: whole-home baseline site
     # energy, all fuels.
+    # Annual use by fuel, before (mp 0) and after, read once: the fraction
+    # below adds the fuels together and the check in STEP 8 keeps them apart.
+    use_by_fuel = {
+        (category, mp): get_degree_day_adjusted_consumption_by_fuel(
+            df_compare, category, ANCHOR_YEAR, mp)
+        for category in ('heating', 'cooling') if category in VALID_CATEGORIES
+        for mp in (0, menu_mp)}
+
     def _annual_use(category: str, mp: int) -> pd.Series:
         """All-fuel annual use for one category; NaN for homes left out."""
-        by_fuel = get_degree_day_adjusted_consumption_by_fuel(
-            df_compare, category, ANCHOR_YEAR, mp)
-        return pd.concat(by_fuel.values(), axis=1).sum(axis=1, min_count=1)
+        return pd.concat(
+            use_by_fuel[(category, mp)].values(), axis=1).sum(axis=1, min_count=1)
 
-    # Heating savings stay NaN for homes without valid heating (never
-    # eligible for a rebate). Cooling savings are 0 for a home without
-    # cooling, so a heating-only home still gets a fraction.
+    # Savings stay NaN for homes outside the study sample.
     # Annual heating use before and after, every fuel and component (a gas
     # furnace's gas plus its blower; a heat pump's electricity plus backup and
     # fans). Kept as columns for the furnace-vs-heat-pump comparison figure.
@@ -1178,8 +1298,8 @@ def df_enduse_compare(
     heating_savings = (df_compare['baseline_heating_annual_consumption_kwh']
                        - df_compare[f'mp{menu_mp}_heating_annual_consumption_kwh'])
     if 'cooling' in VALID_CATEGORIES:
-        cooling_savings = (_annual_use('cooling', 0).fillna(0.0)
-                           - _annual_use('cooling', menu_mp).fillna(0.0))
+        cooling_savings = (_annual_use('cooling', 0)
+                           - _annual_use('cooling', menu_mp))
     else:
         cooling_savings = 0.0
 
@@ -1193,10 +1313,9 @@ def df_enduse_compare(
     ).astype('float64')
 
     # Check only, used in no calculation: ResStock's own whole-home change in
-    # site energy. It runs a few percent below the HVAC savings above because
-    # it includes the cooling the heat pump adds in homes outside cooling scope
-    # (no central or room AC), which TARE counts as zero; hot water and
-    # refrigerator side effects make up the small rest.
+    # site energy. It differs from the HVAC savings above mostly because
+    # ResStock's hot-water use also changes with the heating and cooling
+    # equipment. STEP 8 tests what is left, per home and fuel.
     whole_home_col = f'mp{menu_mp}_whole_home_energy_savings_kwh'
     df_compare[whole_home_col] = (
         df_compare['baseline_total_site_consumption']
@@ -1206,5 +1325,18 @@ def df_enduse_compare(
         df_compare[whole_home_col]
         / df_compare['baseline_total_site_consumption']
     ).astype('float64')
+
+    # ===== STEP 8: Check the savings against ResStock's own savings columns =====
+    # The same baseline-minus-retrofit savings as STEP 7, kept apart by fuel.
+    tare_savings_by_fuel = {}
+    for (category, mp), by_fuel in use_by_fuel.items():
+        sign = 1.0 if mp == 0 else -1.0
+        for fuel, annual_use in by_fuel.items():
+            tare_savings_by_fuel[fuel] = (
+                tare_savings_by_fuel.get(fuel, 0.0) + sign * annual_use)
+    check_savings_against_resstock(
+        tare_savings_by_fuel, df_mp,
+        df_compare.index[df_compare['include_sample'].astype(bool)],
+        menu_mp, release)
 
     return df_compare

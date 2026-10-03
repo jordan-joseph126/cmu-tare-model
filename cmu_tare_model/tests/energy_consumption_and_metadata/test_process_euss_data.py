@@ -1,7 +1,8 @@
 """Tests for cmu_tare_model.energy_consumption_and_metadata.process_euss_data module.
 
 Verifies pure utility functions: extract_city_name, map_metro_status,
-standardize_fuel_name, and preprocess_fuel_data.
+standardize_fuel_name, and preprocess_fuel_data; and the savings check,
+check_savings_against_resstock.
 """
 
 import pytest
@@ -139,3 +140,105 @@ def test_preprocess_fuel_data_non_dataframe_raises():
     from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import preprocess_fuel_data
     with pytest.raises(TypeError, match="pandas DataFrame"):
         preprocess_fuel_data("not_a_df", 'col')
+
+
+# -- check_savings_against_resstock -------------------------------------------
+
+@pytest.fixture
+def savings_check_inputs():
+    """Three retrofitted homes with ResStock's 2022.1.1 column names. Homes 1
+    and 2 heated with natural gas; home 3 heated with electricity and uses no
+    natural gas. No home uses propane or fuel oil."""
+    bldg_ids = pd.Index([1, 2, 3], name='bldg_id')
+    energy = 'energy_consumption.kwh'
+    df_mp = pd.DataFrame({
+        # Retrofit use, then ResStock's savings (baseline minus retrofit).
+        f'out.electricity.heating.{energy}': [6000.0, 4000.0, 5000.0],
+        f'out.electricity.heating.{energy}.savings': [-6000.0, -4000.0, 7000.0],
+        f'out.electricity.cooling.{energy}': [2500.0, 1500.0, 2000.0],
+        f'out.electricity.cooling.{energy}.savings': [500.0, 300.0, 400.0],
+        f'out.natural_gas.heating.{energy}': [0.0, 0.0, 0.0],
+        f'out.natural_gas.heating.{energy}.savings': [20000.0, 15000.0, 0.0],
+        # Side effects ResStock reports outside heating and cooling.
+        f'out.electricity.hot_water.{energy}.savings': [0.0, 50.0, -30.0],
+        f'out.electricity.refrigerator.{energy}.savings': [10.0, 0.0, 0.0],
+        f'out.natural_gas.hot_water.{energy}.savings': [0.0, 0.0, 0.0],
+        # Whole home: heating + cooling savings plus the side effects.
+        f'out.electricity.total.{energy}': [18000.0, 12000.0, 9000.0],
+        f'out.electricity.total.{energy}.savings': [-5490.0, -3650.0, 7370.0],
+        f'out.natural_gas.total.{energy}': [5000.0, 4000.0, 0.0],
+        f'out.natural_gas.total.{energy}.savings': [20000.0, 15000.0, 0.0],
+        f'out.propane.total.{energy}': [0.0] * 3,
+        f'out.propane.total.{energy}.savings': [0.0] * 3,
+        f'out.fuel_oil.total.{energy}': [0.0] * 3,
+        f'out.fuel_oil.total.{energy}.savings': [0.0] * 3,
+    }, index=bldg_ids)
+    tare_savings_by_fuel = {
+        'electricity': pd.Series([-5500.0, -3700.0, 7400.0], index=bldg_ids),
+        'naturalGas': pd.Series([20000.0, 15000.0, 0.0], index=bldg_ids),
+        'propane': pd.Series(0.0, index=bldg_ids),
+        'fuelOil': pd.Series(0.0, index=bldg_ids),
+    }
+    return tare_savings_by_fuel, df_mp, bldg_ids
+
+
+def test_savings_check_passes(savings_check_inputs):
+    """Matching savings pass; hot water and refrigerator changes are set aside."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        check_savings_against_resstock)
+    tare_savings_by_fuel, df_mp, bldg_ids = savings_check_inputs
+    df_check = check_savings_against_resstock(
+        tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1')
+    assert list(df_check['status']) == ['[OK]'] * 4
+    assert df_check['rdu_failed'].sum() == 0
+
+
+def test_savings_check_left_out_part_raises(savings_check_inputs):
+    """Energy the parts do not count shows up against the whole home."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        check_savings_against_resstock)
+    tare_savings_by_fuel, df_mp, bldg_ids = savings_check_inputs
+    # Home 1 used 800 kWh more electricity than its heating and cooling parts
+    # explain, as if backup heat had been left out.
+    df_mp.loc[1, 'out.electricity.total.energy_consumption.kwh.savings'] -= 800.0
+    with pytest.raises(ValueError, match='electricity'):
+        check_savings_against_resstock(
+            tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1')
+
+
+def test_savings_check_part_mismatch_raises(savings_check_inputs):
+    """TARE's savings must equal ResStock's part savings within 1 kWh."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        check_savings_against_resstock)
+    tare_savings_by_fuel, df_mp, bldg_ids = savings_check_inputs
+    # 5 kWh is well inside the whole-home limit, so only the part test fails.
+    tare_savings_by_fuel['naturalGas'].loc[2] += 5.0
+    with pytest.raises(ValueError, match='naturalGas'):
+        check_savings_against_resstock(
+            tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1')
+
+
+def test_savings_check_home_without_the_fuel(savings_check_inputs):
+    """A home that does not use a fuel passes at zero and fails on anything else."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        check_savings_against_resstock)
+    tare_savings_by_fuel, df_mp, bldg_ids = savings_check_inputs
+    # Home 3 uses no natural gas, and no home uses propane or fuel oil.
+    check_savings_against_resstock(
+        tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1')
+    # 0.5 kWh is inside the part test's 1 kWh limit, but 1% of zero use is zero.
+    tare_savings_by_fuel['naturalGas'].loc[3] = 0.5
+    with pytest.raises(ValueError, match='naturalGas'):
+        check_savings_against_resstock(
+            tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1')
+
+
+def test_savings_check_blank_raises(savings_check_inputs):
+    """A sample home with a blank savings value fails; it is not counted as zero."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        check_savings_against_resstock)
+    tare_savings_by_fuel, df_mp, bldg_ids = savings_check_inputs
+    df_mp.loc[2, 'out.electricity.cooling.energy_consumption.kwh.savings'] = np.nan
+    with pytest.raises(ValueError, match='electricity'):
+        check_savings_against_resstock(
+            tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1')

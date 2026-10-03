@@ -215,6 +215,11 @@ column, and do NOT substitute 'out.site_energy.total.energy_consumption.kwh',
 which is the all-fuel site energy (gas/oil/propane in kWh-equivalent), not
 electricity."""
 
+SITE_ENERGY_TOTAL_COL: str = "out.site_energy.total.energy_consumption.kwh"
+"""EUSS column for whole-home site energy, ALL fuels (kWh; gas/oil/propane in
+kWh-equivalent). Use this for the site-energy change only -- do NOT use it for
+electricity demand, which is ELEC_TOTAL_COL."""
+
 CLIMATE_ZONE_COL: str = "in.ashrae_iecc_climate_zone_2004"
 """EUSS column for ASHRAE/IECC 2004 climate zone."""
 

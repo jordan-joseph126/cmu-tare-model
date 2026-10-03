@@ -180,6 +180,35 @@ def find_enduse_columns(
     return found
 
 
+def get_resstock_savings_column(energy_column: str) -> str:
+    """Returns the name of ResStock's own savings column for an energy column.
+
+    Each upgrade file publishes baseline minus upgrade for every energy column
+    (positive = use fell). 2022.1.1 adds '.savings' to the energy column name
+    ('...energy_consumption.kwh.savings'); 2025.1 renames it instead
+    ('...energy_savings..kwh').
+
+    Args:
+        energy_column: A ResStock energy column, ending in
+            '.energy_consumption.kwh' (2022.1.1) or
+            '.energy_consumption..kwh' (2025.1).
+
+    Returns:
+        The savings column name in the same release's naming.
+
+    Raises:
+        ValueError: If energy_column does not end in either form.
+    """
+    # 2025.1 first: its '..kwh' ending is the more specific of the two.
+    if energy_column.endswith('.energy_consumption..kwh'):
+        return energy_column.replace(
+            '.energy_consumption..kwh', '.energy_savings..kwh')
+    if energy_column.endswith('.energy_consumption.kwh'):
+        return f'{energy_column}.savings'
+    raise ValueError(
+        f"{energy_column!r} is not a ResStock energy consumption column")
+
+
 def get_consumption_component_columns(
     category: str,
     menu_mp: int,

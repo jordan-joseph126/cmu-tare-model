@@ -1,11 +1,13 @@
 """Tests for finding and reading heating/cooling parts from ResStock columns
-(find_enduse_columns and get_consumption_component_columns, calculation_utils.py)."""
+(find_enduse_columns, get_consumption_component_columns, and
+get_resstock_savings_column, calculation_utils.py)."""
 
 import pytest
 
 from cmu_tare_model.utils.calculation_utils import (
     find_enduse_columns,
     get_consumption_component_columns,
+    get_resstock_savings_column,
 )
 
 # Real column names from each release's heating/cooling end uses, plus
@@ -83,3 +85,22 @@ def test_reader_lists_only_parts_in_the_frame_in_fixed_order():
         ('electricity', 'mp3_electricity_heating_hpBackup_consumption'),
         ('naturalGas', 'mp3_naturalGas_heating_hpBackup_consumption'),
     ]
+
+
+def test_savings_column_name_2022():
+    """2022.1.1 adds '.savings' to the energy column name."""
+    assert get_resstock_savings_column(
+        'out.electricity.heating.energy_consumption.kwh'
+    ) == 'out.electricity.heating.energy_consumption.kwh.savings'
+
+
+def test_savings_column_name_2025():
+    """2025.1 renames 'energy_consumption' to 'energy_savings'."""
+    assert get_resstock_savings_column(
+        'out.natural_gas.heating_hp_bkup.energy_consumption..kwh'
+    ) == 'out.natural_gas.heating_hp_bkup.energy_savings..kwh'
+
+
+def test_savings_column_bad_name_raises():
+    with pytest.raises(ValueError, match='not a ResStock energy consumption'):
+        get_resstock_savings_column('out.load.heating.energy_delivered.kbtu')
