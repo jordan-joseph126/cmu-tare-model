@@ -726,7 +726,8 @@ def df_enduse_refactored(
             df_enduse.get(col, pd.Series([], dtype=float)).fillna(0)
             for col in consumption_columns
         )
-        df_enduse[f'baseline_{category}_consumption'] = total_consumption.replace(0, np.nan)
+        # A true zero stays a zero; STEP 5 blanks homes outside the sample.
+        df_enduse[f'baseline_{category}_consumption'] = total_consumption
         print(f"Calculated total {category} consumption")
     
     # ===== STEP 4: Create data quality flags =====
@@ -939,7 +940,7 @@ def df_enduse_compare(
             # Special handling for measure packages 9 and 10 (MP9, MP10) with enclosure upgrades
             if input_mp == 'upgrade09':
                 menu_mp = 9
-                df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp[resstock_col(release, 'heating_electricity')].round(2)
+                df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp[resstock_col(release, 'heating_electricity')]
 
                 # Basic Enclosure Package
                 df_compare['base_insulation_atticFloor'] = df_mp['in.insulation_ceiling']
@@ -958,7 +959,7 @@ def df_enduse_compare(
 
             elif input_mp == 'upgrade10':
                 menu_mp = 10
-                df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp[resstock_col(release, 'heating_electricity')].round(2)
+                df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp[resstock_col(release, 'heating_electricity')]
 
                 # Basic Enclosure Package (same as MP9)
                 df_compare['base_insulation_atticFloor'] = df_mp['in.insulation_ceiling']
@@ -990,19 +991,19 @@ def df_enduse_compare(
 
             else:
                 # Standard heating consumption (no enclosure upgrades)
-                df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp[resstock_col(release, 'heating_electricity')].round(2)
+                df_compare[f'mp{menu_mp}_heating_consumption'] = df_mp[resstock_col(release, 'heating_electricity')]
 
         elif category == 'cooling':
-            df_compare[f'mp{menu_mp}_cooling_consumption'] = df_mp[resstock_col(release, 'cooling_electricity')].round(2)
+            df_compare[f'mp{menu_mp}_cooling_consumption'] = df_mp[resstock_col(release, 'cooling_electricity')]
 
         elif category == 'waterHeating':
-            df_compare[f'mp{menu_mp}_waterHeating_consumption'] = df_mp['out.electricity.hot_water.energy_consumption.kwh'].round(2)
+            df_compare[f'mp{menu_mp}_waterHeating_consumption'] = df_mp['out.electricity.hot_water.energy_consumption.kwh']
 
         elif category == 'clothesDrying':
-            df_compare[f'mp{menu_mp}_clothesDrying_consumption'] = df_mp['out.electricity.clothes_dryer.energy_consumption.kwh'].round(2)
+            df_compare[f'mp{menu_mp}_clothesDrying_consumption'] = df_mp['out.electricity.clothes_dryer.energy_consumption.kwh']
 
         elif category == 'cooking':
-            df_compare[f'mp{menu_mp}_cooking_consumption'] = df_cooking_range['out.electricity.range_oven.energy_consumption.kwh'].round(2)
+            df_compare[f'mp{menu_mp}_cooking_consumption'] = df_cooking_range['out.electricity.range_oven.energy_consumption.kwh']
 
     # ===== STEP 3a: Separately reported heating/cooling components =====
     # Retrofit side of the component columns df_enduse_refactored adds for the
@@ -1018,7 +1019,7 @@ def df_enduse_compare(
             if part == 'primary_system':
                 continue
             col = f'mp{menu_mp}_{fuel}_{category}_{part}_consumption'
-            df_compare[col] = df_mp[resstock_column].round(2)
+            df_compare[col] = df_mp[resstock_column]
 
     # ===== STEP 3b: Retain per-home peak demand + whole-home electricity =====
     # Post-retrofit counterparts of the baseline pass-through columns added in
