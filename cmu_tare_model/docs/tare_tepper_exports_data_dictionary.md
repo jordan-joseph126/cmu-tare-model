@@ -869,12 +869,14 @@ and joined on `county`.
 
 A county with too few sampled homes has blank metrics rather than zeros.
 
-**`site_energy_change_gwh` and `pct_site_energy_change` are aliases**, not
-independent all-fuel numbers. Both sides are read from whole-home electricity,
-and because the retrofit fully electrifies heating and cooling the two measures
-converge by construction. For an electricity reading use `elec_change_gwh` and
-`pct_elec_demand_change`; do not treat the site-energy pair as a separate
-result.
+**`site_energy_change_gwh` and `pct_site_energy_change` are all-fuel numbers**,
+separate from the electricity pair. They come from ResStock's whole-home site
+energy, which counts natural gas, fuel oil, and propane in kWh alongside
+electricity. Electricity usually rises when a fossil system is replaced, while
+site energy falls because the fuel is no longer burned, so the two pairs often
+have opposite signs. `pct_site_energy_change` is taken against baseline site
+energy, not baseline electricity. For an electricity reading use
+`elec_change_gwh` and `pct_elec_demand_change`.
 
 ---
 

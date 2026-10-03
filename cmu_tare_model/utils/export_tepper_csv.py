@@ -523,11 +523,12 @@ def export_tepper_household(
 # rather than silently reshaping the export.
 COUNTY_ADOPTION_COLS = ["county", "state", "home_count", "adoption_rate_pct"]
 COUNTY_BILL_COLS = ["county", "operating_cost_pct_change"]
-# NOTE: 'site_energy_change_gwh' and 'pct_site_energy_change' are ALIASES of the
-# electricity metrics (see demand.py) -- with whole-home electrification measured
-# on the electricity total, site-energy change equals electricity change. They
-# are NOT independent all-fuel numbers; prefer 'elec_change_gwh' /
-# 'pct_elec_demand_change' for an electricity read.
+# NOTE: 'site_energy_change_gwh' and 'pct_site_energy_change' are all-fuel site
+# energy (natural gas, fuel oil, and propane counted in kWh), read from
+# ResStock's whole-home site energy (see demand.py). They are separate from the
+# electricity metrics and usually have the opposite sign: electricity rises
+# while site energy falls. For an electricity read use 'elec_change_gwh' /
+# 'pct_elec_demand_change'.
 COUNTY_DEMAND_METRIC_COLS = [
     "baseline_elec_gwh", "retrofit_elec_gwh", "elec_change_gwh",
     "site_energy_change_gwh", "pct_elec_demand_change", "pct_site_energy_change",

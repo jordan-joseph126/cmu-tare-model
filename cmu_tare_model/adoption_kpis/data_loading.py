@@ -15,6 +15,7 @@ import pandas as pd
 
 from config import PROJECT_ROOT
 from cmu_tare_model.constants import ALLOWED_HOUSING_TYPES
+from cmu_tare_model.utils.calculation_utils import get_resstock_savings_column
 
 
 # ============================================================================
@@ -202,11 +203,25 @@ GAS_FUEL_COL: str = "out.natural_gas.heating.energy_consumption.kwh"
 HEATING_LOAD_COL: str = "out.load.heating.energy_delivered.kbtu"
 """EUSS column for heating load delivered to the space (kBtu)."""
 
+HEATING_ELEC_COL: str = "out.electricity.heating.energy_consumption.kwh"
+"""EUSS column for heating electricity (heat pump or resistance heat), not
+counting backup heat or fans and pumps."""
+
 HP_BACKUP_ELEC_COL: str = "out.electricity.heating_hp_bkup.energy_consumption.kwh"
 """EUSS column for heat-pump backup (resistance) electricity."""
 
 HP_FANS_PUMPS_COL: str = "out.electricity.heating_fans_pumps.energy_consumption.kwh"
 """EUSS column for fan and pump electricity. Always included in COP denominator."""
+
+COOLING_ELEC_COL: str = "out.electricity.cooling.energy_consumption.kwh"
+"""EUSS column for cooling electricity, not counting its fans and pumps."""
+
+COOLING_FANS_PUMPS_COL: str = (
+    "out.electricity.cooling_fans_pumps.energy_consumption.kwh")
+"""EUSS column for cooling fan and pump electricity."""
+
+HOT_WATER_ELEC_COL: str = "out.electricity.hot_water.energy_consumption.kwh"
+"""EUSS column for hot-water electricity."""
 
 ELEC_TOTAL_COL: str = "out.electricity.total.energy_consumption.kwh"
 """EUSS column for total residential ELECTRICITY (kWh). Includes all electric
@@ -219,6 +234,27 @@ SITE_ENERGY_TOTAL_COL: str = "out.site_energy.total.energy_consumption.kwh"
 """EUSS column for whole-home site energy, ALL fuels (kWh; gas/oil/propane in
 kWh-equivalent). Use this for the site-energy change only -- do NOT use it for
 electricity demand, which is ELEC_TOTAL_COL."""
+
+# ResStock's own savings columns (baseline minus upgrade, positive = use fell).
+# Only the upgrade files carry them. An end use's change is minus its savings.
+ELEC_TOTAL_SAVINGS_COL: str = get_resstock_savings_column(ELEC_TOTAL_COL)
+"""Whole-home electricity savings."""
+
+SITE_ENERGY_TOTAL_SAVINGS_COL: str = get_resstock_savings_column(SITE_ENERGY_TOTAL_COL)
+"""Whole-home site energy savings, all fuels."""
+
+HEATING_ELEC_SAVINGS_COLS: list[str] = [
+    get_resstock_savings_column(energy_col)
+    for energy_col in (HEATING_ELEC_COL, HP_BACKUP_ELEC_COL, HP_FANS_PUMPS_COL)]
+"""Heating electricity savings: heating, backup heat, and fans and pumps."""
+
+COOLING_ELEC_SAVINGS_COLS: list[str] = [
+    get_resstock_savings_column(energy_col)
+    for energy_col in (COOLING_ELEC_COL, COOLING_FANS_PUMPS_COL)]
+"""Cooling electricity savings: cooling, and its fans and pumps."""
+
+HOT_WATER_ELEC_SAVINGS_COL: str = get_resstock_savings_column(HOT_WATER_ELEC_COL)
+"""Hot-water electricity savings."""
 
 CLIMATE_ZONE_COL: str = "in.ashrae_iecc_climate_zone_2004"
 """EUSS column for ASHRAE/IECC 2004 climate zone."""
