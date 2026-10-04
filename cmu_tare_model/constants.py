@@ -52,8 +52,16 @@ ALLOWED_TECHNOLOGIES = {
     # Limitation 11).
     # Shared cooling is left out too (SHARED_COOLING_EFFICIENCY, below): ResStock
     # files it under 'Central AC', so this list alone does not catch it.
-    # PLACEHOLDER -- a future session may bring no-AC homes back, modeling the
-    # added cooling as a new service, and decide whether existing heat pump
+    # TODO (no-AC homes): a future session may bring homes with no existing
+    # cooling into the sample, for analyses with a different scope. For them:
+    # ResStock energy values stay as published; the cooling replacement cost
+    # and credit are $0 (nothing to replace); cooling savings are negative
+    # (the heat pump adds cooling as a new service). Plan: a switch here, for
+    # example INCLUDE_HOMES_WITHOUT_COOLING = False, read at each point tagged
+    # 'TODO (no-AC homes)': process_euss_data.py (sample rule),
+    # calculate_equipment_replacement_costs.py (cooling replacement cost), and
+    # calculate_lifetime_private_impact.py (NPV).
+    # PLACEHOLDER -- that session may also decide whether existing heat pump
     # homes ('Ducted Heat Pump' / 'Non-Ducted Heat Pump' in 2025.1) belong here.
     'cooling': [
         'Central AC',
@@ -475,10 +483,13 @@ STATE_COL: str = "in.state"       # 2-char state code
 WEIGHT_COL: str = "weight"        # BSQ reads per-row from metadata
 
 # Minimum sample count per county/state for spatial aggregation.
-# Set to 1 — all counties are included regardless of sample size.
+# Set to 1 -- all counties are included regardless of sample size.
 # Sparsely populated counties naturally have fewer samples; excluding
 # them introduces geographic bias.  Consistent with approaches in
 # similar ResStock-based studies.
+# In 2022.1.1, 74 of the 3,079 study-sample counties have 1 rdu and 280 have
+# 3 or fewer, so one rdu can set a county's value. The paper lists this as a
+# limitation; check a county's rdu count before quoting its value.
 MIN_HOME_COUNT: int = 1
 
 # Reference values for Allegheny County validation

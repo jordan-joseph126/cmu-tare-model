@@ -743,6 +743,10 @@ def df_enduse_refactored(
     # Homes without AC are left out: the heat pump would add cooling they never
     # had (CLAUDE.md Limitation 11). Shared cooling is left out: it has no
     # replacement cost (SHARED_COOLING_EFFICIENCY in constants.py).
+    # TODO (no-AC homes): to bring homes with no existing cooling into the
+    # sample, this is the rule to change (see ALLOWED_TECHNOLOGIES in
+    # constants.py). Their cooling energy must then stay as published (0 kWh
+    # before the retrofit), not be blanked in STEP 5 below.
     is_applicable = pd.Series(True, index=df_enduse.index)
     for package_ids in applicable_bldg_ids:
         is_applicable &= df_enduse.index.isin(package_ids)

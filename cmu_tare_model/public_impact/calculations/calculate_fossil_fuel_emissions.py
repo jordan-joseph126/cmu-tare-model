@@ -85,7 +85,7 @@ def calculate_fossil_fuel_emissions(
             scenario_prefix, year_label, category, fuel)
         if consumption_col not in df_consumption.columns:
             continue
-        fuel_consumption = df_consumption[consumption_col].fillna(0)
+        fuel_consumption = df_consumption[consumption_col]
         for pollutant in POLLUTANTS:
             emis_factor = lookup_emissions_fossil_fuel.get(fuel, {}).get(pollutant, 0)
             total_fossil_emissions[pollutant] += fuel_consumption * emis_factor

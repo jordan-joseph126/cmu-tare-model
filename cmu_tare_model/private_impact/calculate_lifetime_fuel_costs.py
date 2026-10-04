@@ -579,8 +579,17 @@ def calculate_annual_fuel_costs(
 
     Raises:
         KeyError: If fuel prices for a specific region/year are missing.
-        ValueError: If 'state' or 'census_division' is missing, or df_consumption
-            has no consumption columns for this scenario, category and year.
+        ValueError: If the 'state' or 'census_division' column is not in df;
+            if df_consumption has no consumption columns for this scenario,
+            category and year; or if a home in the calculation has blank
+            energy use.
+
+    Note:
+        Homes outside the calculation arrive with blank energy use, on
+        purpose. df_enduse_refactored and df_enduse_compare
+        (process_euss_data.py) blank the heating and cooling energy of homes
+        outside the study sample, and build_projected_consumption
+        (projected_consumption.py) keeps them blank.
     """
     # Results dictionaries (no rounding here)
     annual_costs = {}
@@ -600,7 +609,7 @@ def calculate_annual_fuel_costs(
         if fuel_col not in df_consumption.columns:
             continue
         fuels_found += 1
-        fuel_use = df_consumption[fuel_col].fillna(0.0)
+        fuel_use = df_consumption[fuel_col]
         uses_fuel = fuel_use > 0
         price = _annual_fuel_price_series(
             df, lookup_fuel_prices, fuel, policy_scenario, year_label, uses_fuel)
@@ -616,7 +625,18 @@ def calculate_annual_fuel_costs(
             f"df_consumption has no '{scenario_prefix}' consumption columns for "
             f"{category} in {year_label}; build it with build_projected_consumption "
             f"for menu_mp={menu_mp}.")
-    consumption = df_consumption[total_col].fillna(0.0)
+    consumption = df_consumption[total_col]
+
+    # A blank in a home the calculation covers is a data error, not zero use.
+    # annual_costs holds only the per-fuel use columns so far.
+    df_covered = df_consumption[list(annual_costs) + [total_col]]
+    if valid_mask is not None:
+        df_covered = df_covered[valid_mask]
+    blank_counts = df_covered.isna().sum()
+    if blank_counts.any():
+        raise ValueError(
+            "Homes in the calculation have blank energy use (column: rdu): "
+            f"{blank_counts[blank_counts > 0].to_dict()}")
 
     # Homes outside the calculation are NaN, not 0.
     if valid_mask is not None and not valid_mask.all():

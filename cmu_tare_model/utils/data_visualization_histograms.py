@@ -57,7 +57,7 @@ def create_subplot_grid_histogram(
     sharey: bool = False,
     color_code: Optional[str] = None,
     statistic: str = 'count',
-    include_zero: bool = False,
+    include_zero: bool = True,
     show_legend: bool = False,
     shared_xlim: Optional[Tuple[float, float]] = None
 ) -> plt.Figure:
@@ -90,7 +90,8 @@ def create_subplot_grid_histogram(
         sharey: Whether to share y-axis across subplots.
         color_code: Column name for hue stacking by category.
         statistic: Statistic to compute ('count', 'density', 'frequency', 'probability').
-        include_zero: Whether to include zero values in the histogram.
+        include_zero: Whether to keep zero values. False turns zeros into
+            blanks before plotting, so they are left out of the histogram.
         show_legend: Whether to show legend on individual subplots.
         shared_xlim: Optional (lower, upper) bounds applied to every subplot's
             bins and x-axis limits, overriding the per-subplot percentile

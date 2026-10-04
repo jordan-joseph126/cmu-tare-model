@@ -342,3 +342,33 @@ def test_each_fuel_priced_at_its_own_price(fuel_prices):
 
     assert cost.iloc[0] == pytest.approx(100.0 * 0.20 + 1000.0 * 0.05)
     assert annual_costs[f'baseline_{BASE_YEAR}_heating_consumption'].iloc[0] == 1100.0
+
+
+# =============================================================================
+# BLANK ENERGY USE
+# =============================================================================
+
+def test_blank_use_in_covered_home_raises(fuel_prices):
+    """A blank in a home the calculation covers stops the run. The same blank
+    in a home outside the calculation does not."""
+    from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import calculate_annual_fuel_costs
+
+    df = pd.DataFrame({'state': ['CA', 'CA'], 'census_division': ['Pacific'] * 2})
+    # The second home has no energy values, as a home outside the study
+    # sample would.
+    table = pd.DataFrame({
+        f'baseline_{BASE_YEAR}_heating_electricity_consumption': [100.0, np.nan],
+        f'baseline_{BASE_YEAR}_heating_consumption': [100.0, np.nan],
+    })
+    call_args = (
+        df, 'heating', BASE_YEAR, 0, fuel_prices, '2025 Reference Case', 'baseline_')
+
+    with pytest.raises(ValueError, match='blank energy use'):
+        calculate_annual_fuel_costs(
+            *call_args, df_consumption=table, valid_mask=pd.Series([True, True]))
+
+    _, cost = calculate_annual_fuel_costs(
+        *call_args, df_consumption=table, valid_mask=pd.Series([True, False]))
+    # The fixture prices every fuel at $0.10 per kWh in the first year.
+    assert cost.iloc[0] == pytest.approx(100.0 * 0.10)
+    assert np.isnan(cost.iloc[1])

@@ -52,7 +52,8 @@ def build_projected_consumption(
 
     Raises:
         TypeError: If menu_mp is not an integer.
-        ValueError: If menu_mp is negative.
+        ValueError: If menu_mp is negative, or a home in the calculation has
+            blank energy use for a fuel.
         KeyError: If a component column or census_division is missing.
     """
     if not isinstance(menu_mp, int) or isinstance(menu_mp, bool):
@@ -74,11 +75,17 @@ def build_projected_consumption(
             consumption_by_fuel = get_degree_day_adjusted_consumption_by_fuel(
                 df, category, year_label, menu_mp)
 
-            # A valid home's missing value means that fuel is unused, so it
-            # counts as 0; homes outside the calculation stay NaN.
+            # A blank in a home the calculation covers is a data error, not
+            # zero use, so stop. Homes outside the calculation stay NaN.
+            blank_counts = pd.DataFrame(
+                consumption_by_fuel, index=df.index)[valid_mask].isna().sum()
+            if blank_counts.any():
+                raise ValueError(
+                    f"Homes in the {category} calculation have blank energy use "
+                    f"in {year_label}, mp{menu_mp} (fuel: rdu): "
+                    f"{blank_counts[blank_counts > 0].to_dict()}")
             total = pd.Series(0.0, index=df.index)
             for fuel, fuel_consumption in consumption_by_fuel.items():
-                fuel_consumption = fuel_consumption.fillna(0.0)
                 total += fuel_consumption
                 fuel_col = create_annual_fuel_consumption_col(
                     scenario_prefix, year_label, category, fuel)

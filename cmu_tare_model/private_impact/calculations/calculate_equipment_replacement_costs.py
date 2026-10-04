@@ -186,6 +186,10 @@ def calculate_replacement_installed_cost(
 
     # Update result series with calculated values (only for valid homes)
     result_series.loc[valid_mask] = installed_cost.loc[valid_mask].round(2)
+    # TODO (no-AC homes): when end_use is 'cooling', a home with no existing
+    # cooling has nothing to replace, so its replacement cost would be set to
+    # $0 here on purpose (see ALLOWED_TECHNOLOGIES in constants.py). Today
+    # those homes are outside the sample and stay blank.
 
     # Build column name using centralized utility
     cost_col = create_cost_col(menu_mp=menu_mp, category=end_use, cost_type='replacement', cost_scenario=cost_scenario)
