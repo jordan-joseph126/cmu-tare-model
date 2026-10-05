@@ -365,8 +365,8 @@ def aggregate_demand(
         raise ValueError(
             "Demand accounting mismatch: per-home total "
             f"{total_sum:.0f} kWh vs grouped total {total_agg:.0f} kWh")
-    if verbose:
-        print("[OK] Demand accounting check passed")
+    # Printed even when quiet; a failed check stops the run just above.
+    print("[OK] Demand accounting check passed")
 
     for col in ['baseline_elec_gwh', 'retrofit_elec_gwh', 'elec_change_gwh', 'site_energy_change_gwh']:
         grouped[col] = grouped[col].round(2)

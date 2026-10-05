@@ -14,7 +14,7 @@ from typing import Optional
 import pandas as pd
 
 from config import PROJECT_ROOT
-from cmu_tare_model.constants import ALLOWED_HOUSING_TYPES
+from cmu_tare_model.constants import ALLOWED_HOUSING_TYPES, VERBOSE
 from cmu_tare_model.utils.calculation_utils import get_resstock_savings_column
 
 
@@ -329,6 +329,7 @@ def mp_to_upgrade(mp_num: int) -> str:
 
 def load_euss_baseline(
     filename: str = "baseline_metadata_and_annual_results.csv",
+    verbose: bool = VERBOSE,
 ) -> pd.DataFrame:
     """Load the EUSS baseline CSV and filter to occupied single-family homes.
 
@@ -339,6 +340,8 @@ def load_euss_baseline(
     Args:
         filename: Baseline CSV filename within ``EUSS_DATA_DIR``.
             Defaults to ``'baseline_metadata_and_annual_results.csv'``.
+        verbose: Whether to print the file path and the row count after
+            each filter.
 
     Returns:
         DataFrame indexed by ``bldg_id``, restricted to occupied SF homes.
@@ -348,20 +351,26 @@ def load_euss_baseline(
         FileNotFoundError: If the CSV does not exist at the resolved path.
     """
     filepath = os.path.join(EUSS_DATA_DIR, filename)
-    print(f"Loading baseline from: {filepath}")
+    if verbose:
+        print(f"Loading baseline from: {filepath}")
     df = pd.read_csv(filepath, index_col="bldg_id")
 
     n_total = len(df)
     df = df[df["in.vacancy_status"] == "Occupied"]
-    print(f"  After occupancy filter: {len(df):,} / {n_total:,}")
+    if verbose:
+        print(f"  After occupancy filter: {len(df):,} / {n_total:,}")
 
     df = df[df["in.geometry_building_type_recs"].isin(ALLOWED_HOUSING_TYPES)]
-    print(f"  After housing type filter ({ALLOWED_HOUSING_TYPES}): {len(df):,}")
+    if verbose:
+        print(f"  After housing type filter ({ALLOWED_HOUSING_TYPES}): {len(df):,}")
 
     return df
 
 
-def load_euss_upgrade(upgrade_name: str) -> pd.DataFrame:
+def load_euss_upgrade(
+    upgrade_name: str,
+    verbose: bool = VERBOSE,
+) -> pd.DataFrame:
     """Load an EUSS upgrade CSV and filter to applicable occupied SF homes.
 
     Applies three filters in sequence:
@@ -372,6 +381,8 @@ def load_euss_upgrade(upgrade_name: str) -> pd.DataFrame:
     Args:
         upgrade_name: EUSS upgrade identifier (e.g., ``'upgrade04'``).
             Use :func:`mp_to_upgrade` to convert a measure package number.
+        verbose: Whether to print the file path and the row count after
+            each filter.
 
     Returns:
         DataFrame indexed by ``bldg_id``, restricted to applicable occupied
@@ -382,17 +393,21 @@ def load_euss_upgrade(upgrade_name: str) -> pd.DataFrame:
     """
     filename = f"{upgrade_name}_metadata_and_annual_results.csv"
     filepath = os.path.join(EUSS_DATA_DIR, filename)
-    print(f"Loading {upgrade_name} from: {filepath}")
+    if verbose:
+        print(f"Loading {upgrade_name} from: {filepath}")
     df = pd.read_csv(filepath, index_col="bldg_id")
 
     n_total = len(df)
     df = df[df["in.vacancy_status"] == "Occupied"]
-    print(f"  After occupancy filter: {len(df):,} / {n_total:,}")
+    if verbose:
+        print(f"  After occupancy filter: {len(df):,} / {n_total:,}")
 
     df = df[df["in.geometry_building_type_recs"].isin(ALLOWED_HOUSING_TYPES)]
-    print(f"  After housing type filter: {len(df):,}")
+    if verbose:
+        print(f"  After housing type filter: {len(df):,}")
 
     df = df[df["applicability"] == True]  # noqa: E712
-    print(f"  After applicability filter: {len(df):,}")
+    if verbose:
+        print(f"  After applicability filter: {len(df):,}")
 
     return df

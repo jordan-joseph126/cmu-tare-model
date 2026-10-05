@@ -242,3 +242,34 @@ def test_savings_check_blank_raises(savings_check_inputs):
     with pytest.raises(ValueError, match='electricity'):
         check_savings_against_resstock(
             tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1')
+
+
+def test_savings_check_quiet_pass_prints_one_line(savings_check_inputs, capsys):
+    """A passing check with verbose off prints one [OK] line and no table."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        check_savings_against_resstock)
+    tare_savings_by_fuel, df_mp, bldg_ids = savings_check_inputs
+    capsys.readouterr()  # drop anything printed while importing
+    check_savings_against_resstock(
+        tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1',
+        verbose=False)
+    printed_lines = capsys.readouterr().out.strip().splitlines()
+    assert len(printed_lines) == 1
+    assert printed_lines[0].startswith('[OK] MP3')
+    assert '3 rdu, 4 fuels' in printed_lines[0]
+
+
+def test_savings_check_quiet_failure_prints_table(savings_check_inputs, capsys):
+    """A failing check prints the full table even with verbose off."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        check_savings_against_resstock)
+    tare_savings_by_fuel, df_mp, bldg_ids = savings_check_inputs
+    # Same 5 kWh mismatch as test_savings_check_part_mismatch_raises.
+    tare_savings_by_fuel['naturalGas'].loc[2] += 5.0
+    with pytest.raises(ValueError, match='naturalGas'):
+        check_savings_against_resstock(
+            tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1',
+            verbose=False)
+    printed = capsys.readouterr().out
+    assert 'rdu_failed' in printed
+    assert '[WARNING]' in printed

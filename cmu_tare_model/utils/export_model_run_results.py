@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from typing import Union, Optional
 import pathlib
-from cmu_tare_model.constants import PRIVATE_DISCOUNT_RATE_SHORT_KEYS
+from cmu_tare_model.constants import PRIVATE_DISCOUNT_RATE_SHORT_KEYS, VERBOSE
 from cmu_tare_model.utils.export_tepper_csv import (
     export_tepper_household,
     export_tepper_county,
@@ -17,7 +17,8 @@ def export_model_run_output(
     results_export_formatted_date: str,
     discount_rate: Optional[str] = None,
     county_tables: Optional[dict] = None,
-    df_annual_consumption: Optional[pd.DataFrame] = None
+    df_annual_consumption: Optional[pd.DataFrame] = None,
+    verbose: bool = VERBOSE
 ) -> None:
     """Export model run results to CSV files with sensitivity tracking.
 
@@ -58,13 +59,17 @@ def export_model_run_output(
             package and run, indexed by bldg_id. It holds the per-year
             consumption columns, which are not in the summary frame. Required
             only when results_category='tepper_household'.
+        verbose: Whether to print the dividers, the category heading, and the
+            file name. When False, one 'Saved: <full path>' line is printed
+            per file.
 
     Raises:
         ValueError: If any required parameter is missing, results_category is invalid,
             or sensitivity parameters are missing when required.
         OSError: If there is an error creating directories or writing the file.
     """
-    print("---" * 35)
+    if verbose:
+        print("---" * 35)
     
     # Validate required parameters
     if output_folder_path is None:
@@ -94,7 +99,8 @@ def export_model_run_output(
             location_id=location_id,
             results_export_formatted_date=results_export_formatted_date,
         )
-        print("---" * 35, "\n")
+        if verbose:
+            print("---" * 35, "\n")
         return
     if results_category == 'tepper_county':
         if county_tables is None:
@@ -111,7 +117,8 @@ def export_model_run_output(
             location_id=location_id,
             results_export_formatted_date=results_export_formatted_date,
         )
-        print("---" * 35, "\n")
+        if verbose:
+            print("---" * 35, "\n")
         return
 
     # Standardize menu_mp to string
@@ -125,7 +132,8 @@ def export_model_run_output(
         # Baseline summary results
         directory_path = os.path.join("baseline_summary", "summary_baseline")
         filename = f"baseline_results_{location_id}_{results_export_formatted_date}.csv"
-        print(f"BASELINE SUMMARY RESULTS:")
+        if verbose:
+            print(f"BASELINE SUMMARY RESULTS:")
         
     elif results_category == 'summary':
         # Retrofit summary results with sensitivity tracking
@@ -146,20 +154,23 @@ def export_model_run_output(
             f"summary_mp{menu_mp}_{discount_rate}"
         )
         filename = f"mp{menu_mp}_results_{location_id}_{results_export_formatted_date}.csv"
-        print(f"MEASURE PACKAGE {menu_mp} SUMMARY RESULTS:")
-        print(f"  Discount Rate: {discount_rate}")
+        if verbose:
+            print(f"MEASURE PACKAGE {menu_mp} SUMMARY RESULTS:")
+            print(f"  Discount Rate: {discount_rate}")
         
     elif results_category.startswith('damages_'):
         # Damages results (climate or health, IRA or noIRA)
         directory_path = os.path.join("supplemental_data_damages", results_category)
         filename = f"mp{menu_mp}_{results_category}_{location_id}_{results_export_formatted_date}.csv"
-        print(f"SUPPLEMENTAL DAMAGES: {results_category}")
+        if verbose:
+            print(f"SUPPLEMENTAL DAMAGES: {results_category}")
         
     elif results_category.startswith('fuel_costs_'):
         # Fuel costs results (IRA or noIRA)
         directory_path = os.path.join("supplemental_data_fuelCosts", results_category)
         filename = f"mp{menu_mp}_{results_category}_{location_id}_{results_export_formatted_date}.csv"
-        print(f"SUPPLEMENTAL FUEL COSTS: {results_category}")
+        if verbose:
+            print(f"SUPPLEMENTAL FUEL COSTS: {results_category}")
         
     else:
         raise ValueError(
@@ -176,9 +187,14 @@ def export_model_run_output(
     
     try:
         df_results_export_copy.to_csv(full_filepath)
-        print(f"Saved to: {filename}")
-        print(f"Full path: {full_filepath}")
+        # One line per file when quiet; the file name and path when verbose.
+        if verbose:
+            print(f"Saved to: {filename}")
+            print(f"Full path: {full_filepath}")
+        else:
+            print(f"Saved: {full_filepath}")
     except Exception as e:
         raise OSError(f"Error exporting data to {full_filepath}: {str(e)}")
-    
-    print("---" * 35, "\n")
+
+    if verbose:
+        print("---" * 35, "\n")

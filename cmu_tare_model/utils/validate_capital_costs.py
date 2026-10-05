@@ -40,7 +40,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 from typing import Dict, List, Optional, Tuple
 
-from cmu_tare_model.constants import REMDB_COST_SCENARIO_KEYS
+from cmu_tare_model.constants import REMDB_COST_SCENARIO_KEYS, VERBOSE
 from cmu_tare_model.utils.calculation_utils import get_consumption_component_columns
 from cmu_tare_model.utils.column_names import create_cost_col
 from cmu_tare_model.utils.data_visualization_histograms import create_subplot_grid_histogram
@@ -587,6 +587,7 @@ def run_capital_cost_validation(
     menu_mp: int,
     capital_costs_mpx: Optional[Dict] = None,
     cost_scenarios: Optional[List[str]] = None,
+    verbose: bool = VERBOSE,
 ) -> Dict[str, pd.DataFrame]:
     """
     Run capital cost validation disaggregated by equipment type and capacity.
@@ -602,6 +603,8 @@ def run_capital_cost_validation(
             the active scenarios include v4MID, the v4MID DataFrame is used
             for scenarios that may have additional columns.
         cost_scenarios: List of cost scenario keys (default: REMDB_COST_SCENARIO_KEYS).
+        verbose: Whether to print the six tables and the summary. When False,
+            one line is printed. The returned tables are the same either way.
 
     Returns:
         Dict structured as results[category][technology][cost_type] = DataFrame:
@@ -614,11 +617,14 @@ def run_capital_cost_validation(
     if cost_scenarios is None:
         cost_scenarios = list(REMDB_COST_SCENARIO_KEYS)
 
-    print("\n" + "#" * 110)
-    print(f"#  CAPITAL COST VALIDATION: Equipment-Level Disaggregation (MP{menu_mp})")
-    print(f"#  Active cost scenarios: {cost_scenarios}")
-    print(f"#  Total homes in DataFrame: {len(df):,}")
-    print("#" * 110)
+    if verbose:
+        print("\n" + "#" * 110)
+        print(
+            "#  CAPITAL COST VALIDATION: Equipment-Level Disaggregation "
+            f"(MP{menu_mp})")
+        print(f"#  Active cost scenarios: {cost_scenarios}")
+        print(f"#  Total homes in DataFrame: {len(df):,}")
+        print("#" * 110)
 
     # ── Determine which DataFrame to use for each scenario ──
     # If CAPITAL_COSTS_MPX is provided, v4 scenario columns may only exist
@@ -787,16 +793,24 @@ def run_capital_cost_validation(
         ct = spec['cost_type']
         results_structured.setdefault(cat, {}).setdefault(tech, {})[ct] = df_result
 
-        _print_table(
-            title=spec['title'],
-            df_result=df_result,
-            cost_scenarios=cost_scenarios,
-            id_cols=spec['id_cols'],
-            notes=spec['notes'],
-            outliers=oi,
-            cap_unit=spec['cap_unit'],
-            eff_label=spec['eff_label'],
-        )
+        if verbose:
+            _print_table(
+                title=spec['title'],
+                df_result=df_result,
+                cost_scenarios=cost_scenarios,
+                id_cols=spec['id_cols'],
+                notes=spec['notes'],
+                outliers=oi,
+                cap_unit=spec['cap_unit'],
+                eff_label=spec['eff_label'],
+            )
+
+    # Quiet: one line, and skip the printed summary below.
+    if not verbose:
+        print(
+            f"[OK] MP{menu_mp} capital cost validation: {len(results)} "
+            f"equipment tables built ({cost_scenarios})")
+        return results_structured
 
     # ── Summary ──
     print(f"\n{'#' * 110}")

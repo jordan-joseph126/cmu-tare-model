@@ -15,6 +15,7 @@ from cmu_tare_model.grid_impact.peak_load_functions import (
     extract_adopter_ids,
     find_adoption_column,
     gisjoin_to_fips,
+    summarize_hourly_timeseries,
 )
 
 
@@ -321,3 +322,31 @@ class TestComputeCountyScenarioProfile:
         df_u = _make_hourly_df([1], "retrofit_kwh", 80.0, n_hours=24)
         with pytest.raises(ValueError, match="Expected 8,760"):
             compute_county_scenario_profile(df_b, df_u, adopter_bldg_ids=[1])
+
+
+# ============================================================================
+# summarize_hourly_timeseries
+# ============================================================================
+
+
+class TestSummarizeHourlyTimeseries:
+    """Tests for summarize_hourly_timeseries()."""
+
+    def test_quiet_pass_prints_one_line(self, capsys):
+        """A full year with verbose off prints one [OK] line, no summary."""
+        df_ts = _make_hourly_df([1, 2], "baseline_kwh", 100.0)
+        capsys.readouterr()  # drop anything printed while importing
+        summarize_hourly_timeseries(
+            df_ts, "baseline_kwh", "baseline", query_time_s=1.0, verbose=False
+        )
+        printed_lines = capsys.readouterr().out.strip().splitlines()
+        assert printed_lines == ["[OK] baseline: 2 buildings x 8,760 hours"]
+
+    def test_short_year_prints_summary_and_raises(self, capsys):
+        """A building missing hours prints the summary and stops, even quiet."""
+        df_ts = _make_hourly_df([1], "baseline_kwh", 100.0, n_hours=24)
+        with pytest.raises(ValueError, match="expected exactly 8,760 hours"):
+            summarize_hourly_timeseries(
+                df_ts, "baseline_kwh", "baseline", query_time_s=1.0, verbose=False
+            )
+        assert "Hours/bldg : 24 - 24" in capsys.readouterr().out

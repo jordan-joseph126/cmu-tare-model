@@ -436,7 +436,8 @@ def standardize_fuel_name(fuel_desc: Any) -> Optional[str]:
 
 
 def preprocess_fuel_data(df: pd.DataFrame,
-                         column_name: str
+                         column_name: str,
+                         verbose: bool = VERBOSE
 ) -> pd.DataFrame:
     """Applies a standardization process to the specified fuel column in the DataFrame.
 
@@ -446,6 +447,7 @@ def preprocess_fuel_data(df: pd.DataFrame,
     Args:
         df: The input pandas DataFrame containing fuel data.
         column_name: The name of the column to standardize.
+        verbose: Whether to print the column's data type before and after.
 
     Returns:
         The updated DataFrame with standardized fuel names in the specified column.
@@ -460,13 +462,15 @@ def preprocess_fuel_data(df: pd.DataFrame,
     if column_name not in df.columns:
         raise KeyError(f"Column '{column_name}' not found in DataFrame")
     
-    print(f"Processing column: {column_name}")
-    print(f"Initial data types: {df[column_name].dtype}")
+    if verbose:
+        print(f"Processing column: {column_name}")
+        print(f"Initial data types: {df[column_name].dtype}")
 
     # Use .loc to avoid SettingWithCopyWarning when applying the function
     df.loc[:, column_name] = df[column_name].apply(standardize_fuel_name)
 
-    print(f"Data types after processing: {df[column_name].dtype}")
+    if verbose:
+        print(f"Data types after processing: {df[column_name].dtype}")
     return df
 
 
@@ -499,8 +503,8 @@ def df_enduse_refactored(
         A standardized DataFrame with processed consumption data and data quality flags.
 
     Raises:
-        ValueError: If required columns are missing from the input DataFrame,
-            or applicable_bldg_ids is empty.
+        ValueError: If df_baseline is empty, required columns are missing
+            from it, or applicable_bldg_ids is empty.
         TypeError: If an entry of applicable_bldg_ids is not a pd.Index.
     """
     # Updated to handle different enduses based on EQUIPMENT_SPECS and VALID_CATEGORIES.
@@ -519,16 +523,19 @@ def df_enduse_refactored(
                 "applicable_bldg_ids entries must be pd.Index, "
                 f"got {type(package_ids)}")
 
-    # Initial check
+    # An empty table cannot produce a run, so stop here and not further down.
     if df_baseline.empty:
-        print("Warning: Input DataFrame is empty")
-        return df_baseline
+        raise ValueError(
+            "df_baseline has no rows; check the scope and geographic filters "
+            "that built it")
 
     # Standardize fuel names in the base columns
     df_baseline = preprocess_fuel_data(
-        df_baseline, resstock_col(release, 'clothes_dryer_type'))
+        df_baseline, resstock_col(release, 'clothes_dryer_type'),
+        verbose=verbose)
     df_baseline = preprocess_fuel_data(
-        df_baseline, resstock_col(release, 'cooking_range_type'))
+        df_baseline, resstock_col(release, 'cooking_range_type'),
+        verbose=verbose)
 
     # ===== STEP 1: Initialize with common columns (always present) =====
     # Every physical column name below is looked up by its logical name so
@@ -577,10 +584,11 @@ def df_enduse_refactored(
     if unmapped_gea.any():
         unmapped_fips = sorted(
             df_enduse.loc[unmapped_gea, 'county_fips'].dropna().unique())
+        # Printed even when quiet, so a newly unmapped county is seen.
         print(
-            f"WARNING: {int(unmapped_gea.sum())} home(s) have no Cambium GEA "
+            f"WARNING: {int(unmapped_gea.sum())} rdu have no Cambium GEA "
             f"region (county FIPS not in the crosswalk): {unmapped_fips}. "
-            f"Climate damages for these homes will be NaN."
+            f"Climate damages for these rdu will be NaN."
         )
 
     # ===== STEP 1c: Electric panel service rating (2025.1 only) =====
@@ -730,7 +738,8 @@ def df_enduse_refactored(
         )
         # A true zero stays a zero; STEP 5 blanks homes outside the sample.
         df_enduse[f'baseline_{category}_consumption'] = total_consumption
-        print(f"Calculated total {category} consumption")
+        if verbose:
+            print(f"Calculated total {category} consumption")
     
     # ===== STEP 4: Create data quality flags =====
     df_enduse = identify_valid_homes(df_enduse)
@@ -757,7 +766,8 @@ def df_enduse_refactored(
           f"({df_enduse.loc[df_enduse['include_sample'], 'weight'].sum():,.0f} homes)")
 
     # ===== STEP 5: Apply validation =====
-    print("\nApplying data validation (baseline only):")
+    if verbose:
+        print("\nApplying data validation (baseline only):")
     for category in VALID_CATEGORIES:
         # Get validation mask (baseline, so menu_mp = 0)
         valid_mask = get_valid_calculation_mask(df_enduse, category, menu_mp=0, verbose=verbose)
@@ -780,7 +790,7 @@ def df_enduse_refactored(
                 non_nan_after = df_enduse[col].notna().sum()
                 
                 masked_count = non_nan_before - non_nan_after
-                if masked_count > 0:
+                if masked_count > 0 and verbose:
                     print(f"  {col}: Masked {masked_count} values")
 
     return df_enduse
@@ -807,6 +817,7 @@ def check_savings_against_resstock(
     sample_bldg_ids: pd.Index,
     menu_mp: int,
     release: str = RESSTOCK_RELEASE_THIS_RUN,
+    verbose: bool = VERBOSE,
 ) -> pd.DataFrame:
     """Checks TARE's heating + cooling savings against ResStock's savings columns.
 
@@ -826,6 +837,8 @@ def check_savings_against_resstock(
         sample_bldg_ids: The study sample.
         menu_mp: Measure package number, for the printed title.
         release: ResStock release df_mp was loaded from.
+        verbose: Whether to print the full table when every home passes. A
+            failure always prints it.
 
     Returns:
         One row per fuel: rdu checked, the largest gap in each test, how many
@@ -886,11 +899,18 @@ def check_savings_against_resstock(
             'status': '[OK]' if n_failed == 0 else '[WARNING]',
         })
 
-    # Step 3 -- print the table, then stop the run if any home failed
+    # Step 3 -- a failure always prints the table and stops the run; a pass
+    # prints one line unless verbose
     df_check = pd.DataFrame(rows)
-    print(f"\nMP{menu_mp} heating + cooling savings vs ResStock's savings columns:")
-    print(df_check.to_string(index=False))
     df_failed = df_check[df_check['rdu_failed'] > 0]
+    if verbose or not df_failed.empty:
+        print(f"\nMP{menu_mp} heating + cooling savings vs ResStock's savings columns:")
+        print(df_check.to_string(index=False))
+    else:
+        print(
+            f"[OK] MP{menu_mp} heating + cooling savings match ResStock's "
+            f"savings columns ({len(sample_bldg_ids):,} rdu, "
+            f"{len(df_check)} fuels)")
     if not df_failed.empty:
         raise ValueError(
             f"MP{menu_mp} heating + cooling savings do not match ResStock's "
@@ -1232,7 +1252,8 @@ def df_enduse_compare(
             df_compare[flag] = df_baseline[flag]
     
     # ===== STEP 6: Apply combined validation (data quality + retrofit status) =====
-    print("\nApplying combined validation (data quality + retrofit status):")
+    if verbose:
+        print("\nApplying combined validation (data quality + retrofit status):")
     for category in VALID_CATEGORIES:
         # Get combined validation mask
         valid_mask = get_valid_calculation_mask(df_compare, category, menu_mp, verbose=verbose)
@@ -1268,7 +1289,7 @@ def df_enduse_compare(
             non_nan_after = df_compare[col].notna().sum()
             
             masked_count = non_nan_before - non_nan_after
-            if masked_count > 0:
+            if masked_count > 0 and verbose:
                 print(f"  {col}: Masked {masked_count} values")
 
     # ===== STEP 7: Whole-home modeled savings fraction (HOMES rebate tiers) =====
@@ -1341,6 +1362,6 @@ def df_enduse_compare(
     check_savings_against_resstock(
         tare_savings_by_fuel, df_mp,
         df_compare.index[df_compare['include_sample'].astype(bool)],
-        menu_mp, release)
+        menu_mp, release, verbose=verbose)
 
     return df_compare

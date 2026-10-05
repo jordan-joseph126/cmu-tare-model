@@ -100,8 +100,27 @@ These apply to every session, every task, without exception.
 | File | Reason |
 |---|---|
 | `utils/validation_framework.py` | Core validation logic — never touch unless given express permission from the researcher |
-| Any `.ipynb` file | VSCode in-memory cache causes changes not to persist; backport manually |
-| Any `*_EXPORT_*.py` file | Read-only snapshot of a notebook — change the importable module instead and hand the researcher cells to backport |
+| Any `*_EXPORT_*.py` file | Read-only snapshot of a notebook — change the importable module or the notebook itself instead (see Notebook edits, below) |
+
+### Notebook edits — allowed, through the `notebook-cell-edit` skill (4 Oct 2026)
+
+`.ipynb` files may be edited directly. The earlier ban was written because
+GitHub Copilot had trouble reading and editing notebook cells; it does not
+apply to Claude Code.
+
+Every change to a notebook cell goes through the `notebook-cell-edit` skill
+(`.claude/skills/notebook-cell-edit/`). Its script changes only the named
+lines and stops unless it can show that nothing else in the file moves. Do
+not retype a cell by hand, replace a whole cell with a notebook tool, or edit
+the notebook JSON with a one-off script.
+
+- The stop-gate rule below still applies: show the skill's dry-run diff, wait
+  for approval, then apply.
+- After every notebook edit, remind the researcher to close and reopen (or
+  "Revert File") any open VS Code tab of that notebook. VS Code keeps an open
+  notebook in memory, and saving a stale tab writes the old text back.
+- Adding or deleting a whole cell is outside the skill: hand the researcher
+  the cell to paste.
 
 ### One-edit-per-stop-gate rule
 
@@ -635,8 +654,8 @@ Do not suggest any of these:
 ❌ Route adoption share through pct_change — it is a share (0–100%), not a percent change
 ❌ Delete the tiered adoption module — prepend deprecation header only
 ❌ Generate econ adopter columns inside a loop — generate all per MP in a single block
-❌ Edit .ipynb JSON directly — backport accepted changes manually
-❌ Edit any *_EXPORT_*.py file — it is a read-only snapshot of a notebook; change the modules and hand over copy-paste cells to backport
+❌ Change a notebook cell any way other than the notebook-cell-edit skill — no retyped cells, no whole-cell replacement, no one-off JSON edits
+❌ Edit any *_EXPORT_*.py file — it is a read-only snapshot of a notebook; change the modules or the notebook itself
 ❌ Call a ResStock row count "homes" — rows are representative dwelling units; multiply by weight (242.131013) for actual homes. A count under ~242 is always rdu
 ❌ Edit validation_framework.py without the researcher's express permission — the default is still never touch it
 ❌ Silently overwrite a reference value — keep old row with 'superseded by Session N' note

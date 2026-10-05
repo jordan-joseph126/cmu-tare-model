@@ -20,6 +20,7 @@ from cmu_tare_model.constants import (
     BSQ_ELEC_COL,
     FIGURE_DPI,
     TIMESTAMP_COL,
+    VERBOSE,
 )
 from cmu_tare_model.utils.column_names import BASE_CASE_NPV_CASE
 
@@ -476,6 +477,7 @@ def summarize_hourly_timeseries(
     *,
     bldg_id_col: str = BLDG_ID_COL,
     expected_hours_per_bldg: int = 8760,
+    verbose: bool = VERBOSE,
 ) -> None:
     """Print a summary of one prepared BSQ timeseries and check its coverage.
 
@@ -493,6 +495,8 @@ def summarize_hourly_timeseries(
         bldg_id_col: Building id column name.
         expected_hours_per_bldg: Required row count per building --
             compute_county_scenario_profile assumes a full 8,760-hour year.
+        verbose: Whether to print the full summary when every building has
+            a full year. A failure always prints it.
 
     Raises:
         ValueError: If any building does not have exactly
@@ -502,24 +506,32 @@ def summarize_hourly_timeseries(
     """
     n_bldgs = df_ts[bldg_id_col].nunique()
     n_hours_per_bldg = df_ts.groupby(bldg_id_col).size()
-
-    print(f"\n========== {label} summary ==========")
-    print(f"  Rows       : {len(df_ts):,d}")
-    print(f"  Buildings  : {n_bldgs:,d}")
-    print(
-        f"  Hours/bldg : {n_hours_per_bldg.min():,d} - "
-        f"{n_hours_per_bldg.max():,d}"
+    is_full_year = (
+        n_hours_per_bldg.min() == expected_hours_per_bldg
+        and n_hours_per_bldg.max() == expected_hours_per_bldg
     )
-    print(
-        f"  kWh range  : {df_ts[kwh_col].min():.3f} to "
-        f"{df_ts[kwh_col].max():.3f}"
-    )
-    print(f"  Query time : {query_time_s:.2f} s")
 
-    if (
-        n_hours_per_bldg.min() != expected_hours_per_bldg
-        or n_hours_per_bldg.max() != expected_hours_per_bldg
-    ):
+    # A failure always prints the summary; a pass prints one line unless verbose.
+    if verbose or not is_full_year:
+        print(f"\n========== {label} summary ==========")
+        print(f"  Rows       : {len(df_ts):,d}")
+        print(f"  Buildings  : {n_bldgs:,d}")
+        print(
+            f"  Hours/bldg : {n_hours_per_bldg.min():,d} - "
+            f"{n_hours_per_bldg.max():,d}"
+        )
+        print(
+            f"  kWh range  : {df_ts[kwh_col].min():.3f} to "
+            f"{df_ts[kwh_col].max():.3f}"
+        )
+        print(f"  Query time : {query_time_s:.2f} s")
+    else:
+        print(
+            f"[OK] {label}: {n_bldgs:,d} buildings x "
+            f"{expected_hours_per_bldg:,d} hours"
+        )
+
+    if not is_full_year:
         raise ValueError(
             f"{label}: expected exactly {expected_hours_per_bldg:,d} hours "
             f"per building, got a range of {n_hours_per_bldg.min():,d} - "
