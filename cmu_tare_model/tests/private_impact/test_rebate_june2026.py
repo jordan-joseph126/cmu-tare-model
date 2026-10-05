@@ -337,3 +337,27 @@ def test_june2026_homes_still_electric_gated(june2026_df):
     # Fossil home above 150% AMI: HOMES electric gate -> $0 / Not Eligible under June 2026.
     assert result[_rebate_col(4)].iloc[4] == 0.0
     assert result[_elig_col(4)].iloc[4] == 'Not Eligible'
+
+
+def test_income_cut_off_uses_the_unrounded_income_share(monkeypatch):
+    """A home at 80.004% of area median income is above the 80% cut-off, so it
+    is Moderate-Income. Rounding the share to 80.00 would call it Low-Income."""
+    from cmu_tare_model.private_impact.data_processing import (
+        determine_rebate_eligibility_and_amount as rebate_module)
+
+    def fixed_area_median_income(df, df_county, df_state):
+        df['census_area_medianIncome'] = 100000.0
+        return df
+
+    monkeypatch.setattr(
+        rebate_module, 'generate_household_medianIncome_2025',
+        lambda row, random_seed: 80004.0)
+    monkeypatch.setattr(
+        rebate_module, 'fill_na_with_hierarchy', fixed_area_median_income)
+
+    df_home = pd.DataFrame(
+        {'income': ['60000-69999']}, index=pd.Index([1], name='bldg_id'))
+    df_result = rebate_module.calculate_percent_AMI(df_home)
+
+    assert df_result['percent_AMI'].iloc[0] == pytest.approx(80.004)
+    assert df_result['income_level'].iloc[0] == 'Moderate-Income'

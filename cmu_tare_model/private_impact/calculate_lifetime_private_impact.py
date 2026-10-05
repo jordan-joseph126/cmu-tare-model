@@ -389,6 +389,8 @@ def calculate_private_npv(
         # replacement. This is the value the economic adoption decision uses
         # (NPV >= 0). A single willingness-to-pay framing is modeled, so the
         # column name carries no WTP token.
+        # Rounded to cents on purpose: a leftover such as -0.0000000001 from
+        # the arithmetic must not fail the NPV >= 0 test.
         npv_case_value = round(case_savings - case_net_capital, 2)
 
         npv_col = create_npv_case_col(

@@ -333,6 +333,40 @@ def test_calculate_climate_emissions_and_damages_returns_three_dicts(climate_df,
             assert (mer, scc) in annual_damages
 
 
+# =============================================================================
+# NO ROUNDING OF THE RETURNED TABLES
+# =============================================================================
+
+@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.lookup_climate_impact_scc')
+@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.calculate_fossil_fuel_emissions')
+@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.build_projected_consumption',
+       side_effect=_fake_consumption_table)
+@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_params')
+def test_home_table_is_not_rounded(mock_params, mock_elec, mock_fossil, mock_scc,
+                                   climate_df, mock_emissions_electricity_climate,
+                                   mock_scc_lookup):
+    """Neither returned table is rounded. A column the function only carries
+    through keeps every decimal (the ResStock weight is 242.131013, not
+    242.13), and so do the yearly emissions and damages."""
+    mock_params.return_value = ('baseline_', 'MidCase', {}, mock_emissions_electricity_climate, {})
+    mock_fossil.return_value = {
+        'co2e': pd.Series(0.5, index=climate_df.index),
+        'so2': pd.Series(0.001, index=climate_df.index),
+        'nox': pd.Series(0.002, index=climate_df.index),
+        'pm25': pd.Series(0.0005, index=climate_df.index),
+    }
+    mock_scc.__getitem__ = lambda self, key: mock_scc_lookup[key]
+
+    df_main, df_detailed = calculate_lifetime_climate_impacts(
+        climate_df.assign(weight=242.131013), menu_mp=0,
+        policy_scenario='2025 Reference Case', verbose=False
+    )
+
+    assert (df_main['weight'] == 242.131013).all()
+    yearly_values = df_detailed.select_dtypes('float')
+    assert not yearly_values.equals(yearly_values.round(2))
+
+
 # Import helper for inline usage
 def calculate_lifetime_climate_impacts(*args, **kwargs):
     from cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity import (

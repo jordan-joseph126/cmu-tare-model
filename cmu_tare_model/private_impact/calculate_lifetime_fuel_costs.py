@@ -65,8 +65,8 @@ def calculate_lifetime_fuel_costs(
 
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]:
-            - df_main: Main summary of lifetime fuel costs (rounded to 2 decimals).
-            - df_detailed: Detailed annual and lifetime results (rounded to 2 decimals).
+            - df_main: Main summary of lifetime fuel costs.
+            - df_detailed: Detailed annual and lifetime results.
 
     Raises:
         RuntimeError: If processing fails at the category or year level.
@@ -415,10 +415,8 @@ def calculate_lifetime_fuel_costs(
     # Use apply_final_masking for df_detailed
     df_detailed = apply_final_masking(df_detailed, all_columns_to_mask, verbose=verbose)
     
-    # Round final results
-    df_main = df_main.round(2)
-    df_detailed = df_detailed.round(2)
-    
+    # Not rounded here: rounding every column would also round ResStock's own
+    # values and the savings fraction that sets the rebate tier.
     return df_main, df_detailed
 
 

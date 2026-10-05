@@ -72,8 +72,8 @@ def calculate_lifetime_climate_impacts(
 
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]:
-            - df_main: Main summary of lifetime climate impacts (rounded to 2 decimals).
-            - df_detailed: Detailed annual and lifetime results (rounded to 2 decimals).
+            - df_main: Main summary of lifetime climate impacts.
+            - df_detailed: Detailed annual and lifetime results.
 
     Raises:
         ValueError: If menu_mp or policy_scenario is invalid.
@@ -324,10 +324,8 @@ def calculate_lifetime_climate_impacts(
     df_main = apply_temporary_validation_and_mask(df_copy, df_lifetime, all_columns_to_mask, verbose=verbose)
     df_detailed = apply_final_masking(df_detailed, all_columns_to_mask, verbose=verbose)
 
-    # Round final results
-    df_main = df_main.round(2)
-    df_detailed = df_detailed.round(2)
-
+    # Not rounded here: rounding every column would also round ResStock's own
+    # values and the savings fraction that sets the rebate tier.
     return df_main, df_detailed
 
 

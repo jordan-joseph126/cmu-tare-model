@@ -372,3 +372,32 @@ def test_blank_use_in_covered_home_raises(fuel_prices):
     # The fixture prices every fuel at $0.10 per kWh in the first year.
     assert cost.iloc[0] == pytest.approx(100.0 * 0.10)
     assert np.isnan(cost.iloc[1])
+
+
+# =============================================================================
+# NO ROUNDING OF THE RETURNED TABLES
+# =============================================================================
+
+def test_home_table_is_not_rounded(fuel_cost_df, fuel_prices):
+    """Neither returned table is rounded. A column the function only carries
+    through keeps every decimal (the ResStock weight is 242.131013, not
+    242.13), and so do the yearly costs."""
+    from cmu_tare_model.private_impact.calculate_lifetime_fuel_costs import calculate_lifetime_fuel_costs
+
+    # A price with more than 2 decimals, so a rounded yearly cost would show.
+    for prices_by_fuel in fuel_prices.values():
+        prices_by_fuel['electricity']['2025 Reference Case'][BASE_YEAR] = 0.123456
+
+    with patch(f'{MODULE}.define_scenario_params') as mock_params, \
+         patch(f'{MODULE}.build_projected_consumption',
+               side_effect=_fake_consumption_table):
+        mock_params.return_value = ('baseline_', 'MidCase', {}, {}, fuel_prices)
+
+        df_main, df_detailed = calculate_lifetime_fuel_costs(
+            fuel_cost_df.assign(weight=242.131013), menu_mp=0,
+            policy_scenario='2025 Reference Case', verbose=False
+        )
+
+    assert (df_main['weight'] == 242.131013).all()
+    yearly_values = df_detailed.select_dtypes('float')
+    assert not yearly_values.equals(yearly_values.round(2))

@@ -226,8 +226,12 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame, random_seed: int = 42) -
     df_results_IRA['household_income'] = df_results_IRA['household_income'].astype(float).round(2)
     df_results_IRA['census_area_medianIncome'] = df_results_IRA['census_area_medianIncome'].astype(float).round(2)
 
-    # Calculate percent_AMI
-    df_results_IRA['percent_AMI'] = ((df_results_IRA['household_income'] / df_results_IRA['census_area_medianIncome']) * 100).round(2)
+    # Calculate percent_AMI. Not rounded: the 80% and 150% income cut-offs
+    # below are tested on this value.
+    df_results_IRA['percent_AMI'] = (
+        df_results_IRA['household_income']
+        / df_results_IRA['census_area_medianIncome']
+    ) * 100
 
     # Create detailed income level categories
     income_conditions = [
