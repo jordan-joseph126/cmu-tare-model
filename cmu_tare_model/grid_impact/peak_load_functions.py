@@ -506,8 +506,8 @@ def peak_dicts_to_table(
     Produces one "Baseline" row followed by one row per scenario.
  
     Column definitions:
-        Heating Peak (MW):        peak within the heating season's months
-        Cooling Peak (MW):        peak within the cooling season's months
+        Winter Peak (MW):        peak within the heating season's months
+        Summer Peak (MW):        peak within the cooling season's months
         Absolute Annual Peak (MW): highest single hour of the whole year
                                   (the top-level peak in the peak dict)
         Annual Consumption (MWh): annual energy
@@ -550,8 +550,8 @@ def peak_dicts_to_table(
         {
             "scenario": "Baseline",
             "Adopting Homes (%)": 0.0, 
-            "Heating Peak (MW)": first[heating_season]["baseline_peak_mw"],
-            "Cooling Peak (MW)": first[cooling_season]["baseline_peak_mw"],
+            "Winter Peak (MW)": first[heating_season]["baseline_peak_mw"],
+            "Summer Peak (MW)": first[cooling_season]["baseline_peak_mw"],
             "Absolute Annual Peak (MW)": first["baseline_peak_mw"],
             # "Annual Consumption (MWh)": first["baseline_mwh"],
             "Annual Consumption (GWh)": first["baseline_mwh"] / 1000,
@@ -564,8 +564,8 @@ def peak_dicts_to_table(
             {
                 "scenario": label,
                 "Adopting Homes (%)": p["pct_adopters"],
-                "Heating Peak (MW)": p[heating_season]["scenario_peak_mw"],
-                "Cooling Peak (MW)": p[cooling_season]["scenario_peak_mw"],
+                "Winter Peak (MW)": p[heating_season]["scenario_peak_mw"],
+                "Summer Peak (MW)": p[cooling_season]["scenario_peak_mw"],
                 "Absolute Annual Peak (MW)": p["scenario_peak_mw"],
                 "Peak Delta (MW)": p["delta_mw"],
                 "Annual Consumption (GWh)": p["scenario_mwh"] / 1000,
