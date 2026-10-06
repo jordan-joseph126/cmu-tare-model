@@ -286,6 +286,13 @@ def compute_thermal_cop(
     return grouped.sort_values(group_cols[0]).reset_index(drop=True)
 
 
+# DEPRECATED (5 Oct 2026): the break-even COP is no longer part of the
+# analysis. compute_breakeven_cop and assign_breakeven_category are kept for
+# reference only. To fix first if they are used again: the spark gap arrives
+# already rounded to 2 decimals (calculate_spark_gap in spark_gap.py), the
+# break-even COP is rounded to 2 decimals again below, and
+# plot_categorical_breakeven_map then tests each state's COP against that
+# rounded value. Test on unrounded values and round only for display.
 def compute_breakeven_cop(
     df_prices: pd.DataFrame,
     df_cop: pd.DataFrame,

@@ -3,7 +3,16 @@
 ## Heat-Pump Electrification Economics (ResStock 2022.1.1 / EUSS)
 #
 ```text
-# Last updated: 3 September 2026 — notebook cleanup session
+# Last updated: 5 October 2026 — study sample and no rounding during the run
+#   - Study sample is 221,205 rdu (53,560,591 homes) in 3,079 counties: homes with no
+#     central or room AC of their own, or with shared cooling, are left out.
+#   - A blank energy value or cooling replacement cost in a sample home stops the run.
+#   - The home table is no longer rounded during the run. HOMES savings tiers and the
+#     80% / 150% income cut-offs are tested on unrounded values (commit c35eacf).
+#   - Run `2026-10-05_00-54` differs from `2026-10-04_23-02` only as expected. Reference
+#     rows for the new sample added (see `docs/REFERENCE_VALUES.md`).
+#
+# Previously: 3 September 2026 — notebook cleanup session
 #   - Restored the missing `plot_county_demand_grid` import.
 #   - Restored the Step 7 county-profile loop under its `GRID_IMPACT_ANALYSIS` guard.
 #   - Removed 22 unused imports.
@@ -12,15 +21,6 @@
 #   - The six `_sub` / `_sub_june2026` reference rows that the 20 Aug session had left at
 #     17 Aug values were measured and superseded (see the attribution caveat in
 #     `docs/REFERENCE_VALUES.md`).
-#
-# Previously: 20 August 2026
-#   - Fixed the replacement-cost capacity and efficiency inputs to read the OLD
-#     heating/cooling system's own size and efficiency, instead of the new heat pump's.
-#   - Re-run `2026-08-19_20-56` (National, MP3 + MP4, fixed_base) confirmed against
-#     `2026-08-19_13-19`.
-#   - Five `_unsub` reference rows superseded; new CONFIRMED rows added. (The 12 Aug
-#     anchor-year fix and the 17 Aug confirmation in `docs/REFERENCE_VALUES.md`
-#     are unaffected.)
 ```
 
 > This file is read by Claude Code at the start of every session. It is the authoritative
@@ -32,7 +32,7 @@
 ## Project at a Glance
 
 - **Research question:** Economics of heat-pump electrification across U.S. counties
-- **Data:** 331,531 baseline representative dwelling units | 3,098 counties (ResStock 2022.1.1 EUSS)
+- **Data:** ResStock 2022.1.1 EUSS. Study sample: 221,205 representative dwelling units (53,560,591 homes) in 3,079 counties (see Study Sample, below). The saved baseline table holds 331,531 rdu (occupied single-family homes) and each package table 331,526; results are filled only for the sample.
 - **Heat-pump models:** MP3 (standard ASHP, 15 SEER1, 9 HSPF1) | MP4 (high-efficiency ASHP, 24–29.3 SEER1, 13–14 HSPF1)
 - **Policy scenario:** Single — `'2025 Reference Case'` (see Hard-coded Values below)
 - **Adoption metric:** `NPV >= 0` — economic payback only; no climate/health damages in the adoption decision
@@ -63,7 +63,7 @@ or sum the `weight` column, to get actual homes.
 
 - Say "331,531 representative dwelling units", not "331,531 homes". Those rows
   represent **80,273,937 actual homes**.
-- Say "260,211 rdu have `include_heating = True`" — that is **63,005,153 real
+- Say "221,205 rdu are in the study sample" — that is **53,560,591 real
   dwellings**.
 - **Rule of thumb: any count below about 242 is a count of rdu, never homes.**
   One rdu is the smallest a non-zero count can be. A stated "14 homes" is
@@ -86,8 +86,51 @@ When reading them: treat every count as rdu unless it is explicitly weighted.
 The dollar means, rates, and percentages in those rows are unaffected, because
 the weight is the same for every row.
 
-Reference conversions: 331,531 rdu = 80,273,937 homes | 260,211 rdu =
-63,005,153 homes | 250,576 rdu = 60,672,221 homes | 1 rdu = 242.131013 homes.
+Reference conversions: 221,205 rdu = 53,560,591 homes (the study sample) |
+331,531 rdu = 80,273,937 homes | 260,211 rdu = 63,005,153 homes | 250,576 rdu
+= 60,672,221 homes | 1 rdu = 242.131013 homes.
+
+---
+
+## Study Sample
+
+Every TARE result covers one set of homes: the study sample. In 2022.1.1 it
+is **221,205 rdu = 53,560,591 homes in 3,079 counties**.
+
+A home is in the sample when all three hold:
+
+- its heating system is one the study can replace and cost
+  (`include_heating = True`);
+- it has a central or room AC of its own, not a shared cooling system
+  (`include_cooling = True`);
+- ResStock applied every measure package in the run to it.
+
+Where it lives:
+
+- `include_sample` is set once, in `df_enduse_refactored`
+  (`process_euss_data.py`, STEP 4b). `get_valid_calculation_mask` requires it,
+  so every calculation is limited to it.
+- `build_tare_sample_ids` (`study_sample.py`) turns the flag into
+  `TARE_SAMPLE_IDS`, for results that do not use the TARE table (county
+  demand, peaks).
+- `build_sample_funnel` (`study_sample.py`) builds the table below. Every run
+  saves it under `baseline_summary/sample_funnel/`.
+
+**Every computation filters on `include_sample`.** Never use
+`include_heating` or `include_cooling` to mean the sample.
+
+| Step | rdu | Removed |
+|---|---|---|
+| ResStock 2022.1.1 stock | 548,916 | |
+| Package applies | 548,260 | 656 |
+| Occupied | 482,050 | 66,210 |
+| Single-family | 331,526 | 150,524 |
+| Not Alaska or Hawaii | 331,526 | 0 |
+| Heating fuel is electricity, natural gas, propane or fuel oil | 321,352 | 10,174 |
+| No existing heat pump | 290,005 | 31,347 |
+| Furnace, boiler or electric baseboard | 260,211 | 29,794 |
+| Central or room AC | 221,301 | 38,910 |
+| Cooling system not shared | 221,205 | 96 |
 
 ---
 
@@ -188,6 +231,7 @@ LIFETIME_YEARS  = 15                      # NPV calculation horizon
 | ResStock source | ResStock 2022.1.1 EUSS | |
 | County + state map geometry | `cb_2021_us_county_500k`, `cb_2021_us_state_500k` (under `data/shapefiles/`) | Census cartographic boundary files, 2021 vintage, 500k scale. Matched to ResStock's pre-2023 geography; Connecticut is the binding constraint (see CT note below). Vintage set once via `COUNTY_GEOMETRY_*` / `STATE_GEOMETRY_*` in `adoption_kpis/data_loading.py` -- never hardcode a shapefile name elsewhere. |
 | Area median income (AMI) | `ACSDT5Y2024.B19013-Data.csv` (under `data/ami_calculations_data/`) | U.S. Census Bureau ACS 5-Year table B19013 (median household income), vintage 2024, from data.census.gov. One file holds county (`0500000US`) and state (`0400000US`) rows; inflated USD2024->2025. NOT NHGIS -- the NHGIS PUMA source was retired in Session 1e. |
+| Social cost of carbon | `scc_climate_impact_sensitivity.xlsx` (under `data/projections/`) | Values are in USD2023 (`scc_*_usd2023`) and are not inflated, so climate damages are in 2023 dollars while private costs are in 2025 dollars. Convert before adding or comparing the two. |
 
 
 **Degree-day read pattern (mandatory):**
@@ -241,6 +285,7 @@ A wrong key returns silently as zero — no error, just wrong output.
 |---|---|
 | `hdd_consumption_utils.py` | Superseded by `degree_day_consumption_utils.py` — does not handle cooling |
 | `determine_adoption_potential_sensitivity.py` | Superseded by `determine_economic_adoption_potential.py` |
+| Break-even COP: `compute_breakeven_cop`, `assign_breakeven_category` (`adoption_kpis/thermal_cop.py`), `plot_categorical_breakeven_map` (`adoption_kpis/visualize_geospatial_data.py`) | No longer part of the analysis. The note at `compute_breakeven_cop` says what to fix first if it is used again |
 
 ---
 
@@ -438,13 +483,26 @@ modeled — not an actual disbursement amount.
     not (`get_degree_day_adjusted_consumption_by_fuel`, Step 2 comment in
     `degree_day_consumption_utils.py`). The split is exact only in `ANCHOR_YEAR`.
 11. Homes with no central or room AC are excluded from the study sample
-    (38,910 rdu, 9.42M homes in 2022.1.1). For them the heat pump adds cooling
-    the home never had, so any cooling cost is for a new service, not a change
-    to an existing one; the same is partly true for room-AC homes, whose heat
-    pump cools the whole house. Keeping no-AC homes in with cooling set to zero
-    did not make sense. PLACEHOLDER: a future session may bring them back,
-    modeling the added cooling as a new service. See the cooling-list comment
-    in `constants.py`.
+    (38,910 rdu, 9.42M homes in 2022.1.1). So are homes with a shared cooling
+    system (96 rdu, 23,245 homes), which has no replacement cost data. For a
+    home with no AC the heat pump adds cooling the home never had, so any
+    cooling cost is for a new service, not a change to an existing one; the
+    same is partly true for room-AC homes, whose heat pump cools the whole
+    house. Keeping no-AC homes in with cooling set to zero did not make sense.
+    PLACEHOLDER: a future switch would bring no-AC homes back for a
+    colleague's use case, at the points tagged 'TODO (no-AC homes)' in the
+    code: energy as ResStock publishes it (0 kWh of cooling before the
+    retrofit), cooling replacement cost and credit $0 on purpose, and cooling
+    savings left negative, because the added cooling is a cost the home pays.
+    See the cooling-list comment in `constants.py`.
+12. Five sample rdu (1,211 homes) have blank climate emissions and damages.
+    Their county (FIPS 46102) is not in the county-to-GEA-region crosswalk
+    (`process_euss_data.py`, STEP 1b). Accepted: where data is missing the
+    value is left blank, not guessed.
+13. Some counties rest on very few sample rdu. With `MIN_HOME_COUNT = 1`
+    (`constants.py`), 74 of the 3,079 study-sample counties have 1 rdu and 280
+    have 3 or fewer, so one rdu can set a county's value. Check a county's rdu
+    count before quoting its value.
 
 ---
 
@@ -457,10 +515,10 @@ modeled — not an actual disbursement amount.
 
 **Cooling:** `include_cooling = valid_fuel_cooling AND valid_tech_cooling`
 - `valid_fuel_cooling`: hardcoded True (cooling is always electric) — this flag is a no-op
-- `valid_tech_cooling`: technology is one of {Central AC, Room AC} — this is the ONLY cooling filter
+- `valid_tech_cooling`: technology is one of {Central AC, Room AC}, and the system is not shared between homes (`SHARED_COOLING_EFFICIENCY` in `constants.py`)
 - Homes with no AC (`'None'`) or evaporative coolers are excluded here, and so are left out of the study sample (Limitation 11)
 
-**Cooling in NPV:** for homes where `include_cooling = False`, cooling savings and capital are both 0 — see NPV Ordering Checks, below, for the resulting identities.
+**Cooling in NPV:** every home in the study sample has an AC of its own, so cooling savings and the cooling replacement credit apply to every home in the NPV. Nothing is set to $0 by `include_cooling`. A blank energy value or a blank cooling replacement cost in a sample home stops the run; it is not counted as zero.
 
 **Negative cooling savings — accepted as real** (12 Jul 2026 session;
 national share corrected 19 Aug 2026).
@@ -476,12 +534,12 @@ out negative.
 - **Why it happens so often:** it's mostly a service-level change — the
   baseline room AC only cools one room, while the whole-home heat pump cools
   the entire house.
-- **How common it is (measure-package specific):** for MP3, 90.68% of Room AC
-  baselines go negative, vs. 10.84% of Central AC baselines. For MP4, it's
-  61.97% vs. 3.46%. These figures were recomputed 19 Aug 2026 from the
-  `2026-08-19_13-19` run (`docs/SESSION_CHANGELOG_2026-08-19.md`), correcting
-  a single MP-unsplit "about 54% / 2.5%" figure from the 12 Jul 2026 session,
-  which did not reproduce for either MP on this run.
+- **How common it is (measure-package specific):** for MP3, 92.94% of Room AC
+  baselines go negative, vs. 13.32% of Central AC baselines. For MP4, it's
+  66.17% vs. 2.29%. Measured 5 Oct 2026 on run `2026-10-05_00-54`, over the
+  study sample (43,564 Room AC rdu, 177,641 Central AC rdu). The 19 Aug 2026
+  figures (90.68% / 10.84% and 61.97% / 3.46%) were on the old population
+  and counted primary cooling energy only.
 - **Decision:** keep the negative savings in the NPV as a real operating
   cost, consistent with the dollars-only, no-WTP adoption threshold. Do not
   floor it at zero or exclude it.
@@ -502,26 +560,35 @@ entry in `constants.py`, flag it and remove it.
 
 **Consumption counts every component (22 Sep 2026).** Heating and cooling energy
 include primary energy, fans and pumps, and heat-pump backup, on both the baseline and
-retrofit side (`CONSUMPTION_COMPONENTS` in `calculation_utils.py`). Earlier versions
+retrofit side. The parts are read from the ResStock file itself
+(`find_enduse_columns` in `calculation_utils.py`), not from a fixed list. Earlier versions
 counted primary energy only, which dropped MP3/MP4's electric backup heat and every
 system's fans. `build_projected_consumption` (`projected_consumption.py`) stores each
 home's use by fuel and year (degree-day adjusted, 2025-2039) and is the single source
 for fuel costs (each fuel at its own price), climate emissions, and the savings
 fraction. The supplemental fuel-cost CSV carries its per-fuel columns.
 
+**The home table is not rounded during the run (5 Oct 2026).** No step rounds
+the whole table, so ResStock's values are saved as published (`weight` is
+242.131013), and the HOMES savings tiers and the 80% / 150% income cut-offs
+are tested on unrounded values. Rounded on purpose, to cents: the NPV (so a
+leftover such as -0.0000000001 cannot fail `NPV >= 0`), installed costs, rebate
+amounts, household income, and area median income. Do not add a whole-table
+`.round()` to make output readable; round only when printing.
+
 ---
 
 ## NPV Ordering Checks (enforce in verification)
 
-Per home (for homes with AC, `include_cooling = True`):
+Per home (every home in the study sample has an AC of its own):
 - `heatingLCC_coolingLCC >= heatingLCC_coolingSavings` (adds avoided cooling replacement >= 0)
 - `heatingLCC_coolingLCC >= heatingSavings_coolingLCC` (adds avoided heating replacement >= 0)
 - No general ordering between `heatingLCC_coolingSavings` and `heatingSavings_coolingLCC`
   (depends on relative magnitude of heating vs cooling replacement costs)
 
-Per home (no AC, `include_cooling = False` -- not in the sample today; applies only if those homes return, see Limitation 11):
-- `heatingLCC_coolingLCC` == `heatingLCC_coolingSavings` (cooling LCC credit = 0)
-- Both exceed `heatingSavings_coolingLCC` (heating LCC credit is non-zero)
+Homes with no AC are not in the sample (Limitation 11). If a future switch
+brings them back, their cooling replacement credit is $0, so for them
+`heatingLCC_coolingLCC` == `heatingLCC_coolingSavings`.
 
 Per county (means):
 - Adoption rate `heatingLCC_coolingLCC` >= `heatingLCC_coolingSavings`
@@ -648,7 +715,8 @@ Do not suggest any of these:
 ❌ Add 'Electricity ASHP' or any ASHP variant to EQUIPMENT_SPECS / ALLOWED_TECHNOLOGIES['heating'] — existing-ASHP homes are excluded by design
 ❌ Read degree-day CSV without int-casting year columns — silent flat 1.0 results
 ❌ Use full state name as price lookup key ('Pennsylvania') — must be abbreviation ('PA') — fails silently as zero
-❌ Apply cooling savings to homes with include_cooling = False
+❌ Set cooling savings or the cooling replacement credit to $0 by include_cooling, or count a blank energy value or cost as zero — every sample home has its own AC, and a blank in a sample home stops the run
+❌ Round the home table, or a value tested against a cut-off, in the middle of the run — round only when printing
 ❌ Collapse three NPV cases into one combined value
 ❌ Derive operating-cost % from ratio formula — always use (new - old) / old * 100 on per-home cols
 ❌ Route adoption share through pct_change — it is a share (0–100%), not a percent change

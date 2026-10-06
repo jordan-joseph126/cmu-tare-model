@@ -124,15 +124,15 @@ def _print_outlier_counts(outliers: Dict,
     eff_hi = outliers.get('eff_hi', '?')
 
     print(f"  Outliers excluded from bins:")
-    print(f"    Capacity  < {cap_lo} {cap_unit}: {outliers.get('cap_below', 0):,} homes")
-    print(f"    Capacity >= {cap_hi} {cap_unit}: {outliers.get('cap_above', 0):,} homes")
-    print(f"    {eff_label}  < {eff_lo}: {outliers.get('eff_below', 0):,} homes")
-    print(f"    {eff_label} >= {eff_hi}: {outliers.get('eff_above', 0):,} homes")
+    print(f"    Capacity  < {cap_lo} {cap_unit}: {outliers.get('cap_below', 0):,} rdu")
+    print(f"    Capacity >= {cap_hi} {cap_unit}: {outliers.get('cap_above', 0):,} rdu")
+    print(f"    {eff_label}  < {eff_lo}: {outliers.get('eff_below', 0):,} rdu")
+    print(f"    {eff_label} >= {eff_hi}: {outliers.get('eff_above', 0):,} rdu")
     cap_nan = outliers.get('cap_nan', 0)
     eff_nan = outliers.get('eff_nan', 0)
     if cap_nan > 0 or eff_nan > 0:
-        print(f"    Capacity NaN (missing data): {cap_nan:,} homes")
-        print(f"    {eff_label} NaN (missing/unparseable): {eff_nan:,} homes")
+        print(f"    Capacity NaN (missing data): {cap_nan:,} rdu")
+        print(f"    {eff_label} NaN (missing/unparseable): {eff_nan:,} rdu")
 
 
 def _build_clamping_summary(
@@ -179,7 +179,7 @@ def _build_clamping_summary(
 
     lines = [
         f"  Efficiency floor impact on {eff_label} {floor_display:.0f} bin composition "
-        f"({in_floor_bin:,} homes in bin):"
+        f"({in_floor_bin:,} rdu in bin):"
     ]
 
     # Group clamped homes by their original efficiency for the migration summary
@@ -188,7 +188,7 @@ def _build_clamping_summary(
         pct_of_total = count / total_filtered * 100
         pct_of_bin = count / in_floor_bin * 100
         lines.append(
-            f"    {orig_val:.0f} {eff_label} ({count:,} / {total_filtered:,} homes, "
+            f"    {orig_val:.0f} {eff_label} ({count:,} / {total_filtered:,} rdu, "
             f"{pct_of_total:.1f}%) --> {floor_display:.0f} {eff_label} "
             f"({count:,} / {in_floor_bin:,} in bin, {pct_of_bin:.1f}%)"
         )
@@ -530,7 +530,7 @@ def _print_table(title: str,
     # Print outlier counts
     if outliers:
         total = outliers.get('total_filtered', 0)
-        print(f"  Total homes matching filter: {total:,}")
+        print(f"  Total rdu matching filter: {total:,}")
         _print_outlier_counts(outliers, cap_unit=cap_unit, eff_label=eff_label)
 
         # Print clamping impact summary (replacement metrics only)
@@ -543,7 +543,7 @@ def _print_table(title: str,
         print()
 
     if df_result.empty:
-        print("  No matching homes found in the DataFrame for this equipment type.")
+        print("  No matching rdu found in the DataFrame for this equipment type.")
         print(f"{'=' * 110}")
         return
 
@@ -623,7 +623,7 @@ def run_capital_cost_validation(
             "#  CAPITAL COST VALIDATION: Equipment-Level Disaggregation "
             f"(MP{menu_mp})")
         print(f"#  Active cost scenarios: {cost_scenarios}")
-        print(f"#  Total homes in DataFrame: {len(df):,}")
+        print(f"#  Total rdu in DataFrame: {len(df):,}")
         print("#" * 110)
 
     # ── Determine which DataFrame to use for each scenario ──
@@ -815,11 +815,11 @@ def run_capital_cost_validation(
     # ── Summary ──
     print(f"\n{'#' * 110}")
     print(f"#  VALIDATION SUMMARY")
-    print(f"#  Total homes in DataFrame: {total_homes:,}")
+    print(f"#  Total rdu in DataFrame: {total_homes:,}")
     print(f"{'#' * 110}")
     for label, df_r in results.items():
         if df_r.empty:
-            print(f"  {label:<45}  No matching homes")
+            print(f"  {label:<45}  No matching rdu")
         else:
             # Use the max N across ALL scenarios (not just the first) to avoid
             # the v3 issue where Central AC has no v3 data.
@@ -844,8 +844,8 @@ def run_capital_cost_validation(
             pct_of_appliance = (total_n / appliance_filtered * 100) if appliance_filtered > 0 else 0.0
 
             print(f"  {label:<45}  {n_bins_with_data}/{total_bins} bins with data  |  "
-                  f"{total_n:,} homes matched  |  "
-                  f"{pct_of_total:.1f}% of all homes  |  "
+                  f"{total_n:,} rdu matched  |  "
+                  f"{pct_of_total:.1f}% of all rdu  |  "
                   f"{pct_of_appliance:.1f}% of {appliance_filtered:,} filtered")
 
     print(f"{'#' * 110}\n")

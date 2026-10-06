@@ -764,6 +764,12 @@ def df_enduse_refactored(
     n_sample = int(df_enduse['include_sample'].sum())
     print(f"Study sample: {n_sample:,} rdu "
           f"({df_enduse.loc[df_enduse['include_sample'], 'weight'].sum():,.0f} homes)")
+    # The GEA warning above counts the whole table; this counts the sample.
+    n_sample_no_gea = int(
+        (df_enduse['include_sample'] & df_enduse['gea_region'].isna()).sum())
+    if n_sample_no_gea > 0:
+        print(f"  {n_sample_no_gea:,} sample rdu have no GEA region; their "
+              "climate values stay blank (CLAUDE.md Limitation 12)")
 
     # ===== STEP 5: Apply validation =====
     if verbose:

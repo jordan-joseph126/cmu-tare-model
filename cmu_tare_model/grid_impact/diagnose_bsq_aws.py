@@ -257,6 +257,24 @@ def _fail(stage: str, problem: str) -> None:
     print()
 
 
+def _mask_account_id(text: str, account_id: Optional[str]) -> str:
+    """Hide an AWS account id in text that will be printed.
+
+    The diagnostic's output is saved in the notebook, and the notebook is
+    committed, so only the last 4 digits are shown.
+
+    Args:
+        text: Text that may hold the account id (a bucket name often does).
+        account_id: The caller's AWS account id, or None.
+
+    Returns:
+        The text with the account id replaced by '...' and its last 4 digits.
+    """
+    if not account_id:
+        return text
+    return text.replace(account_id, f"...{account_id[-4:]}")
+
+
 def stage_1_import_bsq() -> bool:
     """Check that buildstock_query is installed and report where it came from.
 
@@ -329,9 +347,13 @@ def stage_2_caller_identity(session: Any) -> Optional[str]:
         )
         return None
 
+    account_id = str(identity["Account"])
+    # The ARN ends in the user name, so only its kind (user, assumed-role) is
+    # printed. `aws sts get-caller-identity` shows the full values.
+    identity_kind = identity["Arn"].split(":")[-1].split("/")[0]
     detail = [
-        f"Account     : {identity['Account']}",
-        f"ARN         : {identity['Arn']}",
+        f"Account     : {_mask_account_id(account_id, account_id)}",
+        f"Identity    : {identity_kind}",
         f"AWS_PROFILE : {os.environ.get('AWS_PROFILE', '(not set)')}",
         f"CLI region  : {cli_region or '(not set)'}",
         f"BSQ region  : {BSQ_DEFAULT_REGION} (BuildStockQuery default)",
@@ -343,7 +365,7 @@ def stage_2_caller_identity(session: Any) -> Optional[str]:
             f"{BSQ_DEFAULT_REGION}."
         )
     _ok(stage, *detail)
-    return str(identity["Account"])
+    return account_id
 
 
 def stage_3_workgroup(session: Any, account_id: Optional[str]) -> Optional[str]:
@@ -368,7 +390,8 @@ def stage_3_workgroup(session: Any, account_id: Optional[str]) -> Optional[str]:
         _fail(stage, str(exc))
         return None
 
-    _ok(stage, f"Workgroup      : {WORKGROUP}", f"OutputLocation : {location}")
+    _ok(stage, f"Workgroup      : {WORKGROUP}",
+        f"OutputLocation : {_mask_account_id(location, account_id)}")
     return location
 
 
@@ -404,7 +427,8 @@ def stage_4_result_bucket(
         else "Write probe skipped (--no-write-probe); read access alone does "
         "not prove Athena can write here."
     )
-    _ok(stage, f"Bucket : {bucket}", f"Prefix : {prefix or '(bucket root)'}", note)
+    _ok(stage, f"Bucket : {_mask_account_id(bucket, account_id)}",
+        f"Prefix : {prefix or '(bucket root)'}", note)
     return True
 
 

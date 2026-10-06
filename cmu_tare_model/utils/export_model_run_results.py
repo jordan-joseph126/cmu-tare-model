@@ -40,13 +40,15 @@ def export_model_run_output(
         results_category: Category of results being exported. Valid options:
             - 'summary_baseline': Baseline summary results
             - 'summary': Retrofit summary results (requires discount_rate)
-            - 'damages_climate_IRA', 'damages_climate_noIRA': Climate damages
-            - 'fuel_costs_IRA', 'fuel_costs_noIRA': Fuel costs
+            - 'damages_climate_baseline', 'damages_climate_ref2025': Climate
+              damages (any name starting with 'damages_')
+            - 'fuel_costs_baseline', 'fuel_costs_ref2025': Fuel costs (any
+              name starting with 'fuel_costs_')
             - 'tepper_household': One-time Tepper household CSV (delegates to
               export_tepper_household; uses df_results_export as the frame)
             - 'tepper_county': One-time Tepper county CSV (delegates to
               export_tepper_county; requires county_tables)
-        menu_mp: Measure package identifier (0 for baseline, 8/9/10 for retrofits).
+        menu_mp: Measure package identifier (0 for baseline, nonzero for a measure package).
         output_folder_path: Base directory for all exports.
         location_id: Location identifier for the filename (e.g., 'NYC', 'LA').
         results_export_formatted_date: Date string for the filename (e.g., '2024_01_15').
@@ -159,14 +161,14 @@ def export_model_run_output(
             print(f"  Discount Rate: {discount_rate}")
         
     elif results_category.startswith('damages_'):
-        # Damages results (climate or health, IRA or noIRA)
+        # Climate damages (baseline or a measure package)
         directory_path = os.path.join("supplemental_data_damages", results_category)
         filename = f"mp{menu_mp}_{results_category}_{location_id}_{results_export_formatted_date}.csv"
         if verbose:
             print(f"SUPPLEMENTAL DAMAGES: {results_category}")
         
     elif results_category.startswith('fuel_costs_'):
-        # Fuel costs results (IRA or noIRA)
+        # Fuel costs (baseline or a measure package)
         directory_path = os.path.join("supplemental_data_fuelCosts", results_category)
         filename = f"mp{menu_mp}_{results_category}_{location_id}_{results_export_formatted_date}.csv"
         if verbose:

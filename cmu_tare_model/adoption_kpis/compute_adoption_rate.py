@@ -107,8 +107,9 @@ def compute_adoption_rate(
             (e.g. ``'G4200030'``).  Used when ``geo_level='county'``.
         state_col: Column name containing state abbreviations.  Included in
             output only when present in ``df``.
-        verbose: If ``True``, print national weighted adoption rate and
-            county/state count.
+        verbose: If ``True``, print the county/state count and the plain
+            average of the county (or state) adoption rates. That average
+            is not the national rate: it counts every county equally.
 
     Returns:
         DataFrame sorted by ``adoption_rate_pct`` (descending) with columns:

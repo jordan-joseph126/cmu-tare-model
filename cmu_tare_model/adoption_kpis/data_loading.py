@@ -353,7 +353,9 @@ def load_euss_baseline(
     filepath = os.path.join(EUSS_DATA_DIR, filename)
     if verbose:
         print(f"Loading baseline from: {filepath}")
-    df = pd.read_csv(filepath, index_col="bldg_id")
+    # low_memory=False reads the whole file before choosing column types, so
+    # mixed-type columns come back as text instead of raising a DtypeWarning.
+    df = pd.read_csv(filepath, index_col="bldg_id", low_memory=False)
 
     n_total = len(df)
     df = df[df["in.vacancy_status"] == "Occupied"]
@@ -395,7 +397,9 @@ def load_euss_upgrade(
     filepath = os.path.join(EUSS_DATA_DIR, filename)
     if verbose:
         print(f"Loading {upgrade_name} from: {filepath}")
-    df = pd.read_csv(filepath, index_col="bldg_id")
+    # low_memory=False reads the whole file before choosing column types, so
+    # mixed-type columns come back as text instead of raising a DtypeWarning.
+    df = pd.read_csv(filepath, index_col="bldg_id", low_memory=False)
 
     n_total = len(df)
     df = df[df["in.vacancy_status"] == "Occupied"]
