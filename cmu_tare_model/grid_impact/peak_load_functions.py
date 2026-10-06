@@ -7,7 +7,7 @@ Author: Jordan M. Joseph, PhD — Carnegie Mellon University
 """
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,6 +18,7 @@ from matplotlib.lines import Line2D
 from cmu_tare_model.constants import (
     BLDG_ID_COL,
     BSQ_ELEC_COL,
+    FIGURE_DISPLAY_DPI,
     FIGURE_DPI,
     TIMESTAMP_COL,
     VERBOSE,
@@ -632,30 +633,44 @@ def plot_demand_panel(
     ax.tick_params(labelsize=15)
 
 
+# Adoption scenarios a demand panel can show: the key used in the profile and
+# peak dicts, and the label printed in the panel title.
+DEMAND_SCENARIO_LABELS: Dict[str, str] = {
+    "constrained": "Only Economic Adopters",
+    "100pct": "100% Adoption",
+}
+
+
 def plot_county_demand_grid(
     df_profiles_by_mp: Dict[int, Dict[str, pd.DataFrame]],
     peak_results_by_mp: Dict[int, Dict[str, Dict[str, Any]]],
     selected_mps: list,
     *,
+    panels: Optional[List[Tuple[int, str]]] = None,
+    subplot_positions: Optional[List[Tuple[int, int]]] = None,
+    figure_size: Tuple[float, float] = (16, 11),
+    sharey: Union[bool, str] = 'all',
+    legend_space: float = 0.12,
     mp_labels: Optional[Dict[int, str]] = None,
     county_display_name: str = "Allegheny County, PA",
     save_figure: bool = False,
     output_dir: Optional[str] = None,
+    output_filename: Optional[str] = None,
     figure_dpi: int = FIGURE_DPI,
 ) -> plt.Figure:
-    """Draw the MP x scenario demand-profile grid with a shared legend.
+    """Draw a grid of county demand-profile panels with a shared legend.
 
-    Rows are measure packages (in ``selected_mps`` order); columns are the two
-    adoption scenarios, economic adopters left and 100% adoption right. All
-    panels share a y-axis so peak MW is directly comparable across both
-    scenarios and both measure packages.
+    Each panel shows one measure package under one adoption scenario. With
+    the default arguments the grid has one row per measure package (in
+    ``selected_mps`` order) and two columns, economic adopters left and 100%
+    adoption right. ``panels`` and ``subplot_positions`` choose another
+    layout, for example one row with 100% adoption only::
 
-    This consolidates two duplicate 2x2 notebook blocks that differed only in
-    row/column axis ordering, font sizes, and a shared legend -- consolidated
-    2 Sep 2026 during the notebook/codebase cleanup session onto the second,
-    later block (row=MP, column=scenario, with the shared legend), which was
-    the more complete of the two. The superseded first block (row=scenario,
-    column=MP, no shared legend, smaller fonts) was not kept.
+        panels=[(3, '100pct'), (4, '100pct')],
+        subplot_positions=[(0, 0), (0, 1)]
+
+    By default all panels share a y-axis, so peak MW is directly comparable
+    across scenarios and measure packages.
 
     Args:
         df_profiles_by_mp: ``{mp: {'100pct': df_profile, 'constrained':
@@ -663,23 +678,83 @@ def plot_county_demand_grid(
             one pair per measure package.
         peak_results_by_mp: ``{mp: {'100pct': peak_dict, 'constrained':
             peak_dict}}`` -- the matching peak dicts from the same calls.
-        selected_mps: Measure-package numbers to render as rows, in order.
+        selected_mps: Measure-package numbers, in order. Sets the default
+            panels and the default file name.
+        panels: (measure package, scenario) of each panel, with scenario
+            ``'constrained'`` or ``'100pct'``. Defaults to both scenarios for
+            every measure package in ``selected_mps``.
+        subplot_positions: (row, column) of each panel, in ``panels`` order.
+            The grid is as large as the positions need, and a grid cell with
+            no panel is left blank. Defaults to row = measure package and
+            column = scenario; when only ``panels`` is given, to one row.
+        figure_size: Figure (width, height) in inches.
+        sharey: Passed to ``plt.subplots``. ``'all'`` gives every panel the
+            same y-scale.
+        legend_space: Share of the figure height kept free below the panels
+            for the legend box. A shorter figure needs a larger share.
         mp_labels: Row label per MP (e.g. ``{3: 'Minimum-Efficiency Heat
             Pump'}``). Defaults to the MP3/MP4 labels this notebook uses.
         county_display_name: County name shown in the legend box title.
         save_figure: If True and ``output_dir`` is set, save the figure.
         output_dir: Directory the figure is saved under (the file goes in
             ``output_dir/outputs/``); required when ``save_figure`` is True.
+        output_filename: File name of the saved figure. Defaults to
+            ``allegheny_demand_profiles_MP{...}.png``, built from
+            ``selected_mps``.
         figure_dpi: Resolution used when saving.
 
     Returns:
         The matplotlib Figure.
 
     Raises:
-        ValueError: If save_figure is True but output_dir is None.
+        ValueError: If save_figure is True but output_dir is None; if
+            panels is empty or differs in length from subplot_positions; if
+            a scenario is not a known name; or if two panels share a
+            position.
+        KeyError: If a panel's measure package or scenario is missing from
+            df_profiles_by_mp or peak_results_by_mp.
     """
     if save_figure and output_dir is None:
         raise ValueError("output_dir is required when save_figure=True.")
+
+    # Default layout: one row per measure package, economic adopters in the
+    # left column and 100% adoption in the right.
+    default_scenarios = list(DEMAND_SCENARIO_LABELS)
+    if panels is None:
+        panels = [(mp, scenario)
+                  for mp in selected_mps for scenario in default_scenarios]
+        default_positions = [
+            (row_index, column_index)
+            for row_index in range(len(selected_mps))
+            for column_index in range(len(default_scenarios))]
+    else:
+        # Panels given without positions go side by side in one row.
+        default_positions = [
+            (0, column_index) for column_index in range(len(panels))]
+    if subplot_positions is None:
+        subplot_positions = default_positions
+
+    if not panels:
+        raise ValueError("panels is empty, so there is nothing to draw.")
+    if len(panels) != len(subplot_positions):
+        raise ValueError(
+            f"panels has {len(panels)} entries and subplot_positions has "
+            f"{len(subplot_positions)}; they must be the same length.")
+    if len(set(subplot_positions)) != len(subplot_positions):
+        raise ValueError(
+            f"Two panels share a position in {subplot_positions}.")
+    for mp, scenario in panels:
+        if scenario not in DEMAND_SCENARIO_LABELS:
+            raise ValueError(
+                f"Unknown scenario {scenario!r}; expected one of "
+                f"{list(DEMAND_SCENARIO_LABELS)}.")
+        for results_name, results_by_mp in (
+                ("df_profiles_by_mp", df_profiles_by_mp),
+                ("peak_results_by_mp", peak_results_by_mp)):
+            if mp not in results_by_mp or scenario not in results_by_mp[mp]:
+                raise KeyError(
+                    f"{results_name} has no entry for MP{mp}, "
+                    f"scenario {scenario!r}.")
 
     if mp_labels is None:
         mp_labels = {
@@ -687,8 +762,9 @@ def plot_county_demand_grid(
             4: "High-efficiency heat pump",
         }
 
-    scenarios = ["constrained", "100pct"]
-    scenario_labels = ["Only Economic Adopters", "100% Adoption"]
+    # The grid is as large as the positions need.
+    num_rows = max(row_index for row_index, _ in subplot_positions) + 1
+    num_cols = max(column_index for _, column_index in subplot_positions) + 1
     subplot_title_fontsize = 18
     tick_label_fontsize = 16
 
@@ -709,32 +785,40 @@ def plot_county_demand_grid(
     # of any global sns.set_theme(style=...) the caller has set, so this
     # figure's styling stays fixed even if that global changes later.
     with sns.axes_style("white"):
-        # sharey='all' -> all panels share a single y-scale, so peak MW is
-        # directly comparable across both scenarios and both measure packages.
-        fig, axes = plt.subplots(2, 2, figsize=(16, 11), sharey='all')
+        # sharey='all' (the default) -> all panels share a single y-scale, so
+        # peak MW is directly comparable across scenarios and measure packages.
+        # squeeze=False keeps axes two-dimensional for a single row or column.
+        fig, axes = plt.subplots(
+            num_rows, num_cols, figsize=figure_size, sharey=sharey,
+            squeeze=False, dpi=FIGURE_DISPLAY_DPI)
         fig.patch.set_facecolor("white")
 
-        for row_idx, mp in enumerate(selected_mps):
-            for col_idx, (scenario, scenario_label) in enumerate(
-                    zip(scenarios, scenario_labels)):
-                ax = axes[row_idx, col_idx]
-                ax.set_facecolor("white")
-                df_profile = df_profiles_by_mp[mp][scenario]
-                peak_result = peak_results_by_mp[mp][scenario]
-                plot_demand_panel(ax, df_profile, peak_result, mp, scenario_label)
-                ax.set_title(
-                    f"{mp_labels.get(mp, f'MP{mp}')} ({scenario_label})",
-                    fontsize=subplot_title_fontsize,
-                    fontweight="bold",
-                )
+        # A grid cell that holds no panel is left blank.
+        for row_idx in range(num_rows):
+            for col_idx in range(num_cols):
+                if (row_idx, col_idx) not in subplot_positions:
+                    axes[row_idx, col_idx].set_visible(False)
 
-                # --- Override x-axis to months + enlarge tick labels ---
-                h0 = df_profile["hour"].min()
-                ax.set_xticks([h0 + m for m in month_start_hours])
-                ax.set_xticklabels(month_labels)
-                ax.set_xlim(h0, h0 + 8760)
-                ax.set_xlabel("Month", fontsize=17)
-                ax.tick_params(labelsize=tick_label_fontsize)
+        for (mp, scenario), (row_idx, col_idx) in zip(panels, subplot_positions):
+            scenario_label = DEMAND_SCENARIO_LABELS[scenario]
+            ax = axes[row_idx, col_idx]
+            ax.set_facecolor("white")
+            df_profile = df_profiles_by_mp[mp][scenario]
+            peak_result = peak_results_by_mp[mp][scenario]
+            plot_demand_panel(ax, df_profile, peak_result, mp, scenario_label)
+            ax.set_title(
+                f"{mp_labels.get(mp, f'MP{mp}')} ({scenario_label})",
+                fontsize=subplot_title_fontsize,
+                fontweight="bold",
+            )
+
+            # --- Override x-axis to months + enlarge tick labels ---
+            h0 = df_profile["hour"].min()
+            ax.set_xticks([h0 + m for m in month_start_hours])
+            ax.set_xticklabels(month_labels)
+            ax.set_xlim(h0, h0 + 8760)
+            ax.set_xlabel("Month", fontsize=17)
+            ax.tick_params(labelsize=tick_label_fontsize)
 
         # --- Shared legend, bottom center, drawn as a fancy box ---
         # Proxy handles only (no data) -- the real lines/markers are drawn per
@@ -780,14 +864,13 @@ def plot_county_demand_grid(
         fig_legend.get_title().set_fontweight("bold")
 
         # Extra bottom margin so the legend box has room below the panels.
-        plt.tight_layout(rect=[0, 0.12, 1, 1])
+        plt.tight_layout(rect=[0, legend_space, 1, 1])
         if save_figure:
-            out_path = os.path.join(
-                output_dir,
-                "outputs",
-                f"allegheny_demand_profiles_MP"
-                f"{'_'.join(str(m) for m in selected_mps)}.png",
-            )
+            if output_filename is None:
+                output_filename = (
+                    f"allegheny_demand_profiles_MP"
+                    f"{'_'.join(str(m) for m in selected_mps)}.png")
+            out_path = os.path.join(output_dir, "outputs", output_filename)
             os.makedirs(os.path.dirname(out_path), exist_ok=True)
             fig.savefig(out_path, dpi=figure_dpi, bbox_inches="tight")
             print(f"[OK] Figure saved: {out_path}")
