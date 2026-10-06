@@ -1,0 +1,209 @@
+fuel_type,source_region,source_region_label,source_method,base_value,base_unit,state,census_division,price_usd2025_per_kwh
+electricity,AK,AK,state_annual_2025,26.09,cents/kWh,AK,Pacific,0.2609
+electricity,AL,AL,state_annual_2025,16.1,cents/kWh,AL,East South Central,0.161
+electricity,AR,AR,state_annual_2025,12.84,cents/kWh,AR,West South Central,0.1284
+electricity,AZ,AZ,state_annual_2025,15.32,cents/kWh,AZ,Mountain,0.1532
+electricity,CA,CA,state_annual_2025,32.54,cents/kWh,CA,Pacific,0.32539999999999997
+electricity,CO,CO,state_annual_2025,15.85,cents/kWh,CO,Mountain,0.1585
+electricity,CT,CT,state_annual_2025,29.38,cents/kWh,CT,New England,0.2938
+electricity,DC,DC,state_annual_2025,21.94,cents/kWh,DC,South Atlantic,0.2194
+electricity,DE,DE,state_annual_2025,17.13,cents/kWh,DE,South Atlantic,0.17129999999999998
+electricity,FL,FL,state_annual_2025,15.24,cents/kWh,FL,South Atlantic,0.1524
+electricity,GA,GA,state_annual_2025,14.73,cents/kWh,GA,South Atlantic,0.14730000000000001
+electricity,HI,HI,state_annual_2025,40.59,cents/kWh,HI,Pacific,0.40590000000000004
+electricity,IA,IA,state_annual_2025,13.72,cents/kWh,IA,West North Central,0.13720000000000002
+electricity,ID,ID,state_annual_2025,11.82,cents/kWh,ID,Mountain,0.1182
+electricity,IL,IL,state_annual_2025,17.69,cents/kWh,IL,East North Central,0.1769
+electricity,IN,IN,state_annual_2025,16.23,cents/kWh,IN,East North Central,0.1623
+electricity,KS,KS,state_annual_2025,14.56,cents/kWh,KS,West North Central,0.1456
+electricity,KY,KY,state_annual_2025,13.24,cents/kWh,KY,East South Central,0.1324
+electricity,LA,LA,state_annual_2025,12.57,cents/kWh,LA,West South Central,0.1257
+electricity,MA,MA,state_annual_2025,30.48,cents/kWh,MA,New England,0.3048
+electricity,MD,MD,state_annual_2025,19.48,cents/kWh,MD,South Atlantic,0.1948
+electricity,ME,ME,state_annual_2025,27.78,cents/kWh,ME,New England,0.2778
+electricity,MI,MI,state_annual_2025,20.01,cents/kWh,MI,East North Central,0.20010000000000003
+electricity,MN,MN,state_annual_2025,15.82,cents/kWh,MN,West North Central,0.1582
+electricity,MO,MO,state_annual_2025,13.49,cents/kWh,MO,West North Central,0.1349
+electricity,MS,MS,state_annual_2025,14.03,cents/kWh,MS,East South Central,0.14029999999999998
+electricity,MT,MT,state_annual_2025,12.98,cents/kWh,MT,Mountain,0.1298
+electricity,NC,NC,state_annual_2025,14.02,cents/kWh,NC,South Atlantic,0.1402
+electricity,ND,ND,state_annual_2025,11.81,cents/kWh,ND,West North Central,0.11810000000000001
+electricity,NE,NE,state_annual_2025,12.34,cents/kWh,NE,West North Central,0.1234
+electricity,NH,NH,state_annual_2025,24.56,cents/kWh,NH,New England,0.24559999999999998
+electricity,NJ,NJ,state_annual_2025,22.63,cents/kWh,NJ,Middle Atlantic,0.2263
+electricity,NM,NM,state_annual_2025,15.08,cents/kWh,NM,Mountain,0.1508
+electricity,NV,NV,state_annual_2025,13.15,cents/kWh,NV,Mountain,0.1315
+electricity,NY,NY,state_annual_2025,26.39,cents/kWh,NY,Middle Atlantic,0.2639
+electricity,NUS,U.S. National,national_2025,17.3,cents/kWh,National,National,0.17300000000000001
+electricity,OH,OH,state_annual_2025,16.96,cents/kWh,OH,East North Central,0.1696
+electricity,OK,OK,state_annual_2025,13.12,cents/kWh,OK,West South Central,0.13119999999999998
+electricity,OR,OR,state_annual_2025,15.37,cents/kWh,OR,Pacific,0.1537
+electricity,PA,PA,state_annual_2025,19.3,cents/kWh,PA,Middle Atlantic,0.193
+electricity,RI,RI,state_annual_2025,29.46,cents/kWh,RI,New England,0.29460000000000003
+electricity,SC,SC,state_annual_2025,14.96,cents/kWh,SC,South Atlantic,0.1496
+electricity,SD,SD,state_annual_2025,13.38,cents/kWh,SD,West North Central,0.1338
+electricity,TN,TN,state_annual_2025,13.18,cents/kWh,TN,East South Central,0.1318
+electricity,TX,TX,state_annual_2025,15.47,cents/kWh,TX,West South Central,0.1547
+electricity,UT,UT,state_annual_2025,13.07,cents/kWh,UT,Mountain,0.1307
+electricity,VA,VA,state_annual_2025,15.28,cents/kWh,VA,South Atlantic,0.1528
+electricity,VT,VT,state_annual_2025,22.92,cents/kWh,VT,New England,0.22920000000000001
+electricity,WA,WA,state_annual_2025,13.11,cents/kWh,WA,Pacific,0.1311
+electricity,WI,WI,state_annual_2025,18.16,cents/kWh,WI,East North Central,0.1816
+electricity,WV,WV,state_annual_2025,15.41,cents/kWh,WV,South Atlantic,0.15410000000000001
+electricity,WY,WY,state_annual_2025,13.38,cents/kWh,WY,Mountain,0.1338
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,AK,Pacific,0.09223075330926594
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,AL,East South Central,0.09223075330926594
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,AR,West South Central,0.09223075330926594
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,AZ,Mountain,0.09223075330926594
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,CA,Pacific,0.09223075330926594
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,CO,Mountain,0.09223075330926594
+fuelOil,R1X,PADD 1A New England,padd_broadcast_monthly_mean_2025,3.709,$/gal,CT,New England,0.09137262093862816
+fuelOil,R1Y,PADD 1B Central Atlantic,padd_broadcast_monthly_mean_2025,3.8225,$/gal,DC,South Atlantic,0.09416873646209387
+fuelOil,R1Y,PADD 1B Central Atlantic,padd_broadcast_monthly_mean_2025,3.8225,$/gal,DE,South Atlantic,0.09416873646209387
+fuelOil,R1Z,PADD 1C Lower Atlantic,padd_broadcast_monthly_mean_2025,3.5574999999999997,$/gal,FL,South Atlantic,0.08764036101083032
+fuelOil,R1Z,PADD 1C Lower Atlantic,padd_broadcast_monthly_mean_2025,3.5574999999999997,$/gal,GA,South Atlantic,0.08764036101083032
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,HI,Pacific,0.09223075330926594
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,IA,West North Central,0.0827912972322503
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,ID,Mountain,0.09223075330926594
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,IL,East North Central,0.0827912972322503
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,IN,East North Central,0.0827912972322503
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,KS,West North Central,0.0827912972322503
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,KY,East South Central,0.0827912972322503
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,LA,West South Central,0.09223075330926594
+fuelOil,R1X,PADD 1A New England,padd_broadcast_monthly_mean_2025,3.709,$/gal,MA,New England,0.09137262093862816
+fuelOil,R1Y,PADD 1B Central Atlantic,padd_broadcast_monthly_mean_2025,3.8225,$/gal,MD,South Atlantic,0.09416873646209387
+fuelOil,R1X,PADD 1A New England,padd_broadcast_monthly_mean_2025,3.709,$/gal,ME,New England,0.09137262093862816
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,MI,East North Central,0.0827912972322503
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,MN,West North Central,0.0827912972322503
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,MO,West North Central,0.0827912972322503
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,MS,East South Central,0.09223075330926594
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,MT,Mountain,0.09223075330926594
+fuelOil,R1Z,PADD 1C Lower Atlantic,padd_broadcast_monthly_mean_2025,3.5574999999999997,$/gal,NC,South Atlantic,0.08764036101083032
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,ND,West North Central,0.0827912972322503
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,NE,West North Central,0.0827912972322503
+fuelOil,R1X,PADD 1A New England,padd_broadcast_monthly_mean_2025,3.709,$/gal,NH,New England,0.09137262093862816
+fuelOil,R1Y,PADD 1B Central Atlantic,padd_broadcast_monthly_mean_2025,3.8225,$/gal,NJ,Middle Atlantic,0.09416873646209387
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,NM,Mountain,0.09223075330926594
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,NV,Mountain,0.09223075330926594
+fuelOil,R1Y,PADD 1B Central Atlantic,padd_broadcast_monthly_mean_2025,3.8225,$/gal,NY,Middle Atlantic,0.09416873646209387
+fuelOil,NUS,U.S. National,national_2025,3.7438333333333333,$/gal,National,National,0.09223075330926594
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,OH,East North Central,0.0827912972322503
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,OK,West South Central,0.0827912972322503
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,OR,Pacific,0.09223075330926594
+fuelOil,R1Y,PADD 1B Central Atlantic,padd_broadcast_monthly_mean_2025,3.8225,$/gal,PA,Middle Atlantic,0.09416873646209387
+fuelOil,R1X,PADD 1A New England,padd_broadcast_monthly_mean_2025,3.709,$/gal,RI,New England,0.09137262093862816
+fuelOil,R1Z,PADD 1C Lower Atlantic,padd_broadcast_monthly_mean_2025,3.5574999999999997,$/gal,SC,South Atlantic,0.08764036101083032
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,SD,West North Central,0.0827912972322503
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,TN,East South Central,0.0827912972322503
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,TX,West South Central,0.09223075330926594
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,UT,Mountain,0.09223075330926594
+fuelOil,R1Z,PADD 1C Lower Atlantic,padd_broadcast_monthly_mean_2025,3.5574999999999997,$/gal,VA,South Atlantic,0.08764036101083032
+fuelOil,R1X,PADD 1A New England,padd_broadcast_monthly_mean_2025,3.709,$/gal,VT,New England,0.09137262093862816
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,WA,Pacific,0.09223075330926594
+fuelOil,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,3.360666666666667,$/gal,WI,East North Central,0.0827912972322503
+fuelOil,R1Z,PADD 1C Lower Atlantic,padd_broadcast_monthly_mean_2025,3.5574999999999997,$/gal,WV,South Atlantic,0.08764036101083032
+fuelOil,NUS,U.S. National,national_fallback,3.7438333333333333,$/gal,WY,Mountain,0.09223075330926594
+naturalGas,AK,AK,annual_2025,12.96,$/MCF,AK,Pacific,0.04255969201154957
+naturalGas,AL,AL,annual_2025,17.56,$/MCF,AL,East South Central,0.05766575553416747
+naturalGas,AR,AR,annual_2025,19.25,$/MCF,AR,West South Central,0.06321559191530318
+naturalGas,AZ,AZ,annual_2025,18.58,$/MCF,AZ,Mountain,0.06101536092396536
+naturalGas,CA,CA,annual_2025,22.01,$/MCF,CA,Pacific,0.07227923002887392
+naturalGas,CO,CO,annual_2025,11.17,$/MCF,CO,Mountain,0.03668146294513956
+naturalGas,CT,CT,monthly_mean_2025,19.803636363636365,$/MCF,CT,New England,0.06503369323650364
+naturalGas,DC,DC,annual_2025,16.68,$/MCF,DC,South Atlantic,0.054775899903753617
+naturalGas,DE,DE,annual_2025,15.97,$/MCF,DE,South Atlantic,0.052444311838306064
+naturalGas,FL,FL,annual_2025,25.48,$/MCF,FL,South Atlantic,0.08367445620789223
+naturalGas,GA,GA,annual_2025,20.42,$/MCF,GA,South Atlantic,0.06705778633301251
+naturalGas,HI,HI,annual_2025,52.38,$/MCF,HI,Pacific,0.17201208854667951
+naturalGas,IA,IA,annual_2025,10.61,$/MCF,IA,West North Central,0.03484246390760346
+naturalGas,ID,ID,annual_2025,7.69,$/MCF,ID,Mountain,0.02525339749759384
+naturalGas,IL,IL,annual_2025,11.25,$/MCF,IL,East North Central,0.036944177093358996
+naturalGas,IN,IN,annual_2025,11.49,$/MCF,IN,East North Central,0.037732319538017325
+naturalGas,KS,KS,annual_2025,14.81,$/MCF,KS,West North Central,0.04863495668912416
+naturalGas,KY,KY,annual_2025,14.23,$/MCF,KY,East South Central,0.046730279114533216
+naturalGas,LA,LA,annual_2025,17.38,$/MCF,LA,West South Central,0.05707464870067372
+naturalGas,MA,MA,annual_2025,25.06,$/MCF,MA,New England,0.08229520692974013
+naturalGas,MD,MD,monthly_mean_2025,18.987272727272725,$/MCF,MD,South Atlantic,0.06235281476944614
+naturalGas,ME,ME,monthly_mean_2025,24.80090909090909,$/MCF,ME,New England,0.0814443713360749
+naturalGas,MI,MI,annual_2025,10.92,$/MCF,MI,East North Central,0.03586048123195381
+naturalGas,MN,MN,annual_2025,10.98,$/MCF,MN,West North Central,0.036057516843118385
+naturalGas,MO,MO,annual_2025,14.94,$/MCF,MO,West North Central,0.049061867179980755
+naturalGas,MS,MS,annual_2025,16.64,$/MCF,MS,East South Central,0.05464454282964389
+naturalGas,MT,MT,annual_2025,8.99,$/MCF,MT,Mountain,0.029522502406159768
+naturalGas,NC,NC,monthly_mean_2025,24.23818181818182,$/MCF,NC,South Atlantic,0.07959641613439496
+naturalGas,ND,ND,annual_2025,9.5,$/MCF,ND,West North Central,0.031197305101058708
+naturalGas,NE,NE,annual_2025,11.4,$/MCF,NE,West North Central,0.037436766121270455
+naturalGas,NH,NH,annual_2025,18.61,$/MCF,NH,New England,0.06111387872954765
+naturalGas,NJ,NJ,annual_2025,14.21,$/MCF,NJ,Middle Atlantic,0.04666460057747835
+naturalGas,NM,NM,annual_2025,9.83,$/MCF,NM,Mountain,0.032281000962463904
+naturalGas,NV,NV,annual_2025,13.14,$/MCF,NV,Mountain,0.04315079884504332
+naturalGas,NY,NY,annual_2025,17.58,$/MCF,NY,Middle Atlantic,0.057731434071222325
+naturalGas,NUS,U.S. National,national_2025,15.34,$/MCF,National,National,0.05037543792107796
+naturalGas,OH,OH,annual_2025,13.85,$/MCF,OH,East North Central,0.045482386910490856
+naturalGas,OK,OK,monthly_mean_2025,23.11,$/MCF,OK,West South Central,0.07589154956689124
+naturalGas,OR,OR,annual_2025,16.71,$/MCF,OR,Pacific,0.054874417709335904
+naturalGas,PA,PA,annual_2025,15.04,$/MCF,PA,Middle Atlantic,0.049390259865255054
+naturalGas,RI,RI,monthly_mean_2025,22.825454545454544,$/MCF,RI,New England,0.07495712310788345
+naturalGas,SC,SC,monthly_mean_2025,21.223,$/MCF,SC,South Atlantic,0.06969477959576516
+naturalGas,SD,SD,annual_2025,9.86,$/MCF,SD,West North Central,0.0323795187680462
+naturalGas,TN,TN,annual_2025,11.84,$/MCF,TN,East South Central,0.038881693936477384
+naturalGas,TX,TX,annual_2025,19.42,$/MCF,TX,West South Central,0.0637738594802695
+naturalGas,UT,UT,annual_2025,10.19,$/MCF,UT,Mountain,0.0334632146294514
+naturalGas,VA,VA,annual_2025,16.79,$/MCF,VA,South Atlantic,0.05513713185755534
+naturalGas,VT,VT,annual_2025,18.0,$/MCF,VT,New England,0.05911068334937441
+naturalGas,WA,WA,annual_2025,17.62,$/MCF,WA,Pacific,0.057862791145332056
+naturalGas,WI,WI,annual_2025,10.74,$/MCF,WI,East North Central,0.03526937439846006
+naturalGas,WV,WV,annual_2025,13.8,$/MCF,WV,South Atlantic,0.04531819056785371
+naturalGas,WY,WY,annual_2025,11.74,$/MCF,WY,Mountain,0.038553301251203084
+propane,NUS,U.S. National,national_fallback,2.5886666666666667,$/gal,AK,Pacific,0.0965810552712534
+propane,R30,PADD 3 Gulf Coast,padd_broadcast_monthly_mean_2025,2.9298333333333333,$/gal,AL,East South Central,0.10930970709589
+propane,R30,PADD 3 Gulf Coast,padd_broadcast_monthly_mean_2025,2.9298333333333333,$/gal,AR,West South Central,0.10930970709589
+propane,NUS,U.S. National,national_fallback,2.5886666666666667,$/gal,AZ,Mountain,0.0965810552712534
+propane,NUS,U.S. National,national_fallback,2.5886666666666667,$/gal,CA,Pacific,0.0965810552712534
+propane,R40,PADD 4 Rocky Mountain,padd_broadcast_monthly_mean_2025,2.2615,$/gal,CO,Mountain,0.0843747320998994
+propane,R1X,PADD 1A New England,padd_broadcast_monthly_mean_2025,3.6355,$/gal,CT,New England,0.1356375585006342
+propane,R1Y,PADD 1B Central Atlantic,padd_broadcast_monthly_mean_2025,3.374166666666667,$/gal,DC,South Atlantic,0.1258874236393591
+propane,R1Y,PADD 1B Central Atlantic,padd_broadcast_monthly_mean_2025,3.374166666666667,$/gal,DE,South Atlantic,0.1258874236393591
+propane,R1Z,PADD 1C Lower Atlantic,padd_broadcast_monthly_mean_2025,3.4655,$/gal,FL,South Atlantic,0.1292949962822027
+propane,R1Z,PADD 1C Lower Atlantic,padd_broadcast_monthly_mean_2025,3.4655,$/gal,GA,South Atlantic,0.1292949962822027
+propane,NUS,U.S. National,national_fallback,2.5886666666666667,$/gal,HI,Pacific,0.0965810552712534
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,IA,West North Central,0.07794511510592078
+propane,R40,PADD 4 Rocky Mountain,padd_broadcast_monthly_mean_2025,2.2615,$/gal,ID,Mountain,0.0843747320998994
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,IL,East North Central,0.07794511510592078
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,IN,East North Central,0.07794511510592078
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,KS,West North Central,0.07794511510592078
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,KY,East South Central,0.07794511510592078
+propane,R30,PADD 3 Gulf Coast,padd_broadcast_monthly_mean_2025,2.9298333333333333,$/gal,LA,West South Central,0.10930970709589
+propane,R1X,PADD 1A New England,padd_broadcast_monthly_mean_2025,3.6355,$/gal,MA,New England,0.1356375585006342
+propane,R1Y,PADD 1B Central Atlantic,padd_broadcast_monthly_mean_2025,3.374166666666667,$/gal,MD,South Atlantic,0.1258874236393591
+propane,R1X,PADD 1A New England,padd_broadcast_monthly_mean_2025,3.6355,$/gal,ME,New England,0.1356375585006342
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,MI,East North Central,0.07794511510592078
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,MN,West North Central,0.07794511510592078
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,MO,West North Central,0.07794511510592078
+propane,R30,PADD 3 Gulf Coast,padd_broadcast_monthly_mean_2025,2.9298333333333333,$/gal,MS,East South Central,0.10930970709589
+propane,R40,PADD 4 Rocky Mountain,padd_broadcast_monthly_mean_2025,2.2615,$/gal,MT,Mountain,0.0843747320998994
+propane,R1Z,PADD 1C Lower Atlantic,padd_broadcast_monthly_mean_2025,3.4655,$/gal,NC,South Atlantic,0.1292949962822027
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,ND,West North Central,0.07794511510592078
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,NE,West North Central,0.07794511510592078
+propane,R1X,PADD 1A New England,padd_broadcast_monthly_mean_2025,3.6355,$/gal,NH,New England,0.1356375585006342
+propane,R1Y,PADD 1B Central Atlantic,padd_broadcast_monthly_mean_2025,3.374166666666667,$/gal,NJ,Middle Atlantic,0.1258874236393591
+propane,R30,PADD 3 Gulf Coast,padd_broadcast_monthly_mean_2025,2.9298333333333333,$/gal,NM,Mountain,0.10930970709589
+propane,NUS,U.S. National,national_fallback,2.5886666666666667,$/gal,NV,Mountain,0.0965810552712534
+propane,R1Y,PADD 1B Central Atlantic,padd_broadcast_monthly_mean_2025,3.374166666666667,$/gal,NY,Middle Atlantic,0.1258874236393591
+propane,NUS,U.S. National,national_2025,2.5886666666666667,$/gal,National,National,0.0965810552712534
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,OH,East North Central,0.07794511510592078
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,OK,West South Central,0.07794511510592078
+propane,NUS,U.S. National,national_fallback,2.5886666666666667,$/gal,OR,Pacific,0.0965810552712534
+propane,R1Y,PADD 1B Central Atlantic,padd_broadcast_monthly_mean_2025,3.374166666666667,$/gal,PA,Middle Atlantic,0.1258874236393591
+propane,R1X,PADD 1A New England,padd_broadcast_monthly_mean_2025,3.6355,$/gal,RI,New England,0.1356375585006342
+propane,R1Z,PADD 1C Lower Atlantic,padd_broadcast_monthly_mean_2025,3.4655,$/gal,SC,South Atlantic,0.1292949962822027
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,SD,West North Central,0.07794511510592078
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,TN,East South Central,0.07794511510592078
+propane,R30,PADD 3 Gulf Coast,padd_broadcast_monthly_mean_2025,2.9298333333333333,$/gal,TX,West South Central,0.10930970709589
+propane,R40,PADD 4 Rocky Mountain,padd_broadcast_monthly_mean_2025,2.2615,$/gal,UT,Mountain,0.0843747320998994
+propane,R1Z,PADD 1C Lower Atlantic,padd_broadcast_monthly_mean_2025,3.4655,$/gal,VA,South Atlantic,0.1292949962822027
+propane,R1X,PADD 1A New England,padd_broadcast_monthly_mean_2025,3.6355,$/gal,VT,New England,0.1356375585006342
+propane,NUS,U.S. National,national_fallback,2.5886666666666667,$/gal,WA,Pacific,0.0965810552712534
+propane,R20,PADD 2 Midwest,padd_broadcast_monthly_mean_2025,2.089166666666667,$/gal,WI,East North Central,0.07794511510592078
+propane,R1Z,PADD 1C Lower Atlantic,padd_broadcast_monthly_mean_2025,3.4655,$/gal,WV,South Atlantic,0.1292949962822027
+propane,R40,PADD 4 Rocky Mountain,padd_broadcast_monthly_mean_2025,2.2615,$/gal,WY,Mountain,0.0843747320998994
