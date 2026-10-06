@@ -231,7 +231,7 @@ LIFETIME_YEARS  = 15                      # NPV calculation horizon
 | ResStock source | ResStock 2022.1.1 EUSS | |
 | County + state map geometry | `cb_2021_us_county_500k`, `cb_2021_us_state_500k` (under `data/shapefiles/`) | Census cartographic boundary files, 2021 vintage, 500k scale. Matched to ResStock's pre-2023 geography; Connecticut is the binding constraint (see CT note below). Vintage set once via `COUNTY_GEOMETRY_*` / `STATE_GEOMETRY_*` in `adoption_kpis/data_loading.py` -- never hardcode a shapefile name elsewhere. |
 | Area median income (AMI) | `ACSDT5Y2024.B19013-Data.csv` (under `data/ami_calculations_data/`) | U.S. Census Bureau ACS 5-Year table B19013 (median household income), vintage 2024, from data.census.gov. One file holds county (`0500000US`) and state (`0400000US`) rows; inflated USD2024->2025. NOT NHGIS -- the NHGIS PUMA source was retired in Session 1e. |
-| Social cost of carbon | `scc_climate_impact_sensitivity.xlsx` (under `data/projections/`) | Values are in USD2023 (`scc_*_usd2023`) and are not inflated, so climate damages are in 2023 dollars while private costs are in 2025 dollars. Convert before adding or comparing the two. |
+| Social cost of carbon | `scc_climate_impact_sensitivity.xlsx` (under `data/projections/`) | Published in USD2020 (`scc_*_usd2020`). Inflated to USD2025 with `cpi_ratio_2025_2020` in `create_lookup_climate_impact_scc.py`, so climate damages and private costs share one dollar year. The workbook's `scc_*_usd2023` columns are not read. |
 
 
 **Degree-day read pattern (mandatory):**
