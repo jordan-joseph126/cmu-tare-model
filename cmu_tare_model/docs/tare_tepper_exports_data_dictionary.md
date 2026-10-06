@@ -18,7 +18,8 @@ Every number in the household file traces back to the same chain, and you can
 walk it yourself:
 
 ```
-projected consumption (kWh)  x  fuel price ($/kWh)   =  annual fuel cost ($)
+kWh of each fuel  x  that fuel's price ($/kWh), added up
+                                                      =  annual fuel cost ($)
 baseline annual cost  -  retrofit annual cost         =  annual saving ($)
 annual saving  x  discount factor, summed over 2025-2039
                                                       =  discounted lifetime saving ($)
@@ -26,6 +27,9 @@ annual saving  x  discount factor, summed over 2025-2039
 discounted heating saving + discounted cooling saving - net capital cost = NPV
 NPV >= 0                                              =  the home adopts
 ```
+
+The first line is done fuel by fuel: a gas furnace burns gas and its fan uses
+electricity, and each is priced at its own price (section 8).
 
 The last line is the model's entire adoption rule. There is no carbon price, no
 health damage, and no comfort value in it -- only dollars. Section 10 works the
@@ -40,7 +44,7 @@ whole chain through for one real home.
 **Every row in these files is a representative dwelling unit, not a house.**
 ResStock is a sample. Each sampled row stands for many real dwellings, and the
 `weight` column says how many: **242.131013**, the same for every row in this
-release.
+release. (The file holds the full value, 242.13101272727272.)
 
 To get a count of actual homes, multiply by the weight, or sum the `weight`
 column. To get an average or a share, you can ignore the weight entirely,
@@ -61,10 +65,10 @@ given.
 | | |
 |---|---|
 | Source data | ResStock 2022.1.1 (EUSS) |
-| Representative dwelling units in the national run | 331,531 rdu |
-| Actual homes those represent | 80,273,937 |
+| Representative dwelling units in the household files (the study sample) | 221,205 rdu |
+| Actual homes those represent | 53,560,591 |
 | Weight per representative dwelling unit | 242.131013, uniform |
-| Counties | 3,098 |
+| Counties | 3,079 |
 | Measure packages | MP3 (standard heat pump, 15 SEER1 / 9 HSPF1, respecified to 16 SEER1 / 9.5 HSPF1 for ENERGY STAR) and MP4 (high-efficiency, 24-29.3 SEER1 / 13-14 HSPF1) |
 | Policy scenario | `2025 Reference Case` (a single scenario -- there is no pre-IRA comparison in this export) |
 | Private discount rate | 7% (`fixed_base`) |
@@ -73,15 +77,14 @@ given.
 | Cost scenario | REMDB v4 mid (`v4MID`) |
 
 Every value is copied straight from a model-run DataFrame. The export
-recomputes nothing, rounds nothing, fills nothing, and drops no rows except
-where section 3 says so.
+recomputes nothing, rounds nothing, and fills nothing. It keeps only the rows
+in the study sample (section 3).
 
 **Which run these numbers come from.** The structural facts in this document
-(the 154 columns, the groups, the naming) are read from the code. The
-population figures (331,531 rdu and the applicability shares in section 5),
-the negative-cooling-savings shares in group 11 of section 4, and the worked
-example in section 10 are all read from the full end-to-end pipeline run
-`2026-08-19_13-19` (National and Allegheny scopes, MP3 and MP4).
+(the 167 columns, the groups, the naming) are read from the code. The counts,
+the shares, and the worked example in section 10 are all read from the
+pipeline run `2026-10-05_21-33` (a national run, MP3 and MP4). The Allegheny
+figures are that run's Allegheny County rows.
 
 ---
 
@@ -91,90 +94,96 @@ Written to `{output_folder_path}/tepper_export/`.
 
 | File | Grain | Rows |
 |---|---|---|
-| `tepper_household_mp{mp}_{scope}_{date}.csv` | one row per representative dwelling unit | see section 3 |
-| `tepper_county_mp{mp}_{scope}_{date}.csv` | one row per county | 3,098 national, 1 for Allegheny |
+| `tepper_household_mp{mp}_{scope}_{date}.csv` | one row per representative dwelling unit in the study sample | see section 3 |
+| `tepper_household_detailed_mp{mp}_{scope}_{date}.csv` | the same rows and columns, plus each year's consumption split by fuel (group 10b) | see section 3 |
+| `tepper_county_mp{mp}_{scope}_{date}.csv` | one row per county | 3,079 national, 1 for Allegheny |
 | `source_data/` (three CSVs) | the model's fuel-price inputs | see section 9 |
 
-One household file and one county file per measure package **per scope**. A
+Two household files and one county file per measure package **per scope**. A
 scope is a filter applied at export time, not at model run time, so a single
 national run can emit a national file plus any number of state or county files.
-The current configuration emits two scopes: the full run, and Allegheny County,
+The two scopes produced so far are the full run and Allegheny County,
 Pennsylvania.
 
 ---
 
-## 3. Row counts, and why the two household files differ
+## 3. Row counts: every row is in the study sample
 
-| File | Rows (rdu) | Actual homes | Units the model did not evaluate |
-|---|---|---|---|
-| National household | 331,531 | 80,273,937 | kept, with blank result columns |
-| Allegheny household | 1,356 | 328,330 | **removed** (254 rdu of 1,610 dropped) |
+| File | Rows (rdu) | Actual homes |
+|---|---|---|
+| National household, main and detailed | 221,205 | 53,560,591 |
+| Allegheny household, main and detailed | 1,146 | 277,482 |
 
-The national file is the complete record and keeps every representative
-dwelling unit, including the ones the model could not evaluate. Their result
-columns are blank.
+Both household files hold only the **study sample**: the homes the model
+evaluates. The model's own results table has more rows (331,526 rdu
+nationally, 1,610 in Allegheny County), but every result is blank for a row
+outside the sample.
 
-The Allegheny file has those rows removed. The reason is an Excel hazard:
+Those rows are left out of these files because of an Excel hazard:
 **Excel treats a blank cell as zero in arithmetic.** Averaging an NPV column
 over rows the model never evaluated would quietly pull the average toward zero,
-with no warning and no error. Because the Allegheny file is the one meant to be
-opened and worked in directly, it is pre-filtered so that every row in it is a
-home the model actually priced.
+with no warning and no error. Every row in these files is a home the model
+actually priced.
 
-If you filter the national file yourself, apply the same rule: keep only rows
-where `include_heating` is `True`.
+The filter is the `include_sample` column, which is `True` on every row here.
+If you ever work from the model's full results table instead, apply the same
+rule: keep only rows where `include_sample` is `True`. Do not use
+`include_heating` or `include_cooling` for this; neither one alone is the
+sample.
 
 ### 3.1 How the sample narrows, step by step
 
-The model starts from the full ResStock sample and applies four filters in
-order. The same cascade runs for any geography; Allegheny County and the
-national run are shown side by side.
+A home is in the study sample when all three of these hold:
 
-| Step | Allegheny rdu | Allegheny homes | National rdu | National homes | % of stock |
-|---|---|---|---|---|---|
-| Sampled units, no filters | 2,434 | 589,347 | 548,916 | 132,909,587 | 100.00% |
-| 1. Occupied dwellings only | 2,197 | 531,962 | 482,597 | 116,851,700 | 87.92% |
-| 2. Single-family only | 1,610 | 389,831 | 331,531 | 80,273,937 | 60.40% |
-| 3. Heating fuel the study prices | 1,604 | 388,378 | 321,357 | 77,810,496 | 58.54% |
-| 4. Heating technology in the cost database | **1,356** | **328,330** | **260,211** | **63,005,153** | **47.40%** |
+- its heating system is one the study can replace and cost: a furnace, boiler
+  or electric baseboard that runs on electricity, natural gas, propane or fuel
+  oil, and is not already a heat pump (`include_heating`);
+- it has a central or room air conditioner of its own, not a cooling system
+  shared with other homes (`include_cooling`);
+- ResStock applied every measure package in the run to it.
 
-Steps 3 and 4 together are what the model records as `include_heating`, so the
-last row is what the model actually evaluates: **63.0 million real dwellings
-nationally, 328,330 in Allegheny County.**
+| Step | National rdu | National homes | Removed (rdu) | % of stock |
+|---|---|---|---|---|
+| ResStock 2022.1.1 stock | 548,916 | 132,909,587 | | 100.00% |
+| Package applies | 548,260 | 132,750,749 | 656 | 99.88% |
+| Occupied | 482,050 | 116,719,255 | 66,210 | 87.82% |
+| Single-family | 331,526 | 80,272,726 | 150,524 | 60.40% |
+| Not Alaska or Hawaii | 331,526 | 80,272,726 | 0 | 60.40% |
+| Heating fuel is electricity, natural gas, propane or fuel oil | 321,352 | 77,809,285 | 10,174 | 58.54% |
+| No existing heat pump | 290,005 | 70,219,204 | 31,347 | 52.83% |
+| Furnace, boiler or electric baseboard | 260,211 | 63,005,153 | 29,794 | 47.40% |
+| Central or room AC | 221,301 | 53,583,835 | 38,910 | 40.32% |
+| Cooling system not shared | **221,205** | **53,560,591** | 96 | **40.30%** |
 
-**The sample is occupied, single-family homes heated by electricity, natural
-gas, fuel oil, or propane, using a heating technology the cost database
-covers.** That last condition is what makes the cost estimates real figures
-rather than extrapolations, and it is the reason wall and floor furnaces,
-shared building heating systems, and a handful of "Other Fuel" homes are
-dropped.
+The last row is what the model evaluates: **53.6 million real dwellings
+nationally.**
 
-Cooling is never a filter. A dwelling with no air conditioning still gets a
-heating result. Of the 1,610 single-family Allegheny rdu:
+The same steps for Allegheny County, starting from its single-family rdu:
 
-| Cooling system | rdu | Actual homes | In scope |
+| Step | Allegheny rdu | Allegheny homes | Removed (rdu) |
 |---|---|---|---|
-| Central AC | 824 | 199,516 | yes |
-| Room AC | 504 | 122,034 | yes |
-| No cooling recorded | 268 | 64,891 | no |
-| Heat Pump | 14 | 3,390 | no |
-| **Cooling in scope** | **1,328** | **321,550** | |
+| Single-family | 1,610 | 389,831 | |
+| Heating fuel is electricity, natural gas, propane or fuel oil | 1,604 | 388,378 | 6 |
+| No existing heat pump | 1,590 | 384,988 | 14 |
+| Furnace, boiler or electric baseboard | 1,356 | 328,330 | 234 |
+| Central or room AC | 1,147 | 277,724 | 209 |
+| Cooling system not shared | **1,146** | **277,482** | 1 |
 
-These counts are reproducible: `cmu_tare_model/utils/tare_sample_size.py`
-recomputes the whole cascade from the raw ResStock files for any county, state,
-or the nation.
+**Cooling is a filter.** A home with no air conditioning is not in the sample.
+For that home the heat pump would add cooling it never had, which is a new
+service, not a change to an existing one. A home whose cooling system is
+shared with other homes is also left out, because there is no replacement cost
+data for a shared system. Of the 1,146 Allegheny rdu in the sample, 782 have
+central AC and 364 have room AC.
 
-> **Note (2 Oct 2026):** `tare_sample_size.py` has been retired and is no longer
-> in the codebase. The study-sample funnel is now built by `build_sample_funnel`
-> (`energy_consumption_and_metadata/study_sample.py`) and saved with each run
-> under `output_results/baseline_summary/sample_funnel/`.
+The national table is built by `build_sample_funnel`
+(`cmu_tare_model/energy_consumption_and_metadata/study_sample.py`) and saved
+with each run under `output_results/baseline_summary/sample_funnel/`.
 
-### 3.2 Exactly which dwelling units were dropped, and why
+### 3.2 Which dwelling units are left out, and why
 
-A row is dropped when `include_heating` is `False`. That flag is the AND of two
-checks: the baseline heating **fuel** must be one the study models, and the
-baseline heating **technology** must be one it models. Of the 254 Allegheny rdu
-dropped, 248 fail only the technology check -- their fuel is fine.
+In Allegheny County, 464 of the 1,610 single-family rdu are outside the
+sample: 254 because of their heating system and 210 because of their cooling.
 
 | Heating system | rdu | Actual homes | Why it is out of scope |
 |---|---|---|---|
@@ -182,49 +191,58 @@ dropped, 248 fail only the technology check -- their fuel is fine.
 | Electricity ASHP | 14 | 3,390 | already a heat pump, so there is no fossil system for this retrofit to replace |
 | Natural Gas Shared Heating | 10 | 2,421 | heating is shared across a building, so a per-dwelling retrofit cost cannot be assigned |
 | Propane or Fuel Oil Wall/Floor Furnace | 2 | 484 | same wall and floor furnace exclusion |
-| No heating data recorded | 6 | 1,453 | nothing to compare a retrofit against |
-| **Total dropped** | **254** | **61,501** | |
+| Heating fuel not priced, or none recorded | 6 | 1,453 | the study prices electricity, natural gas, propane and fuel oil only |
+| **Total, heating** | **254** | **61,501** | |
+
+| Cooling, among the 1,356 rdu whose heating is in scope | rdu | Actual homes | Why it is out of scope |
+|---|---|---|---|
+| No central or room air conditioner | 209 | 50,605 | the heat pump would add a service the home never had |
+| Shared cooling system | 1 | 242 | no replacement cost data for a shared system |
+| **Total, cooling** | **210** | **50,848** | |
 
 The modeled heating technologies are furnaces and boilers only: electric
 baseboard, electric boiler, electric furnace, and fuel boilers and fuel furnaces
 running on natural gas, propane, or fuel oil.
 
-**Those 254 rdu represent 61,501 real dwellings, about 16% of Allegheny
-County's single-family stock.** That is the figure to quote, not 254.
+**Those 464 rdu represent 112,349 real dwellings, about 29% of Allegheny
+County's single-family stock.** That is the figure to quote, not 464.
 
 Two things are worth saying plainly, because the summary count is easy to
 misread:
 
-- **These are mostly not dwellings without heating.** Only 6 rdu (1,453 homes)
-  have no heating system. 224 rdu (54,237 homes) have a wall or floor furnace,
-  which is a real heating system that this version of the model does not cost
-  out.
-- **Most of them do have air conditioning.** 181 of the 254 rdu have
-  `include_cooling = True`. Being dropped from this file says nothing about
-  whether the dwelling has cooling.
+- **The heating group is mostly not dwellings without heating.** Only 6 rdu
+  (1,453 homes) have no priced heating fuel. 224 rdu (54,237 homes) have a
+  wall or floor furnace, which is a real heating system that this version of
+  the model does not cost out.
+- **The cooling group has heating the study could replace.** Those 210 rdu are
+  left out only because they have no air conditioner of their own.
 
-One exclusion is study design rather than a gap in the cost database: a
+Two exclusions are study design rather than gaps in the cost database. A
 dwelling that already has an air-source heat pump is removed because there is
-no fossil heating system for this retrofit to replace. In Allegheny County that
-is 14 rdu, about 3,390 homes. **Nationally it is the single largest excluded
-group** -- 31,347 rdu, roughly 7.6 million homes, about half of everything
-removed at step 4. Allegheny is unusual in being dominated by wall and floor
-furnaces.
+no fossil heating system for this retrofit to replace: 14 rdu (about 3,390
+homes) in Allegheny County and 31,347 rdu (about 7.6 million homes)
+nationally. A dwelling with no air conditioner of its own is removed for the
+reason given in section 3.1: 209 rdu in Allegheny County and 38,910 rdu (about
+9.4 million homes) nationally, the largest single group removed.
 
-National step 4 removals, for contrast with the Allegheny table above:
+National removals after the single-family step, for contrast with the
+Allegheny tables above:
 
-| Removed nationally | rdu | Actual homes | Share of step 4 |
-|---|---|---|---|
-| Electricity ASHP | 31,347 | 7,590,081 | 51% |
-| Wall/Floor Furnace, all fuels | 28,741 | 6,959,088 | 47% |
-| Shared Heating, all fuels | 1,058 | 256,175 | 2% |
-| **Total** | **61,146** | **14,805,343** | |
+| Removed nationally | rdu | Actual homes |
+|---|---|---|
+| Heating fuel not priced, or none recorded | 10,174 | 2,463,441 |
+| Electricity ASHP (existing heat pump) | 31,347 | 7,590,081 |
+| Wall/Floor Furnace, all fuels | 28,741 | 6,959,087 |
+| Shared Heating, all fuels | 1,053 | 254,964 |
+| No central or room air conditioner | 38,910 | 9,421,318 |
+| Shared cooling system | 96 | 23,245 |
+| **Total** | **110,321** | **26,712,135** |
 
 ### 3.3 How this compares with ResStock 2025 dual-fuel eligibility
 
 The filters are similar in spirit to the ones ResStock 2025 applies for its
 Dual Fuel Heating System package, which reaches 44.65% of stock against TARE's
-47.40%. The two arrive at a similar share by different routes:
+40.30%. The two arrive at a similar share by different routes:
 
 | Requirement | TARE | ResStock 2025 dual fuel |
 |---|---|---|
@@ -237,36 +255,43 @@ Dual Fuel Heating System package, which reaches 44.65% of stock against TARE's
 | Requires ducts | **no** | **yes** |
 | Requires a natural gas hookup | **no** | **yes** |
 
+TARE also requires a central or room air conditioner of the home's own, which
+this table does not compare.
+
 Two points a reader should not misread. ResStock 2025's natural-gas condition
 is a **hookup** requirement, not a restriction on the existing heating fuel --
 its fuel list is the same four fuels TARE uses. The hookup is what makes gas
 available as the dual-fuel backup. And the duct requirement is substantial:
-85% of the homes TARE evaluates are ducted, so adding that condition would take
-TARE from 47.40% to 40.15% of stock, just below ResStock's figure.
+88.76% of the homes TARE evaluates are ducted, so adding that condition would
+take TARE from 40.30% to 35.77% of stock, further below ResStock's figure.
 
 The two studies are built on different ResStock vintages (2022.1.1 here, 2025
 there), so this is a comparison of scope, not a like-for-like overlap.
 
-### 3.4 This rule is under review
+### 3.4 What is decided, and what is still open
 
-Whether these homes should be dropped is an open question as of 18 August 2026.
-The case for keeping them: a home with a wall furnace, or with no system at all,
-can still install a heat pump, and in the real world households do install
-central HVAC for the first time when it becomes affordable. The case for
-dropping them: the model produced no NPV, no savings, and no adoption flag for
-them, so every result column is blank, and blanks in Excel behave as zeros.
+**Decided: homes with no air conditioner of their own are left out.** The
+reason is in section 3.1, and it is listed among the study's limitations.
+
+**Still open: wall and floor furnaces.** Whether these homes should be
+evaluated was an open question as of 18 August 2026 and has not been settled.
+The case for keeping them: a home with a wall furnace can still install a heat
+pump, and in the real world households do install central HVAC for the first
+time when it becomes affordable. The case for leaving them out: the model
+produces no NPV, no savings, and no adoption flag for them.
 
 If the modeled technology list is widened in a later release, these homes gain
-real numbers and the drop becomes unnecessary. Until then, treat the 1,356-row
-count as a property of **this** export rather than a fixed feature of Allegheny
-County, and use the national file if you need the complete 1,610.
+real numbers. Until then, treat the 1,146-row count as a property of **this**
+release rather than a fixed feature of Allegheny County. The complete 1,610
+rows are in the model's saved results table, not in these files.
 
 ---
 
-## 4. The household CSV: 154 columns
+## 4. The household CSV: 167 columns
 
 `bldg_id` is the row index and is written as the first column, so the file has
-155 columns on disk.
+168 columns on disk. The detailed copy has the same 167 columns plus 150
+per-fuel columns (group 10b): 317 in all, 318 on disk.
 
 The columns are ordered left to right as the derivation runs: who the home is,
 what it consumes, what that costs, what the equipment costs, and finally the
@@ -280,9 +305,10 @@ NPV and the adoption flag.
 | 4 | Household income | 7 |
 | 5 | Existing HVAC | 15 |
 | 6 | Retrofit HVAC | 2 |
-| 7 | Applicability flags | 2 |
+| 7 | Sample flags | 3 |
 | 8 | Peak demand | 12 |
-| 9 | Base-year consumption | 12 |
+| 9 | Base-year consumption: primary system and whole home | 12 |
+| 9b | Base-year consumption: fans, pumps and heat-pump backup | 12 |
 | 10 | Annual projected consumption | 60 |
 | 11 | Lifetime fuel costs | 7 |
 | 12 | Installed costs and applied credit | 4 |
@@ -292,7 +318,9 @@ NPV and the adoption flag.
 | 16 | Net capital cost | 1 |
 | 17 | NPV | 1 |
 | 18 | Economic adopter flag | 1 |
-| | **Total** | **154** |
+| | **Total, main file** | **167** |
+| 10b | Annual consumption by fuel, detailed copy only | 150 |
+| | **Total, detailed copy** | **317** |
 
 Below, `{mp}` is `3` or `4`. Everything with a `ref2025_mp{mp}_` prefix is a
 model result for that measure package under the 2025 Reference Case.
@@ -305,11 +333,12 @@ model result for that measure package under the 2025 Reference Case.
 a number** -- the leading `G` and the trailing zeros are meaningful.
 `county_fips` is the numeric equivalent (Allegheny is `42003`).
 
-`weight` is how many real U.S. dwellings this row represents:
-**242.131013**, identical for every row in this release. Multiply by it, or sum
-it, to convert a count of rows into a count of actual homes. Because it is the
-same everywhere, weighting changes totals but never changes an average or a
-share -- a weighted mean and an unweighted mean are the same number here.
+`weight` is how many real U.S. dwellings this row represents: **242.131013**
+(written in the file as 242.13101272727272), identical for every row in this
+release. Multiply by it, or sum it, to convert a count of rows into a count of
+actual homes. Because it is the same everywhere, weighting changes totals but
+never changes an average or a share -- a weighted mean and an unweighted mean
+are the same number here.
 
 ### Group 2 -- Geography (11)
 
@@ -371,11 +400,14 @@ as the other existing-system columns, not because they hold a baseline value.
 
 `upgrade_hvac_heating_efficiency`, `upgrade_hvac_cooling_efficiency`
 
-### Group 7 -- Applicability flags (2)
+### Group 7 -- Sample flags (3)
 
-`include_heating`, `include_cooling`
+`include_sample`, `include_heating`, `include_cooling`
 
-These two flags explain every blank cell in the file. See section 5.
+`include_sample` is the study-sample flag (section 3.1). The other two are the
+heating and cooling checks behind it. **All three are `True` on every row of
+these files**, because the files hold only study-sample rows. They are shipped
+so the file states the filter it was built with. See section 5.
 
 ### Group 8 -- Peak demand (12)
 
@@ -402,7 +434,7 @@ value means the heat pump raises the peak**, which is common on the heating
 side because the baseline furnace burned fuel while the heat pump draws
 electricity.
 
-### Group 9 -- Base-year consumption (12)
+### Group 9 -- Base-year consumption: primary system and whole home (12)
 
 All in kWh of site energy, for the year 2025.
 
@@ -413,15 +445,61 @@ All in kWh of site energy, for the year 2025.
 `mp{mp}_cooling_consumption`, `base_total_electricity_consumption`,
 `mp{mp}_total_electricity_consumption`, `baseline_total_site_consumption`
 
+**The first nine columns are primary-system energy only**: the energy used by
+the furnace, boiler, baseboard, air conditioner or heat pump itself. They do
+not include fans, pumps, or a heat pump's backup heat. Those parts are in
+group 9b, and the per-year columns in group 10 count everything.
+
 `baseline_heating_consumption` is the **sum across all four baseline heating
-fuels** for that home, expressed in kWh. A home heats with one fuel, so in
-practice one of the four `base_*_heating_consumption` columns is non-zero and
-the sum equals it.
+fuels** of the primary-system columns for that home, expressed in kWh. A home
+heats with one fuel, so in practice one of the four
+`base_*_heating_consumption` columns is non-zero and the sum equals it.
+
+**A zero in `baseline_heating_consumption` is a real zero, not a missing
+value.** It is exactly 0 for 1,020 rdu (about 246,974 homes), in California
+(486), Florida (368), Arizona (137), Nevada (25) and Texas (4): homes whose
+heating system used no energy in the weather year ResStock simulates. They are
+in the sample and have an NPV.
 
 `base_total_electricity_consumption` and
 `mp{mp}_total_electricity_consumption` are whole-home **electricity**, not all
 fuels. `baseline_total_site_consumption` is whole-home **all-fuel** site energy
 and is the denominator of `mp{mp}_modeled_savings_frac` in group 13.
+
+### Group 9b -- Base-year consumption: fans, pumps and heat-pump backup (12)
+
+kWh of site energy for the year 2025, one column per fuel and part. The last
+column of the table counts study-sample rdu with a value above zero.
+
+| Column | What it is | Above zero in |
+|---|---|---|
+| `base_electricity_heating_fansPumps_consumption` | electricity for the existing heating system's fan or pumps | 202,058 rdu |
+| `base_electricity_cooling_fansPumps_consumption` | electricity for the existing air conditioner's fan | 177,638 rdu |
+| `mp{mp}_electricity_heating_fansPumps_consumption` | electricity for the heat pump's fan, heating | 219,093 rdu (MP3), 218,901 (MP4) |
+| `mp{mp}_electricity_heating_hpBackup_consumption` | the heat pump's electric backup heat | 194,258 rdu (MP3), 179,810 (MP4) |
+| `mp{mp}_electricity_cooling_fansPumps_consumption` | electricity for the heat pump's fan, cooling | 221,192 rdu (MP3), 221,191 (MP4) |
+| `base_electricity_heating_hpBackup_consumption`, `base_naturalGas_heating_hpBackup_consumption`, `base_propane_heating_hpBackup_consumption`, `base_fuelOil_heating_hpBackup_consumption` | backup heat of an existing heat pump | none: 0 on every row, because homes with an existing heat pump are outside the sample |
+| `mp{mp}_naturalGas_heating_hpBackup_consumption`, `mp{mp}_propane_heating_hpBackup_consumption`, `mp{mp}_fuelOil_heating_hpBackup_consumption` | fossil backup heat of the new heat pump | none: 0 on every row, because MP3 and MP4 use electric backup only |
+
+The seven columns that are 0 on every row are kept so the column set does not
+change when a release reports them. The ResStock 2025 dual-fuel package, for
+example, burns gas as backup heat.
+
+Add these to the primary-system columns of group 9 and you have a stream's
+full 2025 energy use, which is exactly the 2025 column of group 10:
+
+```
+baseline heating, 2025 = the four base_*_heating_consumption columns
+                         + base_electricity_heating_fansPumps_consumption
+                         + the four base_*_heating_hpBackup_consumption columns
+retrofit heating, 2025 = mp{mp}_heating_consumption
+                         + mp{mp}_electricity_heating_fansPumps_consumption
+                         + the four mp{mp}_*_heating_hpBackup_consumption columns
+baseline cooling, 2025 = base_electricity_cooling_consumption
+                         + base_electricity_cooling_fansPumps_consumption
+retrofit cooling, 2025 = mp{mp}_cooling_consumption
+                         + mp{mp}_electricity_cooling_fansPumps_consumption
+```
 
 ### Group 10 -- Annual projected consumption (60)
 
@@ -443,8 +521,44 @@ home's census division: heating uses the `hdd` rows, cooling the `cdd` rows, of
 every division, which is what makes 2025 the anchor year. Heating factors fall
 over time and cooling factors rise, reflecting the projected climate.
 
-These columns are what let you apply your own fuel prices. Multiply a year's
-consumption by a $/kWh price and you have that year's cost.
+**Each total counts every fuel and every part** (primary system, fans and
+pumps, heat-pump backup), added together in kWh. The 2025 column equals the
+sum of that stream's group 9 and group 9b columns.
+
+**A baseline heating total cannot always be priced with one price.** For a
+gas, propane or fuel oil home it is mostly fuel plus a little electricity for
+the fan or pumps. To apply your own prices, split the total by fuel first.
+There are two ways:
+
+- use the detailed copy, which has each year's total already split by fuel
+  (group 10b); or
+- split it yourself. Every fuel in a stream is scaled by the same degree-day
+  factor, so a fuel's share of the total is the same in every year as in 2025:
+  fuel kWh in a year = that fuel's 2025 kWh (groups 9 and 9b) x (that year's
+  total / the 2025 total). Where the 2025 total is 0, every year is 0.
+
+Retrofit heating and both cooling streams are all electricity for MP3 and MP4,
+so those three totals can be priced directly at the electricity price.
+
+### Group 10b -- Annual consumption by fuel (150), detailed copy only
+
+In the detailed copy, each stream's 15 totals are followed by the same totals
+split by fuel:
+
+| Stream | Fuels | Columns | Column pattern |
+|---|---|---|---|
+| Baseline heating | electricity, naturalGas, fuelOil, propane | 60 | `baseline_{year}_heating_{fuel}_consumption` |
+| Retrofit heating | electricity, naturalGas, fuelOil, propane | 60 | `ref2025_mp{mp}_{year}_heating_{fuel}_consumption` |
+| Baseline cooling | electricity | 15 | `baseline_{year}_cooling_electricity_consumption` |
+| Retrofit cooling | electricity | 15 | `ref2025_mp{mp}_{year}_cooling_electricity_consumption` |
+
+Each value is that fuel's full use for the end use in that year, every part
+included. A stream's fuel columns add up to its total column. A fuel the home
+does not use is 0, not blank; the retrofit heating columns for natural gas,
+fuel oil and propane are 0 on every row for MP3 and MP4.
+
+To cost a year, multiply each fuel column by that fuel's price for the year
+and add the results (section 8).
 
 ### Group 11 -- Lifetime fuel costs (7)
 
@@ -467,14 +581,17 @@ savings came out negative -- the heat pump uses **more** cooling energy than
 the existing air conditioner. **This is a real result, not an error.** It is
 overwhelmingly a change in service: a room unit cools one room while the heat
 pump cools the whole house. The share of affected homes is measure-package
-specific and, in Allegheny County, well above the national share:
+specific and, in Allegheny County, above the national share:
 
 | Scope | MP | Room AC | Central AC |
 |---|---|---|---|
-| National | MP3 | 90.68% | 10.84% |
-| National | MP4 | 61.97% | 3.46% |
-| Allegheny | MP3 | 95.3% | 16.5% |
-| Allegheny | MP4 | 74.5% | 4.5% |
+| National | MP3 | 92.94% | 13.32% |
+| National | MP4 | 66.17% | 2.29% |
+| Allegheny | MP3 | 97.25% | 20.72% |
+| Allegheny | MP4 | 75.82% | 3.32% |
+
+The sample has 43,564 room AC rdu and 177,641 central AC rdu nationally, and
+364 and 782 in Allegheny County.
 
 The model counts the extra cost and gives no credit for the extra comfort,
 because the adoption
@@ -498,11 +615,10 @@ upgrade cost; splitting one piece of equipment in two would double-count it.
 The two `replacement` columns are counterfactuals -- money the household does
 not spend because it bought a heat pump instead. They are credits, not costs.
 
-The last column exists because the applied credit is not always the same as the
-raw cooling replacement cost. It is `0.00` for a dwelling with no air
-conditioner, and `0.00` for one that has an air conditioner but no recorded
-replacement cost (269 rdu nationally, about 65,100 homes). Use the **applied**
-column when checking the arithmetic.
+The last column is the cooling credit the NPV subtracted. In these files it
+equals `mp{mp}_cooling_replacement_installed_cost_v4MID` on every row, because
+every study-sample home has an air conditioner of its own with a replacement
+cost.
 
 ### Group 13 -- Rebate inputs (3)
 
@@ -528,8 +644,9 @@ in this file.
 USD2025. Each is the sum over 2025-2039 of that year's saving divided by
 `(1 + 0.07) ^ (year - 2025)`. Year 2025 is not discounted.
 
-The cooling column is `0.00` for homes with no air conditioner, not blank --
-it is the value the NPV actually used.
+Either column can be negative. The heat pump then costs more to run for that
+end use than the existing system did. Group 11 explains this for cooling, and
+the worked example in section 10 shows it for heating.
 
 ### Group 16-18 -- The result (3)
 
@@ -537,7 +654,7 @@ it is the value the NPV actually used.
 |---|---|
 | `ref2025_mp{mp}_heatingLCC_coolingLCC_unsub_net_capital_cost_v4MID` | heat pump cost minus both avoided replacements |
 | `ref2025_mp{mp}_heatingLCC_coolingLCC_unsub_private_npv_fixed_base` | the NPV, in USD2025 |
-| `ref2025_mp{mp}_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base` | 1.0 adopts, 0.0 does not, blank not applicable |
+| `ref2025_mp{mp}_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base` | 1.0 adopts, 0.0 does not |
 
 Reading the name: `heatingLCC_coolingLCC` means both avoided replacements are
 credited; `unsub` means no rebate is applied.
@@ -552,71 +669,83 @@ rebate assumptions on top. The other eight still exist in the full model output.
 
 ## 4.1 What is deliberately not in the file, and why
 
-The model produces far more than 154 columns per home. This export selects a
-subset. Nothing below was lost or forgotten -- each was left out for a stated
-reason, and all of it still exists in the full model output.
+The model's results table has 215 columns per home, and this export takes 107
+of them (the other 60 come from the fuel-cost table). Nothing below was lost
+or forgotten -- each was left out for a stated reason, and all of it still
+exists in the full model output.
 
 | Left out | How many | Why |
 |---|---|---|
 | Eight of the nine NPV cases, with their net capital cost and adopter flags | 24 | The model prices three credit scopes, each with no rebate, a December 2024-guidance rebate, and a June 2026-guidance rebate. This export ships the **unsubsidized** case that credits both avoided replacements, because the intended use is to model unsubsidized economics and apply your own rebate assumptions on top. Shipping all nine invites averaging across cases that are alternatives, not additive. |
-| The December 2024-guidance rebate amount | 1 | This export is unsubsidized. The June 2026 amount is kept as reference (section 7); carrying two competing rebate vintages beside an unsubsidized NPV is an invitation to subtract the wrong one. |
+| The December 2024-guidance rebate amount and its program label | 2 | This export is unsubsidized. The June 2026 amount is kept as reference (section 7); carrying two competing rebate vintages beside an unsubsidized NPV is an invitation to subtract the wrong one. |
 | `ref2025_mp{mp}_heating_total_capital_cost_v4MID` | 1 | Despite the name, this column has the December 2024 rebate already netted out of it -- for some homes by as much as $8,000. In an unsubsidized file that is a trap. The gross installed cost is shipped instead, as `mp{mp}_heating_upgrade_installed_cost_v4MID`. |
-| The other private discount rates | 3 | The model can run at 3%, 7%, 10%, and a variable rate. Only the 7% (`fixed_base`) run exists for this release, so the other columns would be blank or misleading. |
-| Emissions and climate damages | 12 shipped previously, 48 in the model | Removed at the researcher's direction. They play no part in the adoption decision, which is based on the private NPV alone, so carrying them beside the NPV suggests a link that the model does not make. |
-| Bookkeeping columns | 18 | REMDB cost-table row lookups (`*_pm1_euss`, `*_pm2_euss`, `*_pm2_euss_original`), internal `row_id_*` fields, and the intermediate validation flags. They describe how the model found a number, not the number itself. |
+| `private_discount_rate_variable` | 1 | The model can run at 3%, 7%, 10%, and a variable rate. Only the 7% (`fixed_base`) run exists for this release, so this column would be misleading. |
+| Emissions and climate damages | 48 | Removed at the researcher's direction. They play no part in the adoption decision, which is based on the private NPV alone, so carrying them beside the NPV suggests a link that the model does not make. |
+| Average annual fuel costs and their percent change | 6 | Summaries of the lifetime fuel costs in group 11, which are shipped. |
+| Intermediate energy totals and checks | 6 | `mp{mp}_total_site_consumption`, the two `..._heating_annual_consumption_kwh` columns, `mp{mp}_hvac_energy_savings_kwh`, `mp{mp}_whole_home_energy_savings_kwh`, and `mp{mp}_modeled_savings_frac_whole_home`. The heating and cooling ones can be rebuilt from the 2025 columns of group 10. The whole-home ones are a cross-check against ResStock's own whole-home change and feed no result. |
+| Three equipment sizes and one climate zone label | 4 | `base_size_heating_system_primary_k_btu_h`, `base_size_cooling_system_primary_k_btu_h`, `size_heat_pump_backup_primary_k_btu_h`, `climate_zone_iecc`. Not selected for this export; see the note on equipment sizes in group 5. |
+| Bookkeeping columns | 16 | REMDB cost-table row lookups (`row_id_*`, `*_pm1_euss`, `*_pm2_euss`, `*_pm2_euss_original`) and the intermediate validation flags (`include_all`, `valid_fuel_*`, `valid_tech_*`). They describe how the model found a number, not the number itself. |
 
-Two of the validation flags are an exception and **are** shipped:
-`include_heating` and `include_cooling`. They are the explanation for every
-blank cell in the file, so they travel with it (see sections 3.1 and 5).
+Three of the validation flags **are** shipped: `include_sample`,
+`include_heating` and `include_cooling` (see sections 3.1 and 5).
 
 ---
 
-## 5. Blank cells mean "not applicable", never zero
+## 5. Blanks, zeros, and the three flags
 
-The export never fills or coerces a blank. A blank means the model did not
-evaluate that quantity for that home.
+The export never fills a blank, and it never turns a zero into a blank.
 
-| Flag | True when | Share of the national run |
+**Blanks.** These files hold only study-sample rows, so no result is blank
+here. One shipped column has blanks: `gea_region`, for 5 rdu (about 1,211
+homes) in one county (FIPS 46102) that the model's county-to-region table does
+not cover. That column is used only for emissions and climate damages, which
+are not in this file, so nothing else on those rows is affected.
+
+**Zeros.** A zero is a real value. `baseline_heating_consumption` is 0 for
+1,020 rdu (group 9). `mp{mp}_heating_consumption` is 0 for 103 rdu under MP3
+and 1,211 under MP4. `baseline_cooling_consumption` is 0 for 7 rdu. All of
+these homes are in the sample and have an NPV.
+
+**The three flags.** In the model's full results table of 331,526 rdu:
+
+| Flag | True when | Share of the full results table |
 |---|---|---|
-| `include_heating` | baseline heating fuel and technology are both in scope | 260,211 of 331,531 rdu = **78.49%** |
-| `include_cooling` | the dwelling has central or room air conditioning | 250,576 of 331,531 rdu = **75.58%** |
+| `include_sample` | every condition in section 3.1 holds | 221,205 of 331,526 rdu = **66.72%** |
+| `include_heating` | baseline heating fuel and technology are both in scope | 260,211 of 331,526 rdu = 78.49% |
+| `include_cooling` | the dwelling has a central or room air conditioner of its own | 250,307 of 331,526 rdu = 75.50% |
 
 Because the weight is the same for every row, those shares are identical
 whether you count rows or actual homes.
 
-Every heating-side column is blank where `include_heating` is `False`. Every
-cooling-side column is blank where `include_cooling` is `False`. A home is out
-of scope for heating if it has no heating system, or heats with a fuel or
-technology the study does not model -- including homes that **already have a
-heat pump**, which are excluded because there is no fossil system for the
-retrofit to replace.
+In these files all three are `True` on every row. `include_sample` is the one
+that defines the sample. The other two are not enough on their own: a home can
+pass the heating check and have no air conditioner.
 
-**These two shares are the correct denominators for any per-home average.**
-Using 331,531 will understate every average.
-
-The Allegheny file's pre-filter drops on `include_heating` alone (section 3),
-so its row count -- 1,356 -- is the correct heating-side denominator, but
-**not** the cooling-side one. 209 of the 1,356 exported rdu have
-`include_cooling = False` (no central or room air conditioning recorded), so
-every cooling-side column is blank for them. The correct cooling denominator
-for the Allegheny file is **1,147**, not 1,356.
+**Denominators.** Every row is a home the model evaluated, so the row count of
+the file is the correct denominator for any per-home average: 221,205
+nationally and 1,146 in Allegheny County. (Of Allegheny County's 1,610
+single-family rdu, 1,356 pass the heating check and 1,327 the cooling check;
+1,146 pass both.)
 
 ---
 
-## 6. Rounding, and the one place it shows
+## 6. Rounding
 
-The model rounds each annual fuel cost to 2 decimals **before** summing and
-discounting. If you rebuild the lifetime totals, round each year to cents first,
-or you will drift a few cents from the shipped figure.
+**Values are saved as the model computed them, not rounded.** Energy, yearly
+costs, lifetime costs and discounted savings carry full precision, so a value
+such as 12795.77598727 kWh is normal. `weight` is written as
+242.13101272727272; this document quotes it as 242.131013.
 
-**One known small mismatch.** The consumption columns in group 10 are stored
-rounded to 2 decimals, but the model computed each annual cost from the
-unrounded consumption. So when you do `consumption x price` yourself and round
-to cents, you will match the model's annual cost for about 95% of home-year
-cells and land **one cent** away for the rest. The error is one cent, never
-more, and it does not accumulate into anything material over 15 years. The
-shipped lifetime totals, discounted savings, and NPV are all computed from the
-unrounded values and are exact.
+Five kinds of value are rounded to cents on purpose: the NPV, installed costs,
+rebate amounts, household income, and area median income.
+
+Two consequences:
+
+- If you rebuild the NPV from its parts (section 10), you land within half a
+  cent of the shipped NPV, because the NPV is rounded to cents and the
+  discounted savings are not.
+- Do not round as you go. The model does not round a year's cost before
+  summing or discounting. Round only the final figure you report.
 
 ---
 
@@ -635,6 +764,10 @@ unrounded values and are exact.
   20% or more caps at $2,000, 35% or more caps at $4,000, covering half the
   project cost.
 
+**As modeled here, both programs reach only homes with electric heating.** In
+these files no natural gas, propane or fuel oil home has a label other than
+`'Not Eligible'`.
+
 **Treat these as provisional.** Four things are not modeled:
 
 1. **No state funding cap.** The amounts are uncapped potential, not money that
@@ -645,10 +778,11 @@ unrounded values and are exact.
    not modeled.
 4. **One program per home** -- never both.
 
-`mp{mp}_modeled_savings_frac` divides the model's heating and cooling energy
-change by `baseline_total_site_consumption` (group 9), so you can check it.
-The numerator is degree-day-adjusted while the denominator is the raw ResStock
-total; this mix is an accepted approximation.
+`mp{mp}_modeled_savings_frac` is the home's heating and cooling energy saving
+divided by `baseline_total_site_consumption` (group 9), so you can check it.
+The saving is read from the 2025 columns of group 10: (baseline heating +
+baseline cooling) - (retrofit heating + retrofit cooling). Every fuel and
+every part is counted, and both sides are ResStock's own base-year values.
 
 ---
 
@@ -678,8 +812,9 @@ The projection factor always keys on **census division and fuel**, for all four
 fuels.
 
 Everything the retrofit consumes is electricity, so a retrofit cost is always
-the home's state electricity price. A baseline cost uses the price for the
-home's `base_heating_fuel`.
+the home's state electricity price. A baseline cost prices each fuel at its own
+price: the heating fuel named in `base_heating_fuel`, plus electricity for the
+fan or pumps of a gas, propane or fuel oil system.
 
 ### The fuel oil and propane rule, exactly
 
@@ -708,10 +843,10 @@ furnace replaced by an electric heat pump. Subtracting
 and therefore no meaning.
 
 **Always cost each side at its own fuel price first, then subtract the
-dollars.** The worked example in section 10 shows a home where the baseline
-kWh falls by 78% but the dollar saving is only $64 in the first year, because
-the gas it stops buying is a quarter the price of the electricity it starts
-buying.
+dollars.** The worked example in section 10 shows a home whose heating energy
+falls by 49% while its heating cost almost doubles, from $687 to $1,286 in the
+first year, because the gas it stops buying is about a quarter the price of
+the electricity it starts buying.
 
 ---
 
@@ -748,7 +883,8 @@ values.
 
 `bldg_id 491`, MP3, from the Allegheny household file. This is one
 representative dwelling unit, standing for about 242 real homes, so every
-dollar figure below is per dwelling, not per row-of-242.
+dollar figure below is per dwelling, not per row-of-242. Values are shown to
+two decimals here; the file holds full precision.
 
 | | |
 |---|---|
@@ -758,49 +894,70 @@ dollar figure below is per dwelling, not per row-of-242.
 | Baseline cooling | Central AC, SEER 13 |
 | Retrofit | ASHP, SEER 16, 9.5 HSPF |
 | Floor area | 1,690 sq ft |
-| `weight` | 242.131013 (real homes represented) |
-| `include_heating` / `include_cooling` | True / True |
+| `weight` | 242.13101272727272 (real homes represented) |
+| `include_sample` | True |
 | `private_discount_rate_fixed_base` | 0.07 |
 
 ### Step 1 -- base-year consumption (kWh, 2025)
 
 | Column | Value |
 |---|---|
-| `baseline_heating_consumption` | 12,795.78 |
-| `baseline_cooling_consumption` | 913.80 |
-| `mp3_heating_consumption` | 2,941.26 |
+| `base_naturalGas_heating_consumption` (the furnace's gas) | 12,795.78 |
+| `base_electricity_heating_fansPumps_consumption` (the furnace's fan) | 286.92 |
+| **Baseline heating, every part** | **13,082.69** |
+| `mp3_heating_consumption` (the heat pump itself) | 2,941.26 |
+| `mp3_electricity_heating_hpBackup_consumption` (electric backup heat) | 3,467.91 |
+| `mp3_electricity_heating_fansPumps_consumption` (the heat pump's fan) | 256.44 |
+| **Retrofit heating, every part** | **6,665.61** |
+| `base_electricity_cooling_consumption` | 913.80 |
+| `base_electricity_cooling_fansPumps_consumption` | 77.96 |
+| **Baseline cooling, every part** | **991.75** |
 | `mp3_cooling_consumption` | 630.69 |
+| `mp3_electricity_cooling_fansPumps_consumption` | 142.73 |
+| **Retrofit cooling, every part** | **773.41** |
 
-The heat pump uses 77% less heating energy. That is the efficiency gain, in
-energy. It is not the dollar saving, because the fuel changes.
+The four bold totals are the 2025 columns of group 10.
+
+The heat pump uses 49% less heating energy than the furnace and its fan. Just
+over half of the heat pump's heating energy is electric backup heat. That is
+the change in energy. It is not the change in dollars, because the fuel
+changes.
 
 ### Step 2 -- project each year with the degree-day factor
 
 2025 factors are 1.0, so 2025 consumption equals the base year exactly. By 2039
 the Middle Atlantic heating factor has fallen and the cooling factor has risen:
 
-| Year | Baseline heating kWh | Retrofit heating kWh | Baseline cooling kWh | Retrofit cooling kWh |
-|---|---|---|---|---|
-| 2025 | 12,795.78 | 2,941.26 | 913.80 | 630.69 |
-| 2032 | 12,175.41 | 2,798.66 | 1,082.01 | 746.78 |
-| 2039 | 11,822.60 | 2,717.56 | 1,150.00 | 793.71 |
+| Year | Baseline heating kWh | of which gas | of which electricity | Retrofit heating kWh | Baseline cooling kWh | Retrofit cooling kWh |
+|---|---|---|---|---|---|---|
+| 2025 | 13,082.69 | 12,795.78 | 286.92 | 6,665.61 | 991.75 | 773.41 |
+| 2032 | 12,448.41 | 12,175.40 | 273.01 | 6,342.44 | 1,174.31 | 915.78 |
+| 2039 | 12,087.69 | 11,822.60 | 265.10 | 6,158.66 | 1,248.11 | 973.33 |
 
-### Step 3 -- price each side at its own fuel
+The gas and electricity columns are in the detailed copy (group 10b). From the
+main file, split the baseline heating total with the 2025 shares, as group 10
+describes.
 
-Baseline heating is natural gas; everything else is electricity.
+### Step 3 -- price each fuel at its own price
 
-| Year | Base heat $/kWh | Base heat cost | Retrofit heat $/kWh | Retrofit heat cost | Heating saving |
+Baseline heating is natural gas for the furnace and electricity for its fan.
+Everything else is electricity.
+
+| Year | Gas $/kWh | Electricity $/kWh | Baseline heating cost | Retrofit heating cost | Heating saving |
 |---|---|---|---|---|---|
-| 2025 | 0.049391 | $631.99 | 0.192999 | $567.66 | $64.33 |
-| 2032 | 0.047931 | $583.58 | 0.198084 | $554.37 | $29.21 |
-| 2039 | 0.048939 | $578.59 | 0.203834 | $553.93 | $24.66 |
+| 2025 | 0.049390 | 0.193000 | $687.36 | $1,286.46 | -$599.10 |
+| 2032 | 0.047931 | 0.198085 | $637.66 | $1,256.34 | -$618.68 |
+| 2039 | 0.048939 | 0.203835 | $632.62 | $1,255.35 | -$622.73 |
+
+For 2025 the baseline heating cost is 12,795.78 kWh of gas x $0.049390 =
+$631.99, plus 286.92 kWh of fan electricity x $0.193000 = $55.37.
 
 This is the point of section 8. Electricity costs roughly four times as much
-per kWh as gas here, so a 77% cut in energy becomes a saving of only about $64
-in the first year.
+per kWh as gas here, so a 49% cut in heating energy becomes a heating bill
+that is about $600 a year higher.
 
-Cooling is electricity on both sides, so the saving is larger relative to the
-energy change: $54.64 in 2025, rising to $72.62 by 2039.
+Cooling is electricity on both sides, and the heat pump uses less of it: the
+cooling saving is $42.14 in 2025, rising to $56.01 by 2039.
 
 ### Step 4 -- discount and sum
 
@@ -809,46 +966,54 @@ Discount factor is `1 / 1.07 ^ (year - 2025)`, so 1.000000 in 2025, 0.622750 in
 
 | | Sum over 2025-2039 |
 |---|---|
-| Discounted heating saving | **$291.33** |
-| Discounted cooling saving | **$626.50** |
+| Discounted heating saving | **-$5,989.72** |
+| Discounted cooling saving | **$483.16** |
 
 These match `ref2025_mp3_heating_discounted_lifetime_savings_fixed_base` and
-`ref2025_mp3_cooling_discounted_lifetime_savings_fixed_base` exactly.
+`ref2025_mp3_cooling_discounted_lifetime_savings_fixed_base`.
 
-Note the cooling saving is more than double the heating saving, even though
-heating is by far the larger end use. Fuel switching, not efficiency, is what
-governs the heating side.
+The heating saving is negative: this home pays more to heat with the heat pump
+than with gas in every year. Fuel switching, not efficiency, is what governs
+the heating side.
 
 ### Step 5 -- net capital cost
 
 | | |
 |---|---|
 | `mp3_heating_upgrade_installed_cost_v4MID` | $12,084.50 |
-| less `mp3_heating_replacement_installed_cost_v4MID` | $3,734.48 |
-| less `mp3_cooling_replacement_credit_applied_v4MID` | $5,451.61 |
-| = `ref2025_mp3_heatingLCC_coolingLCC_unsub_net_capital_cost_v4MID` | **$2,898.41** |
+| less `mp3_heating_replacement_installed_cost_v4MID` | $3,873.50 |
+| less `mp3_cooling_replacement_credit_applied_v4MID` | $5,401.75 |
+| = `ref2025_mp3_heatingLCC_coolingLCC_unsub_net_capital_cost_v4MID` | **$2,809.25** |
 
 The heat pump costs $12,084.50, but this household was going to have to replace
 a furnace and an air conditioner anyway. Crediting both, the extra cost of
-choosing a heat pump is $2,898.41.
+choosing a heat pump is $2,809.25.
+
+`mp3_rebate_eligibility_june2026` is `'Not Eligible'` for this home and its
+rebate amount is 0. Neither enters this NPV, which is unsubsidized.
 
 ### Step 6 -- the NPV
 
 ```
-  $291.33   discounted heating saving
-+ $626.50   discounted cooling saving
-- $2,898.41 net capital cost
-= -$1,980.58
+  -$5,989.7165   discounted heating saving
++    $483.1618   discounted cooling saving
+-  $2,809.2500   net capital cost
+=  -$8,315.8046, which the model rounds to -$8,315.80
 ```
 
-`ref2025_mp3_heatingLCC_coolingLCC_unsub_private_npv_fixed_base` = **-$1,980.58**,
-matching to the cent, and
+`ref2025_mp3_heatingLCC_coolingLCC_unsub_private_npv_fixed_base` = **-$8,315.80**,
+and
 `ref2025_mp3_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base` = **0.0**,
 because the NPV is below zero.
 
-The story for this home: the heat pump is far more efficient and its extra
-capital cost is modest, but cheap natural gas means the energy savings do not
-repay the $2,898 premium within 15 years at a 7% discount rate.
+The arithmetic above uses four decimals on purpose. With the savings rounded
+to cents first, the sum comes to -$8,315.81, one cent off. Section 6 explains
+why.
+
+The story for this home: just over half of the heat pump's heating energy is
+electric backup heat, and electricity costs about four times as much per kWh
+as gas here, so heating costs about $600 more a year. The cooling saving and
+the two avoided replacements do not make up for it.
 
 ---
 
@@ -861,13 +1026,15 @@ and joined on `county`.
 |---|---|
 | `county` | Census GISJOIN string -- do not cast to a number |
 | `state` | two-letter abbreviation |
-| `home_count` | homes represented, that is the sum of `weight` |
-| `adoption_rate_pct` | percent 0-100, the share of **applicable** homes with NPV >= 0 |
+| `home_count` | study-sample homes in the county, that is the sum of `weight` |
+| `adoption_rate_pct` | percent 0-100, the share of study-sample homes with NPV >= 0 |
 | `operating_cost_pct_change` | percent, the county median of each home's `(retrofit - baseline) / baseline x 100` |
 | `baseline_elec_gwh`, `retrofit_elec_gwh`, `elec_change_gwh`, `site_energy_change_gwh` | GWh |
 | `pct_elec_demand_change`, `pct_site_energy_change` | percent |
 
-A county with too few sampled homes has blank metrics rather than zeros.
+Some counties rest on very few sampled dwelling units: 74 of the 3,079 counties
+have 1 rdu and 280 have 3 or fewer, so one rdu can set a county's value. Check
+`home_count` before quoting a county (242 homes is 1 rdu).
 
 **`site_energy_change_gwh` and `pct_site_energy_change` are all-fuel numbers**,
 separate from the electricity pair. They come from ResStock's whole-home site
@@ -886,35 +1053,36 @@ This export is built on ResStock 2022.1.1. The next version of the model moves
 to ResStock 2025 and adds dual-fuel (hybrid) systems, where a heat pump and a
 fossil backup share the heating load.
 
-Expect these to change: **column names**, the retrofit consumption columns
-(which will split by fuel rather than being electricity-only), the fuel-price
-path (which will become fuel-aware on the retrofit side), and the county
-geography. Analysis built on this file will need rework, not just a refresh.
-Anything you build should keep the column names in one place rather than
-scattered through formulas.
+Expect these to change: **column names**, the retrofit heating columns (a
+dual-fuel heat pump burns gas as backup, so the gas columns that are 0 today
+will hold numbers), and the county geography. Analysis built on this file will
+need rework, not just a refresh. Anything you build should keep the column
+names in one place rather than scattered through formulas.
 
 ---
 
 ## 13. Validation performed
 
-Checked on both MP3 and MP4:
+Checked on run `2026-10-05_21-33`, for both MP3 and MP4, by building the files
+with `export_tepper_household` from that run's saved results:
 
-- Round-trip comparison of the written CSV against its two source frames --
-  every value, the `bldg_id` index, and every blank in the same place.
-- Exported row count equals input row count for the full-scope file.
-- The 154 column names all resolve for both measure packages, in the declared
-  order, with no duplicates.
-- Column-by-column check that no value in any pre-existing column moved when
-  the new columns were added: 189 NPV-side columns compared with no tolerance,
-  zero differences.
-- The reconciliation in section 10 holds across every applicable dwelling unit:
-  discounted heating saving + discounted cooling saving - net capital cost
-  equals the shipped NPV, with none off by more than a cent.
-- Scope filtering verified against the national run: 1,610 Allegheny rdu,
-  254 removed as not applicable, 1,356 exported; the county table filters to
-  exactly one row.
-- The filter cascade in section 3.1 recomputed from the raw ResStock files by
-  `cmu_tare_model/utils/tare_sample_size.py`, matching at every step. (That
-  module has since been retired; see the note in section 3.1.)
-- A scope the run does not contain is skipped with a message rather than
-  writing an empty file; a mistyped county code raises an error.
+- Row counts: 221,205 in each national file and 1,146 in each Allegheny file.
+- Column counts: 167 in the main file and 317 in the detailed copy, in the
+  declared order, with no duplicate names.
+- `include_sample`, `include_heating` and `include_cooling` are `True` on
+  every row of every file.
+- The Allegheny files were read back and compared with the two source tables:
+  every value and every blank is in the same place.
+- The only blanks in a national file are the 5 in `gea_region`.
+- Each stream's per-fuel columns add up to its total in every year, and the
+  base-year columns of groups 9 and 9b add up to the 2025 totals.
+- The reconciliation in section 10 holds on every row: discounted heating
+  saving + discounted cooling saving - net capital cost equals the shipped
+  NPV, with none off by more than half a cent. The net capital cost equals the
+  heat pump cost minus the two credits, and the adopter flag is 1.0 exactly
+  where the NPV is zero or above.
+- The discounted savings were rebuilt from the per-year fuel costs and match
+  the shipped columns.
+
+Not rebuilt for this revision: the county file. It needs the county tables the
+main notebook produces.

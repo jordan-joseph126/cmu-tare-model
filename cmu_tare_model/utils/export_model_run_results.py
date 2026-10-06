@@ -44,8 +44,10 @@ def export_model_run_output(
               damages (any name starting with 'damages_')
             - 'fuel_costs_baseline', 'fuel_costs_ref2025': Fuel costs (any
               name starting with 'fuel_costs_')
-            - 'tepper_household': One-time Tepper household CSV (delegates to
-              export_tepper_household; uses df_results_export as the frame)
+            - 'tepper_household': One-time Tepper household CSVs, the main
+              file and the detailed copy, limited to the study sample
+              (delegates to export_tepper_household; uses df_results_export
+              as the frame)
             - 'tepper_county': One-time Tepper county CSV (delegates to
               export_tepper_county; requires county_tables)
         menu_mp: Measure package identifier (0 for baseline, nonzero for a measure package).

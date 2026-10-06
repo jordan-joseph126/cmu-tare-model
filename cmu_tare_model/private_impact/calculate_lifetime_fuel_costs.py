@@ -437,10 +437,10 @@ def _lookup_annual_fuel_price(
     - An unmapped FUEL returns NaN. Roughly 10,000 ResStock homes burn
       'Other Fuel' or have no heating fuel recorded, so FUEL_MAPPING leaves
       them blank. That is a real condition in the source data, not a mistake
-      in the model, and every one of those homes is already excluded from
-      results by include_heating. NaN is used rather than 0 because a zero
-      price would silently pull down any average it reached, while a NaN
-      cannot hide in one.
+      in the model, and every one of those homes is already left out of the
+      study sample (include_sample = False). NaN is used rather than 0
+      because a zero price would silently pull down any average it reached,
+      while a NaN cannot hide in one.
     - A missing REGION, POLICY SCENARIO, or YEAR raises. If the fuel resolved,
       the price table was meant to carry that combination, so a miss means the
       model asked for something the data does not contain -- most likely a

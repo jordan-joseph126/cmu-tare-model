@@ -126,9 +126,10 @@ def calculate_replacement_installed_cost(
     if verbose:
         print(f"\nCalculating {end_use} replacement costs ({cost_scenario})")
 
-    # ===== SPECIAL HANDLING FOR COOLING (METADATA-ONLY) =====
-    # Cooling is not in EQUIPMENT_SPECS so doesn't have include_cooling flag.
-    # Create temporary flag for validation framework, then clean up.
+    # ===== SPECIAL HANDLING FOR COOLING =====
+    # Fallback for a frame that arrives without an include_cooling flag. A
+    # model run always has one (cooling is in EQUIPMENT_SPECS), so during a
+    # run nothing below adds a category or a temporary flag.
     added_cooling_to_categories = False
     created_temp_flag = False
 
