@@ -11,8 +11,9 @@ Equipment types validated:
   - Propane Furnace
 
 For each equipment configuration, reports the 10th, 50th, and 90th percentile
-of installed costs across homes in the DataFrame, for each cost scenario
-(v3, v4MID, or whichever scenarios are active).
+of installed costs across the study-sample homes in the DataFrame
+(include_sample = True), for each cost scenario (v3, v4MID, or whichever
+scenarios are active).
 
 Binning approach:
   - Capacity (tons): round to nearest integer — [N-0.5, N+0.5) maps to bin N.
@@ -594,26 +595,36 @@ def run_capital_cost_validation(
 
     Analyzes installed costs already computed in the DataFrame, filtering and
     grouping by equipment SEER/AFUE ratings and capacity (tons or kBTU/h).
+    Every table covers the study sample only (include_sample = True).
 
     Args:
         df: The main home-level DataFrame (df_euss_am_mpX_home) with cost
-            columns already computed.
+            columns already computed and the include_sample column.
         menu_mp: Measure package number (e.g. 3, 4, 8).
         capital_costs_mpx: Optional CAPITAL_COSTS_MPX dict. If provided and
             the active scenarios include v4MID, the v4MID DataFrame is used
             for scenarios that may have additional columns.
         cost_scenarios: List of cost scenario keys (default: REMDB_COST_SCENARIO_KEYS).
-        verbose: Whether to print the six tables and the summary. When False,
+        verbose: Whether to print the five tables and the summary. When False,
             one line is printed. The returned tables are the same either way.
 
     Returns:
         Dict structured as results[category][technology][cost_type] = DataFrame:
           - category: 'heating', 'cooling'
           - technology: 'ashp', 'central_ac', 'gas_furnace', 'propane_furnace'
-          - cost_type: 'replacement', 'upgrade'
+          - cost_type: 'replacement', 'upgrade' ('ashp' has 'upgrade' only)
         Each DataFrame contains numeric columns: Capacity, Efficiency rating,
         and per-scenario N/P10/P50/P90 values (e.g. 'v4MID N', 'v4MID P50').
+
+    Raises:
+        KeyError: If df has no include_sample column.
     """
+    if 'include_sample' not in df.columns:
+        raise KeyError(
+            "df has no 'include_sample' column, so the study sample cannot "
+            "be selected.")
+    in_sample = df['include_sample'].astype(bool)
+
     if cost_scenarios is None:
         cost_scenarios = list(REMDB_COST_SCENARIO_KEYS)
 
@@ -623,7 +634,9 @@ def run_capital_cost_validation(
             "#  CAPITAL COST VALIDATION: Equipment-Level Disaggregation "
             f"(MP{menu_mp})")
         print(f"#  Active cost scenarios: {cost_scenarios}")
-        print(f"#  Total rdu in DataFrame: {len(df):,}")
+        print(
+            f"#  rdu in DataFrame: {len(df):,} | "
+            f"in the study sample: {int(in_sample.sum()):,}")
         print("#" * 110)
 
     # ── Determine which DataFrame to use for each scenario ──
@@ -661,6 +674,11 @@ def run_capital_cost_validation(
     else:
         df_work = df
 
+    # Every table describes the study sample only, as the get_*_homes helpers
+    # below do. Filtered after the extra columns are attached, because those
+    # are matched to df by row position.
+    df_work = df_work.loc[in_sample]
+
     total_homes = len(df_work)
     results = {}
     outlier_info = {}
@@ -669,24 +687,9 @@ def run_capital_cost_validation(
     # Each entry defines one equipment-type analysis to run.
     # 'category', 'technology', and 'cost_type' define the structured return dict keys:
     #   results_structured[category][technology][cost_type] = DataFrame
+    # There is no 'ASHP (Heating Replacement)' table: it would select homes
+    # that already have a heat pump, and those are outside the study sample.
     analyses = [
-        {
-            'label': 'ASHP (Heating Replacement)',
-            'category': 'heating',
-            'technology': 'ashp',
-            'cost_type': 'replacement',
-            'title': 'ASHP — Air Source Heat Pump (Heating Replacement, Centrally Ducted)',
-            'fn': _analyze_ashp,
-            'fn_kwargs': {'cost_type': 'replacement'},
-            'id_cols': ['Capacity (tons)', 'SEER'],
-            'cap_unit': 'tons', 'eff_label': 'SEER',
-            'notes': [
-                'Cost type: heating replacement (like-for-like ASHP)',
-                'Filter: heating_type = Electricity ASHP, hvac_has_ducts = Yes',
-                'SEER bins: heating_replacement_pm2_euss (floored efficiency, see clamping summary)',
-                'Costs: computed using floored efficiency (see Section 5 of protocol)',
-            ],
-        },
         {
             'label': 'Central AC (Cooling Replacement)',
             'category': 'cooling',
@@ -815,7 +818,7 @@ def run_capital_cost_validation(
     # ── Summary ──
     print(f"\n{'#' * 110}")
     print(f"#  VALIDATION SUMMARY")
-    print(f"#  Total rdu in DataFrame: {total_homes:,}")
+    print(f"#  Study-sample rdu: {total_homes:,}")
     print(f"{'#' * 110}")
     for label, df_r in results.items():
         if df_r.empty:
@@ -835,7 +838,7 @@ def run_capital_cost_validation(
 
             total_bins = len(df_r)
 
-            # Percentage of total homes in DataFrame
+            # Percentage of the study-sample rdu
             pct_of_total = (total_n / total_homes * 100) if total_homes > 0 else 0.0
 
             # Percentage of appliance-filtered homes (from outlier info)
@@ -845,7 +848,7 @@ def run_capital_cost_validation(
 
             print(f"  {label:<45}  {n_bins_with_data}/{total_bins} bins with data  |  "
                   f"{total_n:,} rdu matched  |  "
-                  f"{pct_of_total:.1f}% of all rdu  |  "
+                  f"{pct_of_total:.1f}% of sample rdu  |  "
                   f"{pct_of_appliance:.1f}% of {appliance_filtered:,} filtered")
 
     print(f"{'#' * 110}\n")
