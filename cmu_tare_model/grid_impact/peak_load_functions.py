@@ -419,6 +419,7 @@ def compute_county_scenario_profile(
         ),
         "n_adopters": len(effective_adopters),
         "n_total_buildings": len(all_baseline_bldgs),
+        "pct_adopters": (len(effective_adopters)/len(all_baseline_bldgs))*100
     }
 
     return df_profile, peak_dict
@@ -548,6 +549,7 @@ def peak_dicts_to_table(
     rows = [
         {
             "scenario": "Baseline",
+            "Adopting Homes (%)": 0.0, 
             "Heating Peak (MW)": first[heating_season]["baseline_peak_mw"],
             "Cooling Peak (MW)": first[cooling_season]["baseline_peak_mw"],
             "Absolute Annual Peak (MW)": first["baseline_peak_mw"],
@@ -561,6 +563,7 @@ def peak_dicts_to_table(
         rows.append(
             {
                 "scenario": label,
+                "Adopting Homes (%)": p["pct_adopters"],
                 "Heating Peak (MW)": p[heating_season]["scenario_peak_mw"],
                 "Cooling Peak (MW)": p[cooling_season]["scenario_peak_mw"],
                 "Absolute Annual Peak (MW)": p["scenario_peak_mw"],
