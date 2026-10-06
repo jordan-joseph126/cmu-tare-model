@@ -14,6 +14,9 @@ VERBOSE = False
 PRINT_DEBUG = False
 PRINT_VERBOSE_DATAFRAMES = False
 FIGURE_DPI = 600
+# Resolution of figures drawn on screen and in the notebook. Saved files use
+# FIGURE_DPI. 300 keeps a figure copied out of the notebook at print quality.
+FIGURE_DISPLAY_DPI = 300
 MAP_TITLE_FONT_SIZE = 18
 MAP_TITLE_PAD = 5
 MAP_CBAR_LABEL_FONT_SIZE = 18

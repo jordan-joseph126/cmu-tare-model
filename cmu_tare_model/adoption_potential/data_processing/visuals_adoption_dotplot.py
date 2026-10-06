@@ -35,7 +35,7 @@ import matplotlib.ticker as mtick
 import numpy as np
 import pandas as pd
 
-from cmu_tare_model.constants import FIGURE_DPI
+from cmu_tare_model.constants import FIGURE_DISPLAY_DPI, FIGURE_DPI
 from cmu_tare_model.utils.column_names import create_adoption_col
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 
@@ -50,7 +50,8 @@ plt.rcParams.update({
     'axes.labelsize': 11,
     'xtick.labelsize': 9,
     'ytick.labelsize': 9,
-    'figure.dpi': FIGURE_DPI,
+    'figure.dpi': FIGURE_DISPLAY_DPI,
+    'savefig.dpi': FIGURE_DPI,
 })
 
 # ===========================================================================

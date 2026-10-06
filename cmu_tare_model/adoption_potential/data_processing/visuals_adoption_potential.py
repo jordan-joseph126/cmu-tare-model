@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 from typing import List, Optional, Tuple, Dict, Any, Union
 
+from cmu_tare_model.constants import FIGURE_DISPLAY_DPI
 from cmu_tare_model.utils.column_names import create_adoption_col
 
 # =========================================================================
@@ -342,7 +343,7 @@ def subplot_grid_adoption_vBar(
         figsize=figure_size,
         sharex=sharex,
         sharey=sharey,
-        dpi=600  # High resolution for better quality!
+        dpi=FIGURE_DISPLAY_DPI
     )
 
     # Ensure axes is always 2D for consistent indexing
