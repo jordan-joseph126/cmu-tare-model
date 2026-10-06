@@ -1083,6 +1083,8 @@ with `export_tepper_household` from that run's saved results:
   where the NPV is zero or above.
 - The discounted savings were rebuilt from the per-year fuel costs and match
   the shipped columns.
-
-Not rebuilt for this revision: the county file. It needs the county tables the
-main notebook produces.
+- The county file was built with the main notebook's Tepper export cell, run
+  on the same saved results: 3,079 rows nationally and 1 for Allegheny County,
+  11 columns, no blank cell, and `home_count` adds up to 53,560,591 homes
+  nationally. The adoption and demand tables agree on every county's
+  `home_count`.

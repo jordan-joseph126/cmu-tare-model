@@ -115,6 +115,12 @@ def extract_adopter_ids(
 ) -> dict[str, dict[str, list[int]]]:
     """Build per-county adopter ID dictionary from a TARE output DataFrame.
 
+    Out of date, kept for reference only. It reads the tier labels of the
+    retired tiered-adoption column, and its 'all_filtered' list is every row
+    of the frame it is given, not the study sample. No notebook calls it: the
+    main notebook's grid-impact section builds the adopter ids itself, from
+    TARE_SAMPLE_IDS and the 0/1 economic-adopter column.
+
     For each county (identified via the ``county`` GISJOIN column or
     ``in.county`` column), extracts building IDs for Tier 1, Tier 2,
     constrained (T1 + T2), and all filtered buildings.

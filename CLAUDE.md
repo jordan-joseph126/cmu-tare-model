@@ -3,7 +3,19 @@
 ## Heat-Pump Electrification Economics (ResStock 2022.1.1 / EUSS)
 #
 ```text
-# Last updated: 5 October 2026 — study sample and no rounding during the run
+# Last updated: 6 October 2026 — Tepper files, workbook tables and Fig 5 on the sample
+#   - Tepper household files hold study-sample rows only (221,205 rdu nationally, 1,146
+#     in Allegheny County) and ship `include_sample`. The main file gains the base-year
+#     fan, pump and backup columns (167 columns); a detailed copy adds per-fuel,
+#     per-year columns (317). The data dictionary is rewritten against the latest run.
+#   - The capital-cost validation tables are limited to the study sample, and the empty
+#     ASHP heating replacement table is dropped (five tables, none of them changed).
+#   - `plot_county_demand_grid` takes layout parameters. The main notebook draws the
+#     2x2 and a 1x2 with 100% adoption only, and `SAVE_FIGURES` is True.
+#   - No modeled value moved. The latest run is still `2026-10-05_21-33`; its paper
+#     numbers were re-measured and match `docs/REFERENCE_VALUES.md`.
+#
+# Previously: 5 October 2026 — study sample and no rounding during the run
 #   - Study sample is 221,205 rdu (53,560,591 homes) in 3,079 counties: homes with no
 #     central or room AC of their own, or with shared cooling, are left out.
 #   - A blank energy value or cooling replacement cost in a sample home stops the run.
@@ -14,16 +26,6 @@
 #   - Climate damages are in 2025 dollars, the dollar year of every private cost (commit
 #     43a8ef9). The latest run, `2026-10-05_21-33`, differs from `2026-10-05_00-54` only
 #     in climate damages, each 5.658% higher; its damages rows supersede the earlier ones.
-#
-# Previously: 3 September 2026 — notebook cleanup session
-#   - Restored the missing `plot_county_demand_grid` import.
-#   - Restored the Step 7 county-profile loop under its `GRID_IMPACT_ANALYSIS` guard.
-#   - Removed 22 unused imports.
-#   - Run `2026-09-02_19-04` verified BYTE-IDENTICAL to `2026-08-19_20-56` across all
-#     17 output files — no modeled value moved.
-#   - The six `_sub` / `_sub_june2026` reference rows that the 20 Aug session had left at
-#     17 Aug values were measured and superseded (see the attribution caveat in
-#     `docs/REFERENCE_VALUES.md`).
 ```
 
 > This file is read by Claude Code at the start of every session. It is the authoritative

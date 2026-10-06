@@ -324,24 +324,43 @@ def _bin_group_summarize(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _analyze_ashp(df: pd.DataFrame, menu_mp: int, cost_scenarios: List[str],
-                  cost_type: str = 'replacement') -> Tuple[pd.DataFrame, Dict]:
-    """Analyze ASHP heating costs by SEER × capacity (tons)."""
+                  cost_type: str = 'upgrade') -> Tuple[pd.DataFrame, Dict]:
+    """Analyze ASHP heating costs by SEER × capacity (tons).
+
+    Only the upgrade table (the new heat pump) is built today. The
+    replacement table would select homes that already have a heat pump, and
+    those are outside the study sample. Its filter and its capacity column
+    are kept below, commented out, in case existing heat pumps are costed
+    later. Bringing it back also needs an 'ASHP (Heating Replacement)' entry
+    in run_capital_cost_validation's analyses list.
+
+    Raises:
+        ValueError: If cost_type is not 'upgrade'.
+    """
+    if cost_type != 'upgrade':
+        raise ValueError(
+            f"_analyze_ashp builds the 'upgrade' table only, got {cost_type!r}. "
+            "The replacement table is switched off: homes with an existing "
+            "heat pump are outside the study sample.")
+
     mask = pd.Series(True, index=df.index)
-    if cost_type == 'replacement':
-        if 'heating_type' in df.columns:
-            mask &= (df['heating_type'] == 'Electricity ASHP')
-        elif 'hvac_heating_type_and_fuel' in df.columns:
-            mask &= (df['hvac_heating_type_and_fuel'] == 'Electricity ASHP')
-        else:
-            return pd.DataFrame(), {}
-        if 'hvac_has_ducts' in df.columns:
-            mask &= (df['hvac_has_ducts'] == 'Yes')
+    # Replacement table, switched off: homes whose existing system is a ducted
+    # air-source heat pump.
+    # if cost_type == 'replacement':
+    #     if 'heating_type' in df.columns:
+    #         mask &= (df['heating_type'] == 'Electricity ASHP')
+    #     elif 'hvac_heating_type_and_fuel' in df.columns:
+    #         mask &= (df['hvac_heating_type_and_fuel'] == 'Electricity ASHP')
+    #     else:
+    #         return pd.DataFrame(), {}
+    #     if 'hvac_has_ducts' in df.columns:
+    #         mask &= (df['hvac_has_ducts'] == 'Yes')
+    # else:
+    pm2_col = f'heating_{cost_type}_pm2_euss'
+    if pm2_col in df.columns:
+        mask &= df[pm2_col].notna() & (df[pm2_col] > 0)
     else:
-        pm2_col = f'heating_{cost_type}_pm2_euss'
-        if pm2_col in df.columns:
-            mask &= df[pm2_col].notna() & (df[pm2_col] > 0)
-        else:
-            return pd.DataFrame(), {}
+        return pd.DataFrame(), {}
 
     df_f = df.loc[mask]
     if len(df_f) == 0:
@@ -360,11 +379,10 @@ def _analyze_ashp(df: pd.DataFrame, menu_mp: int, cost_scenarios: List[str],
     else:
         return pd.DataFrame(), {}
         
-    # Capacity source depends on cost_type: replacement costs are now priced
-    # off the OLD system's own size (see calculate_equipment_replacement_costs.py,
-    # 20 Aug 2026 fix); upgrade costs are priced off the new heat pump's size.
-    capacity_col = ('base_size_heating_system_primary_k_btu_h' if cost_type == 'replacement'
-                    else 'size_heating_system_primary_k_btu_h')
+    # Upgrade costs are priced off the new heat pump's size. The replacement
+    # table, switched off above, would be priced off the OLD system's own size:
+    # capacity_col = 'base_size_heating_system_primary_k_btu_h'
+    capacity_col = 'size_heating_system_primary_k_btu_h'
     if capacity_col not in df_f.columns:
         return pd.DataFrame(), {}
     cap = _capacity_tons(df_f[capacity_col])
