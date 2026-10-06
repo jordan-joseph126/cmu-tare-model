@@ -11,6 +11,9 @@
 #     80% / 150% income cut-offs are tested on unrounded values (commit c35eacf).
 #   - Run `2026-10-05_00-54` differs from `2026-10-04_23-02` only as expected. Reference
 #     rows for the new sample added (see `docs/REFERENCE_VALUES.md`).
+#   - Climate damages are in 2025 dollars, the dollar year of every private cost (commit
+#     43a8ef9). The latest run, `2026-10-05_21-33`, differs from `2026-10-05_00-54` only
+#     in climate damages, each 5.658% higher; its damages rows supersede the earlier ones.
 #
 # Previously: 3 September 2026 — notebook cleanup session
 #   - Restored the missing `plot_county_demand_grid` import.
