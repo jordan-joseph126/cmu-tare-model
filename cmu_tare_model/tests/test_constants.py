@@ -158,3 +158,51 @@ def test_remdb_cost_scenario_keys_are_strings():
 def test_efficiency_floors_values_positive():
     for tech, floor in EFFICIENCY_FLOORS_PM2.items():
         assert floor > 0, f"Floor for {tech} should be positive"
+
+
+# -- RESSTOCK_RELEASE_THIS_RUN (set by an environment variable) ---------------
+# The release is read once, when constants.py is first imported, so each case
+# runs in a fresh Python process with its own environment.
+
+import os
+import subprocess
+import sys
+
+
+def _read_release_in_new_process(env_value):
+    """Imports constants in a new process and returns (exit code, output).
+
+    Args:
+        env_value: Value for TARE_RESSTOCK_RELEASE, or None to leave it unset.
+
+    Returns:
+        The child's exit code and its combined stdout and stderr.
+    """
+    env = {k: v for k, v in os.environ.items() if k != 'TARE_RESSTOCK_RELEASE'}
+    if env_value is not None:
+        env['TARE_RESSTOCK_RELEASE'] = env_value
+    code = (
+        "from cmu_tare_model.constants import "
+        "RESSTOCK_RELEASE_THIS_RUN, VALID_MENU_MPS; "
+        "print(RESSTOCK_RELEASE_THIS_RUN, VALID_MENU_MPS)")
+    result = subprocess.run(
+        [sys.executable, '-c', code], env=env, capture_output=True, text=True)
+    return result.returncode, result.stdout + result.stderr
+
+
+def test_release_defaults_to_2022_when_unset():
+    returncode, output = _read_release_in_new_process(None)
+    assert returncode == 0, output
+    assert '2022.1.1 [0, 3, 4]' in output
+
+
+def test_release_follows_environment_variable():
+    returncode, output = _read_release_in_new_process('2025.1')
+    assert returncode == 0, output
+    assert '2025.1 [0, 5]' in output
+
+
+def test_unknown_release_is_rejected():
+    returncode, output = _read_release_in_new_process('2024.2')
+    assert returncode != 0
+    assert 'ValueError' in output and '2024.2' in output

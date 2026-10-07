@@ -5,6 +5,7 @@
 # - Rest of codebase updated so only initial columns created for cooling and replacement cost calculations performed
 # - This allows for a scenario where only heating is replaced AND one where heating and cooling systems are both replace with HP
 # - Resolves the excessive data columns and double counting with $8000 rebate. No longer need CDD projections.
+import os
 
 # =============================================================
 # TARE MODEL RUN CONFIGURATION
@@ -103,17 +104,28 @@ EQUIPMENT_SPECS = {
     }
 VALID_CATEGORIES = list(EQUIPMENT_SPECS.keys())
 
-# ResStock release this run reads. MP numbers repeat across releases (2025.1
-# Upgrades 03/04 will later load as mp=3/4, unlike 2022.1.1 MP3/MP4), so any
-# check on an MP number must also check the release.
-RESSTOCK_RELEASE_THIS_RUN = '2022.1.1'  # '2022.1.1' or '2025.1'
-
 # Measure packages available in each release. Add 2025.1 Upgrades 04 and 03
 # to the '2025.1' list once Upgrade 05 has finished every phase.
 RESSTOCK_RELEASE_AND_MP = {
     '2022.1.1': [0, 3, 4],
     '2025.1': [0, 5],
 }
+
+# ResStock release this run reads. MP numbers repeat across releases (2025.1
+# Upgrades 03/04 will later load as mp=3/4, unlike 2022.1.1 MP3/MP4), so any
+# check on an MP number must also check the release.
+# Set by the environment variable TARE_RESSTOCK_RELEASE ('2022.1.1' or
+# '2025.1'), defaulting to '2022.1.1'. It has to be fixed before any TARE
+# module is imported: several functions copy this value as a default argument
+# at import, so changing it later would leave them on the old release. The
+# notebook runner (scripts/run_tare_notebooks.py --release) sets the variable
+# first; with it unset, nothing changes from the 2022.1.1 analysis.
+RESSTOCK_RELEASE_ENV_VAR = 'TARE_RESSTOCK_RELEASE'
+RESSTOCK_RELEASE_THIS_RUN = os.environ.get(RESSTOCK_RELEASE_ENV_VAR, '2022.1.1')
+if RESSTOCK_RELEASE_THIS_RUN not in RESSTOCK_RELEASE_AND_MP:
+    raise ValueError(
+        f"{RESSTOCK_RELEASE_ENV_VAR}={RESSTOCK_RELEASE_THIS_RUN!r} is not a known "
+        f"ResStock release; expected one of {sorted(RESSTOCK_RELEASE_AND_MP)}")
 
 # Run the model for all measure packages (MPs) or a specific MP
 # Enclosure upgrades (MP9 and MP10) are excluded for now since they are not yet included in the REMDB v4 code.
