@@ -356,3 +356,57 @@ def test_select_2025_1_columns_needs_bldg_id_and_weight():
     file_columns = [c for c in _made_up_2025_1_file_columns() if c != 'weight']
     with pytest.raises(ValueError, match='weight'):
         select_resstock_2025_1_columns(file_columns)
+
+
+# -- is_dual_fuel_package and the dual-fuel option string (G5) ----------------
+
+_DUAL_FUEL_925 = ("Dual-Fuel ASHP, SEER 15.2, 7.8 HSPF2, Integrated Backup, "
+                  "92.5% AFUE NG, 35F switchover")
+_DUAL_FUEL_950 = ("Dual-Fuel ASHP, SEER 15.2, 7.8 HSPF2, Integrated Backup, "
+                  "95.0% AFUE NG, 35F switchover")
+
+
+def test_is_dual_fuel_package_checks_the_release_too():
+    from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
+    assert is_dual_fuel_package(5, '2025.1')
+    # The same number in another release, and other packages, are not.
+    assert not is_dual_fuel_package(5, '2022.1.1')
+    assert not is_dual_fuel_package(3, '2022.1.1')
+    assert not is_dual_fuel_package(4, '2022.1.1')
+    assert not is_dual_fuel_package(0, '2025.1')
+    with pytest.raises(ValueError, match='2030.1'):
+        is_dual_fuel_package(5, '2030.1')
+
+
+def test_dual_fuel_spec_columns_parse_each_home():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        add_dual_fuel_spec_columns,
+    )
+    df = pd.DataFrame(
+        {'upgrade_hvac_heating_efficiency': [_DUAL_FUEL_925, _DUAL_FUEL_950,
+                                             _DUAL_FUEL_925]},
+        index=pd.Index([11, 12, 13], name='bldg_id'))
+    df_out = add_dual_fuel_spec_columns(df)
+    assert df_out['upgrade_hp_seer2'].tolist() == [15.2, 15.2, 15.2]
+    assert df_out['upgrade_hp_hspf2'].tolist() == [7.8, 7.8, 7.8]
+    # AFUE is a fraction, the form the REMDB regression takes.
+    assert df_out['upgrade_backup_afue'].tolist() == pytest.approx(
+        [0.925, 0.95, 0.925])
+    assert df_out['upgrade_backup_fuel'].tolist() == ['Natural Gas'] * 3
+    assert df_out['upgrade_switchover_f'].tolist() == [35.0, 35.0, 35.0]
+    # The input frame is not changed.
+    assert 'upgrade_hp_seer2' not in df.columns
+
+
+def test_dual_fuel_spec_columns_stop_on_a_blank_or_other_string():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        add_dual_fuel_spec_columns,
+    )
+    df_blank = pd.DataFrame(
+        {'upgrade_hvac_heating_efficiency': [_DUAL_FUEL_925, None]})
+    with pytest.raises(ValueError, match='1 rdu'):
+        add_dual_fuel_spec_columns(df_blank)
+    df_other = pd.DataFrame(
+        {'upgrade_hvac_heating_efficiency': ['ASHP, SEER 15, 9.0 HSPF']})
+    with pytest.raises(ValueError, match='dual-fuel'):
+        add_dual_fuel_spec_columns(df_other)

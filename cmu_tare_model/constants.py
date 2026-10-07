@@ -131,6 +131,17 @@ if RESSTOCK_RELEASE_THIS_RUN not in RESSTOCK_RELEASE_AND_MP:
 # Enclosure upgrades (MP9 and MP10) are excluded for now since they are not yet included in the REMDB v4 code.
 VALID_MENU_MPS = RESSTOCK_RELEASE_AND_MP[RESSTOCK_RELEASE_THIS_RUN]
 
+# Measure packages, by release, that install a dual-fuel system: a heat pump
+# plus a new fossil backup furnace that takes over below a switchover
+# temperature. Such a package needs a furnace cost and its own rebate fuel-gate
+# rule. Package numbers repeat across releases, so a package is dual fuel only
+# under the release it is listed for. Ask is_dual_fuel_package
+# (utils/measure_packages.py); never test a package number on its own.
+DUAL_FUEL_PACKAGES_BY_RELEASE = {
+    '2022.1.1': [],
+    '2025.1': [5],  # Upgrade 05, Dual Fuel Heating System
+}
+
 # States excluded from the 2025.1 dual-fuel study (researcher's 19 Sep 2026
 # decision). Hawaii has limited natural gas infrastructure and essentially no
 # heating demand, so a dual-fuel package has almost nothing to act on there.

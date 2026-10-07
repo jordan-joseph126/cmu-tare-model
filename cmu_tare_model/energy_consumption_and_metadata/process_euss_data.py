@@ -29,6 +29,7 @@ from cmu_tare_model.utils.calculation_utils import (
     print_masking_funnel_stage,
     )
 from cmu_tare_model.utils.resstock_schema import RESSTOCK_COLUMN_MAP, resstock_col
+from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
 from cmu_tare_model.utils.degree_day_consumption_utils import (
     get_degree_day_adjusted_consumption_by_fuel,
 )
@@ -427,6 +428,58 @@ def parse_dual_fuel_heating_efficiency(spec: str) -> Dict[str, Any]:
         'backup_afue': float(afue_pct_str) / 100,
         'switchover_f': float(switchover_str),
     }
+
+
+def add_dual_fuel_spec_columns(
+    df_compare: pd.DataFrame,
+    efficiency_col: str = 'upgrade_hvac_heating_efficiency',
+) -> pd.DataFrame:
+    """Adds the dual-fuel system's ratings, parsed from its option string.
+
+    One column per field parse_dual_fuel_heating_efficiency returns, each
+    named 'upgrade_' plus the field: upgrade_hp_seer2, upgrade_hp_hspf2,
+    upgrade_backup_fuel, upgrade_backup_afue (a fraction, 0.925 not 92.5) and
+    upgrade_switchover_f. The heat-pump cost needs the SEER2 rating and the
+    backup furnace's cost needs its AFUE; neither can be read reliably from
+    the raw string by taking its first number.
+
+    Every home given here must carry a dual-fuel option string: the frame
+    holds only homes ResStock applied the package to, so a blank or a
+    different format is an error, not a home to skip.
+
+    Args:
+        df_compare: Retrofit frame holding efficiency_col.
+        efficiency_col: Column with the raw upgrade.hvac_heating_efficiency
+            option string.
+
+    Returns:
+        A copy of df_compare with the five columns added.
+
+    Raises:
+        KeyError: If efficiency_col is missing.
+        ValueError: If a home's option string is blank or not in the
+            published dual-fuel format.
+    """
+    if efficiency_col not in df_compare.columns:
+        raise KeyError(f"'{efficiency_col}' is not a column of the retrofit frame")
+    option_strings = df_compare[efficiency_col]
+    n_blank = int(option_strings.isna().sum())
+    if n_blank > 0:
+        raise ValueError(
+            f"{n_blank:,} rdu have no dual-fuel option string in "
+            f"'{efficiency_col}'")
+
+    # The package publishes only a few distinct strings, so each is parsed
+    # once and the results are looked up per home.
+    parsed_by_string = {
+        option: parse_dual_fuel_heating_efficiency(option)
+        for option in option_strings.unique()}
+    df_out = df_compare.copy()
+    for field in ('hp_seer2', 'hp_hspf2', 'backup_fuel', 'backup_afue',
+                  'switchover_f'):
+        df_out[f'upgrade_{field}'] = option_strings.map(
+            {option: parsed[field] for option, parsed in parsed_by_string.items()})
+    return df_out
 
 
 def extract_city_name(row: str) -> str:
@@ -1108,7 +1161,14 @@ def df_enduse_compare(
                 .str.replace('SEER 15', 'SEER 16', regex=False)
                 .str.replace('9.0 HSPF', '9.5 HSPF', regex=False)
             )
-    
+
+        # A dual-fuel package packs the heat pump's ratings and the backup
+        # furnace's fuel and AFUE into one option string. Parse it into
+        # columns: the heat-pump cost needs the SEER2 rating and the furnace
+        # cost needs the AFUE.
+        if is_dual_fuel_package(menu_mp, release):
+            df_compare = add_dual_fuel_spec_columns(df_compare)
+
     # COOLING - only if in scope
     if 'cooling' in VALID_CATEGORIES:
         df_compare['hvac_cooling_type'] = df_mp[resstock_col(release, 'cooling_type')]
