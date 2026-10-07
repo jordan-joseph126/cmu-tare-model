@@ -420,3 +420,25 @@ def test_dual_fuel_spec_columns_add_seer1_and_hspf1():
     df_out = add_dual_fuel_spec_columns(df)
     assert df_out['upgrade_hp_seer1'].iloc[0] == pytest.approx(16.0)
     assert df_out['upgrade_hp_hspf1'].iloc[0] == pytest.approx(7.8 / 0.85)
+
+
+# -- require_true_false (applicability must be a true boolean) -----------------
+
+def test_require_true_false_accepts_booleans():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        require_true_false,
+    )
+    flag = pd.Series([True, False, True], name='applicability')
+    assert require_true_false(flag).tolist() == [True, False, True]
+    as_objects = pd.Series([True, False], dtype=object, name='applicability')
+    assert require_true_false(as_objects).dtype == bool
+
+
+@pytest.mark.parametrize('values', [['True', 'False'], [True, None], [1, 0]])
+def test_require_true_false_refuses_text_blanks_and_numbers(values):
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        require_true_false,
+    )
+    # Text "False" would become True under astype(bool), and a blank True.
+    with pytest.raises(TypeError, match='True or False'):
+        require_true_false(pd.Series(values, dtype=object, name='applicability'))

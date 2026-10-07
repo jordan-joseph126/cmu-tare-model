@@ -208,6 +208,35 @@ def read_resstock_2022_1_1_csv(mp: int) -> pd.DataFrame:
     return pd.read_csv(file_path, low_memory=False, index_col="bldg_id")
 
 
+def require_true_false(flag: pd.Series) -> pd.Series:
+    """Returns a ResStock true/false column as booleans, refusing anything else.
+
+    ResStock's applicability flag is read as a true boolean from the
+    published files today, but some earlier upgrade files stored it as text.
+    ``.astype(bool)`` on text turns "False" into True (any non-empty string is
+    true) and a blank into True, which would silently keep homes ResStock never
+    applied the package to. So the values must already be True or False.
+
+    Args:
+        flag: The column as read from the file.
+
+    Returns:
+        The same values with a bool dtype.
+
+    Raises:
+        TypeError: If any value is not True or False (text, a blank, a number).
+    """
+    if pd.api.types.is_bool_dtype(flag):
+        return flag.astype(bool)
+    not_boolean = ~flag.map(lambda value: isinstance(value, (bool, np.bool_)))
+    if not_boolean.any():
+        raise TypeError(
+            f"'{flag.name}' must hold only True or False; found "
+            f"{flag[not_boolean].astype(str).unique()[:5].tolist()} "
+            f"({int(not_boolean.sum()):,} rows, dtype {flag.dtype})")
+    return flag.astype(bool)
+
+
 def load_and_filter_upgrade(
     menu_mp: int,
     state: Optional[str] = None,
@@ -313,7 +342,7 @@ def load_and_filter_upgrade(
     # Applied to both releases so the two samples use the same scope filters.
     # For 2022.1.1 MP3/MP4 it removes no in-scope homes.
     applicable_col = resstock_col(release, 'upgrade_applicable')
-    is_applicable = df_filtered[applicable_col].astype(bool)
+    is_applicable = require_true_false(df_filtered[applicable_col])
     df_filtered = df_filtered.loc[is_applicable]
     record_stage(df_filtered, 'applicability')
 
@@ -1383,16 +1412,17 @@ def df_enduse_compare(
 
     # ===== STEP 3d: ResStock's own applicability flag (2025.1) =====
     # Whether ResStock actually ran this upgrade on this home -- distinct from
-    # any of TARE's own fuel/technology masks. Coerced to bool defensively on
-    # read: the guide notes this column's dtype was a string in some upgrade
-    # parquets before a 2025-07-08 ResStock fix, even though it reads as a
-    # real bool in the published 2025.1 files TARE loads today. Carried as a
+    # any of TARE's own fuel/technology masks. Checked to be true booleans on
+    # read (require_true_false): the guide notes this column's dtype was a
+    # string in some upgrade parquets before a 2025-07-08 ResStock fix, even
+    # though it reads as a real bool in the published 2025.1 files TARE loads
+    # today, and a text "False" would otherwise count as True. Carried as a
     # plain pass-through column here; Phase 3's masking funnel is the first
     # place that filters on it. Only published starting ResStock 2025.1, so
     # this block is release-gated like the panel columns above.
     if release == '2025.1':
-        df_compare[f'mp{menu_mp}_resstock_applicable'] = (
-            df_mp[resstock_col(release, 'upgrade_applicable')].astype(bool))
+        df_compare[f'mp{menu_mp}_resstock_applicable'] = require_true_false(
+            df_mp[resstock_col(release, 'upgrade_applicable')])
 
     # ===== STEP 4: Merge with baseline DataFrame =====
     df_compare = pd.merge(df_baseline, df_compare, how='inner', left_index=True, right_index=True)

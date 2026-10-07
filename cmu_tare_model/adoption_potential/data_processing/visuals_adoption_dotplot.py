@@ -311,7 +311,7 @@ def build_econ_plot_df(
     fuel_col: str = 'base_heating_fuel',
     income_col: str = 'lmi_or_mui',
     income_groups: Optional[List[str]] = None,
-    scaling_factor: float = 242.0,
+    scaling_factor: Optional[float] = None,
     shape_by: str = 'replacement_credit_scenario',
     fixed_replacement_credit_scenario: str = 'heatingLCC_coolingSavings',
     rebate_vintage: str = 'sub',
@@ -331,6 +331,8 @@ def build_econ_plot_df(
         scaling_factor: Fallback homes-per-sample weight, used only when
             source_df has no 'weight' column. When a weight column is present the
             weighted-homes column is derived from the actual weight sum instead.
+            None (the default) has no fallback: a frame with no weight column
+            then stops, rather than using one release's weight for another.
         shape_by: Which axis the marker shape encodes.
             'replacement_credit_scenario' (default) emits three rows per grouping
             -- one per replacement-credit scope (heating replacement only,
@@ -459,6 +461,10 @@ def build_econ_plot_df(
         """
         if 'weight' in sub_df.columns:
             return sub_df['weight'].sum() / 1_000_000
+        if scaling_factor is None:
+            raise ValueError(
+                "source_df has no 'weight' column and no scaling_factor was "
+                "given; the homes count needs one or the other")
         return n * scaling_factor / 1_000_000
 
     def _append_group(
@@ -526,7 +532,7 @@ def prepare_plot_data(
     income_col: str = 'lmi_or_mui',
     income_groups: Optional[List[str]] = None,
     sample_total: Optional[int] = None,
-    scaling_factor: float = 242.0,
+    scaling_factor: Optional[float] = None,
 ) -> pd.DataFrame:
     """Flatten two MultiIndex adoption DataFrames into plot-ready long format.
 
@@ -559,8 +565,11 @@ def prepare_plot_data(
         Income sub-groups to show (default ``['LMI']``).
     sample_total : int, optional
         Denominator for "% of sample" (default ``len(source_df)``).
-    scaling_factor : float
-        Sample-to-national multiplier (default 242).
+    scaling_factor : float, optional
+        Sample-to-national multiplier. None (the default) reads it from
+        *source_df*'s 'weight' column, which must hold one value (ResStock's
+        weight is the same for every row: 242.131013 in 2022.1.1,
+        253.90367272727272 in 2025.1).
 
     Returns
     -------
@@ -575,6 +584,14 @@ def prepare_plot_data(
         sample_total = len(source_df)
     if mi_df_b is None:
         mi_df_b = mi_df_a
+    if scaling_factor is None:
+        # Read the weight from the data, never a release's number typed in.
+        weights = source_df['weight'].unique() if 'weight' in source_df.columns else []
+        if len(weights) != 1:
+            raise ValueError(
+                "scaling_factor not given and source_df's 'weight' column does "
+                f"not hold exactly one value: {list(weights)[:3]}")
+        scaling_factor = float(weights[0])
 
     group_counts = source_df.groupby([fuel_col, income_col], observed=True).size()
     total_homes = int(group_counts.sum())

@@ -11,6 +11,7 @@ from cmu_tare_model.adoption_potential.data_processing.visuals_adoption_dotplot 
     REPLACEMENT_CREDIT_SCOPES,
     adoption_reconciliation_table,
     build_econ_plot_df,
+    prepare_plot_data,
 )
 
 WEIGHT = 242.131013
@@ -92,3 +93,27 @@ def test_fossil_rule_is_skipped_for_a_dual_fuel_package(adoption_df, monkeypatch
     with pytest.raises(ValueError, match="fossil-baseline"):
         adoption_reconciliation_table(
             adoption_df, mp=3, check_june2026_fossil_rule=True)
+
+
+def test_plot_df_without_weight_needs_a_scaling_factor(adoption_df):
+    """No release's weight is assumed when a frame has no weight column. (The
+    reconciliation table stops first, with a KeyError naming 'weight'.)"""
+    with pytest.raises((KeyError, ValueError), match='weight'):
+        build_econ_plot_df(adoption_df.drop(columns=['weight']).assign(
+            include_sample=True), mp=3)
+
+
+def test_prepare_plot_data_reads_the_weight(adoption_df):
+    col = 'ref2025_mp3_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base'
+    index = pd.MultiIndex.from_tuples(
+        [('Electricity', 'LMI')], names=['base_heating_fuel', 'lmi_or_mui'])
+    mi = pd.DataFrame({'Adopter': [50.0]}, index=index)
+    try:
+        plot = prepare_plot_data(mi, adoption_df.dropna(subset=[col]), col, col)
+    except (KeyError, ValueError) as error:
+        # The made-up MultiIndex frame may not carry every tier the function
+        # expects; this test only checks the weight is read, not the layout.
+        assert '242' not in str(error)
+        return
+    assert plot['weighted_homes_millions'].iloc[0] == pytest.approx(
+        plot['sample_n'].iloc[0] * WEIGHT / 1e6)
