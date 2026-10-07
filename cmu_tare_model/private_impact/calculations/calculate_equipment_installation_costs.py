@@ -45,7 +45,9 @@ from cmu_tare_model.constants import (
     VERBOSE, VALID_MENU_MPS, EQUIPMENT_SPECS, VALID_CATEGORIES,
     REMDB_COST_SCENARIO_KEYS
 )
-from cmu_tare_model.utils.column_names import create_cost_col
+from cmu_tare_model.utils.column_names import COST_TYPE_BACKUP_FURNACE, create_cost_col
+from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
+from cmu_tare_model.utils.remdb_v4_installed_cost_utils import BACKUP_FURNACE_PREFIX
 from cmu_tare_model.utils.validation_framework import (
     apply_new_columns_to_dataframe,
     apply_final_masking,
@@ -167,6 +169,83 @@ def calculate_upgrade_installed_cost(
     return df_copy, df_detailed_out
 
 
+def calculate_backup_furnace_installed_cost(
+    df: pd.DataFrame,
+    df_detailed: pd.DataFrame,
+    menu_mp: int,
+    cost_scenario: str,
+    verbose: bool = VERBOSE,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Prices the new backup furnace of a dual-fuel retrofit (REMDB v4).
+
+    A dual-fuel retrofit installs a heat pump and a new condensing gas
+    furnace. The heat pump is priced by calculate_upgrade_installed_cost; this
+    prices the furnace, with the same REMDB regression and the same 2023 to
+    2025 dollar inflation, from the inputs add_backup_furnace_metrics
+    prepared. The result is its own column (COST_TYPE_BACKUP_FURNACE), kept
+    apart from the heat pump's cost; calculate_capital_costs adds it to the
+    retrofit's capital cost. It is not part of the cost a rebate covers: a
+    fossil furnace is not a rebate measure (session decision P5).
+
+    Args:
+        df: Retrofit frame.
+        df_detailed: REMDB parameters from add_backup_furnace_metrics.
+        menu_mp: Measure package number; must be a dual-fuel package.
+        cost_scenario: REMDB v4 cost scenario key (e.g. 'v4MID').
+        verbose: Whether to print the summary.
+
+    Returns:
+        Tuple (df, df_detailed), each with the furnace cost column added. The
+        cost is NaN outside the study sample.
+
+    Raises:
+        ValueError: If menu_mp is not a dual-fuel package of this release, the
+            inputs are otherwise invalid, or a home in the calculation has no
+            furnace cost.
+        KeyError: If a REMDB parameter column is missing.
+    """
+    # Step 1 -- only a dual-fuel package has a backup furnace to price
+    _validate_inputs(menu_mp, 'heating', cost_scenario)
+    if not is_dual_fuel_package(menu_mp):
+        raise ValueError(
+            f"MP{menu_mp} is not a dual-fuel package, so it has no backup "
+            "furnace to price")
+    if cost_scenario == 'v3':
+        raise ValueError("The backup furnace is priced with REMDB v4 only")
+    percentile = cost_scenario[2:].lower()
+
+    # Step 2 -- the regression, in 2023 dollars, then inflated to 2025
+    df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = (
+        initialize_validation_tracking(df, 'heating', menu_mp=menu_mp, verbose=verbose))
+    installed_cost = _calculate_v4_upgrade(
+        df_detailed, 'heating', percentile, prefix=BACKUP_FURNACE_PREFIX)
+    installed_cost = (installed_cost * cpi_ratio_2025_2023).clip(lower=0)
+
+    # Step 3 -- every home in the calculation must have a cost; a blank here
+    # would otherwise enter capital cost as $0
+    n_blank = int(installed_cost[valid_mask].isna().sum())
+    if n_blank > 0:
+        raise ValueError(
+            f"{n_blank:,} rdu in the calculation have no backup furnace cost")
+    result_series = create_retrofit_only_series(df_copy, valid_mask)
+    result_series.loc[valid_mask] = installed_cost.loc[valid_mask].round(2)
+
+    cost_col = create_cost_col(
+        menu_mp=menu_mp, category='heating',
+        cost_type=COST_TYPE_BACKUP_FURNACE, cost_scenario=cost_scenario)
+    df_copy, all_columns_to_mask = apply_new_columns_to_dataframe(
+        df_copy, pd.DataFrame({cost_col: result_series}), 'heating',
+        category_columns_to_mask, all_columns_to_mask)
+    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=verbose)
+
+    df_detailed_out = df_detailed.copy()
+    df_detailed_out[cost_col] = df_copy[cost_col]
+    if verbose:
+        print(f"  Backup furnace cost: {df_copy[cost_col].notna().sum():,} rdu, "
+              f"mean ${df_copy[cost_col].mean():,.2f}")
+    return df_copy, df_detailed_out
+
+
 # ========================================================================================================================================================================
 # INTERNAL: VALIDATION
 # ========================================================================================================================================================================
@@ -194,7 +273,8 @@ def _validate_inputs(menu_mp: int, end_use: str, cost_scenario: str) -> None:
 def _calculate_v4_upgrade(
     df_detailed: pd.DataFrame,
     end_use: str,
-    percentile: str
+    percentile: str,
+    prefix: Optional[str] = None,
 ) -> pd.Series:
     """
     Calculate upgrade installed costs using REMDB v4 regression formula.
@@ -207,6 +287,9 @@ def _calculate_v4_upgrade(
         df_detailed: DataFrame with REMDB v4 regression parameters.
         end_use: Equipment category.
         percentile: Cost percentile ('low', 'mid', 'high').
+        prefix: Prefix of the parameter columns. None reads the heat pump's
+            '{end_use}_upgrade_' columns; the dual-fuel backup furnace passes
+            its own (BACKUP_FURNACE_PREFIX).
 
     Returns:
         Series of installed costs.
@@ -214,7 +297,8 @@ def _calculate_v4_upgrade(
     Raises:
         KeyError: If prerequisite columns are missing.
     """
-    prefix = f'{end_use}_upgrade_'
+    if prefix is None:
+        prefix = f'{end_use}_upgrade_'
 
     # Verify prerequisite columns
     required_cols = [

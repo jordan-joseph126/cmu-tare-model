@@ -24,7 +24,9 @@ from cmu_tare_model.utils.calculation_utils import (
     validate_common_parameters,
     apply_temporary_validation_and_mask
 )
+from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
 from cmu_tare_model.utils.column_names import (
+    COST_TYPE_BACKUP_FURNACE,
     create_fuel_cost_col,
     create_cost_col,
     create_rebate_col,
@@ -542,6 +544,10 @@ def calculate_capital_costs(
     IRA rebates are applied. Net capital cost is the total capital cost minus
     the avoided heating-system replacement cost.
 
+    For a dual-fuel package (is_dual_fuel_package) the heating installation
+    cost is the heat pump's upgrade cost plus the new backup furnace's cost
+    (COST_TYPE_BACKUP_FURNACE). No other package has a furnace cost.
+
     Args:
         df_copy: DataFrame containing cost data.
         category: Equipment category (e.g., 'heating', 'waterHeating').
@@ -588,11 +594,21 @@ def calculate_capital_costs(
     replacement_cost_col_name = create_cost_col(menu_mp=menu_mp, category=category, cost_type='replacement', cost_scenario=cost_scenario)
     required_cols = [upgrade_cost_col_name, replacement_cost_col_name]
 
+    # A dual-fuel retrofit installs a new backup furnace as well as the heat
+    # pump, and the household pays for both.
+    furnace_cost_col_name = create_cost_col(
+        menu_mp=menu_mp, category=category,
+        cost_type=COST_TYPE_BACKUP_FURNACE, cost_scenario=cost_scenario)
+    has_backup_furnace = category == 'heating' and is_dual_fuel_package(menu_mp)
+
     if category == 'heating':
         if input_mp in ['upgrade09', 'upgrade10']:
             required_cols.append(create_enclosure_cost_col(menu_mp=menu_mp, cost_scenario=cost_scenario))
             # Weatherization rebate applies to MP9 and MP10.
             required_cols.append(create_weatherization_rebate_col(cost_scenario=cost_scenario))
+
+        if has_backup_furnace:
+            required_cols.append(furnace_cost_col_name)
 
         # Only high-efficiency MPs are eligible for heating rebates.
         if menu_mp in get_rebate_eligible_mps():
@@ -627,6 +643,18 @@ def calculate_capital_costs(
         installation_cost = (
             df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='upgrade', cost_scenario=cost_scenario)].fillna(0)
             + weatherization_cost)
+
+        # Dual fuel: add the backup furnace. A blank cost for a home in the
+        # calculation is a data error, not a free furnace, so it stops here.
+        if has_backup_furnace:
+            furnace_cost = df_copy[furnace_cost_col_name]
+            n_blank = int(furnace_cost[valid_mask].isna().sum())
+            if n_blank > 0:
+                raise ValueError(
+                    f"{furnace_cost_col_name} is blank for {n_blank:,} rdu in "
+                    "the NPV calculation; every dual-fuel retrofit has a backup "
+                    "furnace cost")
+            installation_cost = installation_cost + furnace_cost
 
         # Only high-efficiency MPs are eligible for heating rebates.
         if menu_mp in get_rebate_eligible_mps():

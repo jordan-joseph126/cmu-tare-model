@@ -416,3 +416,58 @@ def test_private_npv_blank_cooling_replacement_cost_raises(mock_discount, mock_p
     npv_cases_df.loc[1, cost_col] = np.nan
     with pytest.raises(ValueError, match='is blank for 1 rdu'):
         calculate_private_npv(df=npv_cases_df, **npv_arguments)
+
+
+# =============================================================================
+# calculate_capital_costs: the dual-fuel backup furnace (G7)
+# =============================================================================
+
+_FURNACE_COL = 'mp8_heating_backupFurnace_installed_cost_v4MID'
+
+
+def _capital_costs(df):
+    from cmu_tare_model.private_impact.calculate_lifetime_private_impact import (
+        calculate_capital_costs,
+    )
+    return calculate_capital_costs(
+        df_copy=df, category='heating', input_mp='upgrade03', menu_mp=8,
+        policy_scenario='2025 Reference Case', cost_scenario='v4MID',
+        valid_mask=df['include_heating'])
+
+
+def test_capital_costs_add_the_furnace_for_a_dual_fuel_package(
+        private_impact_df, monkeypatch):
+    # MP8 stands in for a dual-fuel package here.
+    monkeypatch.setattr(
+        'cmu_tare_model.private_impact.calculate_lifetime_private_impact.'
+        'is_dual_fuel_package', lambda mp: mp == 8)
+    df = private_impact_df.assign(**{_FURNACE_COL: 4000.0})
+    total, net = _capital_costs(df)
+    valid = df['include_heating']
+    expected_total = (df['mp8_heating_upgrade_installed_cost_v4MID'] + 4000.0
+                      - df['mp8_heating_rebate_amount_v4MID'])
+    assert total[valid].tolist() == pytest.approx(expected_total[valid].tolist())
+    expected_net = expected_total - df['mp8_heating_replacement_installed_cost_v4MID']
+    assert net[valid].tolist() == pytest.approx(expected_net[valid].tolist())
+
+
+def test_capital_costs_have_no_furnace_for_other_packages(private_impact_df):
+    # MP8 is not dual fuel in any release, so a furnace column is ignored.
+    df = private_impact_df.assign(**{_FURNACE_COL: 4000.0})
+    total, _ = _capital_costs(df)
+    valid = df['include_heating']
+    expected_total = (df['mp8_heating_upgrade_installed_cost_v4MID']
+                      - df['mp8_heating_rebate_amount_v4MID'])
+    assert total[valid].tolist() == pytest.approx(expected_total[valid].tolist())
+
+
+def test_capital_costs_stop_on_a_blank_furnace_cost(private_impact_df, monkeypatch):
+    monkeypatch.setattr(
+        'cmu_tare_model.private_impact.calculate_lifetime_private_impact.'
+        'is_dual_fuel_package', lambda mp: mp == 8)
+    df = private_impact_df.assign(**{_FURNACE_COL: 4000.0})
+    df.loc[0, _FURNACE_COL] = np.nan  # home 0 is in the calculation
+    with pytest.raises(ValueError, match='blank'):
+        _capital_costs(df)
+    with pytest.raises(KeyError, match='backupFurnace'):
+        _capital_costs(private_impact_df)

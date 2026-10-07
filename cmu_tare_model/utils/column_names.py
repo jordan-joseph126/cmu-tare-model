@@ -105,6 +105,12 @@ def create_annual_fuel_consumption_col(
     return f'{scenario_prefix}{year_label}_{category}_{fuel}_consumption'
 
 
+# Cost type of a dual-fuel package's new backup furnace, priced apart from the
+# heat pump ('upgrade') so each can be read on its own: for example
+# 'mp5_heating_backupFurnace_installed_cost_v4MID'.
+COST_TYPE_BACKUP_FURNACE = 'backupFurnace'
+
+
 def create_cost_col(
     menu_mp: int,
     category: str,
@@ -115,7 +121,7 @@ def create_cost_col(
     Args:
         menu_mp: Measure package number.
         category: Equipment category (e.g. 'heating').
-        cost_type: 'upgrade' or 'replacement'.
+        cost_type: 'upgrade', 'replacement', or COST_TYPE_BACKUP_FURNACE.
         cost_scenario: 'v3' or 'v4LOW/MID/HIGH'.
 
     Returns:
