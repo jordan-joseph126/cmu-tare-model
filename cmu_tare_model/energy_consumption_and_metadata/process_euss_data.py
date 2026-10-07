@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+import pyarrow.parquet as pq
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -68,6 +69,75 @@ COUNTY_TO_GEA = dict(
 )
 
 
+# ResStock 2025.1 savings columns, in kWh. Anchored so the
+# per-square-foot ('energy_savings_intensity') and pre-weighted
+# ('calc.weighted...tbtu') versions never match.
+_ENERGY_SAVINGS_KWH_PATTERN = re.compile(r'^out\..+\.energy_savings\.\.kwh$')
+
+
+def select_resstock_2025_1_columns(file_columns: List[str]) -> List[str]:
+    """Picks the ResStock 2025.1 columns the TARE pipeline reads.
+
+    A national 2025.1 file has 770 columns; the pipeline uses about 140 of
+    them. Reading all of them takes about 7.5 GB for one file and 10.6 GB at
+    peak, which with the baseline frame held while a package file loads does
+    not fit a 16 GB machine. The list is built from the file's own column
+    names, so a column is read only if the file has it:
+
+    - bldg_id, weight, and in.hvac_has_ducts;
+    - every physical name in RESSTOCK_COLUMN_MAP['2025.1'] (resstock_schema.py);
+    - every heating and cooling energy column find_enduse_columns finds,
+      plus ResStock's savings column for each;
+    - the whole-home, hot-water and refrigerator savings columns, in kWh,
+      that the savings check reads.
+
+    The per-square-foot and pre-weighted columns are never read, so nothing
+    downstream can apply the weight a second time.
+
+    Args:
+        file_columns: Column names of a 2025.1 parquet file, in file order.
+
+    Returns:
+        The columns to read, in the file's own order.
+
+    Raises:
+        ValueError: If bldg_id or weight is not in file_columns, or the file
+            has no heating or cooling energy column.
+    """
+    for required in ('bldg_id', 'weight'):
+        if required not in file_columns:
+            raise ValueError(
+                f"'{required}' is not a column of the ResStock 2025.1 file")
+
+    # Step 1 -- named columns: row identity and every column the map names
+    wanted = {'bldg_id', 'weight', 'in.hvac_has_ducts'}
+    wanted.update(RESSTOCK_COLUMN_MAP['2025.1'].values())
+
+    # Step 2 -- every heating and cooling part the file publishes, and its
+    # savings column (only the upgrade files' savings are read downstream,
+    # but the baseline file carries them too)
+    for category in ('heating', 'cooling'):
+        for _, _, energy_column in find_enduse_columns(file_columns, category):
+            wanted.add(energy_column)
+            wanted.add(get_resstock_savings_column(energy_column))
+
+    # Step 3 -- the savings columns check_savings_against_resstock compares
+    # against: each fuel's whole-home total, and the end uses ResStock changes
+    # on its own when the equipment changes (INTERACTING_END_USES). Both
+    # dots are kept so 'hot_water' does not also pick up 'hot_water_solar_th'
+    # by accident; that end use is in the list in its own right.
+    check_name_parts = ['.total.'] + [
+        f'.{end_use}.' for end_use in INTERACTING_END_USES]
+    wanted.update(
+        column for column in file_columns
+        if _ENERGY_SAVINGS_KWH_PATTERN.match(column)
+        and any(part in column for part in check_name_parts))
+
+    # A map name the file lacks is skipped here, the same as a full read
+    # would leave it out; the code that needs it raises its own KeyError.
+    return [column for column in file_columns if column in wanted]
+
+
 def read_resstock_2025_1_parquet(mp: int) -> pd.DataFrame:
     """Reads one ResStock 2025.1 national AMY2018 parquet file.
 
@@ -78,12 +148,16 @@ def read_resstock_2025_1_parquet(mp: int) -> pd.DataFrame:
     way the 2022.1.1 CSV read does (index_col="bldg_id"), so it is set here
     after the read.
 
+    Only the columns the pipeline uses are read (select_resstock_2025_1_columns):
+    about 140 of 770. Both national files then fit in memory together.
+
     Args:
         mp: Measure package number under the '2025.1' release (0 for the
             baseline, 5 for the dual-fuel Upgrade 05).
 
     Returns:
-        The raw ResStock 2025.1 frame, indexed by bldg_id.
+        The raw ResStock 2025.1 frame, indexed by bldg_id, holding the
+        columns the pipeline reads.
 
     Raises:
         ValueError: If mp is not in RESSTOCK_RELEASE_AND_MP['2025.1'].
@@ -95,7 +169,9 @@ def read_resstock_2025_1_parquet(mp: int) -> pd.DataFrame:
     filename = f"upgrade{mp}.parquet"
     file_path = os.path.join(
         PROJECT_ROOT, "data", "resstock_2025_1", filename)
-    df_raw = pd.read_parquet(file_path)
+    file_columns = pq.read_schema(file_path).names
+    columns_to_read = select_resstock_2025_1_columns(file_columns)
+    df_raw = pq.read_table(file_path, columns=columns_to_read).to_pandas()
     return df_raw.set_index("bldg_id")
 
 

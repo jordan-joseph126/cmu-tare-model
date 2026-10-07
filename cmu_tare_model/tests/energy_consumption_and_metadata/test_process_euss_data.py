@@ -273,3 +273,86 @@ def test_savings_check_quiet_failure_prints_table(savings_check_inputs, capsys):
     printed = capsys.readouterr().out
     assert 'rdu_failed' in printed
     assert '[WARNING]' in printed
+
+
+# -- select_resstock_2025_1_columns (column-limited 2025.1 read) ---------------
+
+def _made_up_2025_1_file_columns():
+    """A small made-up 2025.1 column list: names the pipeline reads, and names
+    it must leave out (per-square-foot, pre-weighted, unrelated end uses)."""
+    from cmu_tare_model.utils.resstock_schema import RESSTOCK_COLUMN_MAP
+    mapped = list(RESSTOCK_COLUMN_MAP['2025.1'].values())
+    extra = [
+        'completed_status',
+        'in.hvac_has_ducts',
+        'out.electricity.heating_hp_bkup_fa.energy_consumption..kwh',
+        'out.electricity.heating_hp_bkup_fa.energy_savings..kwh',
+        'out.electricity.heating.energy_savings..kwh',
+        'out.natural_gas.heating.energy_savings..kwh',
+        'out.electricity.cooling.energy_savings..kwh',
+        'out.electricity.hot_water.energy_savings..kwh',
+        'out.electricity.hot_water_solar_th.energy_savings..kwh',
+        'out.electricity.refrigerator.energy_savings..kwh',
+        'out.electricity.total.energy_savings..kwh',
+        'out.site_energy.total.energy_savings..kwh',
+        # Must be left out:
+        'out.electricity.heating.energy_consumption_intensity..kwh_per_ft2',
+        'out.electricity.total.energy_savings_intensity..kwh_per_ft2',
+        'calc.weighted.electricity.total.energy_savings..tbtu',
+        'out.electricity.lighting_interior.energy_consumption..kwh',
+        'out.electricity.lighting_interior.energy_savings..kwh',
+        'out.electricity.pool_heater.energy_savings..kwh',
+    ]
+    return mapped + extra
+
+
+def test_select_2025_1_columns_keeps_what_the_pipeline_reads():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        select_resstock_2025_1_columns,
+    )
+    file_columns = _made_up_2025_1_file_columns()
+    selected = select_resstock_2025_1_columns(file_columns)
+    for column in (
+            'bldg_id', 'weight', 'applicability', 'in.hvac_has_ducts',
+            'out.electricity.heating_hp_bkup_fa.energy_consumption..kwh',
+            'out.electricity.heating_hp_bkup_fa.energy_savings..kwh',
+            'out.natural_gas.heating.energy_savings..kwh',
+            'out.electricity.hot_water.energy_savings..kwh',
+            'out.electricity.hot_water_solar_th.energy_savings..kwh',
+            'out.electricity.refrigerator.energy_savings..kwh',
+            'out.site_energy.total.energy_savings..kwh'):
+        assert column in selected, column
+
+
+def test_select_2025_1_columns_leaves_out_weighted_and_unrelated():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        select_resstock_2025_1_columns,
+    )
+    selected = select_resstock_2025_1_columns(_made_up_2025_1_file_columns())
+    for column in (
+            'completed_status',
+            'out.electricity.heating.energy_consumption_intensity..kwh_per_ft2',
+            'out.electricity.total.energy_savings_intensity..kwh_per_ft2',
+            'calc.weighted.electricity.total.energy_savings..tbtu',
+            'out.electricity.lighting_interior.energy_consumption..kwh',
+            'out.electricity.lighting_interior.energy_savings..kwh',
+            'out.electricity.pool_heater.energy_savings..kwh'):
+        assert column not in selected, column
+
+
+def test_select_2025_1_columns_keeps_file_order():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        select_resstock_2025_1_columns,
+    )
+    file_columns = _made_up_2025_1_file_columns()[::-1]
+    selected = select_resstock_2025_1_columns(file_columns)
+    assert selected == [c for c in file_columns if c in set(selected)]
+
+
+def test_select_2025_1_columns_needs_bldg_id_and_weight():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        select_resstock_2025_1_columns,
+    )
+    file_columns = [c for c in _made_up_2025_1_file_columns() if c != 'weight']
+    with pytest.raises(ValueError, match='weight'):
+        select_resstock_2025_1_columns(file_columns)
