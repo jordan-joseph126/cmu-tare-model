@@ -34,7 +34,7 @@ is therefore on HEEHR, not on "all non-electric fuels":
 # ===== CELL (paste into the notebook) =====
 import pandas as pd
 
-from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
+from cmu_tare_model.utils.calculation_utils import is_dual_fuel_package
 
 _COST = 'v4MID'
 _WEIGHT_COL = 'weight'  # adjust if the frame's household-weight column differs

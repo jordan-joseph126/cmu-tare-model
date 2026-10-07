@@ -367,7 +367,7 @@ _DUAL_FUEL_950 = ("Dual-Fuel ASHP, SEER 15.2, 7.8 HSPF2, Integrated Backup, "
 
 
 def test_is_dual_fuel_package_checks_the_release_too():
-    from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
+    from cmu_tare_model.utils.calculation_utils import is_dual_fuel_package
     assert is_dual_fuel_package(5, '2025.1')
     # The same number in another release, and other packages, are not.
     assert not is_dual_fuel_package(5, '2022.1.1')
@@ -425,6 +425,7 @@ def test_dual_fuel_spec_columns_add_seer1_and_hspf1():
 # -- require_true_false (applicability must be a true boolean) -----------------
 
 def test_require_true_false_accepts_booleans():
+    """True and False pass, and come back as a bool column whatever the dtype."""
     from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
         require_true_false,
     )
@@ -436,6 +437,7 @@ def test_require_true_false_accepts_booleans():
 
 @pytest.mark.parametrize('values', [['True', 'False'], [True, None], [1, 0]])
 def test_require_true_false_refuses_text_blanks_and_numbers(values):
+    """Text, a blank or a number in place of True or False stops the read."""
     from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
         require_true_false,
     )

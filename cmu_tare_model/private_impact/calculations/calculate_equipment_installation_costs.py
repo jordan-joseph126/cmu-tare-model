@@ -46,7 +46,6 @@ from cmu_tare_model.constants import (
     REMDB_COST_SCENARIO_KEYS
 )
 from cmu_tare_model.utils.column_names import COST_TYPE_BACKUP_FURNACE, create_cost_col
-from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
 from cmu_tare_model.utils.remdb_v4_installed_cost_utils import BACKUP_FURNACE_PREFIX
 from cmu_tare_model.utils.validation_framework import (
     apply_new_columns_to_dataframe,
@@ -56,6 +55,7 @@ from cmu_tare_model.utils.validation_framework import (
 )
 from cmu_tare_model.utils.calculation_utils import (
     filter_valid_tech_homes,
+    is_dual_fuel_package,
     sample_costs_from_distributions
 )
 from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2025_2023

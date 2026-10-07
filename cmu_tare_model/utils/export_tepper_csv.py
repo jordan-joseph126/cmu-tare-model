@@ -48,6 +48,7 @@ from cmu_tare_model.constants import (
 )
 from cmu_tare_model.utils.calculation_utils import (
     get_consumption_component_columns,
+    is_dual_fuel_package,
 )
 from cmu_tare_model.utils.column_names import (
     BASE_CASE_NPV_CASE,
@@ -63,7 +64,6 @@ from cmu_tare_model.utils.column_names import (
     create_peak_electricity_col,
     create_rebate_col,
 )
-from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 
 # This snapshot exports a single run. These are canonical column suffixes (the
@@ -193,7 +193,7 @@ def build_annual_consumption_column_list(
     build_household_column_list.
 
     Args:
-        menu_mp: Measure package number (3 or 4).
+        menu_mp: Measure package number (3 or 4 in 2022.1.1, 5 in 2025.1).
         by_fuel_columns: Column names of the supplemental fuel-cost frame.
             None lists the totals only.
 
@@ -280,7 +280,7 @@ def build_household_column_list(
     helper and a plain 'mp{mp}_' token, so no scenario string is hardcoded.
 
     Args:
-        menu_mp: Measure package number (3 or 4).
+        menu_mp: Measure package number (3 or 4 in 2022.1.1, 5 in 2025.1).
         summary_columns: Column names of the household summary frame.
         by_fuel_columns: Column names of the supplemental fuel-cost frame.
             Given only for the detailed copy, which adds the per-fuel,
@@ -532,7 +532,7 @@ def export_tepper_household(
         df_annual_consumption: Supplemental fuel-cost frame for the same
             measure package and run, indexed by bldg_id. Must cover every home
             in df_household.
-        menu_mp: Measure package number (3 or 4).
+        menu_mp: Measure package number (3 or 4 in 2022.1.1, 5 in 2025.1).
         output_folder_path: Base directory for exports.
         location_id: Location identifier for the filename (e.g. 'National',
             'Allegheny'). Used for naming only; it does not filter rows.
@@ -735,7 +735,7 @@ def export_tepper_county(
             baseline_elec_gwh, retrofit_elec_gwh, elec_change_gwh,
             site_energy_change_gwh, pct_elec_demand_change,
             pct_site_energy_change.
-        menu_mp: Measure package number (3 or 4).
+        menu_mp: Measure package number (3 or 4 in 2022.1.1, 5 in 2025.1).
         output_folder_path: Base directory for exports.
         location_id: Location identifier for the filename (e.g. 'PA').
         results_export_formatted_date: Date string for the filename.

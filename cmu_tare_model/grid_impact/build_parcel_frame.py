@@ -16,6 +16,10 @@ import pandas as pd
 # energy (total_electricity_consumption, kWh), or fuel-agnostic thermal load
 # (peak_load_*_kbtu_hr). None is the all-fuel site-energy total: the peak-load
 # path is electricity only, so no site-energy column belongs in this list.
+# TODO (grid impact, 2025.1): these are the ResStock 2022.1.1 names. A 2025.1
+# file names its peak electricity columns 'winter' and 'summer'
+# (create_peak_electricity_col in column_names.py), so this works on 2022.1.1
+# only for now. It will be updated for the dual-fuel analysis (2025.1).
 REQUIRED_EXPORT_PEAK_COLUMN_TEMPLATES: List[str] = [
     "base_peak_electricity_heating_kw",
     "base_peak_electricity_cooling_kw",

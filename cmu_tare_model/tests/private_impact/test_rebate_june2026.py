@@ -375,7 +375,7 @@ def as_release_2025(monkeypatch):
         'determine_rebate_eligibility_and_amount.RESSTOCK_RELEASE_THIS_RUN',
         '2025.1')
     monkeypatch.setattr(
-        'cmu_tare_model.utils.measure_packages.RESSTOCK_RELEASE_THIS_RUN',
+        'cmu_tare_model.utils.calculation_utils.RESSTOCK_RELEASE_THIS_RUN',
         '2025.1')
 
 

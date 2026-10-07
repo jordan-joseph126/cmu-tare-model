@@ -14,10 +14,14 @@ size and the heat pump's size are clearly different numbers, making it
 obvious which one the function actually used.
 """
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from cmu_tare_model.utils.remdb_v4_installed_cost_utils import add_remdb_metrics
+from cmu_tare_model.utils.remdb_v4_installed_cost_utils import (
+    add_backup_furnace_metrics,
+    add_remdb_metrics,
+)
 
 
 @pytest.fixture
@@ -114,15 +118,6 @@ def _seer1_costs() -> pd.DataFrame:
     return pd.DataFrame.from_dict(rows, orient='index')
 
 
-def test_seer2_to_seer1_conversion():
-    from cmu_tare_model.utils.efficiency_ratings import (
-        hspf2_to_hspf1,
-        seer2_to_seer1,
-    )
-    assert seer2_to_seer1(15.2) == pytest.approx(16.0)
-    assert hspf2_to_hspf1(7.8) == pytest.approx(7.8 / 0.85)
-
-
 def test_seer2_rated_heat_pump_is_priced_at_seer1(df_home):
     # The option string's first number is the SEER2 rating, 15.2; the
     # regression must see the SEER1 value, 16.0.
@@ -152,3 +147,41 @@ def test_seer2_rated_heat_pump_needs_a_seer1_row(df_home, remdb_v4_costs):
     with pytest.raises(ValueError, match='SEER1'):
         add_remdb_metrics(
             df_dual_fuel, remdb_v4_costs, 'heating', 'upgrade', verbose=False)
+
+
+# -- Backup furnace of a dual-fuel retrofit -----------------------------------
+# df_backup_furnace_homes and backup_furnace_remdb_costs are fixtures in
+# tests/conftest.py.
+
+def test_metrics_use_the_backup_size_and_afue_fraction(
+        df_backup_furnace_homes, backup_furnace_remdb_costs):
+    df_main, df_detailed = add_backup_furnace_metrics(
+        df_backup_furnace_homes, backup_furnace_remdb_costs, verbose=False)
+    pm1 = df_main['heating_backupFurnace_pm1_euss']
+    pm2 = df_main['heating_backupFurnace_pm2_euss']
+    assert pm1.iloc[:3].tolist() == pytest.approx([63200.0, 80000.0, 40000.0])
+    # The AFUE reaches the regression as the fraction, not divided again.
+    assert pm2.iloc[:3].tolist() == pytest.approx([0.925, 0.95, 0.925])
+    # The home outside the package gets no row and no metrics.
+    assert pd.isna(df_main['row_id_heating_backupFurnace'].iloc[3])
+    assert np.isnan(pm1.iloc[3]) and np.isnan(pm2.iloc[3])
+    assert 'heating_backupFurnace_intercept_mid' in df_detailed.columns
+
+
+@pytest.mark.parametrize('bad_afue', [0.00925, 92.5])
+def test_metrics_stop_on_an_afue_read_wrongly(
+        df_backup_furnace_homes, backup_furnace_remdb_costs, bad_afue):
+    df_bad = df_backup_furnace_homes.copy()
+    df_bad.loc[1, 'upgrade_backup_afue'] = bad_afue
+    with pytest.raises(ValueError, match='AFUE'):
+        add_backup_furnace_metrics(
+            df_bad, backup_furnace_remdb_costs, verbose=False)
+
+
+def test_metrics_stop_on_a_backup_fuel_with_no_row(
+        df_backup_furnace_homes, backup_furnace_remdb_costs):
+    df_propane = df_backup_furnace_homes.copy()
+    df_propane.loc[2, 'upgrade_backup_fuel'] = 'Propane'
+    with pytest.raises(ValueError, match='Propane'):
+        add_backup_furnace_metrics(
+            df_propane, backup_furnace_remdb_costs, verbose=False)

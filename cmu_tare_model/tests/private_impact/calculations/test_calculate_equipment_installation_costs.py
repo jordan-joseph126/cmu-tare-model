@@ -8,6 +8,11 @@ import pytest
 import pandas as pd
 import numpy as np
 
+from cmu_tare_model.tests.conftest import BACKUP_FURNACE_REMDB_ROW
+from cmu_tare_model.utils.remdb_v4_installed_cost_utils import (
+    add_backup_furnace_metrics,
+)
+
 MODULE = 'cmu_tare_model.private_impact.calculations.calculate_equipment_installation_costs'
 
 
@@ -206,3 +211,58 @@ def test_heating_installation_premium_missing_columns_raises(mock_constants):
     df = pd.DataFrame({'other_col': [1]})
     with pytest.raises(ValueError, match="necessary columns"):
         calculate_heating_installation_premium(df, menu_mp=3, cpi_ratio_2023_2013=1.0)
+
+
+# -- calculate_backup_furnace_installed_cost (dual-fuel backup furnace) -------
+# df_backup_furnace_homes and backup_furnace_remdb_costs are fixtures in
+# tests/conftest.py.
+
+def _expected_2023_cost(size_kbtu_h: float, afue: float) -> float:
+    """The REMDB formula, written out: (pm1 c1 + pm2 c2 + b) x m + a."""
+    material = (size_kbtu_h * 1000 * BACKUP_FURNACE_REMDB_ROW['pm1_coef_mid']
+                + afue * BACKUP_FURNACE_REMDB_ROW['pm2_coef_mid']
+                + BACKUP_FURNACE_REMDB_ROW['intercept_mid'])
+    return (material * BACKUP_FURNACE_REMDB_ROW['multiplier_retrofit']
+            + BACKUP_FURNACE_REMDB_ROW['adder_retrofit'])
+
+
+def test_furnace_cost_follows_the_remdb_formula(
+        df_backup_furnace_homes, backup_furnace_remdb_costs, monkeypatch):
+    from cmu_tare_model.private_impact.calculations import (
+        calculate_equipment_installation_costs as installation,
+    )
+    from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2025_2023
+    # Run as the 2025.1 dual-fuel package, whatever release the tests run as.
+    monkeypatch.setattr(installation, 'VALID_MENU_MPS', [0, 5])
+    monkeypatch.setattr(installation, 'is_dual_fuel_package', lambda mp: mp == 5)
+
+    df_main, df_detailed = add_backup_furnace_metrics(
+        df_backup_furnace_homes, backup_furnace_remdb_costs, verbose=False)
+    df_out, _ = installation.calculate_backup_furnace_installed_cost(
+        df_main, df_detailed, menu_mp=5, cost_scenario='v4MID', verbose=False)
+
+    cost = df_out['mp5_heating_backupFurnace_installed_cost_v4MID']
+    expected = [
+        round(_expected_2023_cost(size, afue) * cpi_ratio_2025_2023, 2)
+        for size, afue in ((63.2, 0.925), (80.0, 0.95), (40.0, 0.925))]
+    assert cost.iloc[:3].tolist() == pytest.approx(expected, abs=0.006)
+    # About $3,846 in 2023 dollars for the average home's 63.2 kBtu/h furnace.
+    assert _expected_2023_cost(63.2, 0.925) == pytest.approx(3846.02, abs=0.01)
+    # Outside the study sample the cost is blank.
+    assert np.isnan(cost.iloc[3])
+
+
+@pytest.mark.parametrize('menu_mp', [3, 4])
+def test_no_furnace_cost_for_a_heat_pump_only_package(
+        df_backup_furnace_homes, backup_furnace_remdb_costs, menu_mp):
+    # Run as the tests' default release (2022.1.1): MP3 and MP4 are heat
+    # pumps with no backup furnace, so pricing one must stop.
+    from cmu_tare_model.private_impact.calculations import (
+        calculate_equipment_installation_costs as installation,
+    )
+    df_main, df_detailed = add_backup_furnace_metrics(
+        df_backup_furnace_homes, backup_furnace_remdb_costs, verbose=False)
+    with pytest.raises(ValueError, match='not a dual-fuel package'):
+        installation.calculate_backup_furnace_installed_cost(
+            df_main, df_detailed, menu_mp=menu_mp, cost_scenario='v4MID',
+            verbose=False)

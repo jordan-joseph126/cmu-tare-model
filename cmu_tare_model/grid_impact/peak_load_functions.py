@@ -3,6 +3,9 @@
 Extracted from calculate_postTARE_ts_aws_peak_demand.ipynb (Phase 2 BSQ refactor).
 Used by the notebook and by the national loop (Step 9).
 
+TODO (grid impact, 2025.1): the grid impact analysis works on ResStock 2022.1.1
+only for now. It will be updated for the dual-fuel analysis (2025.1).
+
 Author: Jordan M. Joseph, PhD — Carnegie Mellon University
 """
 

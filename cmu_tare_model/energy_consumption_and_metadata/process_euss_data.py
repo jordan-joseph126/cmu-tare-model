@@ -15,6 +15,8 @@ from cmu_tare_model.constants import (
     RESSTOCK_RELEASE_AND_MP,
     ALLOWED_HOUSING_TYPES,
     EXCLUDED_STATES,
+    HSPF2_PER_HSPF1,
+    SEER2_PER_SEER1,
     )
 
 from cmu_tare_model.utils.validation_framework import get_valid_calculation_mask
@@ -27,11 +29,10 @@ from cmu_tare_model.utils.calculation_utils import (
     identify_valid_homes,
     compute_funnel_stage_row,
     print_masking_funnel_stage,
+    is_dual_fuel_package,
     )
 from cmu_tare_model.utils.resstock_schema import RESSTOCK_COLUMN_MAP, resstock_col
-from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
 from cmu_tare_model.utils.column_names import create_peak_electricity_col
-from cmu_tare_model.utils.efficiency_ratings import hspf2_to_hspf1, seer2_to_seer1
 from cmu_tare_model.utils.degree_day_consumption_utils import (
     get_degree_day_adjusted_consumption_by_fuel,
 )
@@ -477,7 +478,8 @@ def add_dual_fuel_spec_columns(
     Two more columns hold the heat pump's ratings on the older test, which the
     REMDB cost regression and the 2022.1.1 packages use: upgrade_hp_seer1
     (priced by add_remdb_metrics) and upgrade_hp_hspf1 (for the record only).
-    See utils/efficiency_ratings.py.
+    Each is the newer rating divided by its factor in constants.py
+    (SEER2_PER_SEER1, HSPF2_PER_HSPF1).
 
     Every home given here must carry a dual-fuel option string: the frame
     holds only homes ResStock applied the package to, so a blank or a
@@ -516,8 +518,8 @@ def add_dual_fuel_spec_columns(
         df_out[f'upgrade_{field}'] = option_strings.map(
             {option: parsed[field] for option, parsed in parsed_by_string.items()})
     # The option string gives SEER2 and HSPF2; the cost regression takes SEER1.
-    df_out['upgrade_hp_seer1'] = seer2_to_seer1(df_out['upgrade_hp_seer2'])
-    df_out['upgrade_hp_hspf1'] = hspf2_to_hspf1(df_out['upgrade_hp_hspf2'])
+    df_out['upgrade_hp_seer1'] = df_out['upgrade_hp_seer2'] / SEER2_PER_SEER1
+    df_out['upgrade_hp_hspf1'] = df_out['upgrade_hp_hspf2'] / HSPF2_PER_HSPF1
     return df_out
 
 

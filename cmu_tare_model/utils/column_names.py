@@ -35,8 +35,8 @@ from typing import Optional
 # ResStock 2022.1.1 reports a home's peak electric demand during the hours its
 # heating or its cooling runs. ResStock 2025.1 reports the largest daily peak
 # in the winter or the summer months instead, whatever is running. They are
-# different measurements (NEXT_STEPS, Phase 2 Task 7), so the 2025.1 columns
-# carry 'winter' and 'summer' and never share a name with the 2022.1.1 ones.
+# different measurements, so the 2025.1 columns carry 'winter' and 'summer'
+# and never share a name with the 2022.1.1 ones.
 PEAK_ELECTRICITY_PERIODS = {
     '2022.1.1': {'heating': 'heating', 'cooling': 'cooling'},
     '2025.1': {'heating': 'winter', 'cooling': 'summer'},
@@ -68,7 +68,12 @@ def create_peak_electricity_col(
         raise KeyError(
             f"No peak demand names for release '{release}'; expected one of "
             f"{sorted(PEAK_ELECTRICITY_PERIODS)}")
-    period = PEAK_ELECTRICITY_PERIODS[release][end_use]
+    periods_by_end_use = PEAK_ELECTRICITY_PERIODS[release]
+    if end_use not in periods_by_end_use:
+        raise KeyError(
+            f"No peak demand name for end use '{end_use}'; expected one of "
+            f"{sorted(periods_by_end_use)}")
+    period = periods_by_end_use[end_use]
     suffix = '_savings' if savings else ''
     return f'{prefix}peak_electricity_{period}_kw{suffix}'
 

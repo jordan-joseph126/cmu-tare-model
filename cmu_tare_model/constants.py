@@ -136,7 +136,7 @@ VALID_MENU_MPS = RESSTOCK_RELEASE_AND_MP[RESSTOCK_RELEASE_THIS_RUN]
 # temperature. Such a package needs a furnace cost and its own rebate fuel-gate
 # rule. Package numbers repeat across releases, so a package is dual fuel only
 # under the release it is listed for. Ask is_dual_fuel_package
-# (utils/measure_packages.py); never test a package number on its own.
+# (utils/calculation_utils.py); never test a package number on its own.
 DUAL_FUEL_PACKAGES_BY_RELEASE = {
     '2022.1.1': [],
     '2025.1': [5],  # Upgrade 05, Dual Fuel Heating System
@@ -189,6 +189,9 @@ PUBLIC_DISCOUNTING_METHOD_SUFFIXES = {
 CAPITAL_COST_VALIDATION = True  
 
 # Set True to run BSQ-based grid impact analysis
+# TODO (grid impact, 2025.1): the grid impact analysis works on ResStock 2022.1.1
+# only for now. It will be updated for the dual-fuel analysis (2025.1). Until
+# then switch it off for a 2025.1 run (run_tare_notebooks.py --skip-grid-impact).
 GRID_IMPACT_ANALYSIS = True
 
 # =============================================================
@@ -373,7 +376,7 @@ REBATE_HOMES = "HOMES"
 #       separate value move deferred to the full-run re-derivation session.
 #   dual_fuel_passes_fuel_gates -- True lets a dual-fuel retrofit (a heat pump
 #       that keeps a fossil furnace as backup; is_dual_fuel_package in
-#       utils/measure_packages.py) pass both fuel gates above, whatever the
+#       utils/calculation_utils.py) pass both fuel gates above, whatever the
 #       home's heating fuel before the retrofit. The fuel gates exist because a
 #       rebate may not fund removing a fossil heating system, and a dual-fuel
 #       retrofit does not remove one. Under June 2026 this means: HEEHR at or
@@ -478,6 +481,14 @@ VALID_HVAC_REPLACEMENT_SCENARIOS = ['heating', 'heating_and_cooling']
 #     consistency with the ASHP floor.
 #   - NAECA federal minimum for gas furnaces: 80% AFUE
 # =============================================================
+EFFICIENCY_FLOORS_PM2 = {
+    'air_source_heat_pump_centrally_ducted':       15.0,   # SEER1
+    'air_source_heat_pump_non_ducted_multi_zone':  15.0,   # SEER1
+    'air_conditioner_centrally_ducted':            15.0,   # SEER1
+    'furnaces_gas_furnace':                        0.80,   # AFUE (decimal)
+    # 'electric_baseboard_default' has pm2_coef=0, no floor needed
+}
+
 # =============================================================
 # CONSTANTS: SEER2 / HSPF2 RATINGS (DOE APPENDIX M1)
 # =============================================================
@@ -489,19 +500,12 @@ VALID_HVAC_REPLACEMENT_SCENARIOS = ['heating', 'heating_and_cooling']
 # package's SEER2 15.2 becomes SEER1 16.0, the ENERGY STAR floor written as
 # 16.0 SEER1 in process_euss_data.py. HSPF is converted for the record only;
 # it has no cost lever in this model.
-# PROVISIONAL (session decision P1): these two factors were not checked
-# against the DOE Appendix M1 text. Converted only in
-# utils/efficiency_ratings.py.
+# The two factors are a reasonable and standard assumption for the vast
+# majority of residential installations, ducted split systems in particular,
+# the kind of system the dual-fuel package installs. Used only in
+# add_dual_fuel_spec_columns (process_euss_data.py).
 SEER2_PER_SEER1 = 0.95
 HSPF2_PER_HSPF1 = 0.85
-
-EFFICIENCY_FLOORS_PM2 = {
-    'air_source_heat_pump_centrally_ducted':       15.0,   # SEER1
-    'air_source_heat_pump_non_ducted_multi_zone':  15.0,   # SEER1
-    'air_conditioner_centrally_ducted':            15.0,   # SEER1
-    'furnaces_gas_furnace':                        0.80,   # AFUE (decimal)
-    # 'electric_baseboard_default' has pm2_coef=0, no floor needed
-}
 
 # =============================================================
 # CONSTANTS: CAPACITY BOUNDS FOR REPLACEMENT COSTS

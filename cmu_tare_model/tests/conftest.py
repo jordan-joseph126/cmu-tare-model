@@ -194,3 +194,41 @@ def mock_fuel_prices():
                     prices[div][fuel][scenario][year] = 0.15 + (year - 2024) * 0.005
 
     return prices
+
+
+# -- Dual-fuel backup furnace (shared by the furnace metrics and cost tests) ---
+
+# The real REMDB v4 'furnaces_gas_furnace' row (2023 dollars), written out by
+# hand so that no data file is read.
+BACKUP_FURNACE_REMDB_ROW = {
+    'pm1_metric': 'Heating Capacity', 'pm1_unit': 'BTU/Hr',
+    'pm1_coef_low': 0.004744, 'pm1_coef_mid': 0.00645, 'pm1_coef_high': 0.01105,
+    'pm1_lower_bound': 30000.0, 'pm1_upper_bound': 156250.0,
+    'pm2_metric': 'AFUE', 'pm2_unit': 'Unitless',
+    'pm2_coef_low': 3309.827024, 'pm2_coef_mid': 4325.000025,
+    'pm2_coef_high': 4862.6875,
+    'pm2_lower_bound': 0.8, 'pm2_upper_bound': 0.97,
+    'intercept_low': -2009.224953, 'intercept_mid': -2780.000019,
+    'intercept_high': -2910.150001,
+    'multiplier_retrofit': 1.0, 'adder_retrofit': 2217.753,
+}
+
+
+@pytest.fixture
+def backup_furnace_remdb_costs() -> pd.DataFrame:
+    """A REMDB v4 cost table that holds only the gas furnace row."""
+    return pd.DataFrame.from_dict(
+        {'furnaces_gas_furnace': BACKUP_FURNACE_REMDB_ROW}, orient='index')
+
+
+@pytest.fixture
+def df_backup_furnace_homes() -> pd.DataFrame:
+    """Three sample homes with a gas backup and one home outside the package."""
+    return pd.DataFrame({
+        'size_heat_pump_backup_primary_k_btu_h': [63.2, 80.0, 40.0, 50.0],
+        'upgrade_backup_fuel': ['Natural Gas', 'Natural Gas', 'Natural Gas', None],
+        'upgrade_backup_afue': [0.925, 0.95, 0.925, np.nan],
+        'upgrade_hvac_heating_efficiency': ['dual fuel'] * 3 + [None],
+        'include_heating': [True, True, True, False],
+        'include_sample': [True, True, True, False],
+    }, index=pd.Index([1, 2, 3, 4], name='bldg_id'))

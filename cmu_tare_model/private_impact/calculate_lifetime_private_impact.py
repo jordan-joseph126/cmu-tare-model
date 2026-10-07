@@ -22,9 +22,9 @@ from cmu_tare_model.utils.validation_framework import (
 )
 from cmu_tare_model.utils.calculation_utils import (
     validate_common_parameters,
+    is_dual_fuel_package,
     apply_temporary_validation_and_mask
 )
-from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
 from cmu_tare_model.utils.column_names import (
     COST_TYPE_BACKUP_FURNACE,
     create_fuel_cost_col,

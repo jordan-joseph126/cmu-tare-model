@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from cmu_tare_model.adoption_potential.data_processing.visuals_adoption_dotplot import (
+    MI_TIER_NAMES,
     REBATE_POLICY_SCENARIO_ORDER,
     REPLACEMENT_CREDIT_SCOPES,
     adoption_reconciliation_table,
@@ -95,25 +96,36 @@ def test_fossil_rule_is_skipped_for_a_dual_fuel_package(adoption_df, monkeypatch
             adoption_df, mp=3, check_june2026_fossil_rule=True)
 
 
-def test_plot_df_without_weight_needs_a_scaling_factor(adoption_df):
-    """No release's weight is assumed when a frame has no weight column. (The
-    reconciliation table stops first, with a KeyError naming 'weight'.)"""
-    with pytest.raises((KeyError, ValueError), match='weight'):
-        build_econ_plot_df(adoption_df.drop(columns=['weight']).assign(
-            include_sample=True), mp=3)
+def test_plot_df_needs_a_weight_column(adoption_df):
+    """A frame with no weight column stops in the reconciliation table, with a
+    KeyError naming 'weight'; no release's weight is assumed in its place."""
+    with pytest.raises(KeyError, match='weight'):
+        build_econ_plot_df(adoption_df.drop(columns=['weight']), mp=3)
 
 
 def test_prepare_plot_data_reads_the_weight(adoption_df):
-    col = 'ref2025_mp3_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base'
-    index = pd.MultiIndex.from_tuples(
+    """With no scaling_factor given, homes counts use the frame's own weight; a
+    frame with no weight column, or with two weights, stops."""
+    adopter_col = 'ref2025_mp3_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base'
+    # A made-up weight that is neither release's (242.131013 or
+    # 253.90367272727272), so a typed-in release weight would fail this test.
+    frame_weight = 100.0
+    source_df = adoption_df.dropna(subset=[adopter_col]).assign(weight=frame_weight)
+    # The adoption-share frame as prepare_plot_data reads it: one row per
+    # (fuel, income group) and one column per (adopter column, tier).
+    share_index = pd.MultiIndex.from_tuples(
         [('Electricity', 'LMI')], names=['base_heating_fuel', 'lmi_or_mui'])
-    mi = pd.DataFrame({'Adopter': [50.0]}, index=index)
-    try:
-        plot = prepare_plot_data(mi, adoption_df.dropna(subset=[col]), col, col)
-    except (KeyError, ValueError) as error:
-        # The made-up MultiIndex frame may not carry every tier the function
-        # expects; this test only checks the weight is read, not the layout.
-        assert '242' not in str(error)
-        return
-    assert plot['weighted_homes_millions'].iloc[0] == pytest.approx(
-        plot['sample_n'].iloc[0] * WEIGHT / 1e6)
+    share_columns = pd.MultiIndex.from_product([[adopter_col], MI_TIER_NAMES])
+    df_shares = pd.DataFrame(50.0, index=share_index, columns=share_columns)
+
+    plot_df = prepare_plot_data(df_shares, source_df, adopter_col, adopter_col)
+    assert plot_df['sample_n'].tolist() == [1, 1, 2, 2, 5, 5]
+    assert plot_df['weighted_homes_millions'].tolist() == pytest.approx(
+        (plot_df['sample_n'] * frame_weight / 1e6).tolist())
+
+    with pytest.raises(ValueError, match='weight'):
+        prepare_plot_data(
+            df_shares, source_df.drop(columns=['weight']), adopter_col, adopter_col)
+    two_weights = source_df.assign(weight=[frame_weight] * 4 + [2 * frame_weight])
+    with pytest.raises(ValueError, match='exactly one value'):
+        prepare_plot_data(df_shares, two_weights, adopter_col, adopter_col)

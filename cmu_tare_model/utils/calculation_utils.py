@@ -20,6 +20,9 @@ from cmu_tare_model.constants import (
     FUEL_MAPPING,
     ALLOWED_TECHNOLOGIES,
     SHARED_COOLING_EFFICIENCY,
+    DUAL_FUEL_PACKAGES_BY_RELEASE,
+    RESSTOCK_RELEASE_AND_MP,
+    RESSTOCK_RELEASE_THIS_RUN,
     VERBOSE,
 )
 from cmu_tare_model.utils.validation_framework import (
@@ -749,6 +752,38 @@ def validate_common_parameters(
     # No longer validating discounting_method because using both methods for private NPV
 
     return menu_mp_int, policy_scenario
+
+
+# ===== Measure Package Type =====
+def is_dual_fuel_package(menu_mp: int, release: Optional[str] = None) -> bool:
+    """Says whether a measure package installs a dual-fuel heating system.
+
+    A dual-fuel package keeps a fossil furnace as the heat pump's backup. Its
+    retrofit therefore has a furnace cost on top of the heat pump's, burns gas
+    after the retrofit, and passes the June 2026 rebate fuel gates whatever the
+    home's heating fuel was before.
+
+    Package numbers repeat across ResStock releases, so the answer always
+    comes from the release and the package number together.
+
+    Args:
+        menu_mp: Measure package number (0 is the baseline, never dual fuel).
+        release: ResStock release. None uses RESSTOCK_RELEASE_THIS_RUN.
+
+    Returns:
+        True only if the package is listed as dual fuel for that release in
+        DUAL_FUEL_PACKAGES_BY_RELEASE (constants.py).
+
+    Raises:
+        ValueError: If the release is not a known release.
+    """
+    if release is None:
+        release = RESSTOCK_RELEASE_THIS_RUN
+    if release not in RESSTOCK_RELEASE_AND_MP:
+        raise ValueError(
+            f"Unknown ResStock release '{release}'; expected one of "
+            f"{sorted(RESSTOCK_RELEASE_AND_MP)}")
+    return int(menu_mp) in DUAL_FUEL_PACKAGES_BY_RELEASE.get(release, [])
 
 
 # ===== Shared DataFrame Helpers =====

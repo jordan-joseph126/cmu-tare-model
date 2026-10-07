@@ -28,7 +28,7 @@ from cmu_tare_model.constants import (
     VERBOSE,
 )
 from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2025_2018
-from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
+from cmu_tare_model.utils.calculation_utils import is_dual_fuel_package
 from cmu_tare_model.utils.column_names import (
     create_cost_col,
     create_rebate_col,

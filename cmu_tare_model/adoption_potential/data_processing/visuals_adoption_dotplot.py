@@ -36,8 +36,8 @@ import numpy as np
 import pandas as pd
 
 from cmu_tare_model.constants import FIGURE_DISPLAY_DPI, FIGURE_DPI
+from cmu_tare_model.utils.calculation_utils import is_dual_fuel_package
 from cmu_tare_model.utils.column_names import create_adoption_col
-from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 
 # ===========================================================================
@@ -311,7 +311,6 @@ def build_econ_plot_df(
     fuel_col: str = 'base_heating_fuel',
     income_col: str = 'lmi_or_mui',
     income_groups: Optional[List[str]] = None,
-    scaling_factor: Optional[float] = None,
     shape_by: str = 'replacement_credit_scenario',
     fixed_replacement_credit_scenario: str = 'heatingLCC_coolingSavings',
     rebate_vintage: str = 'sub',
@@ -328,11 +327,6 @@ def build_econ_plot_df(
         fuel_col: Column holding the baseline heating fuel.
         income_col: Column holding the income group.
         income_groups: Income groups to break out (default ['LMI']).
-        scaling_factor: Fallback homes-per-sample weight, used only when
-            source_df has no 'weight' column. When a weight column is present the
-            weighted-homes column is derived from the actual weight sum instead.
-            None (the default) has no fallback: a frame with no weight column
-            then stops, rather than using one release's weight for another.
         shape_by: Which axis the marker shape encodes.
             'replacement_credit_scenario' (default) emits three rows per grouping
             -- one per replacement-credit scope (heating replacement only,
@@ -363,6 +357,8 @@ def build_econ_plot_df(
         ValueError: If shape_by, fixed_replacement_credit_scenario, or
             rebate_vintage is invalid, or adoption_reconciliation_table's
             checks fail.
+        KeyError: If source_df lacks a column adoption_reconciliation_table
+            needs (include_sample, weight, fuel_col, or an adopter column).
     """
     valid_shape_by = ('replacement_credit_scenario', 'rebate_policy_scenario')
     if shape_by not in valid_shape_by:
@@ -450,22 +446,16 @@ def build_econ_plot_df(
 
     rows: List[dict] = []
 
-    def _weighted_homes_millions(sub_df: pd.DataFrame, n: int) -> float:
+    def _weighted_homes_millions(sub_df: pd.DataFrame) -> float:
         """Weighted homes in the study sample (millions) for a grouping.
 
-        Uses the actual household weight sum when a 'weight' column is present --
-        the same weight-derived approach the notebook uses for fuel_counts -- so
-        the per-group homes annotation is consistent with the y-axis fuel totals.
-        Falls back to the sample count times the scaling_factor default only when
-        no weight column exists.
+        The sum of the household weights -- the same weight-derived approach
+        the notebook uses for fuel_counts -- so the per-group homes annotation
+        is consistent with the y-axis fuel totals. Every frame here has a
+        'weight' column: adoption_reconciliation_table, called above, stops
+        without one.
         """
-        if 'weight' in sub_df.columns:
-            return sub_df['weight'].sum() / 1_000_000
-        if scaling_factor is None:
-            raise ValueError(
-                "source_df has no 'weight' column and no scaling_factor was "
-                "given; the homes count needs one or the other")
-        return n * scaling_factor / 1_000_000
+        return sub_df['weight'].sum() / 1_000_000
 
     def _append_group(
         grouping: str,
@@ -475,7 +465,7 @@ def build_econ_plot_df(
         n: int,
     ) -> None:
         """Append this grouping's rows for the active shape_by mode."""
-        homes_m = _weighted_homes_millions(sub_df, n)
+        homes_m = _weighted_homes_millions(sub_df)
         if shape_by == 'replacement_credit_scenario':
             # One row per credit scope, in REPLACEMENT_CREDIT_SCOPES order. The
             # plotted value is the scope's subsidized rate; the delta is that
