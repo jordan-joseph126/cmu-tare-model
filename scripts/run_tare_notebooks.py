@@ -629,7 +629,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     started = time.perf_counter()
     memory.start()
     try:
-        shell.run_line_magic("run", f'-i "{MAIN_NOTEBOOK}"')
+        # Forward slashes, no quotes, like the notebooks' own %run calls: on Windows
+        # IPython fails on a quoted path holding '-m', as in 'cmu-tare-model'.
+        shell.run_line_magic("run", f"-i {MAIN_NOTEBOOK.as_posix()}")
     except RunnerStop as stop:
         exit_code = stop.exit_code
         print("\n" + "=" * 78)
