@@ -364,7 +364,7 @@ def test_income_cut_off_uses_the_unrounded_income_share(monkeypatch):
 
 
 # =============================================================================
-# Dual-fuel package (2025.1 Upgrade 05): passes the June 2026 fuel gates (G8)
+# Dual-fuel package (2025.1 Upgrade 05): passes the June 2026 fuel gates
 # =============================================================================
 
 @pytest.fixture

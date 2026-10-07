@@ -32,7 +32,7 @@ def validate_damage_dataframes(
         rcm_model: Reduced Complexity Model name (e.g., 'inmap', 'ap2', 'easiur').
         cr_function: Concentration-response function name (e.g., 'acs', 'h6c').
         check_health: Whether to validate health damage columns. Health is
-            dormant (Session 3), so this defaults to False and only climate
+            dormant, so this defaults to False and only climate
             columns are required; set True to re-enable health validation.
         verbose: Whether to print detailed validation messages. Defaults to False.
 
@@ -47,7 +47,7 @@ def validate_damage_dataframes(
     # Track column existence for each DataFrame
     found_baseline_climate = False
     found_retrofit_climate = False
-    # Health is dormant (Session 3): when not checking health, treat it as
+    # Health is dormant: when not checking health, treat it as
     # already satisfied so climate-only validation can still pass.
     found_baseline_health = not check_health
     found_retrofit_health = not check_health

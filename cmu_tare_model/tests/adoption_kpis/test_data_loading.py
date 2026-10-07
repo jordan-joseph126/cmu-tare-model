@@ -133,7 +133,7 @@ def test_baseline_rejects_another_file(recorded_loads):
         data_loading.load_euss_baseline("some_other_file.csv")
 
 
-# -- demand on a 2025.1-named frame (G10) ---------------------------------------
+# -- demand on a 2025.1-named frame ---------------------------------------------
 
 def test_demand_runs_on_2025_column_names():
     # Two made-up homes in one county, named the way the 2025.1 files name

@@ -936,8 +936,8 @@ def add_backup_furnace_metrics(
     The dual-fuel retrofit installs a new condensing gas furnace next to the
     heat pump. It is priced with the same REMDB row and coefficients that
     price a gas furnace replacement ('furnaces_gas_furnace': pm1 = heating
-    capacity in BTU/hr, pm2 = AFUE as a fraction), as the researcher decided
-    (R1), at the furnace's own size and rating:
+    capacity in BTU/hr, pm2 = AFUE as a fraction), as the researcher decided,
+    at the furnace's own size and rating:
 
     - pm1: the backup furnace's size from the retrofit run
       (size_heat_pump_backup_primary_k_btu_h, kBtu/h, x 1000). ResStock

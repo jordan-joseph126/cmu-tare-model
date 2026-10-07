@@ -419,7 +419,7 @@ def test_private_npv_blank_cooling_replacement_cost_raises(mock_discount, mock_p
 
 
 # =============================================================================
-# calculate_capital_costs: the dual-fuel backup furnace (G7)
+# calculate_capital_costs: the dual-fuel backup furnace
 # =============================================================================
 
 _FURNACE_COL = 'mp8_heating_backupFurnace_installed_cost_v4MID'

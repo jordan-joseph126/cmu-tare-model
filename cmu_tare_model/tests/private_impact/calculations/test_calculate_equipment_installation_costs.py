@@ -228,13 +228,15 @@ def _expected_2023_cost(size_kbtu_h: float, afue: float) -> float:
 
 def test_furnace_cost_follows_the_remdb_formula(
         df_backup_furnace_homes, backup_furnace_remdb_costs, monkeypatch):
+    """The furnace cost is the REMDB formula in 2023 dollars, inflated to 2025."""
     from cmu_tare_model.private_impact.calculations import (
         calculate_equipment_installation_costs as installation,
     )
     from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2025_2023
     # Run as the 2025.1 dual-fuel package, whatever release the tests run as.
     monkeypatch.setattr(installation, 'VALID_MENU_MPS', [0, 5])
-    monkeypatch.setattr(installation, 'is_dual_fuel_package', lambda mp: mp == 5)
+    monkeypatch.setattr(
+        installation, 'is_dual_fuel_package', lambda menu_mp: menu_mp == 5)
 
     df_main, df_detailed = add_backup_furnace_metrics(
         df_backup_furnace_homes, backup_furnace_remdb_costs, verbose=False)
@@ -255,6 +257,7 @@ def test_furnace_cost_follows_the_remdb_formula(
 @pytest.mark.parametrize('menu_mp', [3, 4])
 def test_no_furnace_cost_for_a_heat_pump_only_package(
         df_backup_furnace_homes, backup_furnace_remdb_costs, menu_mp):
+    """Pricing a backup furnace for a package that has none stops the run."""
     # Run as the tests' default release (2022.1.1): MP3 and MP4 are heat
     # pumps with no backup furnace, so pricing one must stop.
     from cmu_tare_model.private_impact.calculations import (

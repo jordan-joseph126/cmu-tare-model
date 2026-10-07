@@ -468,7 +468,7 @@ def get_rebate_eligible_mps() -> List[int]:
     >= 9.5 HSPF1) in process_euss_data.df_enduse_compare so it qualifies --
     and its capital cost reflects that ENERGY STAR install. MP4/MP8/MP9/MP10
     use high-efficiency ASHP (SEER 24+) and qualify as modeled. Under
-    2025.1, MP5 (dual fuel) is registered eligible per D8 (Phase 3) -- this
+    2025.1, MP5 (dual fuel) is registered eligible -- this
     only marks the package as participating. Its June 2026 fuel-gate
     exception is set by dual_fuel_passes_fuel_gates in REBATE_RULE_CONFIG
     (constants.py) and applied in calculate_rebate_program.
@@ -527,7 +527,7 @@ def calculate_rebate_program(
     homes_fuel_gate, kept only for byte-identity pending re-derivation).
     A dual-fuel retrofit keeps a fossil furnace as the heat pump's backup, so it
     removes no fossil system: where the config's dual_fuel_passes_fuel_gates is
-    True it passes both fuel gates whatever the baseline fuel (D8, R3).
+    True it passes both fuel gates whatever the baseline fuel.
 
     Args:
         df_results_IRA: DataFrame with percent_AMI, base_heating_fuel, state, the

@@ -289,3 +289,28 @@ def test_tepper_list_adds_furnace_and_dual_fuel_columns_only_for_dual_fuel(
     # The furnace cost sits beside the heat pump's upgrade cost.
     position = columns_dual.index('mp4_heating_backupFurnace_installed_cost_v4MID')
     assert columns_dual[position - 1] == 'mp4_heating_upgrade_installed_cost_v4MID'
+
+
+def test_tepper_list_holds_the_panel_columns_only_for_2025(monkeypatch):
+    """A 2025.1 run's list holds the four electric panel columns; 2022.1.1 none."""
+    from cmu_tare_model.utils import export_tepper_csv
+    panel_columns = [
+        'panel_service_rating_amps',
+        'mp4_panel_constraint_overall',
+        'mp4_panel_constraint_capacity',
+        'mp4_panel_constraint_breaker_space',
+    ]
+    monkeypatch.setattr(export_tepper_csv, 'RESSTOCK_RELEASE_THIS_RUN', '2022.1.1')
+    columns_2022 = export_tepper_csv.build_household_column_list(
+        4, summary_columns=[])
+    assert not any('panel' in column for column in columns_2022)
+    # The same package number as a 2025.1 run: the panel columns follow the
+    # release, not the package, so package 4 can stand in for any package.
+    monkeypatch.setattr(export_tepper_csv, 'RESSTOCK_RELEASE_THIS_RUN', '2025.1')
+    columns_2025 = export_tepper_csv.build_household_column_list(
+        4, summary_columns=[])
+    for column in panel_columns:
+        assert column in columns_2025
+    # They sit together, in this order.
+    position = columns_2025.index('panel_service_rating_amps')
+    assert columns_2025[position:position + 4] == panel_columns

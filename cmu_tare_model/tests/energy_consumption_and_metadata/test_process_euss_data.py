@@ -358,7 +358,7 @@ def test_select_2025_1_columns_needs_bldg_id_and_weight():
         select_resstock_2025_1_columns(file_columns)
 
 
-# -- is_dual_fuel_package and the dual-fuel option string (G5) ----------------
+# -- is_dual_fuel_package and the dual-fuel option string ---------------------
 
 _DUAL_FUEL_925 = ("Dual-Fuel ASHP, SEER 15.2, 7.8 HSPF2, Integrated Backup, "
                   "92.5% AFUE NG, 35F switchover")

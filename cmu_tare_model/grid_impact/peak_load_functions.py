@@ -1,7 +1,6 @@
 """Reusable functions for post-TARE peak load analysis.
 
-Extracted from calculate_postTARE_ts_aws_peak_demand.ipynb (Phase 2 BSQ refactor).
-Used by the notebook and by the national loop (Step 9).
+Used by the main notebook, tare_model_main_v3_0.ipynb.
 
 TODO (grid impact, 2025.1): the grid impact analysis works on ResStock 2022.1.1
 only for now. It will be updated for the dual-fuel analysis (2025.1).

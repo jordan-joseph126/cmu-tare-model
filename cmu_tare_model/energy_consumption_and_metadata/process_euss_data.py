@@ -249,7 +249,7 @@ def load_and_filter_upgrade(
 
     Reorganizes the inline filtering that both the baseline and MP5 notebook
     cells duplicated into one reusable function, and adds two new filter
-    stages ahead of the existing ones (D3, Phase 3): ResStock's own
+    stages ahead of the existing ones: ResStock's own
     applicability flag and the Alaska/Hawaii exclusion. Every existing
     filter's logic and order is unchanged -- occupancy, housing type, and
     the state/city filter all run exactly as they did inline in the
@@ -258,7 +258,7 @@ def load_and_filter_upgrade(
 
     Filter order:
         1. Load -- no filter; the starting population for the funnel.
-        2. Applicability -- ResStock's own upgrade_applicable flag (D3, the
+        2. Applicability -- ResStock's own upgrade_applicable flag (the
            new leading filter; a no-op for menu_mp=0, where every row is
            True). Applied to both releases so the two samples use the same
            scope filters; for 2022.1.1 MP3/MP4 it removes no in-scope homes.
@@ -339,7 +339,7 @@ def load_and_filter_upgrade(
         df_filtered = read_resstock_2022_1_1_csv(menu_mp)
     record_stage(df_filtered, 'load')
 
-    # ===== Stage 2: Applicability (new, D3) =====
+    # ===== Stage 2: Applicability (new) =====
     # Applied to both releases so the two samples use the same scope filters.
     # For 2022.1.1 MP3/MP4 it removes no in-scope homes.
     applicable_col = resstock_col(release, 'upgrade_applicable')
@@ -381,7 +381,7 @@ def load_and_filter_upgrade(
 # Backup fuel abbreviations published in the dual-fuel upgrade string, mapped
 # to the same fuel labels FUEL_MAPPING and this module use elsewhere
 # ('Natural Gas', not the abbreviation 'NG'). Only 'NG' has been observed in
-# the published data (Phase 1 audit, Section B.7); the other entries are
+# the published data; the other entries are
 # here so a future dual-fuel package with a different backup fuel fails
 # loudly instead of silently mapping to the wrong fuel.
 _DUAL_FUEL_BACKUP_FUEL_LABELS = {
@@ -1419,7 +1419,7 @@ def df_enduse_compare(
     # string in some upgrade parquets before a 2025-07-08 ResStock fix, even
     # though it reads as a real bool in the published 2025.1 files TARE loads
     # today, and a text "False" would otherwise count as True. Carried as a
-    # plain pass-through column here; Phase 3's masking funnel is the first
+    # plain pass-through column here; load_and_filter_upgrade is the first
     # place that filters on it. Only published starting ResStock 2025.1, so
     # this block is release-gated like the panel columns above.
     if release == '2025.1':

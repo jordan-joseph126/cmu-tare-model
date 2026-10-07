@@ -380,9 +380,9 @@ REBATE_HOMES = "HOMES"
 #       home's heating fuel before the retrofit. The fuel gates exist because a
 #       rebate may not fund removing a fossil heating system, and a dual-fuel
 #       retrofit does not remove one. Under June 2026 this means: HEEHR at or
-#       below 150% AMI for every baseline fuel (NEXT_STEPS D8), and HOMES
+#       below 150% AMI for every baseline fuel, and HOMES
 #       fuel-neutral above 150% AMI, as CLAUDE.md documents that program
-#       (researcher's decision R3, 6 Oct 2026). Caps, cost shares, income
+#       (researcher's decision, 6 Oct 2026). Caps, cost shares, income
 #       routing, savings tiers and the state gate are unchanged. It changes
 #       nothing for 2022.1.1 packages, none of which is dual fuel, so June 2026
 #       HOMES stays electric-gated for them (deferred, see homes_fuel_gate).
@@ -579,7 +579,7 @@ JENKINS_BREAKEVEN_REF_90: dict = {
 # PA climate zone spot-check ranges for COP benchmark validation.
 # PA is primarily CZ 4-5 (Pittsburgh, Philadelphia).
 # Source: Literature estimates for ASHP performance in mixed-humid climate.
-# TODO: follow-up (P0.2) — PA CZ 6-7 spot check currently fails.
+# TODO: follow-up -- PA CZ 6-7 spot check currently fails.
 PA_COP_RANGES: dict = {
     'mp3': (1.8, 2.4),
     'mp4': (2.5, 3.4),

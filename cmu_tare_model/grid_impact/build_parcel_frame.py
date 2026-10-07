@@ -1,11 +1,13 @@
 """Reconstruct Tamar's per-parcel (row-duplicated) TARE frame from real data.
 
 Joins the current CO measure-package export against the tax-parcel-to-
-ResStock match mapping so the no-weight peak-load path
-(already_weighted=True in compute_peak_load_summary) can be exercised on a
-real per-parcel frame instead of synthetic or stale data. See CLAUDE.md,
-"TARE Model -- Tamar's Feeder Peak Run" session notes, for why the two
-weighting regimes (sampled frame vs. row-duplicated frame) must not be mixed.
+ResStock match mapping, giving one row per matched tax parcel. The frame was
+built for a peak-load summary that sums rows with no sample weight. That
+summary is archived (see the note at the end of peak_load_functions.py), and
+nothing calls build_parcel_frame today: the grid impact cells of the main
+notebook use build_weight_dict_from_mapping instead. The two ways of
+weighting (a sampled frame times its weight, or a row-duplicated frame with
+no weight) must not be mixed.
 """
 
 from typing import Dict, List
@@ -44,10 +46,9 @@ def build_parcel_frame(
     Joins the current CO household export (one row per modeled ResStock
     building) against the tax-parcel match mapping (one row per real tax
     parcel) so each matched parcel gets its own row, carrying that parcel's
-    representative building's TARE values unchanged. This is the frame meant
-    to be run with already_weighted=True in compute_peak_load_summary -- the
-    row duplication IS the weighting, so the EUSS sample weight must not also
-    be applied on top of it.
+    representative building's TARE values unchanged. Sum this frame's rows as
+    they are -- the row duplication IS the weighting, so the EUSS sample
+    weight must not also be applied on top of it.
 
     Note on the FIPS gotcha: county_fips loses its leading zero on a CSV
     round-trip (Colorado's "08xxx" reads back as the int 8xxx). This function
@@ -72,8 +73,8 @@ def build_parcel_frame(
         building is present in df_export: every df_export column carried
         through unchanged, plus tax_parcel_ID and match_count (the number of
         parcels sharing that row's representative building). The weight
-        column is preserved but must not be applied downstream --
-        already_weighted=True is the intended run mode for this frame.
+        column is preserved but must not be applied downstream: each row
+        already stands for one real parcel.
 
     Raises:
         TypeError: If df_export or df_mapping is not a DataFrame.
@@ -98,9 +99,8 @@ def build_parcel_frame(
         raise KeyError(
             f"df_export is missing required column(s): {missing_export}. "
             f"This export is likely stale or built on a branch without the "
-            f"current peak-load columns -- rebuild it on the "
-            f"joseph-2026-nature-comms-submission branch before "
-            f"reconstructing the parcel frame."
+            f"current peak-load columns -- rebuild it from a current "
+            f"ResStock 2022.1.1 run before reconstructing the parcel frame."
         )
 
     required_mapping_cols = ["tax_parcel_ID", "representative_ID"]
@@ -148,7 +148,7 @@ def build_parcel_frame(
 
     # Step 5 -- inner join: one row per matched parcel whose representative
     # building survives in the export. Weight is preserved but NOT applied --
-    # run this frame with already_weighted=True.
+    # each row already stands for one real parcel.
     df_parcel = df_matched.merge(
         df_export,
         left_on="representative_ID",

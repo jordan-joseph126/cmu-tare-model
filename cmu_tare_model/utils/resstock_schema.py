@@ -1,7 +1,7 @@
 """Release-aware ResStock column names.
 
 RESSTOCK_COLUMN_MAP[release][logical_name] gives the physical column name to
-read for that release. It is built from the Phase 1 column map
+read for that release. It is built from the column map
 (cmu_tare_model/docs/resstock_2025_1_column_map.csv), so a rename is fixed in
 one CSV row instead of in every place that reads the column.
 """

@@ -82,7 +82,7 @@ def test_plot_df_homes_counts_cover_in_scope_homes_only(adoption_df):
 
 
 def test_fossil_rule_is_skipped_for_a_dual_fuel_package(adoption_df, monkeypatch):
-    """A dual-fuel package funds fossil baselines under June 2026 (G8), so the
+    """A dual-fuel package funds fossil baselines under June 2026, so the
     table skips rule 2 for it on its own; other packages keep the rule."""
     col = 'ref2025_mp3_heatingLCC_coolingLCC_sub_june2026_econ_adopter_fixed_base'
     adoption_df.loc[13, col] = 1.0   # natural gas home gains under June 2026

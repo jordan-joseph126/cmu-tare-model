@@ -185,7 +185,7 @@ def calculate_backup_furnace_installed_cost(
     prepared. The result is its own column (COST_TYPE_BACKUP_FURNACE), kept
     apart from the heat pump's cost; calculate_capital_costs adds it to the
     retrofit's capital cost. It is not part of the cost a rebate covers: a
-    fossil furnace is not a rebate measure (session decision P5).
+    fossil furnace is not a rebate measure.
 
     Args:
         df: Retrofit frame.

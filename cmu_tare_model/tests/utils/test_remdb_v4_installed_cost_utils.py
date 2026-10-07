@@ -105,7 +105,7 @@ def test_cooling_replacement_uses_old_ac_size(df_home, remdb_v4_costs):
     assert df_main['cooling_replacement_pm1_euss'].iloc[0] == pytest.approx(36.0 / 12.0)
 
 
-# -- SEER2-rated heat pumps (the 2025.1 dual-fuel package, G6) ----------------
+# -- SEER2-rated heat pumps (the 2025.1 dual-fuel package) --------------------
 
 def _seer1_costs() -> pd.DataFrame:
     """Heat-pump row whose pm2 metric is SEER1, as in the real REMDB table."""
@@ -155,6 +155,7 @@ def test_seer2_rated_heat_pump_needs_a_seer1_row(df_home, remdb_v4_costs):
 
 def test_metrics_use_the_backup_size_and_afue_fraction(
         df_backup_furnace_homes, backup_furnace_remdb_costs):
+    """The furnace is priced from its own backup size and its AFUE as a fraction."""
     df_main, df_detailed = add_backup_furnace_metrics(
         df_backup_furnace_homes, backup_furnace_remdb_costs, verbose=False)
     pm1 = df_main['heating_backupFurnace_pm1_euss']
@@ -171,6 +172,7 @@ def test_metrics_use_the_backup_size_and_afue_fraction(
 @pytest.mark.parametrize('bad_afue', [0.00925, 92.5])
 def test_metrics_stop_on_an_afue_read_wrongly(
         df_backup_furnace_homes, backup_furnace_remdb_costs, bad_afue):
+    """An AFUE outside the range a furnace can have stops the run."""
     df_bad = df_backup_furnace_homes.copy()
     df_bad.loc[1, 'upgrade_backup_afue'] = bad_afue
     with pytest.raises(ValueError, match='AFUE'):
@@ -180,6 +182,7 @@ def test_metrics_stop_on_an_afue_read_wrongly(
 
 def test_metrics_stop_on_a_backup_fuel_with_no_row(
         df_backup_furnace_homes, backup_furnace_remdb_costs):
+    """A backup fuel with no REMDB furnace row stops the run."""
     df_propane = df_backup_furnace_homes.copy()
     df_propane.loc[2, 'upgrade_backup_fuel'] = 'Propane'
     with pytest.raises(ValueError, match='Propane'):
