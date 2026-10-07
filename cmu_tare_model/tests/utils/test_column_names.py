@@ -231,3 +231,34 @@ def test_all_categories_in_fuel_cost_col():
     for cat in ['heating', 'waterHeating', 'clothesDrying', 'cooking']:
         result = create_fuel_cost_col('baseline_', 'year1', cat)
         assert cat in result
+
+
+# -- Peak electric demand names follow the release (G4) -----------------------
+
+def test_peak_electricity_names_2022_are_unchanged():
+    from cmu_tare_model.utils.column_names import create_peak_electricity_col
+    assert create_peak_electricity_col('base_', 'heating', '2022.1.1') == (
+        'base_peak_electricity_heating_kw')
+    assert create_peak_electricity_col('mp4_', 'cooling', '2022.1.1', savings=True) == (
+        'mp4_peak_electricity_cooling_kw_savings')
+
+
+def test_peak_electricity_names_2025_say_winter_and_summer():
+    from cmu_tare_model.utils.column_names import create_peak_electricity_col
+    assert create_peak_electricity_col('base_', 'heating', '2025.1') == (
+        'base_peak_electricity_winter_kw')
+    assert create_peak_electricity_col('base_', 'cooling', '2025.1') == (
+        'base_peak_electricity_summer_kw')
+    assert create_peak_electricity_col('mp5_', 'heating', '2025.1', savings=True) == (
+        'mp5_peak_electricity_winter_kw_savings')
+    with pytest.raises(KeyError):
+        create_peak_electricity_col('base_', 'heating', '2030.1')
+
+
+def test_tepper_list_uses_the_release_peak_names():
+    # Default release (2022.1.1): the export keeps its existing peak names.
+    from cmu_tare_model.utils.export_tepper_csv import build_household_column_list
+    columns = build_household_column_list(4, summary_columns=[])
+    assert 'base_peak_electricity_heating_kw' in columns
+    assert 'mp4_peak_electricity_cooling_kw_savings' in columns
+    assert not any('winter' in c or 'summer' in c for c in columns)

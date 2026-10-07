@@ -44,6 +44,7 @@ from cmu_tare_model.constants import (
     EQUIPMENT_SPECS,
     FUEL_MAPPING,
     REBATE_GUIDANCE_JUNE2026,
+    RESSTOCK_RELEASE_THIS_RUN,
 )
 from cmu_tare_model.utils.calculation_utils import (
     get_consumption_component_columns,
@@ -58,6 +59,7 @@ from cmu_tare_model.utils.column_names import (
     create_cost_col,
     create_discounted_savings_col,
     create_npv_case_col,
+    create_peak_electricity_col,
     create_rebate_col,
 )
 from cmu_tare_model.utils.modeling_params import define_scenario_params
@@ -368,15 +370,20 @@ def build_household_column_list(
     # the post-retrofit block carries ResStock's baseline-minus-upgrade delta as
     # the '..._savings' columns. The kW electric-demand pair and the kBtu/hr
     # thermal-load pair are distinct quantities -- both are kept, not combined.
+    # The electric peak is measured differently in each release (while heating
+    # or cooling runs in 2022.1.1; in the winter or summer months in 2025.1),
+    # so its names follow the release: '..._heating_kw' / '..._cooling_kw' or
+    # '..._winter_kw' / '..._summer_kw' (create_peak_electricity_col).
+    release = RESSTOCK_RELEASE_THIS_RUN
     peak = [
-        "base_peak_electricity_cooling_kw",
-        "base_peak_electricity_heating_kw",
+        create_peak_electricity_col("base_", "cooling", release),
+        create_peak_electricity_col("base_", "heating", release),
         "base_peak_load_cooling_kbtu_hr",
         "base_peak_load_heating_kbtu_hr",
-        f"{mp_token}peak_electricity_cooling_kw",
-        f"{mp_token}peak_electricity_heating_kw",
-        f"{mp_token}peak_electricity_cooling_kw_savings",
-        f"{mp_token}peak_electricity_heating_kw_savings",
+        create_peak_electricity_col(mp_token, "cooling", release),
+        create_peak_electricity_col(mp_token, "heating", release),
+        create_peak_electricity_col(mp_token, "cooling", release, savings=True),
+        create_peak_electricity_col(mp_token, "heating", release, savings=True),
         f"{mp_token}peak_load_cooling_kbtu_hr",
         f"{mp_token}peak_load_heating_kbtu_hr",
         f"{mp_token}peak_load_cooling_kbtu_hr_savings",

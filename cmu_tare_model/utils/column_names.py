@@ -30,6 +30,50 @@ from cmu_tare_model.constants import REMDB_COST_SCENARIO_KEYS
 from typing import Optional
 
 # =============================================================================
+# PEAK ELECTRIC DEMAND COLUMNS (release-specific)
+# =============================================================================
+# ResStock 2022.1.1 reports a home's peak electric demand during the hours its
+# heating or its cooling runs. ResStock 2025.1 reports the largest daily peak
+# in the winter or the summer months instead, whatever is running. They are
+# different measurements (NEXT_STEPS, Phase 2 Task 7), so the 2025.1 columns
+# carry 'winter' and 'summer' and never share a name with the 2022.1.1 ones.
+PEAK_ELECTRICITY_PERIODS = {
+    '2022.1.1': {'heating': 'heating', 'cooling': 'cooling'},
+    '2025.1': {'heating': 'winter', 'cooling': 'summer'},
+}
+
+
+def create_peak_electricity_col(
+    prefix: str,
+    end_use: str,
+    release: str,
+    savings: bool = False) -> str:
+    """Build a peak electric demand column name for one ResStock release.
+
+    Args:
+        prefix: 'base_' for the baseline, or 'mp{mp}_' for a retrofit.
+        end_use: 'heating' or 'cooling': the season the peak belongs to.
+        release: ResStock release, a key of PEAK_ELECTRICITY_PERIODS.
+        savings: True for ResStock's baseline-minus-retrofit change, which
+            only the retrofit files carry.
+
+    Returns:
+        Column name string, e.g. 'base_peak_electricity_heating_kw' (2022.1.1)
+        or 'mp5_peak_electricity_winter_kw_savings' (2025.1).
+
+    Raises:
+        KeyError: If release or end_use is unknown.
+    """
+    if release not in PEAK_ELECTRICITY_PERIODS:
+        raise KeyError(
+            f"No peak demand names for release '{release}'; expected one of "
+            f"{sorted(PEAK_ELECTRICITY_PERIODS)}")
+    period = PEAK_ELECTRICITY_PERIODS[release][end_use]
+    suffix = '_savings' if savings else ''
+    return f'{prefix}peak_electricity_{period}_kw{suffix}'
+
+
+# =============================================================================
 # PRIVATE IMPACT: COST COLUMNS
 # =============================================================================
 

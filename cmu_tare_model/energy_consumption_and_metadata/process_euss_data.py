@@ -30,6 +30,7 @@ from cmu_tare_model.utils.calculation_utils import (
     )
 from cmu_tare_model.utils.resstock_schema import RESSTOCK_COLUMN_MAP, resstock_col
 from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
+from cmu_tare_model.utils.column_names import create_peak_electricity_col
 from cmu_tare_model.utils.efficiency_ratings import hspf2_to_hspf1, seer2_to_seer1
 from cmu_tare_model.utils.degree_day_consumption_utils import (
     get_degree_day_adjusted_consumption_by_fuel,
@@ -835,10 +836,14 @@ def df_enduse_refactored(
     #     baseline-vs-retrofit electricity change.
     # Home-level values, so they are left unmasked by heating/cooling validity,
     # the same treatment as baseline_total_site_consumption above.
-    df_enduse['base_peak_electricity_cooling_kw'] = (
+    # The electric peak is a different measurement in each release (during
+    # heating or cooling in 2022.1.1; in the winter or summer months in
+    # 2025.1), so its column name follows the release
+    # (create_peak_electricity_col).
+    df_enduse[create_peak_electricity_col('base_', 'cooling', release)] = (
         df_baseline[resstock_col(release, 'peak_electricity_cooling')]
     )
-    df_enduse['base_peak_electricity_heating_kw'] = (
+    df_enduse[create_peak_electricity_col('base_', 'heating', release)] = (
         df_baseline[resstock_col(release, 'peak_electricity_heating')]
     )
     df_enduse['base_peak_load_cooling_kbtu_hr'] = (
@@ -1327,20 +1332,18 @@ def df_enduse_compare(
     # Home-level values; they are not added to any columns_to_mask list below, so
     # STEP 6 category validation leaves them intact.
     # 2022.1.1's peak columns are conditioned on the end use running that hour;
-    # 2025.1's are conditioned on the calendar season instead, so the two
-    # releases' zero counts differ even though both represent "the peak."
-    df_compare[f'mp{menu_mp}_peak_electricity_cooling_kw'] = (
-        df_mp[resstock_col(release, 'peak_electricity_cooling')]
-    )
-    df_compare[f'mp{menu_mp}_peak_electricity_heating_kw'] = (
-        df_mp[resstock_col(release, 'peak_electricity_heating')]
-    )
-    df_compare[f'mp{menu_mp}_peak_electricity_cooling_kw_savings'] = (
-        df_mp[resstock_col(release, 'peak_electricity_cooling_savings')]
-    )
-    df_compare[f'mp{menu_mp}_peak_electricity_heating_kw_savings'] = (
-        df_mp[resstock_col(release, 'peak_electricity_heating_savings')]
-    )
+    # 2025.1's are conditioned on the calendar season instead. They are not the
+    # same measurement, so they do not share a name: 2025.1's are named for
+    # winter and summer (create_peak_electricity_col).
+    mp_prefix = f'mp{menu_mp}_'
+    for end_use in ('cooling', 'heating'):
+        df_compare[create_peak_electricity_col(mp_prefix, end_use, release)] = (
+            df_mp[resstock_col(release, f'peak_electricity_{end_use}')])
+    for end_use in ('cooling', 'heating'):
+        savings_col = create_peak_electricity_col(
+            mp_prefix, end_use, release, savings=True)
+        df_compare[savings_col] = (
+            df_mp[resstock_col(release, f'peak_electricity_{end_use}_savings')])
     df_compare[f'mp{menu_mp}_peak_load_cooling_kbtu_hr'] = (
         df_mp[resstock_col(release, 'peak_load_cooling')]
     )
