@@ -18,6 +18,8 @@ import pandas as pd
 from cmu_tare_model.adoption_kpis.data_loading import (
     CLIMATE_ZONE_COL,
     COUNTY_COL,
+    GAS_FUEL_COL,
+    HEATING_ELEC_COL,
     HEATING_LOAD_COL,
     HP_BACKUP_ELEC_COL,
     HP_FANS_PUMPS_COL,
@@ -146,11 +148,11 @@ def compute_thermal_cop(
     if group_cols is None:
         group_cols = ["state"]
 
-    elec_col = "out.electricity.heating.energy_consumption.kwh"
+    elec_col = HEATING_ELEC_COL
     bkup_col = HP_BACKUP_ELEC_COL
     fans_col = HP_FANS_PUMPS_COL
     load_col = HEATING_LOAD_COL
-    gas_col = "out.natural_gas.heating.energy_consumption.kwh"
+    gas_col = GAS_FUEL_COL
 
     # Validate required columns
     for col in [load_col, gas_col]:

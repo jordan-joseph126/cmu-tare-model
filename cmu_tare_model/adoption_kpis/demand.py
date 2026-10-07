@@ -15,14 +15,17 @@ import numpy as np
 import pandas as pd
 
 from cmu_tare_model.adoption_kpis.data_loading import (
+    DWELLING_UNIT_WEIGHT,
     ELEC_TOTAL_COL,
     ELEC_TOTAL_SAVINGS_COL,
     SITE_ENERGY_TOTAL_COL,
     SITE_ENERGY_TOTAL_SAVINGS_COL,
     HEATING_ELEC_SAVINGS_COLS,
+    HEATING_FUEL_COL,
     COOLING_ELEC_SAVINGS_COLS,
     HOT_WATER_ELEC_SAVINGS_COL,
     COUNTY_COL,
+    STATE_COL,
 )
 from cmu_tare_model.constants import MIN_HOME_COUNT
 
@@ -71,8 +74,9 @@ def compute_scenario_demand(
 
     Args:
         df_baseline: EUSS baseline DataFrame (indexed by bldg_id).
-            Must contain ``in.state``, ``in.county``, ``in.heating_fuel``,
-            ``weight``, ``ELEC_TOTAL_COL``, and ``SITE_ENERGY_TOTAL_COL``.
+            Must contain ``STATE_COL``, ``COUNTY_COL``, ``HEATING_FUEL_COL``,
+            ``DWELLING_UNIT_WEIGHT``, ``ELEC_TOTAL_COL``, and
+            ``SITE_ENERGY_TOTAL_COL`` (this release's names; data_loading.py).
         df_upgrade: EUSS upgrade DataFrame (indexed by bldg_id,
             already filtered to ``applicability == True``).
             Must contain ``ELEC_TOTAL_COL``, ``SITE_ENERGY_TOTAL_COL``, and
@@ -127,11 +131,14 @@ def compute_scenario_demand(
         # longer burned.
         'site_energy_change_kwh': 0.0 - df_upgrade[SITE_ENERGY_TOTAL_SAVINGS_COL],
     })
+    # The ResStock columns are read under this release's names (data_loading.py)
+    # and kept under fixed labels, so the code below and the county tables are
+    # the same for both releases.
     df_demand = pd.DataFrame({
-        'in.state': df_baseline['in.state'],
+        'in.state': df_baseline[STATE_COL],
         'in.county': df_baseline[COUNTY_COL],
-        'in.heating_fuel': df_baseline['in.heating_fuel'],
-        'weight': df_baseline['weight'],
+        'in.heating_fuel': df_baseline[HEATING_FUEL_COL],
+        'weight': df_baseline[DWELLING_UNIT_WEIGHT],
         'baseline_electric_kwh': df_baseline[ELEC_TOTAL_COL],
         'baseline_site_energy_kwh': df_baseline[SITE_ENERGY_TOTAL_COL],
     }).join(df_changes, how='inner')

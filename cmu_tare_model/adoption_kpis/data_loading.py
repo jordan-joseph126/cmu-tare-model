@@ -5,17 +5,29 @@ Provides EUSS baseline/upgrade loading, unit conversion constants,
 column name constants, file path constants, and state name lookups
 used across spark_gap.py and thermal_cop.py.
 
+Every ResStock column name here is looked up for this run's release
+(RESSTOCK_RELEASE_THIS_RUN) in the column map (resstock_col), and the two
+loaders read the same release's files with the same scope filters as the
+model run, so the county tables describe the same homes as the TARE results.
+No ResStock column name is typed into this module: 2025.1 renamed most of its
+energy columns, and a typed 2022.1.1 name would fail on a 2025.1 frame.
+
 Location: cmu_tare_model/adoption_kpis/data_loading.py
 """
 
 import os
-from typing import Optional
+from typing import List
 
 import pandas as pd
 
 from config import PROJECT_ROOT
-from cmu_tare_model.constants import ALLOWED_HOUSING_TYPES, VERBOSE
+from cmu_tare_model.constants import (
+    RESSTOCK_RELEASE_AND_MP,
+    RESSTOCK_RELEASE_THIS_RUN,
+    VERBOSE,
+)
 from cmu_tare_model.utils.calculation_utils import get_resstock_savings_column
+from cmu_tare_model.utils.resstock_schema import RESSTOCK_COLUMN_MAP, resstock_col
 
 
 # ============================================================================
@@ -46,6 +58,8 @@ NG_CONVERSION_FACTOR: float = BTU_PER_KWH / (1000 * BTU_PER_CF_NATURAL_GAS)
 # FILE PATHS
 # ============================================================================
 
+# ResStock 2022.1.1 CSV folder. Kept for reference only: both loaders below
+# read through load_and_filter_upgrade, which knows each release's own files.
 EUSS_DATA_DIR: str = os.path.join(
     PROJECT_ROOT, "cmu_tare_model", "data", "euss_data",
     "resstock_amy2018_release_1.1", "national", "csv"
@@ -193,44 +207,67 @@ COUNTY_SHAPEFILE_PATH: str = os.path.join(
 # ============================================================================
 # COLUMN NAME CONSTANTS
 # ============================================================================
+# One release per run, so these are fixed when the module is imported. The
+# release itself is fixed before any import (see RESSTOCK_RELEASE_THIS_RUN).
 
-DWELLING_UNIT_WEIGHT: str = "weight"
+_RELEASE: str = RESSTOCK_RELEASE_THIS_RUN
+
+
+def _release_columns(logical_names: List[str]) -> List[str]:
+    """Physical names, in order, of the logical names this release publishes.
+
+    A part one release does not publish (2025.1 adds the heat-pump backup's
+    own fans) is left out rather than raising, so one list serves both
+    releases.
+
+    Args:
+        logical_names: Logical names from the column map.
+
+    Returns:
+        The physical column names for _RELEASE.
+    """
+    return [
+        resstock_col(_RELEASE, logical_name)
+        for logical_name in logical_names
+        if logical_name in RESSTOCK_COLUMN_MAP[_RELEASE]]
+
+
+DWELLING_UNIT_WEIGHT: str = resstock_col(_RELEASE, "dwelling_unit_weight")
 """EUSS survey weight column (applies to all dwelling-unit counts)."""
 
-GAS_FUEL_COL: str = "out.natural_gas.heating.energy_consumption.kwh"
+GAS_FUEL_COL: str = resstock_col(_RELEASE, "heating_natural_gas")
 """EUSS column for natural gas heating energy consumption."""
 
-HEATING_LOAD_COL: str = "out.load.heating.energy_delivered.kbtu"
+HEATING_LOAD_COL: str = resstock_col(_RELEASE, "heating_load_delivered")
 """EUSS column for heating load delivered to the space (kBtu)."""
 
-HEATING_ELEC_COL: str = "out.electricity.heating.energy_consumption.kwh"
+HEATING_ELEC_COL: str = resstock_col(_RELEASE, "heating_electricity")
 """EUSS column for heating electricity (heat pump or resistance heat), not
 counting backup heat or fans and pumps."""
 
-HP_BACKUP_ELEC_COL: str = "out.electricity.heating_hp_bkup.energy_consumption.kwh"
+HP_BACKUP_ELEC_COL: str = resstock_col(_RELEASE, "heating_hp_backup_electricity")
 """EUSS column for heat-pump backup (resistance) electricity."""
 
-HP_FANS_PUMPS_COL: str = "out.electricity.heating_fans_pumps.energy_consumption.kwh"
+HP_FANS_PUMPS_COL: str = resstock_col(_RELEASE, "heating_fans_pumps")
 """EUSS column for fan and pump electricity. Always included in COP denominator."""
 
-COOLING_ELEC_COL: str = "out.electricity.cooling.energy_consumption.kwh"
+COOLING_ELEC_COL: str = resstock_col(_RELEASE, "cooling_electricity")
 """EUSS column for cooling electricity, not counting its fans and pumps."""
 
-COOLING_FANS_PUMPS_COL: str = (
-    "out.electricity.cooling_fans_pumps.energy_consumption.kwh")
+COOLING_FANS_PUMPS_COL: str = resstock_col(_RELEASE, "cooling_fans_pumps")
 """EUSS column for cooling fan and pump electricity."""
 
-HOT_WATER_ELEC_COL: str = "out.electricity.hot_water.energy_consumption.kwh"
+HOT_WATER_ELEC_COL: str = resstock_col(_RELEASE, "hot_water_electricity")
 """EUSS column for hot-water electricity."""
 
-ELEC_TOTAL_COL: str = "out.electricity.total.energy_consumption.kwh"
+ELEC_TOTAL_COL: str = resstock_col(_RELEASE, "electricity_total")
 """EUSS column for total residential ELECTRICITY (kWh). Includes all electric
 end uses. Use this for demand change calculations -- do NOT use the heating-only
-column, and do NOT substitute 'out.site_energy.total.energy_consumption.kwh',
+column, and do NOT substitute the site energy total (SITE_ENERGY_TOTAL_COL),
 which is the all-fuel site energy (gas/oil/propane in kWh-equivalent), not
 electricity."""
 
-SITE_ENERGY_TOTAL_COL: str = "out.site_energy.total.energy_consumption.kwh"
+SITE_ENERGY_TOTAL_COL: str = resstock_col(_RELEASE, "site_energy_total")
 """EUSS column for whole-home site energy, ALL fuels (kWh; gas/oil/propane in
 kWh-equivalent). Use this for the site-energy change only -- do NOT use it for
 electricity demand, which is ELEC_TOTAL_COL."""
@@ -243,12 +280,16 @@ ELEC_TOTAL_SAVINGS_COL: str = get_resstock_savings_column(ELEC_TOTAL_COL)
 SITE_ENERGY_TOTAL_SAVINGS_COL: str = get_resstock_savings_column(SITE_ENERGY_TOTAL_COL)
 """Whole-home site energy savings, all fuels."""
 
-HEATING_ELEC_SAVINGS_COLS: list[str] = [
+HEATING_ELEC_SAVINGS_COLS: List[str] = [
     get_resstock_savings_column(energy_col)
-    for energy_col in (HEATING_ELEC_COL, HP_BACKUP_ELEC_COL, HP_FANS_PUMPS_COL)]
-"""Heating electricity savings: heating, backup heat, and fans and pumps."""
+    for energy_col in _release_columns([
+        "heating_electricity", "heating_hp_backup_electricity",
+        "heating_hp_backup_fans", "heating_fans_pumps"])]
+"""Heating electricity savings: heating, backup heat, the backup's own fans
+(2025.1 only), and fans and pumps -- every electric part of heating, the same
+parts TARE counts in a home's heating energy."""
 
-COOLING_ELEC_SAVINGS_COLS: list[str] = [
+COOLING_ELEC_SAVINGS_COLS: List[str] = [
     get_resstock_savings_column(energy_col)
     for energy_col in (COOLING_ELEC_COL, COOLING_FANS_PUMPS_COL)]
 """Cooling electricity savings: cooling, and its fans and pumps."""
@@ -256,18 +297,21 @@ COOLING_ELEC_SAVINGS_COLS: list[str] = [
 HOT_WATER_ELEC_SAVINGS_COL: str = get_resstock_savings_column(HOT_WATER_ELEC_COL)
 """Hot-water electricity savings."""
 
-CLIMATE_ZONE_COL: str = "in.ashrae_iecc_climate_zone_2004"
+CLIMATE_ZONE_COL: str = resstock_col(_RELEASE, "climate_zone_iecc")
 """EUSS column for ASHRAE/IECC 2004 climate zone."""
 
-COUNTY_COL: str = "in.county"
+COUNTY_COL: str = resstock_col(_RELEASE, "county")
 """EUSS column for county GISJOIN code (e.g., 'G4200030')."""
 
-HEATING_FUEL_COLS: list[str] = [
-    "out.electricity.heating.energy_consumption.kwh",
-    "out.natural_gas.heating.energy_consumption.kwh",
-    "out.fuel_oil.heating.energy_consumption.kwh",
-    "out.propane.heating.energy_consumption.kwh",
-]
+STATE_COL: str = resstock_col(_RELEASE, "state")
+"""EUSS column for the two-letter state code."""
+
+HEATING_FUEL_COL: str = resstock_col(_RELEASE, "heating_fuel")
+"""EUSS column for the home's heating fuel before the retrofit."""
+
+HEATING_FUEL_COLS: List[str] = _release_columns([
+    "heating_electricity", "heating_natural_gas",
+    "heating_fuel_oil", "heating_propane"])
 """All EUSS heating energy consumption columns (kWh)."""
 
 FUEL_PRICE_MAP: dict[str, str] = {
@@ -277,16 +321,15 @@ FUEL_PRICE_MAP: dict[str, str] = {
 """Mapping from EIA fuel-type string to price column name."""
 
 # Column subsets for CSV loading
-BASELINE_USECOLS: list[str] = [
-    "bldg_id", "in.state", "in.vacancy_status",
-    "in.geometry_building_type_recs",
-    "in.heating_fuel", "in.hvac_heating_type_and_fuel",
-    "in.hvac_heating_efficiency",
-    CLIMATE_ZONE_COL, COUNTY_COL,
-    DWELLING_UNIT_WEIGHT,
-] + HEATING_FUEL_COLS + [HEATING_LOAD_COL, HP_BACKUP_ELEC_COL, HP_FANS_PUMPS_COL, ELEC_TOTAL_COL]
+BASELINE_USECOLS: List[str] = _release_columns([
+    "building_id", "state", "vacancy_status", "building_type",
+    "heating_fuel", "heating_type_and_fuel", "heating_efficiency",
+    "climate_zone_iecc", "county", "dwelling_unit_weight",
+]) + HEATING_FUEL_COLS + [
+    HEATING_LOAD_COL, HP_BACKUP_ELEC_COL, HP_FANS_PUMPS_COL, ELEC_TOTAL_COL]
 
-UPGRADE_USECOLS: list[str] = BASELINE_USECOLS + ["applicability"]
+UPGRADE_USECOLS: List[str] = BASELINE_USECOLS + [
+    resstock_col(_RELEASE, "upgrade_applicable")]
 
 
 # ============================================================================
@@ -315,103 +358,120 @@ STATE_NAMES: dict[str, str] = {
 # DATA LOADING FUNCTIONS
 # ============================================================================
 
+# The baseline file name load_euss_baseline has always taken. Kept so existing
+# calls still work; the file read is now chosen by the release.
+DEFAULT_BASELINE_FILENAME: str = "baseline_metadata_and_annual_results.csv"
+
+
 def mp_to_upgrade(mp_num: int) -> str:
     """Convert a measure package number to its EUSS upgrade identifier string.
+
+    ResStock 2022.1.1 zero-pads the upgrade number ('upgrade04'); 2025.1
+    does not ('upgrade5'), matching each release's own file names.
 
     Args:
         mp_num: Measure package number (e.g., 3 or 4).
 
     Returns:
-        EUSS upgrade identifier string (e.g., ``'upgrade03'``, ``'upgrade04'``).
+        EUSS upgrade identifier string (e.g., ``'upgrade03'``, ``'upgrade04'``
+        for 2022.1.1; ``'upgrade5'`` for 2025.1).
     """
-    return f"upgrade{mp_num:02d}"
+    if _RELEASE == "2022.1.1":
+        return f"upgrade{mp_num:02d}"
+    return f"upgrade{mp_num}"
+
+
+def _load_scope_filtered(menu_mp: int, verbose: bool) -> pd.DataFrame:
+    """Loads one package's file with the model run's scope filters.
+
+    Uses load_and_filter_upgrade, the loader the model run itself uses, so
+    the KPI tables count exactly the homes the run counts: ResStock's
+    applicability flag first, then occupied, single-family, and Alaska and
+    Hawaii left out. On 2025.1 only the columns the pipeline uses are read.
+
+    Args:
+        menu_mp: Measure package number (0 for the baseline).
+        verbose: Whether to print the filter funnel.
+
+    Returns:
+        The filtered frame, indexed by bldg_id.
+    """
+    # Imported here rather than at the top so modules that need only this
+    # file's constants (the map modules, for example) do not also load the
+    # ResStock processing module and the data files it reads on import.
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        load_and_filter_upgrade,
+    )
+    df_filtered, df_funnel = load_and_filter_upgrade(
+        menu_mp=menu_mp, verbose=False, release=_RELEASE)
+    if verbose:
+        print(df_funnel.to_string(index=False))
+    return df_filtered
 
 
 def load_euss_baseline(
-    filename: str = "baseline_metadata_and_annual_results.csv",
+    filename: str = DEFAULT_BASELINE_FILENAME,
     verbose: bool = VERBOSE,
 ) -> pd.DataFrame:
-    """Load the EUSS baseline CSV and filter to occupied single-family homes.
+    """Load this run's ResStock baseline with the model run's scope filters.
 
-    Applies two filters in sequence:
-    1. Vacancy status == 'Occupied'
-    2. Building type in ``ALLOWED_HOUSING_TYPES`` (from cmu_tare_model.constants)
+    Reads the baseline of RESSTOCK_RELEASE_THIS_RUN (the 2022.1.1 CSV or the
+    2025.1 parquet file) and applies, in order: ResStock's applicability
+    flag (every baseline row is applicable), occupied homes, housing type in
+    ``ALLOWED_HOUSING_TYPES``, and Alaska and Hawaii left out. On 2022.1.1
+    the rows kept are the same as before; the applicability and Alaska and
+    Hawaii filters remove nothing there.
 
     Args:
-        filename: Baseline CSV filename within ``EUSS_DATA_DIR``.
-            Defaults to ``'baseline_metadata_and_annual_results.csv'``.
-        verbose: Whether to print the file path and the row count after
-            each filter.
+        filename: Kept so existing calls still work. Only the default is
+            accepted: the file is chosen by the release.
+        verbose: Whether to print the filter funnel.
 
     Returns:
         DataFrame indexed by ``bldg_id``, restricted to occupied SF homes.
-        All EUSS columns are preserved (no column subsetting applied).
+        On 2022.1.1 every EUSS column is kept; on 2025.1 the columns the
+        pipeline uses (select_resstock_2025_1_columns in process_euss_data.py).
 
     Raises:
-        FileNotFoundError: If the CSV does not exist at the resolved path.
+        ValueError: If filename is not the default.
+        FileNotFoundError: If the release's baseline file is not on disk.
     """
-    filepath = os.path.join(EUSS_DATA_DIR, filename)
-    if verbose:
-        print(f"Loading baseline from: {filepath}")
-    # low_memory=False reads the whole file before choosing column types, so
-    # mixed-type columns come back as text instead of raising a DtypeWarning.
-    df = pd.read_csv(filepath, index_col="bldg_id", low_memory=False)
-
-    n_total = len(df)
-    df = df[df["in.vacancy_status"] == "Occupied"]
-    if verbose:
-        print(f"  After occupancy filter: {len(df):,} / {n_total:,}")
-
-    df = df[df["in.geometry_building_type_recs"].isin(ALLOWED_HOUSING_TYPES)]
-    if verbose:
-        print(f"  After housing type filter ({ALLOWED_HOUSING_TYPES}): {len(df):,}")
-
-    return df
+    if filename != DEFAULT_BASELINE_FILENAME:
+        raise ValueError(
+            f"load_euss_baseline reads the baseline file of ResStock "
+            f"{_RELEASE}; filename={filename!r} cannot choose another file")
+    return _load_scope_filtered(0, verbose)
 
 
 def load_euss_upgrade(
     upgrade_name: str,
     verbose: bool = VERBOSE,
 ) -> pd.DataFrame:
-    """Load an EUSS upgrade CSV and filter to applicable occupied SF homes.
+    """Load one of this run's ResStock upgrade files with the run's scope filters.
 
-    Applies three filters in sequence:
-    1. Vacancy status == 'Occupied'
-    2. Building type in ``ALLOWED_HOUSING_TYPES``
-    3. ``applicability == True``
+    Applies the same filters as the model run, in the same order: ResStock's
+    applicability flag first, then occupied homes, housing type in
+    ``ALLOWED_HOUSING_TYPES``, and Alaska and Hawaii left out.
 
     Args:
-        upgrade_name: EUSS upgrade identifier (e.g., ``'upgrade04'``).
-            Use :func:`mp_to_upgrade` to convert a measure package number.
-        verbose: Whether to print the file path and the row count after
-            each filter.
+        upgrade_name: EUSS upgrade identifier (e.g., ``'upgrade04'`` on
+            2022.1.1, ``'upgrade5'`` on 2025.1). Use :func:`mp_to_upgrade` to
+            convert a measure package number.
+        verbose: Whether to print the filter funnel.
 
     Returns:
         DataFrame indexed by ``bldg_id``, restricted to applicable occupied
-        SF homes. All EUSS columns are preserved.
+        SF homes. On 2025.1, the columns the pipeline uses.
 
     Raises:
-        FileNotFoundError: If the CSV does not exist at the resolved path.
+        ValueError: If upgrade_name is not a package of this run's release.
+        FileNotFoundError: If the upgrade file is not on disk.
     """
-    filename = f"{upgrade_name}_metadata_and_annual_results.csv"
-    filepath = os.path.join(EUSS_DATA_DIR, filename)
-    if verbose:
-        print(f"Loading {upgrade_name} from: {filepath}")
-    # low_memory=False reads the whole file before choosing column types, so
-    # mixed-type columns come back as text instead of raising a DtypeWarning.
-    df = pd.read_csv(filepath, index_col="bldg_id", low_memory=False)
-
-    n_total = len(df)
-    df = df[df["in.vacancy_status"] == "Occupied"]
-    if verbose:
-        print(f"  After occupancy filter: {len(df):,} / {n_total:,}")
-
-    df = df[df["in.geometry_building_type_recs"].isin(ALLOWED_HOUSING_TYPES)]
-    if verbose:
-        print(f"  After housing type filter: {len(df):,}")
-
-    df = df[df["applicability"] == True]  # noqa: E712
-    if verbose:
-        print(f"  After applicability filter: {len(df):,}")
-
-    return df
+    upgrade_names = {
+        mp_to_upgrade(menu_mp): menu_mp
+        for menu_mp in RESSTOCK_RELEASE_AND_MP[_RELEASE] if menu_mp != 0}
+    if upgrade_name not in upgrade_names:
+        raise ValueError(
+            f"{upgrade_name!r} is not a measure package of ResStock "
+            f"{_RELEASE}; expected one of {sorted(upgrade_names)}")
+    return _load_scope_filtered(upgrade_names[upgrade_name], verbose)
