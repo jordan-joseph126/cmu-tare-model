@@ -410,3 +410,13 @@ def test_dual_fuel_spec_columns_stop_on_a_blank_or_other_string():
         {'upgrade_hvac_heating_efficiency': ['ASHP, SEER 15, 9.0 HSPF']})
     with pytest.raises(ValueError, match='dual-fuel'):
         add_dual_fuel_spec_columns(df_other)
+
+
+def test_dual_fuel_spec_columns_add_seer1_and_hspf1():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        add_dual_fuel_spec_columns,
+    )
+    df = pd.DataFrame({'upgrade_hvac_heating_efficiency': [_DUAL_FUEL_925]})
+    df_out = add_dual_fuel_spec_columns(df)
+    assert df_out['upgrade_hp_seer1'].iloc[0] == pytest.approx(16.0)
+    assert df_out['upgrade_hp_hspf1'].iloc[0] == pytest.approx(7.8 / 0.85)

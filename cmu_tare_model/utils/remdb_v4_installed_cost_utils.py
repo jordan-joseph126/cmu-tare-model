@@ -44,6 +44,11 @@ from cmu_tare_model.constants import (
 
 MetricType = Literal["replacement", "upgrade"]
 
+# A heat pump's SEER1 rating converted from its published SEER2 rating, set
+# only for packages rated in SEER2 (add_dual_fuel_spec_columns in
+# process_euss_data.py). The upgrade cost prices these homes from it.
+SEER1_FROM_SEER2_COL = 'upgrade_hp_seer1'
+
 
 # ============================================================
 # HELPER FUNCTIONS
@@ -726,6 +731,28 @@ def add_remdb_metrics(
         pm2_metric_col=f'{prefix}pm2_metric',
         pm2_unit_col=f'{prefix}pm2_unit'
     )
+
+    # =========================================================================
+    # STEP 4a: Heat pumps rated in SEER2 (upgrade only)
+    # =========================================================================
+    # _convert_pm2 takes the first number in the option string. For the
+    # 2025.1 dual-fuel package that number is its SEER2 rating (15.2), but the
+    # REMDB heat-pump row's pm2 metric is SEER1. Fed unconverted, 15.2 sits
+    # inside the regression's bounds, so nothing would flag it, and the heat
+    # pump would be priced as a less efficient (cheaper) unit. Homes whose
+    # rating was parsed as SEER2 (add_dual_fuel_spec_columns in
+    # process_euss_data.py) get their SEER1 rating instead.
+    if metric_type == 'upgrade' and SEER1_FROM_SEER2_COL in df_copy.columns:
+        is_seer2_rated = df_copy[SEER1_FROM_SEER2_COL].notna()
+        pm2_metric = df_copy.loc[is_seer2_rated, f'{prefix}pm2_metric']
+        not_seer1 = pm2_metric.str.upper().str.strip() != 'SEER1'
+        if not_seer1.any():
+            raise ValueError(
+                f"{int(not_seer1.sum()):,} SEER2-rated homes map to a REMDB row "
+                f"whose pm2 metric is not SEER1: "
+                f"{sorted(pm2_metric[not_seer1].dropna().unique())}")
+        df_copy.loc[is_seer2_rated, pm2_col] = (
+            df_copy.loc[is_seer2_rated, SEER1_FROM_SEER2_COL])
     
     # Diagnostic: Explain NaN sources for pm1 and pm2
     if verbose:

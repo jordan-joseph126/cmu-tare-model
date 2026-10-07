@@ -99,3 +99,56 @@ def test_cooling_replacement_uses_old_ac_size(df_home, remdb_v4_costs):
         df_home, remdb_v4_costs, 'cooling', 'replacement', verbose=False)
     # 36 kBtu/h old AC -> 3.0 tons after the unit conversion.
     assert df_main['cooling_replacement_pm1_euss'].iloc[0] == pytest.approx(36.0 / 12.0)
+
+
+# -- SEER2-rated heat pumps (the 2025.1 dual-fuel package, G6) ----------------
+
+def _seer1_costs() -> pd.DataFrame:
+    """Heat-pump row whose pm2 metric is SEER1, as in the real REMDB table."""
+    rows = {
+        'air_source_heat_pump_centrally_ducted': {
+            'pm1_metric': 'Cooling Capacity', 'pm1_unit': 'Tons',
+            'pm2_metric': 'SEER1', 'pm2_unit': 'Unitless',
+        },
+    }
+    return pd.DataFrame.from_dict(rows, orient='index')
+
+
+def test_seer2_to_seer1_conversion():
+    from cmu_tare_model.utils.efficiency_ratings import (
+        hspf2_to_hspf1,
+        seer2_to_seer1,
+    )
+    assert seer2_to_seer1(15.2) == pytest.approx(16.0)
+    assert hspf2_to_hspf1(7.8) == pytest.approx(7.8 / 0.85)
+
+
+def test_seer2_rated_heat_pump_is_priced_at_seer1(df_home):
+    # The option string's first number is the SEER2 rating, 15.2; the
+    # regression must see the SEER1 value, 16.0.
+    df_dual_fuel = df_home.assign(
+        upgrade_hvac_heating_efficiency=[
+            'Dual-Fuel ASHP, SEER 15.2, 7.8 HSPF2, Integrated Backup, '
+            '92.5% AFUE NG, 35F switchover'],
+        upgrade_hp_seer1=[16.0])
+    df_main, _ = add_remdb_metrics(
+        df_dual_fuel, _seer1_costs(), 'heating', 'upgrade', verbose=False)
+    assert df_main['heating_upgrade_pm2_euss'].iloc[0] == pytest.approx(16.0)
+
+
+def test_seer1_rated_heat_pump_is_unchanged(df_home):
+    # A 2022.1.1 package carries no SEER2 column, so its rating is used as is.
+    df_mp3 = df_home.assign(
+        upgrade_hvac_heating_efficiency=['ASHP, SEER 16, 9.5 HSPF'])
+    df_main, _ = add_remdb_metrics(
+        df_mp3, _seer1_costs(), 'heating', 'upgrade', verbose=False)
+    assert df_main['heating_upgrade_pm2_euss'].iloc[0] == pytest.approx(16.0)
+
+
+def test_seer2_rated_heat_pump_needs_a_seer1_row(df_home, remdb_v4_costs):
+    # The fixture's heat-pump row says 'SEER', not 'SEER1'; converting to
+    # SEER1 for a row that does not take SEER1 must stop, not pass silently.
+    df_dual_fuel = df_home.assign(upgrade_hp_seer1=[16.0])
+    with pytest.raises(ValueError, match='SEER1'):
+        add_remdb_metrics(
+            df_dual_fuel, remdb_v4_costs, 'heating', 'upgrade', verbose=False)

@@ -458,6 +458,23 @@ VALID_HVAC_REPLACEMENT_SCENARIOS = ['heating', 'heating_and_cooling']
 #     consistency with the ASHP floor.
 #   - NAECA federal minimum for gas furnaces: 80% AFUE
 # =============================================================
+# =============================================================
+# CONSTANTS: SEER2 / HSPF2 RATINGS (DOE APPENDIX M1)
+# =============================================================
+# Heat pumps sold from 2023 are rated under DOE's Appendix M1 test
+# (SEER2, HSPF2), which gives lower numbers than the older test (SEER, HSPF;
+# called SEER1 and HSPF1 here) for the same equipment. The REMDB heat-pump
+# regression takes SEER1 (its pm2 metric), so a SEER2 rating is converted
+# before it is priced: SEER1 = SEER2 / SEER2_PER_SEER1. The 2025.1 dual-fuel
+# package's SEER2 15.2 becomes SEER1 16.0, the ENERGY STAR floor written as
+# 16.0 SEER1 in process_euss_data.py. HSPF is converted for the record only;
+# it has no cost lever in this model.
+# PROVISIONAL (session decision P1): these two factors were not checked
+# against the DOE Appendix M1 text. Converted only in
+# utils/efficiency_ratings.py.
+SEER2_PER_SEER1 = 0.95
+HSPF2_PER_HSPF1 = 0.85
+
 EFFICIENCY_FLOORS_PM2 = {
     'air_source_heat_pump_centrally_ducted':       15.0,   # SEER1
     'air_source_heat_pump_non_ducted_multi_zone':  15.0,   # SEER1

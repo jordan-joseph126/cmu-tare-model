@@ -30,6 +30,7 @@ from cmu_tare_model.utils.calculation_utils import (
     )
 from cmu_tare_model.utils.resstock_schema import RESSTOCK_COLUMN_MAP, resstock_col
 from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
+from cmu_tare_model.utils.efficiency_ratings import hspf2_to_hspf1, seer2_to_seer1
 from cmu_tare_model.utils.degree_day_consumption_utils import (
     get_degree_day_adjusted_consumption_by_fuel,
 )
@@ -443,6 +444,11 @@ def add_dual_fuel_spec_columns(
     backup furnace's cost needs its AFUE; neither can be read reliably from
     the raw string by taking its first number.
 
+    Two more columns hold the heat pump's ratings on the older test, which the
+    REMDB cost regression and the 2022.1.1 packages use: upgrade_hp_seer1
+    (priced by add_remdb_metrics) and upgrade_hp_hspf1 (for the record only).
+    See utils/efficiency_ratings.py.
+
     Every home given here must carry a dual-fuel option string: the frame
     holds only homes ResStock applied the package to, so a blank or a
     different format is an error, not a home to skip.
@@ -453,7 +459,7 @@ def add_dual_fuel_spec_columns(
             option string.
 
     Returns:
-        A copy of df_compare with the five columns added.
+        A copy of df_compare with the seven columns added.
 
     Raises:
         KeyError: If efficiency_col is missing.
@@ -479,6 +485,9 @@ def add_dual_fuel_spec_columns(
                   'switchover_f'):
         df_out[f'upgrade_{field}'] = option_strings.map(
             {option: parsed[field] for option, parsed in parsed_by_string.items()})
+    # The option string gives SEER2 and HSPF2; the cost regression takes SEER1.
+    df_out['upgrade_hp_seer1'] = seer2_to_seer1(df_out['upgrade_hp_seer2'])
+    df_out['upgrade_hp_hspf1'] = hspf2_to_hspf1(df_out['upgrade_hp_hspf2'])
     return df_out
 
 
