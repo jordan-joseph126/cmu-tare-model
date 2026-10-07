@@ -37,6 +37,7 @@ import pandas as pd
 
 from cmu_tare_model.constants import FIGURE_DISPLAY_DPI, FIGURE_DPI
 from cmu_tare_model.utils.column_names import create_adoption_col
+from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 
 # ===========================================================================
@@ -185,7 +186,8 @@ GROUPING_ORDER: List[str] = [
 # Baseline fuels that get no rebate under the June 2026 rules in this model
 # (HEEHR funds electric-resistance baselines only; June 2026 HOMES is still
 # electric-gated), so their June 2026 adoption must equal their unsubsidized
-# adoption.
+# adoption. Not true of a dual-fuel package, which passes the June 2026 fuel
+# gates (dual_fuel_passes_fuel_gates in constants.py); rule 2 skips it.
 _FOSSIL_BASELINE_FUELS = ('Natural Gas', 'Fuel Oil', 'Propane')
 
 
@@ -194,7 +196,7 @@ def adoption_reconciliation_table(
     mp: int,
     discount_rate: str = 'fixed_base',
     fuel_col: str = 'base_heating_fuel',
-    check_june2026_fossil_rule: bool = True,
+    check_june2026_fossil_rule: Optional[bool] = None,
 ) -> pd.DataFrame:
     """Adopters by baseline fuel for every NPV case, over homes in the study sample.
 
@@ -214,9 +216,10 @@ def adoption_reconciliation_table(
         mp: Measure package number.
         discount_rate: Discount-rate key used in the adopter column names.
         fuel_col: Column holding the baseline heating fuel.
-        check_june2026_fossil_rule: Whether to enforce rule 2. The 2025.1
-            dual-fuel package will fund some fossil baselines under June 2026
-            (Phase 7), so that run will need this set to False.
+        check_june2026_fossil_rule: Whether to enforce rule 2. None (the
+            default) decides from the package: rule 2 applies unless the
+            package is dual fuel (is_dual_fuel_package), since a dual-fuel
+            retrofit funds fossil baselines under June 2026.
 
     Returns:
         DataFrame with one row per (NPV case, group), group being 'National'
@@ -234,6 +237,9 @@ def adoption_reconciliation_table(
     missing = [col for col in required if col not in source_df.columns]
     if missing:
         raise KeyError(f"adoption_reconciliation_table needs columns {missing}")
+
+    if check_june2026_fossil_rule is None:
+        check_june2026_fossil_rule = not is_dual_fuel_package(mp)
 
     scenario_prefix = define_scenario_params(mp)[0]
     method_suffix = f'_{discount_rate}'
@@ -309,7 +315,7 @@ def build_econ_plot_df(
     shape_by: str = 'replacement_credit_scenario',
     fixed_replacement_credit_scenario: str = 'heatingLCC_coolingSavings',
     rebate_vintage: str = 'sub',
-    check_june2026_fossil_rule: bool = True,
+    check_june2026_fossil_rule: Optional[bool] = None,
 ) -> pd.DataFrame:
     """Build a DataFrame for the economic adoption dotplot.
 
@@ -343,8 +349,8 @@ def build_econ_plot_df(
             is the unsubsidized rate and the (unshown) subsidy delta is 0.
             Ignored when shape_by='rebate_policy_scenario' (that mode plots all
             three vintages).
-        check_june2026_fossil_rule: Passed to adoption_reconciliation_table;
-            set False for a package that funds fossil baselines under June 2026.
+        check_june2026_fossil_rule: Passed to adoption_reconciliation_table.
+            None (the default) applies rule 2 unless the package is dual fuel.
 
     Returns:
         DataFrame formatted for ``plot_adoption_panel()``. Every homes count

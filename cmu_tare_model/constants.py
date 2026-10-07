@@ -371,6 +371,23 @@ REBATE_HOMES = "HOMES"
 #       HEEHR-only), so 2024 is False. 2026 is True ONLY to preserve the current
 #       byte-identical June 2026 output; making 2026 HOMES fuel-neutral is a
 #       separate value move deferred to the full-run re-derivation session.
+#   dual_fuel_passes_fuel_gates -- True lets a dual-fuel retrofit (a heat pump
+#       that keeps a fossil furnace as backup; is_dual_fuel_package in
+#       utils/measure_packages.py) pass both fuel gates above, whatever the
+#       home's heating fuel before the retrofit. The fuel gates exist because a
+#       rebate may not fund removing a fossil heating system, and a dual-fuel
+#       retrofit does not remove one. Under June 2026 this means: HEEHR at or
+#       below 150% AMI for every baseline fuel (NEXT_STEPS D8), and HOMES
+#       fuel-neutral above 150% AMI, as CLAUDE.md documents that program
+#       (researcher's decision R3, 6 Oct 2026). Caps, cost shares, income
+#       routing, savings tiers and the state gate are unchanged. It changes
+#       nothing for 2022.1.1 packages, none of which is dual fuel, so June 2026
+#       HOMES stays electric-gated for them (deferred, see homes_fuel_gate).
+#
+# Program Notice 26-3: DOE has released new guidance in Program Notice 26-3.
+# The researcher has not yet reviewed how it differs from Program Notices 26-1
+# and 26-2 or how it affects this code. The rebate rules modeled here are the
+# ones documented in CLAUDE.md; no rule below was changed because of 26-3.
 REBATE_RULE_CONFIG = {
     REBATE_GUIDANCE_IRA2024: {
         "column_guidance": None,
@@ -384,6 +401,8 @@ REBATE_RULE_CONFIG = {
         # HEEHR-only), so homes_fuel_gate stays False.
         "homes_enabled": True,
         "homes_fuel_gate": False,
+        # No fuel gate is active in 2024, so this changes nothing there.
+        "dual_fuel_passes_fuel_gates": True,
         "heehr_python_round": True,
     },
     REBATE_GUIDANCE_JUNE2026: {
@@ -392,6 +411,7 @@ REBATE_RULE_CONFIG = {
         "heehr_fuel_gate": True,
         "homes_enabled": True,
         "homes_fuel_gate": True,
+        "dual_fuel_passes_fuel_gates": True,
         "heehr_python_round": False,
     },
 }

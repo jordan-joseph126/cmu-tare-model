@@ -28,6 +28,7 @@ from cmu_tare_model.constants import (
     VERBOSE,
 )
 from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2025_2018
+from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
 from cmu_tare_model.utils.column_names import (
     create_cost_col,
     create_rebate_col,
@@ -468,8 +469,9 @@ def get_rebate_eligible_mps() -> List[int]:
     and its capital cost reflects that ENERGY STAR install. MP4/MP8/MP9/MP10
     use high-efficiency ASHP (SEER 24+) and qualify as modeled. Under
     2025.1, MP5 (dual fuel) is registered eligible per D8 (Phase 3) -- this
-    only marks the package as participating, not the June 2026 HEEHR
-    fossil-baseline fuel-gate exception itself, which is Phase 7.
+    only marks the package as participating. Its June 2026 fuel-gate
+    exception is set by dual_fuel_passes_fuel_gates in REBATE_RULE_CONFIG
+    (constants.py) and applied in calculate_rebate_program.
 
     Keyed on RESSTOCK_RELEASE_THIS_RUN rather than a flat, release-unaware
     list, since 2025.1 Upgrades 03/04 will later reuse the mp=3/mp=4 numbers
@@ -523,6 +525,9 @@ def calculate_rebate_program(
     electric-resistance heating qualifies, because a rebate may not fund removing
     a fossil system). HOMES is fuel-neutral (see the config note on the 2026
     homes_fuel_gate, kept only for byte-identity pending re-derivation).
+    A dual-fuel retrofit keeps a fossil furnace as the heat pump's backup, so it
+    removes no fossil system: where the config's dual_fuel_passes_fuel_gates is
+    True it passes both fuel gates whatever the baseline fuel (D8, R3).
 
     Args:
         df_results_IRA: DataFrame with percent_AMI, base_heating_fuel, state, the
@@ -601,8 +606,15 @@ def calculate_rebate_program(
     # base_heating_fuel only when a fuel gate is actually active so the 2024
     # (fuel-neutral) path does not require the column. When no gate is active the
     # mask is all-True and never filters anyone out.
-    homes_fuel_gate_active = config['homes_enabled'] and config['homes_fuel_gate']
-    if config['heehr_fuel_gate'] or homes_fuel_gate_active:
+    # A dual-fuel retrofit keeps a fossil furnace, so the fossil-removal
+    # restriction behind both fuel gates does not apply to it (see
+    # dual_fuel_passes_fuel_gates in constants.py).
+    passes_fuel_gates = (
+        config['dual_fuel_passes_fuel_gates'] and is_dual_fuel_package(menu_mp))
+    heehr_fuel_gate = config['heehr_fuel_gate'] and not passes_fuel_gates
+    homes_fuel_gate = config['homes_fuel_gate'] and not passes_fuel_gates
+    homes_fuel_gate_active = config['homes_enabled'] and homes_fuel_gate
+    if heehr_fuel_gate or homes_fuel_gate_active:
         electric_mask = df_copy['base_heating_fuel'].isin(
             ELECTRIC_RESISTANCE_BASELINE)
     else:
@@ -616,7 +628,7 @@ def calculate_rebate_program(
 
     # Step 5 -- HEEHR (percent_AMI <= 150%). Fixed cap; income sets the share.
     heehr_mask = valid_mask & participating_mask & (pct_ami <= mod_cut)
-    if config['heehr_fuel_gate']:
+    if heehr_fuel_gate:
         heehr_mask = heehr_mask & electric_mask
     heehr_amount = _heehr_rebate_amount(
         df_copy, menu_mp, cost_scenario,
@@ -627,7 +639,7 @@ def calculate_rebate_program(
     # Step 6 -- HOMES (percent_AMI > 150%), savings-based, non-LMI amounts.
     if config['homes_enabled']:
         homes_mask = valid_mask & participating_mask & (pct_ami > mod_cut)
-        if config['homes_fuel_gate']:
+        if homes_fuel_gate:
             homes_mask = homes_mask & electric_mask
         # Only read the HOMES inputs (modeled savings, cooling cost) when at
         # least one home routes to HOMES; a run with no home above 150% AMI need

@@ -361,3 +361,87 @@ def test_income_cut_off_uses_the_unrounded_income_share(monkeypatch):
 
     assert df_result['percent_AMI'].iloc[0] == pytest.approx(80.004)
     assert df_result['income_level'].iloc[0] == 'Moderate-Income'
+
+
+# =============================================================================
+# Dual-fuel package (2025.1 Upgrade 05): passes the June 2026 fuel gates (G8)
+# =============================================================================
+
+@pytest.fixture
+def as_release_2025(monkeypatch):
+    """Runs a test as ResStock 2025.1, where package 5 is the dual-fuel one."""
+    monkeypatch.setattr(
+        'cmu_tare_model.private_impact.data_processing.'
+        'determine_rebate_eligibility_and_amount.RESSTOCK_RELEASE_THIS_RUN',
+        '2025.1')
+    monkeypatch.setattr(
+        'cmu_tare_model.utils.measure_packages.RESSTOCK_RELEASE_THIS_RUN',
+        '2025.1')
+
+
+@pytest.fixture
+def dual_fuel_df():
+    """Seven dual-fuel retrofits. Heating cost 10,000, cooling 6,000, as above.
+
+      0 natural gas, 50% AMI            -> HEEHR full 8,000 (passes the gate)
+      1 propane,    120% AMI            -> HEEHR half 5,000
+      2 fuel oil,   200% AMI, 25% save  -> HOMES tier 1 2,000
+      3 natural gas, 200% AMI, 40% save -> HOMES tier 2 4,000
+      4 natural gas, 200% AMI, 10% save -> below the 20% floor, 0
+      5 natural gas, 50% AMI, SD        -> state never participated, 0
+      6 electricity, 50% AMI            -> HEEHR full 8,000, as before
+    """
+    n = 7
+    return pd.DataFrame({
+        'include_heating': [True] * n,
+        'include_sample': True,
+        'valid_fuel_heating': [True] * n,
+        'valid_tech_heating': [True] * n,
+        'upgrade_hvac_heating_efficiency': ['Dual-Fuel ASHP'] * n,
+        'base_heating_fuel': [
+            'Natural Gas', 'Propane', 'Fuel Oil', 'Natural Gas',
+            'Natural Gas', 'Natural Gas', 'Electricity'],
+        'state': ['PA', 'MN', 'NY', 'OH', 'IL', 'SD', 'FL'],
+        'percent_AMI': [50.0, 120.0, 200.0, 200.0, 200.0, 50.0, 50.0],
+        'mp5_heating_upgrade_installed_cost_v4MID': [10000.0] * n,
+        'mp5_cooling_upgrade_installed_cost_v4MID': [6000.0] * n,
+        'mp5_modeled_savings_frac': [0.50, 0.50, 0.25, 0.40, 0.10, 0.50, 0.50],
+    })
+
+
+def test_dual_fuel_june2026_funds_fossil_baselines(as_release_2025, dual_fuel_df):
+    result = calculate_rebate_june2026(
+        df_results_IRA=dual_fuel_df, category='heating', menu_mp=5,
+        cost_scenario=COST, verbose=False)
+    assert result[_rebate_col(5)].tolist() == [
+        8000.0, 5000.0, 2000.0, 4000.0, 0.0, 0.0, 8000.0]
+    assert result[_elig_col(5)].tolist() == [
+        'HEEHR', 'HEEHR', 'HOMES', 'HOMES', 'Not Eligible', 'Not Eligible',
+        'HEEHR']
+
+
+def test_dual_fuel_2024_columns_do_not_change(
+        as_release_2025, dual_fuel_df, monkeypatch):
+    from cmu_tare_model.private_impact.data_processing import (
+        determine_rebate_eligibility_and_amount as rebates,
+    )
+    as_dual_fuel = rebates.calculate_rebateIRA(
+        dual_fuel_df, 'heating', 5, COST, verbose=False)
+    # The same package treated as heat-pump-only: 2024 has no fuel gate, so
+    # the dual-fuel rule cannot change any 2024 amount or label.
+    monkeypatch.setattr(rebates, 'is_dual_fuel_package', lambda mp: False)
+    as_heat_pump_only = rebates.calculate_rebateIRA(
+        dual_fuel_df, 'heating', 5, COST, verbose=False)
+    pd.testing.assert_frame_equal(as_dual_fuel, as_heat_pump_only)
+
+
+def test_heat_pump_only_package_keeps_the_june2026_fuel_gates(june2026_df):
+    # 2022.1.1 MP4 (the autouse fixture's release) is not dual fuel: its
+    # fossil home 5 still gets nothing under June 2026, and HOMES stays
+    # electric-gated (the deferred hold).
+    result = calculate_rebate_june2026(
+        df_results_IRA=june2026_df.assign(
+            base_heating_fuel=['Electricity'] * 4 + ['Electricity', 'Natural Gas']),
+        category='heating', menu_mp=4, cost_scenario=COST, verbose=False)
+    assert result[_rebate_col(4)].iloc[5] == 0.0
+    assert result[_elig_col(4)].iloc[5] == 'Not Eligible'

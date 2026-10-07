@@ -77,3 +77,18 @@ def test_plot_df_homes_counts_cover_in_scope_homes_only(adoption_df):
         rows.loc[g, 'case_b_pct'] / 100 * rows.loc[g, 'weighted_homes_millions']
         for g in rows.index if g.endswith('-- Overall') and not g.startswith('National'))
     assert fuel_labels == pytest.approx(label_m)
+
+
+def test_fossil_rule_is_skipped_for_a_dual_fuel_package(adoption_df, monkeypatch):
+    """A dual-fuel package funds fossil baselines under June 2026 (G8), so the
+    table skips rule 2 for it on its own; other packages keep the rule."""
+    col = 'ref2025_mp3_heatingLCC_coolingLCC_sub_june2026_econ_adopter_fixed_base'
+    adoption_df.loc[13, col] = 1.0   # natural gas home gains under June 2026
+    monkeypatch.setattr(
+        'cmu_tare_model.adoption_potential.data_processing.'
+        'visuals_adoption_dotplot.is_dual_fuel_package', lambda mp: mp == 3)
+    adoption_reconciliation_table(adoption_df, mp=3)
+    # An explicit True still applies the rule.
+    with pytest.raises(ValueError, match="fossil-baseline"):
+        adoption_reconciliation_table(
+            adoption_df, mp=3, check_june2026_fossil_rule=True)
