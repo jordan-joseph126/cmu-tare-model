@@ -262,3 +262,23 @@ def test_tepper_list_uses_the_release_peak_names():
     assert 'base_peak_electricity_heating_kw' in columns
     assert 'mp4_peak_electricity_cooling_kw_savings' in columns
     assert not any('winter' in c or 'summer' in c for c in columns)
+
+
+def test_tepper_list_adds_furnace_and_dual_fuel_columns_only_for_dual_fuel(
+        monkeypatch):
+    from cmu_tare_model.utils import export_tepper_csv
+    columns_mp4 = export_tepper_csv.build_household_column_list(
+        4, summary_columns=[])
+    assert not any('backupFurnace' in c for c in columns_mp4)
+    assert 'upgrade_backup_afue' not in columns_mp4
+    # The same list for a package treated as dual fuel.
+    monkeypatch.setattr(export_tepper_csv, 'is_dual_fuel_package', lambda mp: True)
+    columns_dual = export_tepper_csv.build_household_column_list(
+        4, summary_columns=[])
+    assert 'mp4_heating_backupFurnace_installed_cost_v4MID' in columns_dual
+    for column in ('upgrade_hp_seer2', 'upgrade_hp_seer1', 'upgrade_backup_afue',
+                   'size_heat_pump_backup_primary_k_btu_h'):
+        assert column in columns_dual
+    # The furnace cost sits beside the heat pump's upgrade cost.
+    position = columns_dual.index('mp4_heating_backupFurnace_installed_cost_v4MID')
+    assert columns_dual[position - 1] == 'mp4_heating_upgrade_installed_cost_v4MID'

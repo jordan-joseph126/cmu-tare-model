@@ -51,6 +51,7 @@ from cmu_tare_model.utils.calculation_utils import (
 )
 from cmu_tare_model.utils.column_names import (
     BASE_CASE_NPV_CASE,
+    COST_TYPE_BACKUP_FURNACE,
     create_adoption_col,
     create_annual_consumption_col,
     create_annual_fuel_consumption_col,
@@ -62,6 +63,7 @@ from cmu_tare_model.utils.column_names import (
     create_peak_electricity_col,
     create_rebate_col,
 )
+from cmu_tare_model.utils.measure_packages import is_dual_fuel_package
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 
 # This snapshot exports a single run. These are canonical column suffixes (the
@@ -268,6 +270,12 @@ def build_household_column_list(
     Emissions and climate damages are not shipped at all. They play no part in
     the adoption decision, which is based on the private NPV alone.
 
+    Some groups depend on the package and release. A dual-fuel package
+    (is_dual_fuel_package) adds its parsed ratings, its backup furnace's size
+    and the furnace's installed cost. ResStock 2025.1 adds the electric panel
+    columns, and its peak electric demand columns are named for winter and
+    summer (create_peak_electricity_col).
+
     Every measure-package-specific name is derived from the scenario prefix
     helper and a plain 'mp{mp}_' token, so no scenario string is hardcoded.
 
@@ -289,6 +297,8 @@ def build_household_column_list(
     # 'mp{mp}_' -- the bare measure-package token used by the REMDB input cost
     # and rebate columns, which carry no scenario prefix.
     mp_token = f"mp{menu_mp}_"
+    # One release per run; several groups below are release-specific.
+    release = RESSTOCK_RELEASE_THIS_RUN
 
     identifiers = [
         "weight", "state", "county", "county_fips", "puma", "county_and_puma",
@@ -319,6 +329,29 @@ def build_household_column_list(
     retrofit_hvac = [
         "upgrade_hvac_heating_efficiency", "upgrade_hvac_cooling_efficiency",
     ]
+    # A dual-fuel retrofit adds a backup furnace. Its ratings are parsed from
+    # the option string above (the heat pump's SEER2 and the SEER1 its cost is
+    # priced at; the backup's fuel, AFUE and switchover temperature) and the
+    # furnace's own size is the one its cost is priced at.
+    dual_fuel = is_dual_fuel_package(menu_mp)
+    if dual_fuel:
+        retrofit_hvac += [
+            "upgrade_hp_seer2", "upgrade_hp_seer1",
+            "upgrade_hp_hspf2", "upgrade_hp_hspf1",
+            "upgrade_backup_fuel", "upgrade_backup_afue", "upgrade_switchover_f",
+            "size_heat_pump_backup_primary_k_btu_h",
+        ]
+    # Electric panel: the home's service rating and whether the retrofit runs
+    # into the panel's capacity or breaker space (2023 NEC load calculation).
+    # Reporting only: no panel cost is modeled. Published from 2025.1 on.
+    panel = []
+    if release == "2025.1":
+        panel = [
+            "panel_service_rating_amps",
+            f"{mp_token}panel_constraint_overall",
+            f"{mp_token}panel_constraint_capacity",
+            f"{mp_token}panel_constraint_breaker_space",
+        ]
     # The study-sample flag and the two checks behind it. Every exported row
     # is in the sample, so all three are True; shipped so the file states the
     # filter it was built with.
@@ -374,7 +407,6 @@ def build_household_column_list(
     # or cooling runs in 2022.1.1; in the winter or summer months in 2025.1),
     # so its names follow the release: '..._heating_kw' / '..._cooling_kw' or
     # '..._winter_kw' / '..._summer_kw' (create_peak_electricity_col).
-    release = RESSTOCK_RELEASE_THIS_RUN
     peak = [
         create_peak_electricity_col("base_", "cooling", release),
         create_peak_electricity_col("base_", "heating", release),
@@ -415,6 +447,11 @@ def build_household_column_list(
         # above on every row.
         create_cooling_credit_applied_col(menu_mp, COST_SCENARIO),
     ]
+    # A dual-fuel retrofit's new backup furnace, priced apart from the heat
+    # pump and added to it in the capital cost.
+    if dual_fuel:
+        installed_costs.insert(2, create_cost_col(
+            menu_mp, "heating", COST_TYPE_BACKUP_FURNACE, COST_SCENARIO))
     # The heat-pump rebate applies to the whole system (heating and cooling)
     # and is recorded once on the heating side, not split by end use. Only the
     # June 2026-guidance amount is carried, with its program label and the
@@ -450,7 +487,7 @@ def build_household_column_list(
 
     return (
         identifiers + geography + building + household_income + existing_hvac
-        + retrofit_hvac + applicability + peak + base_year_consumption
+        + retrofit_hvac + applicability + peak + panel + base_year_consumption
         + base_year_parts + annual_consumption + lifetime_fuel_costs
         + installed_costs + rebate + model_parameters + discounted_savings
         + net_capital + npv + adopter
