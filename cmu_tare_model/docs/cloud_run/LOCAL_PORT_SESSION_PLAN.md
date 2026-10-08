@@ -17,11 +17,15 @@ Session 5b: that session gains items 5 to 9 (decision (5b)), and a second cleanu
 session, 5c, follows it (decision (5c)). Updated on 7 Oct 2026, at the start of
 Session 5c: its opening answers are recorded (decision (5c)). Updated on 7 Oct
 2026, during Session 6: decision (m) is taken, and Session 6 gains two CLAUDE.md
-units, 5a and 5b (decision (m)).
+units, 5a and 5b (decision (m)). Updated on 8 Oct 2026, after Session 6's records
+were committed: decision (b) is taken, and this file is tracked from commit
+`5681706` on (decision (b)).
 
 - `LOCAL_KICKOFF_PROMPT.md` and CLAUDE.md win wherever this plan differs from them.
   This plan relaxes neither.
-- Any edit to this file is a gated diff. The file stays untracked; do not stage it.
+- Any edit to this file is a gated diff. The file was untracked during the port and
+  is tracked from commit `5681706` on (decision (b)); the researcher makes every
+  commit of it.
 - Cloud numbers quoted here are expected values for checking, never reference values.
 - "C1" to "C7" and "2.1" to "2.9" are the kickoff prompt's commands and protocol steps.
   "Section 11.x" is in `LOCAL_PORT_INSTRUCTIONS.md`.
@@ -135,7 +139,14 @@ repo root that the cloud copy did not have. All 9 are in
 
 - (a) Port directly onto `resstock2025-dual-fuel-codebase-update`. The safety copy is
   the branch and tag in 1.1.
-- (b) `cmu_tare_model/docs/cloud_run/` stays untracked until Session 6.
+- (b) `cmu_tare_model/docs/cloud_run/` stays untracked until Session 6. Second part
+  (researcher, 8 Oct 2026, after Session 6's records: "Yes" to the option
+  recommended on 7 Oct 2026): the eight documents are committed, in a commit of
+  their own (`5681706`), and `patches/` (15 files) and `notebook_changes/` (4
+  changes files) are moved out of the repo, to `~/tare_port/cloud_run_patches/`.
+  Commits `6e5c549` to `c53a9bc` hold the same changes as those files. The
+  researcher made the move and the commit on 8 Oct 2026, before the session that
+  records the decision here, and confirmed the choice in that session's chat.
 - (c) Yes: an approved file is applied with C3's `git apply --include=<file>`.
 - (d) One approval per file: 45 in all. This loosens CLAUDE.md's "across functions"
   rule for this port only; one approval never covers two files. Everything is printed
@@ -298,7 +309,6 @@ repo root that the cloud copy did not have. All 9 are in
 
 | Decision | Must be made before |
 |---|---|
-| (b) What becomes of `cloud_run/`. (m) is taken (2.1) | The end of Session 6 |
 | (n) By hand: move the package 5 block into its own cells, update the notebook text the cloud left alone, regenerate the `*_EXPORT_*.py` snapshots | After the port |
 
 The researcher asked on 6 Oct 2026 to be asked each of these at the start of its
