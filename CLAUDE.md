@@ -3,7 +3,22 @@
 ## Heat-Pump Electrification Economics (ResStock 2022.1.1 / EUSS)
 #
 ```text
-# Last updated: 6 October 2026 — Tepper files, workbook tables and Fig 5 on the sample
+# Last updated: 7 October 2026 — dual-fuel package (ResStock 2025.1, MP5) runs end to end
+#   - ResStock 2025.1 package 5, a heat pump with a gas backup furnace, runs nationally:
+#     161,983 rdu (41,128,079 homes) in 2,973 counties, run `2026-10-07_19-14`. Its first
+#     reference values are in their own table in `docs/REFERENCE_VALUES.md`.
+#   - The release is chosen with the environment variable `TARE_RESSTOCK_RELEASE`, and
+#     `scripts/run_tare_notebooks.py` runs the notebooks without the keyboard.
+#   - The heat pump is priced at SEER1 16.0 (from SEER2 15.2), and the backup gas furnace
+#     is priced and added to the capital cost (Limitation 14).
+#   - A dual-fuel retrofit passes both June 2026 fuel gates, so its June 2026 rebate
+#     equals its 2024 rebate. DOE Program Notice 26-3 is not yet reviewed.
+#   - 2025.1 peak electric demand columns are named for winter and summer. The Tepper
+#     household files for package 5 hold 182 and 332 columns (167 and 317 for 2022.1.1).
+#   - No 2022.1.1 value moved: run `2026-10-07_19-22` is byte-identical in all 22 files
+#     to run `2026-10-06_20-23`, made before the dual-fuel model code went in.
+#
+# Previously: 6 October 2026 — Tepper files, workbook tables and Fig 5 on the sample
 #   - Tepper household files hold study-sample rows only (221,205 rdu nationally, 1,146
 #     in Allegheny County) and ship `include_sample`. The main file gains the base-year
 #     fan, pump and backup columns (167 columns); a detailed copy adds per-fuel,
@@ -14,18 +29,6 @@
 #     2x2 and a 1x2 with 100% adoption only, and `SAVE_FIGURES` is True.
 #   - No modeled value moved. The latest run is still `2026-10-05_21-33`; its paper
 #     numbers were re-measured and match `docs/REFERENCE_VALUES.md`.
-#
-# Previously: 5 October 2026 — study sample and no rounding during the run
-#   - Study sample is 221,205 rdu (53,560,591 homes) in 3,079 counties: homes with no
-#     central or room AC of their own, or with shared cooling, are left out.
-#   - A blank energy value or cooling replacement cost in a sample home stops the run.
-#   - The home table is no longer rounded during the run. HOMES savings tiers and the
-#     80% / 150% income cut-offs are tested on unrounded values (commit c35eacf).
-#   - Run `2026-10-05_00-54` differs from `2026-10-04_23-02` only as expected. Reference
-#     rows for the new sample added (see `docs/REFERENCE_VALUES.md`).
-#   - Climate damages are in 2025 dollars, the dollar year of every private cost (commit
-#     43a8ef9). The latest run, `2026-10-05_21-33`, differs from `2026-10-05_00-54` only
-#     in climate damages, each 5.658% higher; its damages rows supersede the earlier ones.
 ```
 
 > This file is read by Claude Code at the start of every session. It is the authoritative
@@ -207,6 +210,41 @@ consumption fix (see Masking and Validation Rules) moves 2022.1.1 results on pur
 Any other change that moves 2022.1.1 values must be flagged and made in its own commit.
 The branch `joseph-2026-nature-comms-submission` is frozen as the as-submitted reference.
 
+**Choosing the release.** `RESSTOCK_RELEASE_THIS_RUN` (`constants.py`) is read
+from the environment variable `TARE_RESSTOCK_RELEASE` when `cmu_tare_model` is
+first imported. Unset means `'2022.1.1'`; a value that is not a known release
+stops the import. Editing `constants.py` does not switch the release, and
+changing the variable after the import has no effect.
+
+- With the runner (below): `--release 2025.1`.
+- For notebooks in VS Code: close every VS Code window, then start it from Git
+  Bash with `TARE_RESSTOCK_RELEASE=2025.1 code .`. Start it the usual way to
+  go back to 2022.1.1.
+- Never set the variable in Windows settings or a shell profile.
+
+**Running the notebooks without the keyboard.**
+`scripts/run_tare_notebooks.py` runs the main notebook from its first cell to
+its last, answers the notebooks' questions from its options, and stops at the
+first failing cell of any notebook. It then checks each package's results: the
+NPV identity, the NPV orderings, the adopter flags, no blank value in a sample
+home, and the rows of the Tepper files.
+
+```bash
+python scripts/run_tare_notebooks.py --release 2025.1 --skip-grid-impact
+python scripts/run_tare_notebooks.py --release 2022.1.1 --state PA --skip-grid-impact --log run.log
+```
+
+- Leave out `--state` for the whole country. `--fips` (default 42003) names
+  the grid-impact county.
+- Every 2025.1 run needs `--skip-grid-impact`: the grid impact analysis works
+  on ResStock 2022.1.1 only for now.
+- Exit codes: 0, the run and every check passed; 1, a cell failed; 2, a
+  notebook asked a question the runner does not know, or the same one twice;
+  3, the run finished but a check failed.
+- A national run took about 8 minutes and 11 GB of memory for 2025.1, and
+  about 25 minutes and 19 GB for 2022.1.1 (7 Oct 2026). Shut down any leftover
+  Jupyter kernel first.
+
 ---
 
 ## Hard-coded Values
@@ -341,6 +379,23 @@ ref2025_mp{mp}_{npv_case}_econ_adopter{method_suffix}
 one per `npv_case` in `NPV_CASE_CATEGORIES` (the same nine tokens listed above:
 `_unsub`, `_sub`, `_sub_june2026` for each scope).
 
+**Peak electric demand columns (the name depends on the ResStock release):**
+```
+{prefix}peak_electricity_heating_kw   {prefix}peak_electricity_cooling_kw   # 2022.1.1
+{prefix}peak_electricity_winter_kw    {prefix}peak_electricity_summer_kw    # 2025.1
+```
+- `{prefix}` is `base_` or `mp{mp}_`. A retrofit column may end `_savings`.
+- ResStock 2022.1.1 reports a home's peak during the hours its heating or its
+  cooling runs. ResStock 2025.1 reports the largest daily peak in the winter
+  or the summer months, whatever is running. They measure different things,
+  so the two releases never share a name.
+- Build them with `create_peak_electricity_col(prefix, end_use, release,
+  savings)` (column_names.py), which takes `end_use` as `'heating'` or
+  `'cooling'` for both releases. Never write a `..._heating_kw` or
+  `..._cooling_kw` name for a 2025.1 run.
+- The peak load columns (`{prefix}peak_load_heating_kbtu_hr`,
+  `{prefix}peak_load_cooling_kbtu_hr`) have the same name in both releases.
+
 **Reference Model Scenario Variables:** `fixed_base` | `central`
 Never use: `v3`, `v4MID`, `moreWTP`, `lessWTP`, `iraRef_mp{mp}_`, `preIRA_mp{mp}_`, `aeo2026_mp{mp}_`
 
@@ -397,6 +452,30 @@ performance-based) may still fund replacing a fossil system.
   byte-identity reasons; making it fuel-neutral is deferred.)
 
 **Do not** re-add an electric-only gate to 2024 HOMES.
+
+**Program Notice 26-3.** DOE has released new guidance in Program Notice
+26-3. The researcher has not yet reviewed how it differs from Program Notices
+26-1 and 26-2 or how it affects this code. The rebate rules modeled here are
+the ones documented in this file; no rule was changed because of 26-3.
+
+**Dual fuel (ResStock 2025.1, package 5).** A dual-fuel retrofit keeps a gas
+furnace as the heat pump's backup, so it removes no fossil heating system and
+passes both June 2026 fuel gates (`dual_fuel_passes_fuel_gates` in
+`REBATE_RULE_CONFIG`):
+
+- **HEEHR:** at or below 150% AMI, for every baseline fuel.
+- **HOMES:** above 150% AMI, whatever the baseline fuel.
+
+Caps, cost shares, income routing, savings tiers and the South Dakota gate are
+unchanged. So for this package the June 2026 rebate equals the 2024 rebate, to
+within one cent per home (the rounding note below).
+
+The backup furnace's cost is added to the retrofit's capital cost but is not
+part of the cost a rebate covers: a fossil furnace is not a rebate measure.
+
+To ask whether a package is dual fuel, call `is_dual_fuel_package(menu_mp)`
+(`utils/calculation_utils.py`). Never test a package number alone: package
+numbers repeat across ResStock releases.
 
 **Program rules** (apply to both vintages; both programs are gated by
 `REBATE_ELIGIBLE_HEATING_MPS`, which has included MP3 + MP4 since the 12 Jul
@@ -464,8 +543,9 @@ modeled — not an actual disbursement amount.
 2. The 2022.1.1 analysis (MP3/MP4) models no dual-fuel systems, so its
    fossil-baseline homes lose HEEHR under June 2026 (see Fuel gate, above) but
    can still earn fuel-neutral HOMES above 150% AMI. The 2025.1 dual-fuel
-   package (MP5) is modeled, but its June 2026 HEEHR treatment is not yet set
-   (Phase 7).
+   package (MP5) is modeled. It keeps a gas furnace and removes no fossil
+   heating system, so it passes both June 2026 fuel gates, and its June 2026
+   rebate equals its 2024 rebate (see Dual fuel, above).
 3. Only one program per home — HEEHR or HOMES, never both.
 4. State-level funding caps are not applied (allocations aren't finalized
    yet; see the Atlas Buildings Hub tracker).
@@ -508,6 +588,18 @@ modeled — not an actual disbursement amount.
     (`constants.py`), 74 of the 3,079 study-sample counties have 1 rdu and 280
     have 3 or fewer, so one rdu can set a county's value. Check a county's rdu
     count before quoting its value.
+14. Two costs of the dual-fuel package (2025.1, MP5) rest on choices of ours.
+    (a) Its heat pump is rated in SEER2 (15.2), but the REMDB cost regression
+    takes SEER1, so it is priced at SEER1 16.0 (SEER1 = SEER2 / 0.95,
+    `SEER2_PER_SEER1` in `constants.py`), about $754 more per home than at
+    15.2. That factor, and HSPF1 = HSPF2 / 0.85, are an assumption: a
+    reasonable and standard one for the vast majority of residential
+    installations, ducted split systems in particular, the kind of system the
+    package installs. HSPF1 is kept for the record and prices nothing.
+    (b) Its backup gas furnace is priced with the REMDB `furnaces_gas_furnace`
+    row, at the backup's own size and rated AFUE (0.925 or 0.95), and added to
+    the capital cost (national mean $4,112 per home). Only a gas backup can
+    be priced; a propane or fuel-oil backup stops the run.
 
 ---
 

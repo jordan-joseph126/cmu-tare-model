@@ -10,6 +10,10 @@ and `cmu_tare_model/docs/tare_tepper_exports_data_dictionary.pdf`, both of which
 described a Pennsylvania-only run with 100 columns and nine NPV cases. Neither
 matches what the export produces now.
 
+**ResStock 2025.1.** Sections 1 to 13 describe the files of a ResStock 2022.1.1
+run (MP3 and MP4). A ResStock 2025.1 run writes the same files for package 5,
+a dual-fuel heat pump. Section 14 lists what is different in them.
+
 ---
 
 ## The one thing to know first
@@ -1059,6 +1063,13 @@ will hold numbers), and the county geography. Analysis built on this file will
 need rework, not just a refresh. Anything you build should keep the column
 names in one place rather than scattered through formulas.
 
+**7 October 2026 -- the ResStock 2025 dual-fuel package now runs.** Section 14
+describes its files. Of the three changes expected above, two happened: six
+peak column names differ and 15 columns are added, and the gas backup columns
+hold numbers. The county geography did not change: every county in the package
+5 files is found on the same county map the 2022.1.1 maps use. The 2022.1.1
+files described in sections 1 to 13 are unchanged.
+
 ---
 
 ## 13. Validation performed
@@ -1088,3 +1099,235 @@ with `export_tepper_household` from that run's saved results:
   11 columns, no blank cell, and `home_count` adds up to 53,560,591 homes
   nationally. The adoption and demand tables agree on every county's
   `home_count`.
+
+---
+
+## 14. The ResStock 2025.1 files: package 5, a dual-fuel heat pump
+
+Sections 1 to 13 describe the files of a ResStock 2022.1.1 run (MP3 and MP4).
+A run on ResStock 2025.1 writes the same three kinds of file with the same
+code, for one measure package: **package 5**, ResStock's Dual Fuel Heating
+System (its Upgrade 05). The home gets a heat pump and a new gas furnace. The
+heat pump heats the home down to an outdoor temperature of 35 F; below that the
+furnace takes over.
+
+Everything in sections 1 to 13 holds for these files except what this section
+lists. Here `{mp}` is `5`. The counts and values below are read from run
+`2026-10-07_19-14` (a national run) and its Allegheny County rows.
+
+**Do not match rows of a package 5 file to rows of an MP3 or MP4 file.** The
+two releases are separate samples of the housing stock. The same `bldg_id`
+means a different home in each: of the 65,097 `bldg_id` values that appear in
+both national files, only 207 are even in the same county.
+
+### 14.1 Scope and row counts
+
+| | |
+|---|---|
+| Source data | ResStock 2025.1 (AMY2018) |
+| Representative dwelling units in the household files (the study sample) | 161,983 rdu |
+| Actual homes those represent | 41,128,079 |
+| Weight per representative dwelling unit | 253.90367272727272, uniform |
+| Counties | 2,973 |
+| States | 48 and the District of Columbia |
+| Measure package | Package 5: a heat pump rated 15.2 SEER2 / 7.8 HSPF2 with a gas backup furnace rated 92.5% or 95% AFUE |
+
+| File | Rows (rdu) | Actual homes |
+|---|---|---|
+| National household, main and detailed | 161,983 | 41,128,079 |
+| Allegheny household, main and detailed | 1,091 | 277,009 |
+| National county | 2,973 counties | |
+| Allegheny county | 1 county | |
+
+**The rule of thumb moves with the weight:** here a count below about 254 is a
+count of representative dwelling units, never of homes.
+
+The sample is built by the same conditions as in section 3.1. One thing comes
+before them: ResStock applies its dual-fuel package only to homes with ducts
+and a natural gas hookup (section 3.3), which is 245,570 of the 549,971 rdu in
+the release.
+
+| Step | rdu | Removed |
+|---|---|---|
+| ResStock 2025.1 stock | 549,971 | |
+| Package 5 applies | 245,570 | 304,401 |
+| Occupied | 221,752 | 23,818 |
+| Single-family | 190,630 | 31,122 |
+| Not Alaska or Hawaii | 190,374 | 256 |
+| Heating fuel is electricity, natural gas, propane or fuel oil | 190,374 | 0 |
+| No existing heat pump | 180,693 | 9,681 |
+| Furnace, boiler or electric baseboard | 177,000 | 3,693 |
+| Central or room AC | 161,983 | 15,017 |
+| Cooling system not shared | 161,983 | 0 |
+
+By existing heating fuel the sample is 93.44% natural gas (151,359 rdu), 5.42%
+electricity (8,778), 0.88% fuel oil (1,423) and 0.26% propane (423).
+
+### 14.2 Columns: 182 in the main file, 332 in the detailed copy
+
+With `bldg_id` that is 183 and 333 on disk. The 167 columns of section 4 are
+all here, six of them under a different name, and 15 are added.
+
+| Group | 2022.1.1 | Package 5 | What differs |
+|---|---|---|---|
+| 6, Retrofit HVAC | 2 | 10 | 8 added: the dual-fuel ratings and the backup furnace's size |
+| 8, Peak demand | 12 | 12 | 6 names differ: winter and summer |
+| Electric panel | 0 | 4 | new, after the peak columns |
+| 9b, Fans, pumps and backup | 12 | 14 | 2 added: the fan of a backup furnace |
+| 12, Installed costs | 4 | 5 | 1 added: the backup furnace's cost |
+| Every other group | 137 | 137 | nothing |
+| **Total, main file** | **167** | **182** | |
+| 10b, detailed copy only | 150 | 150 | nothing |
+| **Total, detailed copy** | **317** | **332** | |
+
+**Group 6 -- the dual-fuel ratings and the furnace's size (8 added).** They
+follow `upgrade_hvac_cooling_efficiency`.
+
+| Column | Meaning | In the national file |
+|---|---|---|
+| `upgrade_hp_seer2` | the heat pump's cooling efficiency as ResStock publishes it (SEER2) | 15.2 on every row |
+| `upgrade_hp_seer1` | the same rating on the older SEER scale: SEER2 / 0.95. The heat pump's cost is worked out from this one | 16.0 on every row |
+| `upgrade_hp_hspf2` | the heat pump's heating efficiency as ResStock publishes it (HSPF2) | 7.8 on every row |
+| `upgrade_hp_hspf1` | the same rating on the older HSPF scale: HSPF2 / 0.85. For the record only; no cost depends on it | 9.176470588235292 on every row |
+| `upgrade_backup_fuel` | the fuel of the backup furnace | `Natural Gas` on every row |
+| `upgrade_backup_afue` | the backup furnace's rated efficiency (AFUE), as a fraction | 0.925 on 93,501 rdu, 0.95 on 68,482 |
+| `upgrade_switchover_f` | the outdoor temperature, in degrees Fahrenheit, below which the furnace heats the home in place of the heat pump | 35.0 on every row |
+| `size_heat_pump_backup_primary_k_btu_h` | the backup furnace's heating capacity, in thousands of Btu per hour | 1.96 to 413.74, median 56.59 |
+
+Six of the eight hold one value on every row. That is how ResStock defines the
+package, not a fault in the file.
+
+**Group 8 -- peak demand: six names differ.**
+
+`base_peak_electricity_winter_kw`, `base_peak_electricity_summer_kw`,
+`mp5_peak_electricity_winter_kw`, `mp5_peak_electricity_summer_kw`,
+`mp5_peak_electricity_winter_kw_savings`,
+`mp5_peak_electricity_summer_kw_savings`
+
+The names differ because the measurement differs. ResStock 2022.1.1 reports a
+home's peak electric demand during the hours its heating or its cooling runs
+(`_heating_kw`, `_cooling_kw`). ResStock 2025.1 reports the home's largest
+daily peak in the winter months and in the summer months, whatever is running.
+**A winter peak here is not the heating peak of an MP3 or MP4 file, and the two
+must not be compared.** The four `peak_load` columns (thermal load, `_kbtu_hr`)
+keep their names. The rest of what section 4 says about group 8 holds: each is
+one home's own maximum, not aligned in time across homes.
+
+**Electric panel (4 added).** They follow the peak columns. ResStock publishes
+them from release 2025.1 on.
+
+| Column | Meaning | In the national file |
+|---|---|---|
+| `panel_service_rating_amps` | the rating of the home's main electric panel before the retrofit, in amps | 60 to 400; 200 on 71,506 rdu and 100 on 60,071 |
+| `mp5_panel_constraint_overall` | whether the new equipment runs into a limit of that panel, by ResStock's load calculation (2023 National Electrical Code) | `No Constraint` 138,809 rdu; `Capacity Constrained Only` 16,877; `Space Constrained Only` 5,154; `Capacity and Space Constrained` 1,143 |
+| `mp5_panel_constraint_capacity` | `True` where the panel's capacity is the limit | `True` on 18,020 rdu |
+| `mp5_panel_constraint_breaker_space` | `True` where the panel's free breaker space is the limit | `True` on 6,297 rdu |
+
+**These four are information only. The model prices no panel upgrade**, so a
+home flagged here has no panel cost in its capital cost or its NPV.
+
+**Group 9b -- the backup furnace's energy (2 added).**
+`base_electricity_heating_hpBackupFans_consumption` and
+`mp5_electricity_heating_hpBackupFans_consumption` are electricity for the fan
+of a heat pump's backup furnace. In these files the backup columns hold real
+numbers, where the MP3 and MP4 files hold zeros:
+
+| Column | What it is | Above zero in |
+|---|---|---|
+| `mp5_naturalGas_heating_hpBackup_consumption` | gas burned by the backup furnace | 149,331 rdu |
+| `mp5_electricity_heating_hpBackupFans_consumption` | electricity for the backup furnace's fan | 149,190 rdu |
+| `mp5_electricity_heating_fansPumps_consumption` | electricity for the heat pump's fan, heating | 160,338 rdu |
+| `mp5_electricity_cooling_fansPumps_consumption` | electricity for the heat pump's fan, cooling | 161,580 rdu |
+| `mp5_electricity_heating_hpBackup_consumption`, `mp5_propane_heating_hpBackup_consumption`, `mp5_fuelOil_heating_hpBackup_consumption` | backup heat from another source | none: 0 on every row, because the backup is always a gas furnace |
+| `base_electricity_heating_fansPumps_consumption` | electricity for the existing heating system's fan or pumps | 158,585 rdu |
+| `base_electricity_cooling_fansPumps_consumption` | electricity for the existing air conditioner's fan | 145,510 rdu |
+| the four `base_*_heating_hpBackup_consumption` columns and `base_electricity_heating_hpBackupFans_consumption` | backup heat and backup fan of an existing heat pump | none: 0 on every row, because homes with an existing heat pump are outside the sample |
+
+Each heating line of the sum in section 4 gains one term:
+
+```
+baseline heating, 2025 = the four base_*_heating_consumption columns
+                         + base_electricity_heating_fansPumps_consumption
+                         + the four base_*_heating_hpBackup_consumption columns
+                         + base_electricity_heating_hpBackupFans_consumption
+retrofit heating, 2025 = mp5_heating_consumption
+                         + mp5_electricity_heating_fansPumps_consumption
+                         + the four mp5_*_heating_hpBackup_consumption columns
+                         + mp5_electricity_heating_hpBackupFans_consumption
+```
+
+**After the retrofit most of the heating energy is still gas.** Added up over
+the sample for 2025, the backup furnace burns 507,984 GWh of gas, against
+103,111 GWh of electricity for the heat pump and its fan and 13,557 GWh for the
+furnace's fan. So a package 5 home has two heating fuels after the retrofit,
+each priced at its own price (section 8), and the detailed copy's
+`ref2025_mp5_{year}_heating_naturalGas_consumption` columns are not zero. In a
+projected year the two fuels are scaled by the same weather factor, so the
+split between the heat pump and the furnace stays the one ResStock gives for
+the base year.
+
+**Group 12 -- the backup furnace's cost (1 added).**
+`mp5_heating_backupFurnace_installed_cost_v4MID` follows the heat pump's cost.
+It is the installed cost of the new backup gas furnace, in USD2025, before any
+rebate: $3,646.29 to $6,566.80, mean $4,112.21, no blank.
+
+**The net capital cost of a package 5 home has one more term:**
+
+```
+net capital cost =   mp5_heating_upgrade_installed_cost_v4MID         (the heat pump)
+                   + mp5_heating_backupFurnace_installed_cost_v4MID   (the furnace)
+                   - mp5_heating_replacement_installed_cost_v4MID
+                   - mp5_cooling_replacement_credit_applied_v4MID
+```
+
+Step 5 of section 10 has no furnace term because MP3 installs no furnace. The
+rest of the chain in section 10 is the same.
+
+### 14.3 What else reads differently
+
+- **Rebates (group 13 and section 7).** Section 7 says that under the June 2026
+  guidance only homes with electric heating are reached. That does not hold for
+  package 5. A dual-fuel retrofit keeps a furnace and removes no fossil heating
+  system, so a home's existing heating fuel does not bar it from either
+  program. In the national file `mp5_rebate_eligibility_june2026` is `'HEEHR'`
+  on 98,895 rdu, `'HOMES'` on 22,537 and `'Not Eligible'` on 40,551, and most
+  of the homes with a label heat with natural gas. The caps, cost shares and
+  income rules of section 7 are unchanged, and so are its four caveats. The
+  furnace's cost is not part of the cost a rebate covers. DOE has since
+  released Program Notice 26-3, which has not yet been reviewed for this model.
+  The NPV shipped here is unsubsidized, as in every file.
+- **Zeros (section 5).** `baseline_heating_consumption` is exactly 0 for 1,159
+  rdu (294,274 homes) in 42 states, most of them in California (606) and
+  Arizona (131). `mp5_heating_consumption` is 0 for 1 rdu,
+  `baseline_cooling_consumption` for 50 and `mp5_cooling_consumption` for 400.
+  All are in the sample and have an NPV.
+- **Blanks (section 5).** A national household file has no blank cell. The
+  `gea_region` blanks of the 2022.1.1 files do not occur.
+- **The county file (section 11).** The same 11 columns. 161 of the 2,973
+  counties have 1 rdu and 502 have 3 or fewer (254 homes is 1 rdu). One
+  county, `G3500210`, has a blank `operating_cost_pct_change`: every sample
+  home there has a baseline heating cost of zero, so the percent change has
+  nothing to divide by.
+- **The worked example (section 10)** follows an MP3 home. No package 5 home is
+  worked through in this document.
+
+### 14.4 Checked on run `2026-10-07_19-14`
+
+- Row counts: 161,983 in each national household file and 1,091 in each
+  Allegheny file; 2,973 rows and 1 row in the county files, whose `home_count`
+  adds up to 41,128,079 and 277,009 homes.
+- Column counts: 182 in the main file and 332 in the detailed copy, with no
+  duplicate name. Every column of the main file is the same in the detailed
+  copy.
+- `include_sample`, `include_heating` and `include_cooling` are `True` on
+  every row.
+- Each Allegheny file holds the national file's rows for the same homes, with
+  every value the same.
+- Each stream's per-fuel columns add up to its total in every year, and the
+  base-year columns of groups 9 and 9b, with the backup furnace's fan, add up
+  to the 2025 totals.
+- The net capital cost equals the heat pump's cost plus the furnace's cost
+  minus the two credits on every row. Discounted heating saving + discounted
+  cooling saving - net capital cost equals the shipped NPV, with none off by
+  more than half a cent, and the adopter flag is 1.0 exactly where the NPV is
+  zero or above (5,294 rdu).
