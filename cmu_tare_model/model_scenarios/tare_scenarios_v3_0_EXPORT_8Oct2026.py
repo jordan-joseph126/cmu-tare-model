@@ -28,7 +28,7 @@ if 'df_euss_am_baseline_home' not in globals():
     individual_scenario_run = True
 
     na = df_euss_am_baseline_home['gea_region'].isna()
-    print("homes with no GEA region:", int(na.sum()))
+    print("rdu with no GEA region:", int(na.sum()))
 
     print("states affected:", sorted(df_euss_am_baseline_home.loc[na, 'state'].dropna().unique()))
 
@@ -107,12 +107,13 @@ Measure Package {menu_mp} ({input_mp})
 state_arg = None if menu_state == 'N' else input_state
 city_arg = input_cityFilter if (menu_state == 'Y' and menu_city == 'Y') else None
 df_euss_am_mpX, df_funnel_mpX = load_and_filter_upgrade(
-    menu_mp=menu_mp, state=state_arg, city=city_arg, verbose=True,
+    menu_mp=menu_mp, state=state_arg, city=city_arg,
     release=RESSTOCK_RELEASE_THIS_RUN)
 
 # Display the filtered dataframe
 print(f"DATAFRAME SIZE after all filters: {df_euss_am_mpX.shape}")
-print(df_euss_am_mpX)
+if PRINT_VERBOSE_DATAFRAMES:
+    print(df_euss_am_mpX)
 print(f"""
 FILTER FUNNEL:
 {df_funnel_mpX}
@@ -177,7 +178,8 @@ df_euss_am_mpX_home, df_mpX_ref2025_damages_climate = calculate_lifetime_climate
     verbose=VERBOSE
     )
 
-print(f"""
+if PRINT_VERBOSE_DATAFRAMES:
+    print(f"""
 ====================================================================================================================================================================
 Post-Retrofit (MP{menu_mp}) Marginal Damages: WHOLE-HOME
 Scenario: 2025 Reference Case
@@ -205,7 +207,7 @@ PRIVATE IMPACTS: OVERVIEW
 Step 1: Calculate annual operating (fuel) costs
 Step 2: Calculate equipment capital costs (For space heating, include ductwork and weatherization (MP9 and MP10))
 Step 3: Calculate replacement cost (replacing existing piece of equipment with similar technology)
-Step 4: Calculate net equipment capital costs and private NPV (less WTP and more WTP)
+Step 4: Calculate net equipment capital costs and private NPV
 
 ----------------------------------------------------------------------------------------------------------------------
 Step 1: Calculate annual operating (fuel) costs
@@ -229,7 +231,8 @@ df_euss_am_mpX_home, df_mpX_ref2025_fuel_costs = calculate_lifetime_fuel_costs(
     )
 
 
-print(f"""
+if PRINT_VERBOSE_DATAFRAMES:
+    print(f"""
 ====================================================================================================================================================================
 Lifetime Fuel Costs: 2025 Reference Case
 
@@ -248,7 +251,8 @@ SUMMARY DATAFRAME FOR MP{menu_mp}: df_euss_am_mp{menu_mp}_home
 
 # %%
 from cmu_tare_model.utils.inflation_adjustment import *
-from cmu_tare_model.utils.column_names import create_cost_col
+from cmu_tare_model.utils.column_names import COST_TYPE_BACKUP_FURNACE, create_cost_col
+from cmu_tare_model.utils.calculation_utils import is_dual_fuel_package
 
 # # ============================================================================
 # COST MODULES: REMDB v4 regression-based installed costs.
@@ -258,7 +262,8 @@ from cmu_tare_model.utils.column_names import create_cost_col
 from cmu_tare_model.private_impact.calculations.calculate_equipment_installation_costs import (
     calculate_upgrade_installed_cost,
     obtain_heating_system_specs,
-    calculate_heating_installation_premium
+    calculate_heating_installation_premium,
+    calculate_backup_furnace_installed_cost
 )
 from cmu_tare_model.private_impact.calculations.calculate_equipment_replacement_costs import (
     calculate_replacement_installed_cost
@@ -275,7 +280,8 @@ from cmu_tare_model.private_impact.calculations.calculate_enclosure_upgrade_cost
 from cmu_tare_model.constants import REMDB_COST_SCENARIO_KEYS
 from cmu_tare_model.utils.remdb_v4_installed_cost_utils import (
     load_remdb_v4_data,
-    add_remdb_metrics
+    add_remdb_metrics,
+    add_backup_furnace_metrics
 )
 
 if VERBOSE:
@@ -338,7 +344,6 @@ print("\n" + "="*80 + "\n")
 # Currently implemented for heating only. Other end-uses (waterHeating,
 # clothesDrying, cooking) will be added when REMDB v4 supports them.
 # ============================================================================
-VERBOSE = True
 
 # Initialize nested dictionary: CAPITAL_COSTS_MPX[end_use][cost_type][scenario_key]
 CAPITAL_COSTS_MPX = {
@@ -418,6 +423,31 @@ for scenario_key in REMDB_COST_SCENARIO_KEYS:
             end_use='cooling',
             cost_scenario=scenario_key
         )
+
+        # STEP 5 (dual-fuel packages only): the new backup furnace, priced
+        # with the same REMDB gas furnace row and coefficients as the furnace
+        # replacement cost, at the backup's own size and rated AFUE. It gets
+        # its own cost column; calculate_capital_costs adds it to the heat
+        # pump's cost. No other package installs a furnace.
+        if is_dual_fuel_package(menu_mp):
+            df_scenario, df_detailed_furnace = add_backup_furnace_metrics(
+                df=df_scenario,
+                remdb_v4_costs=remdb_v4_costs,
+                percentile=percentile,
+                verbose=VERBOSE
+            )
+            df_scenario, df_detailed_furnace = calculate_backup_furnace_installed_cost(
+                df=df_scenario,
+                df_detailed=df_detailed_furnace,
+                menu_mp=menu_mp,
+                cost_scenario=scenario_key
+            )
+            furnace_cost_col_name = create_cost_col(
+                menu_mp=menu_mp, category=end_use,
+                cost_type=COST_TYPE_BACKUP_FURNACE, cost_scenario=scenario_key)
+            print(f"  Backup furnace: "
+                  f"{df_scenario[furnace_cost_col_name].notna().sum():,} valid rdu, "
+                  f"mean=${df_scenario[furnace_cost_col_name].mean():,.2f}")
     
     # Store results for this scenario
     CAPITAL_COSTS_MPX['heating']['replacement'][scenario_key] = df_scenario.copy()
@@ -429,11 +459,11 @@ for scenario_key in REMDB_COST_SCENARIO_KEYS:
     if replacement_cost_col_name in df_scenario.columns:
         valid_repl = df_scenario[replacement_cost_col_name].notna().sum()
         mean_repl = df_scenario[replacement_cost_col_name].mean()
-        print(f"  Replacement: {valid_repl:,} valid homes, mean=${mean_repl:,.2f}")
+        print(f"  Replacement: {valid_repl:,} valid rdu, mean=${mean_repl:,.2f}")
     if upgrade_cost_col_name in df_scenario.columns:
         valid_upgr = df_scenario[upgrade_cost_col_name].notna().sum()
         mean_upgr = df_scenario[upgrade_cost_col_name].mean()
-        print(f"  Upgrade: {valid_upgr:,} valid homes, mean=${mean_upgr:,.2f}")
+        print(f"  Upgrade: {valid_upgr:,} valid rdu, mean=${mean_upgr:,.2f}")
 
 print(f"\nCalculated {len(REMDB_COST_SCENARIO_KEYS)} scenarios: {REMDB_COST_SCENARIO_KEYS}")
 print("="*80)
@@ -459,7 +489,10 @@ for scenario_key in REMDB_COST_SCENARIO_KEYS:
 
     # Build the list of final cost columns to merge for this scenario
     cost_columns_to_merge = []
-    for end_use, cost_type in [('heating', 'replacement'), ('heating', 'upgrade'), ('cooling', 'replacement')]:
+    # The backup furnace column exists only for a dual-fuel package; the
+    # check below skips it for every other package.
+    for end_use, cost_type in [('heating', 'replacement'), ('heating', 'upgrade'),
+                               ('heating', COST_TYPE_BACKUP_FURNACE), ('cooling', 'replacement')]:
         col_name = create_cost_col(menu_mp=menu_mp, category=end_use, cost_type=cost_type, cost_scenario=scenario_key)
         if col_name in df_v4_source.columns:
             cost_columns_to_merge.append(col_name)
@@ -529,7 +562,6 @@ df_euss_am_mpX_home = prepare_discount_rates(df=df_euss_am_mpX_home,
                                              verbose=VERBOSE)
 
 for end_use in VALID_CATEGORIES:
-    print(VALID_CATEGORIES)
     for cost_scenario in REMDB_COST_SCENARIO_KEYS:
         # One central rebate function per guidance vintage. REBATE_POLICY_SCENARIOS
         # is [REBATE_GUIDANCE_IRA2024, REBATE_GUIDANCE_JUNE2026]: the December 2024
@@ -546,7 +578,8 @@ for end_use in VALID_CATEGORIES:
                 cost_scenario=cost_scenario,
                 guidance=guidance)
 
-print(f"""
+if PRINT_VERBOSE_DATAFRAMES:
+    print(f"""
 ====================================================================================================================================================================
 DATAFRAME: df_euss_am_mpX_home AFTER CALCULATING REBATE AMOUNTS
 {df_euss_am_mpX_home}
@@ -862,10 +895,6 @@ def county_adoption_rates(df, adopter_col, county_col="county_fips",
     return rates
 
 adopter_cols = sorted(c for c in df.columns if "econ_adopter" in c)
-print("Adopter columns in df:")
-for c in adopter_cols:
-    print("  ", c)
-print()
 
 county_rate_series = {}
 for col in adopter_cols:
@@ -887,6 +916,10 @@ What it asserts (current code state):
     the 2026-HOMES fuel-neutral fix is DEFERRED (it would move _sub_june2026).
     While that hold stands, every fossil baseline is still $0 under June 2026,
     so the whole-fuel check below is valid.
+  - A dual-fuel package (is_dual_fuel_package) keeps a gas furnace as the heat
+    pump's backup, so it removes no fossil system and passes both June 2026
+    fuel gates (researcher's decision, 6 Oct 2026). For it, check 1 is
+    reversed: fossil baselines must be funded.
 
   ==> WHEN THE DEFERRED 2026-HOMES FUEL-NEUTRAL FIX LANDS, fossil HOMES becomes
       > $0 and Spec check 1 will (correctly) start failing. At that point make
@@ -904,6 +937,8 @@ from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_
 )
 from cmu_tare_model.utils.column_names import create_adoption_col
 from cmu_tare_model.utils.modeling_params import define_scenario_params
+from cmu_tare_model.utils.calculation_utils import is_dual_fuel_package
+from cmu_tare_model.constants import NON_PARTICIPATING_REBATE_STATES
 
 _MP = menu_mp  # the MP just processed this pass (3, then 4) -- never hardcode 4
 _COST = 'v4MID'
@@ -946,17 +981,26 @@ else:
     print('\n--- June 2026 rebate funding by baseline fuel (weighted $) ---')
     print(by_fuel.round(0))
 
-    # Spec check 1 -- no fossil baseline may receive June 2026 rebate dollars.
-    # Valid while the 2026-HOMES electric-gate hold stands (see docstring). When
-    # the deferred fuel-neutral fix lands, convert this to a HEEHR-only check.
+    # Spec check 1 -- fossil baselines. A package that removes the fossil
+    # system may fund no fossil baseline under June 2026 (valid while the
+    # 2026-HOMES electric-gate hold stands; see docstring). A dual-fuel package
+    # keeps a gas furnace, passes both fuel gates, and so must fund them.
+    _dual_fuel = is_dual_fuel_package(_MP)
     _fossil = by_fuel.drop(index='Electricity', errors='ignore')
-    _fossil_nonzero = _fossil[(_fossil != 0).any(axis=1)]
-    assert _fossil_nonzero.empty, (
-        f"MP{_MP} June 2026 fuel-gate regression: non-electric baselines received "
-        "rebate dollars (fossil-system removal must not be funded under the current "
-        "electric-gate hold):\n"
-        f"{_fossil_nonzero.round(2)}"
-    )
+    if _dual_fuel:
+        assert (_fossil['total_eligible'] > 0).any(), (
+            f"MP{_MP} is dual fuel, so it passes the June 2026 fuel gates, but "
+            "no fossil baseline received June 2026 rebate dollars:\n"
+            f"{_fossil.round(2)}"
+        )
+    else:
+        _fossil_nonzero = _fossil[(_fossil != 0).any(axis=1)]
+        assert _fossil_nonzero.empty, (
+            f"MP{_MP} June 2026 fuel-gate regression: non-electric baselines received "
+            "rebate dollars (fossil-system removal must not be funded under the current "
+            "electric-gate hold):\n"
+            f"{_fossil_nonzero.round(2)}"
+        )
 
     # Spec check 2 -- electric-resistance baselines must still be funded; guards
     # against a bug that zeroes every rebate and would pass check 1 trivially.
@@ -965,7 +1009,18 @@ else:
         "total_eligible; expected electric-resistance homes to qualify for HEEHR/HOMES."
     )
 
-    print(f'\n[PASS] MP{_MP} June 2026 fuel gate holds: fossil baselines $0, '
-          'electric-resistance baselines funded.')
+    # Spec check 3 -- homes in a state that never joined the programs get $0,
+    # for every package.
+    _non_participating = _df['state'].isin(NON_PARTICIPATING_REBATE_STATES)
+    _non_participating_dollars = _df.loc[_non_participating, _amount_col].fillna(0.0)
+    assert (_non_participating_dollars == 0).all(), (
+        f"MP{_MP} June 2026: homes in {sorted(NON_PARTICIPATING_REBATE_STATES)} "
+        "received rebate dollars, but those states never joined the programs."
+    )
+
+    _fossil_result = ('fossil baselines funded (dual fuel)' if _dual_fuel
+                      else 'fossil baselines $0')
+    print(f'\n[PASS] MP{_MP} June 2026 fuel gate holds: {_fossil_result}, '
+          'electric-resistance baselines funded, non-participating states $0.')
 
 

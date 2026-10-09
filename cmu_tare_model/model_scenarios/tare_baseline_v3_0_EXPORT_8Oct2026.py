@@ -19,8 +19,6 @@ from cmu_tare_model.constants import (
     )
 import pandas as pd
 
-PRINT_VERBOSE_DATAFRAMES = True
-
 # Set columns in display
 # pd.set_option('display.max_columns', None)
 # pd.reset_option('display.max_columns') # Reset options to default
@@ -76,7 +74,7 @@ MEASURE PACKAGE {menu_mp} (MP{menu_mp}) -- ResStock {RESSTOCK_RELEASE_THIS_RUN}
 Load data from the NREL ResStock Database for the baseline scenario and apply various filters.
 
 DATA: NREL ResStock Database
-SCOPE FILTERS: ResStock applicability, occupied units, single-family homes, Alaska/Hawaii excluded (Phase 3)
+SCOPE FILTERS: ResStock applicability, occupied units, single-family homes, Alaska/Hawaii excluded
 GEOGRAPHIC FILTERS: National, State, or City
 
 Additional details data can be found in the official End-Use Load Profiles/Savings Shapes documentation.
@@ -87,14 +85,14 @@ Our methodology is detailed in the process_euss_data.py file and its associated 
 # Measure Package 0: Baseline
 # load_and_filter_upgrade replaces the inline occupancy/housing-type
 # filtering this cell used to do directly, and adds two new leading filter
-# stages ahead of them: ResStock's own applicability flag (Phase 3, D3) and
-# the Alaska/Hawaii exclusion (Phase 3). state/city are left as None here --
+# stages ahead of them: ResStock's own applicability flag and
+# the Alaska/Hawaii exclusion. state/city are left as None here --
 # the geographic filter, if any, is applied below after the interactive
 # prompt, since that prompt needs a DataFrame to validate the choice
 # against before the filter itself can be applied.
 print(f"Loading ResStock {RESSTOCK_RELEASE_THIS_RUN} baseline")
 df_euss_am_baseline, df_funnel_baseline = load_and_filter_upgrade(
-    menu_mp=0, verbose=True, release=RESSTOCK_RELEASE_THIS_RUN)
+    menu_mp=0, release=RESSTOCK_RELEASE_THIS_RUN)
 print(f"DATAFRAME SIZE after scope filters: {df_euss_am_baseline.shape}")
 
 # Choose between national or sub-national level analysis
@@ -158,12 +156,14 @@ else:
         heating_fuel_col='in.heating_fuel',
         heating_type_col='in.hvac_heating_type_and_fuel')
 
-print(f"""
+if PRINT_VERBOSE_DATAFRAMES:
+    print(f"""
 ====================================================================================================================================================================      
 DATAFRAME: df_euss_am_baseline (ResStock {RESSTOCK_RELEASE_THIS_RUN})
       
 {df_euss_am_baseline}
-
+""")
+print(f"""
 FILTER FUNNEL:
 {df_funnel_baseline}
 """)
@@ -259,8 +259,8 @@ print(f"""
 CLIMATE IMPACTS (BASELINE): DAMAGES FROM CLIMATE-RELATED EMISSIONS
 ====================================================================================================================================================================
 Detailed documentation of the methods used to calculate the climate impacts can be
-found in the public_impacts folder of the cmu-tare-model package. All monetary values are in 2023
-inflation-adjusted dollars ($USD2023).
+found in the public_impact folder of the cmu-tare-model package. Climate damages are in 2025
+dollars ($USD2025), like every private cost: the social cost of carbon is inflated from 2020 dollars.
 - data_processing sub-folder: contains the data processing scripts used for lookup dictionaries
 - calculations sub-folder: contains the calculations for emissions from fossil fuel appliances
 - Main folder contains the scripts for calculating lifetime climate impacts and climate NPV.

@@ -10,8 +10,8 @@ model_run_date_time = result_export_time.strftime("%Y-%m-%d_%H-%M")
 
 from config import PROJECT_ROOT
 from cmu_tare_model.constants import (
-    REMDB_COST_SCENARIO_KEYS, VALID_MENU_MPS,
-    PRIVATE_DISCOUNT_RATE_COLS, PRIVATE_DISCOUNT_RATE_SHORT_KEYS
+    REMDB_COST_SCENARIO_KEYS, VALID_MENU_MPS, RESSTOCK_RELEASE_THIS_RUN,
+    PRIVATE_DISCOUNT_RATE_COLS, PRIVATE_DISCOUNT_RATE_SHORT_KEYS,
 )
 from cmu_tare_model.utils.export_model_run_results import export_model_run_output
 from cmu_tare_model.utils.column_names import (
@@ -26,8 +26,6 @@ Running the model for the following measure packages:
 VALID_MENU_MPS = {VALID_MENU_MPS}
       
 The results will be exported using the export_model_run_output function.
-Documentation for this function:
-{export_model_run_output.__doc__}
 
 Active Capital Cost Scenarios: {REMDB_COST_SCENARIO_KEYS}
 Note: Each exported CSV contains columns for ALL active cost scenarios.
@@ -132,18 +130,13 @@ def verify_cost_scenario_columns(
     econ_adopter_cols = sorted(
         c for c in df_check.columns if 'econ_adopter' in c
     )
-    print(f"\nEconomic-adopter columns ({len(econ_adopter_cols)}):")
-    if econ_adopter_cols:
-        for col in econ_adopter_cols:
-            print(f"    {col}")
-    else:
-        print("    (none found)")
+    print(f"\nEconomic-adopter columns present: {len(econ_adopter_cols)}")
 
     print(f"\nTotal columns in DataFrame: {len(df_check.columns)}")
     print(f"{'=' * 80}")
 
 # %% [markdown]
-# # EUSS Baseline Measure Package (MP0)
+# # ResStock Baseline Measure Package (MP0)
 
 # %%
 # ===================================================================================================================================================================================
@@ -215,7 +208,7 @@ print(f"Saved sample funnel: {sample_funnel_path}")
 
 # %% [markdown]
 # -------------------------------------------------------------------------------------------------------
-# # EUSS Post-Retrofit Measure Packages
+# # ResStock 2022 (EUSS) Post-Retrofit Measure Packages
 # -------------------------------------------------------------------------------------------------------
 # ## 2025 Reference Case:
 # - AEO2026 fuel price projections
@@ -244,10 +237,10 @@ TARE MODEL SCENARIO: 2025 Reference Case
 # ## Air Source Heat Pump (ASHP) - Standard Efficiency
 
 # %% [markdown]
-# ## MP3: ASHP Retrofit Only (Standard Efficiency)
+# ## ResStock 2022 (EUSS) MP3: ASHP Retrofit Only (Standard Efficiency)
 
 # %%
-if 3 in VALID_MENU_MPS:
+if RESSTOCK_RELEASE_THIS_RUN == '2022.1.1' and 3 in VALID_MENU_MPS:
 
     # Measure Package 3
     menu_mp = 3
@@ -293,9 +286,14 @@ if 3 in VALID_MENU_MPS:
 
     print(f"MP{menu_mp} results preserved to MP-specific variable names.")
 
+else:
+    print(
+        f"MP3 (ResStock 2022.1.1) skipped: this run uses ResStock "
+        f"{RESSTOCK_RELEASE_THIS_RUN} with packages {VALID_MENU_MPS}."
+    )
 
 # %%
-if 3 in VALID_MENU_MPS:
+if RESSTOCK_RELEASE_THIS_RUN == '2022.1.1' and 3 in VALID_MENU_MPS:
 
     # =========================================================================================================
     # EXPORT RESULTS TO CSV - SUPPLEMENTAL DATA
@@ -356,10 +354,10 @@ if 3 in VALID_MENU_MPS:
 # ## Air Source Heat Pump (ASHP) - High Efficiency
 
 # %% [markdown]
-# ## MP4: ASHP Retrofit Only (High Efficiency)
+# ## ResStock 2022 (EUSS) MP4: ASHP Retrofit Only (High Efficiency)
 
 # %%
-if 4 in VALID_MENU_MPS:
+if RESSTOCK_RELEASE_THIS_RUN == '2022.1.1' and 4 in VALID_MENU_MPS:
 
     # Measure Package 4
     menu_mp = 4
@@ -405,9 +403,14 @@ if 4 in VALID_MENU_MPS:
 
     print(f"MP{menu_mp} results preserved to MP-specific variable names.")
 
+else:
+    print(
+        f"MP4 (ResStock 2022.1.1) skipped: this run uses ResStock "
+        f"{RESSTOCK_RELEASE_THIS_RUN} with packages {VALID_MENU_MPS}."
+    )
 
 # %%
-if 4 in VALID_MENU_MPS:
+if RESSTOCK_RELEASE_THIS_RUN == '2022.1.1' and 4 in VALID_MENU_MPS:
 
     # =========================================================================================================
     # EXPORT RESULTS TO CSV - SUPPLEMENTAL DATA
@@ -465,10 +468,10 @@ if 4 in VALID_MENU_MPS:
         )
 
 # %% [markdown]
-# ## MP8: Whole Home Electrification (High Efficiency)
+# ## ResStock 2022 (EUSS) MP8: Whole Home Electrification (High Efficiency)
 
 # %%
-if 8 in VALID_MENU_MPS:
+if RESSTOCK_RELEASE_THIS_RUN == '2022.1.1' and 8 in VALID_MENU_MPS:
 
     # Measure Package 8
     menu_mp = 8
@@ -514,9 +517,14 @@ if 8 in VALID_MENU_MPS:
 
     print(f"MP{menu_mp} results preserved to MP-specific variable names.")
 
+else:
+    print(
+        f"MP8 (ResStock 2022.1.1) skipped: this run uses ResStock "
+        f"{RESSTOCK_RELEASE_THIS_RUN} with packages {VALID_MENU_MPS}."
+    )
 
 # %%
-if 8 in VALID_MENU_MPS:
+if RESSTOCK_RELEASE_THIS_RUN == '2022.1.1' and 8 in VALID_MENU_MPS:
 
     # =========================================================================================================
     # EXPORT RESULTS TO CSV - SUPPLEMENTAL DATA
@@ -574,11 +582,11 @@ if 8 in VALID_MENU_MPS:
         )
 
 # %% [markdown]
-# ## MP9: Whole Home Electrification + Basic Enclosure Upgrade
+# ## ResStock 2022 (EUSS) MP9: Whole Home Electrification + Basic Enclosure Upgrade
 # 
 
 # %%
-if 9 in VALID_MENU_MPS:
+if RESSTOCK_RELEASE_THIS_RUN == '2022.1.1' and 9 in VALID_MENU_MPS:
 
     # Measure Package 9
     menu_mp = 9
@@ -624,9 +632,14 @@ if 9 in VALID_MENU_MPS:
 
     print(f"MP{menu_mp} results preserved to MP-specific variable names.")
 
+else:
+    print(
+        f"MP9 (ResStock 2022.1.1) skipped: this run uses ResStock "
+        f"{RESSTOCK_RELEASE_THIS_RUN} with packages {VALID_MENU_MPS}."
+    )
 
 # %%
-if 9 in VALID_MENU_MPS:    
+if RESSTOCK_RELEASE_THIS_RUN == '2022.1.1' and 9 in VALID_MENU_MPS:
     
     # =========================================================================================================
     # EXPORT RESULTS TO CSV - SUPPLEMENTAL DATA
@@ -684,11 +697,11 @@ if 9 in VALID_MENU_MPS:
         )
 
 # %% [markdown]
-# ## MP10: Whole Home Electrification + Enhanced Enclosure Upgrade
+# ## ResStock 2022 (EUSS) MP10: Whole Home Electrification + Enhanced Enclosure Upgrade
 # 
 
 # %%
-if 10 in VALID_MENU_MPS:
+if RESSTOCK_RELEASE_THIS_RUN == '2022.1.1' and 10 in VALID_MENU_MPS:
 
     menu_mp = 10
     input_mp = 'upgrade10'
@@ -733,9 +746,14 @@ if 10 in VALID_MENU_MPS:
 
     print(f"MP{menu_mp} results preserved to MP-specific variable names.")
 
+else:
+    print(
+        f"MP10 (ResStock 2022.1.1) skipped: this run uses ResStock "
+        f"{RESSTOCK_RELEASE_THIS_RUN} with packages {VALID_MENU_MPS}."
+    )
 
 # %%
-if 10 in VALID_MENU_MPS:
+if RESSTOCK_RELEASE_THIS_RUN == '2022.1.1' and 10 in VALID_MENU_MPS:
 
     # =========================================================================================================
     # EXPORT RESULTS TO CSV - SUPPLEMENTAL DATA
@@ -791,6 +809,127 @@ if 10 in VALID_MENU_MPS:
         menu_mp=menu_mp,
         dataframes_by_discount_rate=DATAFRAMES_MP10_RCM_DISCOUNT_RATE_RESULTS,
         )
+
+# %% [markdown]
+# -------------------------------------------------------------------------------------------------------
+# # ResStock 2025 Post-Retrofit Measure Packages
+# -------------------------------------------------------------------------------------------------------
+# ## ResStock 2025 MP5: Dual-Fuel Heat Pump with Gas Backup Furnace
+# 
+
+# %%
+# 2025.1 upgrade files are not zero-padded: 'upgrade5', not 'upgrade05'.
+if RESSTOCK_RELEASE_THIS_RUN == '2025.1' and 5 in VALID_MENU_MPS:
+
+    # Measure Package 5
+    menu_mp = 5
+    input_mp = 'upgrade5'
+
+    # Pre-set measure package for batch mode
+    input_measure_package = '5'
+
+    print(f"PROJECT_ROOT (from config.py): {PROJECT_ROOT}")
+
+    # Construct the absolute path to the unified scenarios file
+    relative_path = os.path.join("cmu_tare_model", "model_scenarios", "tare_scenarios_v3_0.ipynb")
+    file_path = os.path.join(PROJECT_ROOT, relative_path)
+
+    # On Windows, to avoid any path-escape quirks, convert backslashes to forward slashes
+    file_path = file_path.replace("\\", "/")
+    print(f"Running file: {file_path}")
+
+    # iPython magic command to run notebook and import variables into current session
+    get_ipython().run_line_magic('run', f'-i {file_path}')
+
+    print(f"Model Run Complete for EUSS Measure Package: MP{menu_mp}")
+
+    # PRESERVE RESULTS AND PREVENT OVERWRITING OF PREVIOUS MODEL RUN DATA
+    # Moved this block from the second cell in the section to the first cell
+    # This ensures that the results are preserved immediately after the model run.
+    print(f"""
+    Preserving MP{menu_mp} results by copying dataframe variables and re-assigning to MP-specific names.
+    This allows the scenarios file to be re-run for MP{menu_mp} without overwriting previous model run data""")
+
+    # Supplemental DataFrames (single scenario: 2025 Reference Case)
+    df_mp5_ref2025_damages_climate = df_mpX_ref2025_damages_climate.copy()
+    df_mp5_ref2025_fuel_costs = df_mpX_ref2025_fuel_costs.copy()
+
+    # Summary results dictionary keyed by discount rate: [discount_rate] -> DataFrame
+    DATAFRAMES_MP5_RCM_DISCOUNT_RATE_RESULTS = {
+        discount_rate: df.copy()
+        for discount_rate, df in DATAFRAMES_MPX_RCM_DISCOUNT_RATE.items()
+    }
+
+    # Clear the batch mode trigger
+    input_measure_package = None
+
+    print(f"MP{menu_mp} results preserved to MP-specific variable names.")
+
+else:
+    print(
+        f"MP5 (ResStock 2025.1) skipped: this run uses ResStock "
+        f"{RESSTOCK_RELEASE_THIS_RUN} with packages {VALID_MENU_MPS}."
+    )
+
+
+# %%
+if RESSTOCK_RELEASE_THIS_RUN == '2025.1' and 5 in VALID_MENU_MPS:
+
+    # =========================================================================================================
+    # EXPORT RESULTS TO CSV - SUPPLEMENTAL DATA
+    # =========================================================================================================
+    print(f"Exporting MP{menu_mp} Supplemental Data...")
+
+    # ===== DAMAGES RESULTS =====
+    export_model_run_output(
+        df_results_export=df_mp5_ref2025_damages_climate,
+        results_category='damages_climate_ref2025',
+        menu_mp=menu_mp,
+        output_folder_path=output_folder_path,
+        location_id=location_id,
+        results_export_formatted_date=model_run_date_time
+    )
+
+    # ===== FUEL COSTS RESULTS =====
+    export_model_run_output(
+        df_results_export=df_mp5_ref2025_fuel_costs,
+        results_category='fuel_costs_ref2025',
+        menu_mp=menu_mp,
+        output_folder_path=output_folder_path,
+        location_id=location_id,
+        results_export_formatted_date=model_run_date_time
+    )
+
+    # =========================================================================================================
+    # EXPORT RESULTS TO CSV - SUMMARY RESULTS FOR DISCOUNT RATE SENSITIVITY ANALYSIS
+    # =========================================================================================================
+
+    # Process each discount rate (matches dictionary structure)
+    for discount_rate in PRIVATE_DISCOUNT_RATE_SHORT_KEYS:
+        print(f"Exporting SUMMARY RESULTS for discount rate: {discount_rate}")
+
+        # Get the DataFrame for this discount rate
+        df_results_export = DATAFRAMES_MP5_RCM_DISCOUNT_RATE_RESULTS[discount_rate]
+
+        # Export summary results with the discount rate key (short key)
+        export_model_run_output(
+            df_results_export=df_results_export,
+            results_category='summary',
+            menu_mp=menu_mp,
+            output_folder_path=output_folder_path,
+            location_id=location_id,
+            results_export_formatted_date=model_run_date_time,
+            discount_rate=discount_rate
+        )
+
+    # =============================================================================
+    # VERIFICATION: Cost Scenario Column Presence in MP5 Results
+    # =============================================================================
+    verify_cost_scenario_columns(
+        menu_mp=menu_mp,
+        dataframes_by_discount_rate=DATAFRAMES_MP5_RCM_DISCOUNT_RATE_RESULTS,
+        )
+
 
 # %% [markdown]
 # ## FINAL SUMMARY

@@ -6,6 +6,11 @@
 # - MP3: Min-efficiency, single-stage ASHP (15 SEER1, 9 HSPF1) --> (16 SEER1, 9.5 HSPF1) for ENERGY STAR
 # - MP4: High-efficiency, variable-speed ASHP (24-29.3 SEER1, 14 HSPF1)
 # 
+# ResStock 2025 Release Post-Retrofit Measure Package, Dual-Fuel Heat Pump Adoption: MP5
+# - MP5: Dual-fuel heat pump (15.2 SEER2, 7.8 HSPF2) with a gas backup furnace that heats the home below 35 F
+# 
+# One release per run, chosen with the environment variable TARE_RESSTOCK_RELEASE ('2022.1.1' when unset).
+# 
 # Reference Case Data and Assumptions:
 # - AEO2026 fuel price projections
 # - AEO2026 degree-day factors
@@ -275,7 +280,7 @@ _POLICY = '2025 Reference Case'
 _DISCOUNT_COL = 'private_discount_rate_fixed_base'
 _COST = 'v4MID'                 # REMDB v4 midpoint (retained for API compat)
 discount_rate = 'fixed_base'    # 7% fixed discount rate
-SAVE_FIGURES = False            # Set True to write figure files to disk
+SAVE_FIGURES = True             # Set False to skip writing figure files to disk
 FIGURE_DPI = 600                # Resolution for saved figures (matches other savefig calls)
 
 # The adoption analysis runs on every loaded non-baseline measure package.
@@ -288,6 +293,9 @@ HEATING_MP_SUBTITLES = {
     # 4: 'Variable-speed, high-efficiency ASHP (24-29.3 SEER1, 13-14 HSPF1)',
     3: 'Single-stage, minimum-efficiency heat pump',
     4: 'Variable-speed, high-efficiency heat pump',
+    # ResStock 2025.1 Upgrade 05. 3 and 4 above are the 2022.1.1 packages;
+    # the 2025.1 Upgrades 03 and 04 will need titles of their own.
+    5: 'Dual-fuel heat pump with gas backup furnace',
     8: 'Whole-Home Electrification (High Efficiency)',
     9: 'Whole-Home Electrification + Basic Enclosure Upgrade',
     10: 'Whole-Home Electrification + Enhanced Enclosure Upgrade',
@@ -295,7 +303,7 @@ HEATING_MP_SUBTITLES = {
 
 # EUSS baseline provides household weights for county adoption-rate weighting.
 df_baseline = load_euss_baseline()
-print(f"Baseline: {len(df_baseline):,} occupied SF homes")
+print(f"Baseline: {len(df_baseline):,} occupied SF rdu")
 
 # County shapefile for the adoption-rate choropleth. Missing shapefile is a
 # warning, not an error -- the choropleth cell is skipped if it is unavailable.
@@ -346,14 +354,24 @@ print("\n[OK] Economic-adopter columns present for all selected MPs")
 # CAPITAL COST VALIDATION
 # =============================================================================
 
-if CAPITAL_COST_VALIDATION:
+# These capital-cost cells compare MP3 with MP4: they read DATAFRAMES_BY_MP[3]
+# and [4] and the ref2025_mp3_ / ref2025_mp4_ columns. So they run only for
+# ResStock 2022.1.1 with both packages loaded.
+RUN_MP3_MP4_COST_VALIDATION = (
+    CAPITAL_COST_VALIDATION
+    and RESSTOCK_RELEASE_THIS_RUN == '2022.1.1'
+    and {3, 4} <= set(VALID_MENU_MPS)
+)
+if RUN_MP3_MP4_COST_VALIDATION:
     # Perform capital cost validation using the validate_capital_costs module.
     # Builds the ASHP/Central AC/Furnace consumption-and-size distribution
     # figure and the REMDB v4MID disaggregation workbook (ASHP upgrade,
     # Central AC replacement, NG Furnace replacement) for MP3 and MP4.
     from cmu_tare_model.utils.validate_capital_costs import (
+        build_ashp_primary_vs_total_consumption_figure,
         build_capital_cost_disaggregation_workbook,
         build_capital_cost_distribution_figure,
+        build_furnace_ashp_metric_comparison_figure,
         run_capital_cost_validation,
     )
 
@@ -536,7 +554,7 @@ for mp in selected_mps:
     upgrade_name = mp_to_upgrade(mp)
     print(f"Loading MP{mp} ({upgrade_name})...")
     upgrade_data[mp] = load_euss_upgrade(upgrade_name)
-    print(f"  MP{mp}: {len(upgrade_data[mp]):,} applicable homes")
+    print(f"  MP{mp}: {len(upgrade_data[mp]):,} applicable rdu")
 
 # Step 2 -- operating-cost % change (county median of per-home percent change).
 print(f"\n{'='*60}")
@@ -556,34 +574,54 @@ for mp in selected_mps:
             "(calculate_lifetime_fuel_costs) so the average-annual columns are "
             "materialized, then reload DATAFRAMES_BY_MP."
         )
-    # County median of the materialized per-home percent change.
+    # County median of the materialized per-home percent change, study sample
+    # only, so counties with no sample homes are left out instead of blank.
+    df_sample = df_tare.loc[df_tare['include_sample']]
     df_county = (
-        pd.DataFrame({'county': df_tare['county'],'operating_cost_pct_change': df_tare[pct_col]})
+        pd.DataFrame({
+            'county': df_sample['county'],
+            'operating_cost_pct_change': df_sample[pct_col],
+        })
         .groupby('county')['operating_cost_pct_change']
         .median()
         .reset_index()
     )
-    print(f"  Per-home valid records: {df_tare[pct_col].notna().sum():,} | Counties: {len(df_county):,}")
+    print(
+        f"  Per-home valid records: {df_sample[pct_col].notna().sum():,} | "
+        f"Counties: {len(df_county):,}"
+    )
     bill_savings_results[mp] = df_county
 
 # Step 3 -- ANNUAL electricity demand change in 2025 (county-level GWh and percent). Both
 # elec_change_gwh and pct_elec_demand_change come straight from aggregate_demand.
+from cmu_tare_model.adoption_kpis.demand import build_demand_breakdown
+
 print(f"\n{'='*60}")
 print("DEMAND CHANGE -- all fuels, 100% adoption")
 print(f"{'='*60}")
 
 demand_results = {}
+demand_frames = {}  # each package's per-home frame, kept for the breakdown below
 for mp in selected_mps:
     print(f"\n===== {HEATING_MP_SUBTITLES.get(mp, f'MP{mp}')} =====")
 
-    df_demand = compute_scenario_demand(
+    demand_frames[mp] = compute_scenario_demand(
         df_baseline=df_baseline, df_upgrade=upgrade_data[mp],
-        sample_bldg_ids=TARE_SAMPLE_IDS['all'], fuel_filter=None, verbose=True,
+        sample_bldg_ids=TARE_SAMPLE_IDS['all'], fuel_filter=None, verbose=False,
     )
-    
+
     demand_results[mp] = aggregate_demand(
-        df_demand=df_demand, geo_level='county', verbose=True,
+        df_demand=demand_frames[mp], geo_level='county',
     )
+
+# Side-by-side breakdown, GWh at 100% adoption (the last row is a percent).
+print(f"\n{'='*60}")
+print("DEMAND BREAKDOWN -- GWh at 100% adoption, study sample")
+print(f"{'='*60}")
+df_demand_breakdown = pd.DataFrame({
+    f"MP{mp}": build_demand_breakdown(demand_frames[mp]) for mp in selected_mps
+})
+print(df_demand_breakdown.to_string(float_format='{:,.3f}'.format))
 
 
 # %%
@@ -650,120 +688,196 @@ if gdf_counties_raw is not None:
 
 
 # %%
-if CAPITAL_COST_VALIDATION:
-    # Perform capital cost validation using the validate_capital_costs module.
-    # Builds the ASHP/Central AC/Furnace consumption-and-size distribution
-    # figure and the REMDB v4MID disaggregation workbook (ASHP upgrade,
-    # Central AC replacement, NG Furnace replacement) for MP3 and MP4.
-    from cmu_tare_model.utils.validate_capital_costs import (
-        build_capital_cost_disaggregation_workbook,
-        build_capital_cost_distribution_figure,
-        run_capital_cost_validation,
+# =============================================================================
+# Tepper CSV exports -- household and county files for each export scope
+# =============================================================================
+# Reuses objects already in memory from this notebook run:
+#   DATAFRAMES_BY_MP[mp]['fixed_base']  -- household frame (per MP)
+#   econ_adoption_rate_results[mp]      -- county adoption table
+#   bill_savings_results[mp]            -- county operating-cost table
+#   demand_results[mp]                  -- county demand table
+# and the run identifiers output_folder_path / location_id / model_run_date_time.
+#
+# The household files hold study-sample rows only; export_tepper_household
+# applies that filter itself. Each scope gets a main household file, a detailed
+# copy with each year's energy use split by fuel, and a county file.
+
+# Set False to skip the export. The national scope writes about 1.4 GB of
+# household files per measure package.
+EXPORT_TEPPER_FILES = True
+
+if EXPORT_TEPPER_FILES:
+    from cmu_tare_model.utils.export_model_run_results import export_model_run_output
+    from cmu_tare_model.utils.export_tepper_csv import (
+        export_source_data_copies,
+        filter_to_export_scope,
     )
 
-    df_mp3_ccv = DATAFRAMES_BY_MP[3]['fixed_base']
-    df_mp4_ccv = DATAFRAMES_BY_MP[4]['fixed_base']
+    # Step 1 -- the adoption and demand tables must describe the same homes.
+    # Both count the study sample, so each county's home count has to agree to
+    # within one home's weight (read from the data, not hardcoded). A county
+    # missing from either table has a blank gap, which fails the test too.
+    one_home_weight = df_baseline["weight"].median()
+    for mp in selected_mps:
+        df_home_counts = econ_adoption_rate_results[mp][
+            ["county", "home_count"]
+        ].merge(
+            demand_results[mp][["county", "home_count"]],
+            on="county", how="outer", suffixes=("_adoption", "_demand"),
+        )
+        home_count_gap = (
+            df_home_counts["home_count_adoption"]
+            - df_home_counts["home_count_demand"]
+        ).abs()
+        n_counties_disagree = int((~(home_count_gap <= one_home_weight)).sum())
+        if n_counties_disagree:
+            raise ValueError(
+                f"MP{mp}: home_count differs between the adoption and demand "
+                f"tables in {n_counties_disagree:,} counties, so the two tables "
+                "do not describe the same homes."
+            )
+        print(
+            f"[OK] MP{mp}: home_count agrees in all "
+            f"{len(df_home_counts):,} counties."
+        )
 
-    # Consumption/size distributions, color-coded by baseline heating fuel.
-    fig_capital_cost_dist = build_capital_cost_distribution_figure(df_mp3_ccv, df_mp4_ccv)
-    if SAVE_FIGURES:
-        fig_path_base = os.path.join(PROJECT_ROOT, 'figures', 'capital_cost_consumption_size_distributions')
-        fig_capital_cost_dist.savefig(f'{fig_path_base}.png', dpi=FIGURE_DPI, bbox_inches='tight')
-        fig_capital_cost_dist.savefig(f'{fig_path_base}.pdf', dpi=FIGURE_DPI, bbox_inches='tight')
-        print(f"Saved: {fig_path_base}.png / .pdf")
+    # Step 2 -- export scopes. Filtering happens here, not at model run scope,
+    # so one national run can produce a national set of files plus any number
+    # of state or county sets.
+    #
+    #   label   -- goes in the file names
+    #   column  -- 'state' (two-letter code) or 'county' (Census GISJOIN code).
+    #              None keeps every row.
+    #   value   -- what that column must equal
+    #
+    # To add a scope, copy a line. A whole state is
+    # {"label": "PA", "column": "state", "value": "PA"}; another county is its
+    # Census GISJOIN code, e.g. "G4200030" for Allegheny County, PA.
+    TEPPER_EXPORT_SCOPES = [
+        {"label": location_id, "column": None, "value": None},
+        {"label": "Allegheny", "column": "county", "value": "G4200030"},
+    ]
+
+    for mp in selected_mps:
+        # Per-year consumption for this measure package. The file also holds
+        # the per-year fuel costs; the export takes only the consumption columns.
+        df_annual_consumption = load_model_run_output(
+            results_category='fuel_costs_ref2025',
+            menu_mp=mp,
+            output_folder_path=output_folder_path,
+            location_id=location_id,
+            results_export_formatted_date=model_run_date_time,
+        )
+
+        df_household = DATAFRAMES_BY_MP[mp]['fixed_base']
+        county_tables_full = {
+            'adoption': econ_adoption_rate_results[mp],
+            'bill_savings': bill_savings_results[mp],
+            'demand': demand_results[mp],
+        }
+
+        for scope in TEPPER_EXPORT_SCOPES:
+            scope_label = scope["label"]
+            scope_column = scope["column"]
+            scope_value = scope["value"]
+
+            # Skip a scope that this run does not cover, rather than failing.
+            # A single-state run will not contain most counties.
+            if scope_column is not None:
+                if not (df_household[scope_column] == scope_value).any():
+                    print(
+                        f"[INFO] MP{mp}: no rdu match {scope_column} = "
+                        f"{scope_value!r}; skipping the {scope_label} files."
+                    )
+                    continue
+
+            df_scope = filter_to_export_scope(
+                df_household, scope_column, scope_value)
+
+            # Household CSVs: the main file and the detailed copy.
+            export_model_run_output(
+                df_results_export=df_scope,
+                results_category='tepper_household',
+                menu_mp=mp,
+                output_folder_path=output_folder_path,
+                location_id=scope_label,
+                results_export_formatted_date=model_run_date_time,
+                df_annual_consumption=df_annual_consumption,
+            )
+
+            # County CSV: the three county tables, limited to this scope's
+            # counties. The bill-savings table has no 'state' column, so the
+            # scope is applied through the county codes of the household rows.
+            scope_counties = df_scope['county'].unique()
+            county_tables_scope = {}
+            for table_name, df_county_table in county_tables_full.items():
+                county_tables_scope[table_name] = df_county_table[
+                    df_county_table['county'].isin(scope_counties)]
+
+            export_model_run_output(
+                df_results_export=None,  # not used by the county export
+                results_category='tepper_county',
+                menu_mp=mp,
+                output_folder_path=output_folder_path,
+                location_id=scope_label,
+                results_export_formatted_date=model_run_date_time,
+                county_tables=county_tables_scope,
+            )
+
+    print(
+        "\nTepper exports written to: "
+        f"{os.path.join(output_folder_path, 'tepper_export')}"
+    )
+
+    # The three input files the fuel-price lookup uses, copied unchanged, so a
+    # reader can redo the lookup themselves.
+    export_source_data_copies(output_folder_path)
+
+
+# %%
+# =============================================================================
+# Furnace vs ASHP -- Metric Comparison (Heating Capacity)
+# =============================================================================
+if RUN_MP3_MP4_COST_VALIDATION:
+    fig_capacity = build_furnace_ashp_metric_comparison_figure(
+        df_mp3_ccv, df_mp4_ccv,
+        baseline_col='base_size_heating_system_primary_k_btu_h',
+        mp3_col='size_heating_system_primary_k_btu_h',
+        mp4_col='size_heating_system_primary_k_btu_h',
+        x_label='Heating Capacity (kBTU/h)',
+        metric_label='Heating Capacity',
+    )
     plt.show()
 
-    # REMDB v4MID disaggregation workbook -- matches the Equipment_Installed_TARE
-    # reference workbook's sheet names and block layout, minus its v3 columns.
-    results_mp3_ccv = run_capital_cost_validation(df=df_mp3_ccv, menu_mp=3, cost_scenarios=['v4MID'])
-    results_mp4_ccv = run_capital_cost_validation(df=df_mp4_ccv, menu_mp=4, cost_scenarios=['v4MID'])
-    wb_capital_cost = build_capital_cost_disaggregation_workbook(results_mp3_ccv, results_mp4_ccv)
 
-    workbook_path = (
-        r'C:\Users\jorda\Desktop\CMU\Scott-Trane Externship\Cost Data'
-        r'\Equipment_Installed_TARE_v4MID_current_2026-09-16.xlsx'
+# %%
+# =============================================================================
+# Furnace vs ASHP -- Metric Comparison (Annual Heating Cost)
+# =============================================================================
+if RUN_MP3_MP4_COST_VALIDATION:
+    fig_cost = build_furnace_ashp_metric_comparison_figure(
+        df_mp3_ccv, df_mp4_ccv,
+        baseline_col='baseline_heating_avg_annual_fuel_cost',
+        mp3_col='ref2025_mp3_heating_avg_annual_fuel_cost',
+        mp4_col='ref2025_mp4_heating_avg_annual_fuel_cost',
+        x_label='Annual Heating Cost ($)',
+        metric_label='Annual Heating Cost',
     )
-    wb_capital_cost.save(workbook_path)
-    print(f"Saved: {workbook_path}")
+    plt.show()
 
 
 # %%
-import importlib
-import cmu_tare_model.utils.data_visualization_histograms
-import cmu_tare_model.utils.validate_capital_costs
-
-importlib.reload(cmu_tare_model.utils.data_visualization_histograms)
-importlib.reload(cmu_tare_model.utils.validate_capital_costs)
-
-from cmu_tare_model.utils.validate_capital_costs import (
-    build_capital_cost_disaggregation_workbook,
-    build_capital_cost_distribution_figure,
-    run_capital_cost_validation,
-    build_furnace_ashp_consumption_comparison_figure,
-    build_furnace_ashp_metric_comparison_figure,
-)
-
-
-# %%
-fig_capacity = build_furnace_ashp_metric_comparison_figure(
-    df_mp3_ccv, df_mp4_ccv,
-    baseline_col='base_size_heating_system_primary_k_btu_h',
-    mp3_col='size_heating_system_primary_k_btu_h',
-    mp4_col='size_heating_system_primary_k_btu_h',
-    x_label='Heating Capacity (kBTU/h)',
-    metric_label='Heating Capacity',
-)
-plt.show()
-
-
-# %%
-# fig_consumption = build_furnace_ashp_consumption_comparison_figure(
-#     df_mp3_ccv, df_mp4_ccv,
-#     baseline_col='base_annual_energy_consumption_kwh',
-
-# %%
-fig_cost = build_furnace_ashp_metric_comparison_figure(
-    df_mp3_ccv, df_mp4_ccv,
-    baseline_col='baseline_heating_avg_annual_fuel_cost',
-    mp3_col='ref2025_mp3_heating_avg_annual_fuel_cost',
-    mp4_col='ref2025_mp4_heating_avg_annual_fuel_cost',
-    x_label='Annual Heating Cost ($)',
-    metric_label='Annual Heating Cost',
-)
-plt.show()
-
-
-# %%
-import importlib
-import cmu_tare_model.utils.validate_capital_costs as validate_capital_costs
-
-importlib.reload(validate_capital_costs)
-from cmu_tare_model.utils.validate_capital_costs import (
-    build_ashp_primary_vs_total_consumption_figure,
-)
-
-fig_primary_vs_total = build_ashp_primary_vs_total_consumption_figure(
-    df_mp3_ccv, df_mp4_ccv,
-)
-plt.show()
-
-
-# %%
-import importlib
-import cmu_tare_model.utils.validate_capital_costs as validate_capital_costs
-
-importlib.reload(validate_capital_costs)
-from cmu_tare_model.utils.validate_capital_costs import (
-    build_ashp_primary_vs_total_consumption_figure,
-)
-
-fig_primary_vs_total = build_ashp_primary_vs_total_consumption_figure(
-    df_mp3=df_mp3_ccv,
-    df_mp4=df_mp4_ccv,
-    sharex=True,
-    sharey=True,
-)
-plt.show()
+# =============================================================================
+# Furnace vs ASHP -- Primary vs Total Consumption (kWh) -- separate function call
+# =============================================================================
+if RUN_MP3_MP4_COST_VALIDATION:
+    fig_primary_vs_total = build_ashp_primary_vs_total_consumption_figure(
+        df_mp3=df_mp3_ccv,
+        df_mp4=df_mp4_ccv,
+        sharex=True,
+        sharey=True,
+    )
+    plt.show()
 
 
 # %% [markdown]
@@ -851,6 +965,13 @@ for mp in selected_mps:
         raise ValueError(f"MP{mp}: {n_adopters_total:,} adopters but "
                          f"{n_adopters_in_sample:,} in the sample")
 
+    n_counties = len(adopter_ids_by_mp[mp])
+    n_all = sum(len(county_ids["all_filtered"]) for county_ids in adopter_ids_by_mp[mp].values())
+    n_con = sum(len(county_ids["constrained"]) for county_ids in adopter_ids_by_mp[mp].values())
+    print(f"[OK] MP{mp}: adoption column {adoption_col}")
+    print(f"     Counties: {n_counties:,} | all_filtered: {n_all:,} | "
+          f"constrained (NPV>=0): {n_con:,}")
+
 print(f"\n[OK] adopter_ids_by_mp built for MPs: {list(adopter_ids_by_mp.keys())}")
 
 
@@ -875,7 +996,7 @@ print(f"\n[OK] adopter_ids_by_mp built for MPs: {list(adopter_ids_by_mp.keys())}
 #
 # What each check means: cmu_tare_model/docs/BSQ_AWS_SETUP.md
 # ============================================================================
-RUN_BSQ_DIAGNOSTIC = True
+RUN_BSQ_DIAGNOSTIC = False
 
 if RUN_BSQ_DIAGNOSTIC:
     from cmu_tare_model.grid_impact.diagnose_bsq_aws import run_diagnostic
@@ -899,6 +1020,10 @@ else:
 # ### Grid Impact Analysis using BuildStockQuery and AWS-hosted ResStock data
 
 # %%
+# TODO (grid impact, 2025.1): the grid impact analysis (this cell to the peak
+# load figures) works on ResStock 2022.1.1 only for now. It will be updated
+# for the dual-fuel analysis (2025.1).
+
 # custom_weighting picks which of the two weighting paths this section runs.
 # False keeps today's behavior (one county, BSQ's own uniform weight); True
 # switches to Tamar's matched tax-parcel weights. See
@@ -1023,6 +1148,8 @@ if GRID_IMPACT_ANALYSIS:
     #
     # TODO: CHANGE THIS TO TAKE IN USER INPUT FOR BSQ INITIALIZATION PARAMETERS 
     # (WORKGROUP, DB_NAME, TABLE_NAME, DB_SCHEMA)
+    # TODO (grid impact, 2025.1): table_name below is the ResStock 2022.1.1
+    # table, one reason this section works on that release only for now.
     my_run = BuildStockQuery(
         workgroup="resstock-euss",
         db_name="euss-oedi",
@@ -1226,15 +1353,32 @@ if GRID_IMPACT_ANALYSIS:
         f"{list(peak_results_case_study_by_mp.keys())}"
     )
 
-    # ---------- Demand-profile grid figure ----------
-    # plot_county_demand_grid itself is unchanged this session (see Current
-    # state) -- only the renamed dict it is passed here differs from before.
+    # ---------- Demand-profile figures ----------
+    # First the grid with one row per measure package (economic adopters and
+    # 100% adoption), then one row with 100% adoption only.
     plot_county_demand_grid(
         df_profiles_by_mp,
         peak_results_case_study_by_mp,
         selected_mps,
         save_figure=SAVE_FIGURES,
         output_dir=PROJECT_ROOT,
+        figure_dpi=FIGURE_DPI,
+    )
+    # The one-row figure is shorter, so more of its height goes to the legend.
+    plot_county_demand_grid(
+        df_profiles_by_mp,
+        peak_results_case_study_by_mp,
+        selected_mps,
+        panels=[(mp, "100pct") for mp in selected_mps],
+        subplot_positions=[(0, column) for column in range(len(selected_mps))],
+        figure_size=(16, 6.5),
+        legend_space=0.21,
+        save_figure=SAVE_FIGURES,
+        output_dir=PROJECT_ROOT,
+        output_filename=(
+            "allegheny_demand_profiles_100pct_MP"
+            f"{'_'.join(str(mp) for mp in selected_mps)}.png"
+        ),
         figure_dpi=FIGURE_DPI,
     )
 
