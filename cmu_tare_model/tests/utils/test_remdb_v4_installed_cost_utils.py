@@ -19,6 +19,7 @@ import pandas as pd
 import pytest
 
 from cmu_tare_model.utils.remdb_v4_installed_cost_utils import (
+    _assign_replacement_row_id,
     add_backup_furnace_metrics,
     add_remdb_metrics,
 )
@@ -103,6 +104,70 @@ def test_cooling_replacement_uses_old_ac_size(df_home, remdb_v4_costs):
         df_home, remdb_v4_costs, 'cooling', 'replacement', verbose=False)
     # 36 kBtu/h old AC -> 3.0 tons after the unit conversion.
     assert df_main['cooling_replacement_pm1_euss'].iloc[0] == pytest.approx(36.0 / 12.0)
+
+
+# -- Credit for an old heating system: its REMDB row and its lowest AFUE ------
+
+@pytest.mark.parametrize('heating_fuel, heating_type, expected_row', [
+    ('Natural Gas', 'Natural Gas Fuel Boiler', 'boiler_gas_non_condensing'),
+    ('Propane', 'Propane Fuel Boiler', 'boiler_gas_non_condensing'),
+    ('Fuel Oil', 'Fuel Oil Fuel Boiler', 'boiler_oil'),
+    ('Natural Gas', 'Natural Gas Fuel Furnace', 'furnaces_gas_furnace'),
+    ('Propane', 'Propane Fuel Furnace', 'furnaces_gas_furnace'),
+    ('Fuel Oil', 'Fuel Oil Fuel Furnace', 'furnaces_gas_furnace'),
+    ('Electricity', 'Electricity Electric Furnace', 'electric_baseboard_default'),
+    ('Electricity', 'Electricity Electric Boiler', 'electric_baseboard_default'),
+    ('Electricity', 'Electricity Baseboard', 'electric_baseboard_default'),
+])
+def test_old_heating_system_is_priced_on_its_remdb_row(
+        heating_fuel, heating_type, expected_row):
+    """A fossil boiler gets a boiler row; every other old system keeps its row."""
+    df_old_system = pd.DataFrame({
+        'base_heating_fuel': [heating_fuel],
+        'heating_type': [heating_type],
+        'hvac_has_ducts': ['Yes'],
+    })
+    df_rows = _assign_replacement_row_id(df_old_system, 'heating')
+    assert df_rows['row_id_heating_replacement'].iloc[0] == expected_row
+
+
+def _boiler_costs() -> pd.DataFrame:
+    """The two boiler rows, with the units and metric of the real REMDB table."""
+    boiler_row = {
+        'pm1_metric': 'Heating Capacity', 'pm1_unit': 'BTU/hr',
+        'pm2_metric': 'AFUE', 'pm2_unit': 'Unitless',
+    }
+    rows = {'boiler_gas_non_condensing': boiler_row, 'boiler_oil': boiler_row}
+    return pd.DataFrame.from_dict(rows, orient='index')
+
+
+@pytest.mark.parametrize('heating_fuel, heating_type', [
+    ('Natural Gas', 'Natural Gas Fuel Boiler'),
+    ('Propane', 'Propane Fuel Boiler'),
+    ('Fuel Oil', 'Fuel Oil Fuel Boiler'),
+])
+@pytest.mark.parametrize('published_efficiency, published_afue, priced_afue', [
+    # Below 0.80: priced at 0.80.
+    ('Fuel Boiler, 76% AFUE', 0.76, 0.80),
+    ('Fuel Boiler, 80% AFUE', 0.80, 0.80),
+    # Above 0.80: priced as published, even past the gas row's top (0.87).
+    ('Fuel Boiler, 90% AFUE', 0.90, 0.90),
+])
+def test_old_boiler_is_priced_at_afue_080_or_its_own_if_higher(
+        df_home, heating_fuel, heating_type,
+        published_efficiency, published_afue, priced_afue):
+    """An old boiler below AFUE 0.80 is priced at 0.80; its own value is kept."""
+    df_boiler = df_home.assign(
+        base_heating_fuel=[heating_fuel], heating_type=[heating_type],
+        base_heating_efficiency=[published_efficiency])
+    df_main, _ = add_remdb_metrics(
+        df_boiler, _boiler_costs(), 'heating', 'replacement', verbose=False)
+    priced = df_main['heating_replacement_pm2_euss'].iloc[0]
+    published = df_main['heating_replacement_pm2_euss_original'].iloc[0]
+    assert priced == pytest.approx(priced_afue)
+    assert published == pytest.approx(published_afue)
+    # The size priced is still the old boiler's own (60 kBtu/h in df_home).
+    assert df_main['heating_replacement_pm1_euss'].iloc[0] == pytest.approx(60_000.0)
 
 
 # -- SEER2-rated heat pumps (the 2025.1 dual-fuel package) --------------------

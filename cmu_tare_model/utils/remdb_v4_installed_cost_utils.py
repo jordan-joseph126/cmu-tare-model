@@ -100,7 +100,19 @@ def _assign_replacement_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
     # the regression instead. Non-ducted homes default to multi-zone (no
     # single-zone or new-circuit sizing modeled yet).
     if end_use == 'heating':
+        # An old boiler is priced on a boiler row, the closest REMDB has to it.
+        # Gas and propane boilers share the non-condensing gas row: REMDB has
+        # no propane boiler row, and the boilers being replaced are older,
+        # less efficient units. np.select takes the first match, so these two
+        # come before the fuel-only lines that price furnaces.
+        heating_type = df_copy['heating_type']
+        is_oil_boiler = heating_type == 'Fuel Oil Fuel Boiler'
+        is_gas_or_propane_boiler = heating_type.isin(
+            ['Natural Gas Fuel Boiler', 'Propane Fuel Boiler'])
+
         conditions = [
+            is_oil_boiler,
+            is_gas_or_propane_boiler,
             (df_copy['base_heating_fuel'] == 'Propane'),
             (df_copy['base_heating_fuel'] == 'Fuel Oil'),
             (df_copy['base_heating_fuel'] == 'Natural Gas'),
@@ -110,9 +122,16 @@ def _assign_replacement_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
         ]
 
         choices = [
+            'boiler_oil',
+            'boiler_gas_non_condensing',
             'furnaces_gas_furnace',  # Proxy for propane
             'furnaces_gas_furnace',  # Proxy for fuel oil
             'furnaces_gas_furnace',
+            # TODO (electric furnace and boiler): REMDB has no row for either,
+            # so both are priced as baseboard, a row with no efficiency term.
+            # The gas furnace and gas boiler rows fit the equipment but price
+            # AFUE, which ResStock publishes as 100% for these systems, above
+            # both rows' ranges. Revisit after asking NLR's REMDB researchers.
             'electric_baseboard_default',
             'air_source_heat_pump_centrally_ducted',
             'air_source_heat_pump_non_ducted_multi_zone'

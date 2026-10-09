@@ -472,7 +472,7 @@ VALID_HVAC_REPLACEMENT_SCENARIOS = ['heating', 'heating_and_cooling']
 # equipment a homeowner can legally purchase.
 #
 # Values are in REMDB pm2 units (SEER1 for cooling/heat-pumps,
-# decimal AFUE for furnaces).
+# decimal AFUE for furnaces and boilers).
 #
 # Sources:
 #   - DOE 2023 final rule: SEER2 14.3 (South) / 13.4 (North) for CAC
@@ -486,6 +486,10 @@ EFFICIENCY_FLOORS_PM2 = {
     'air_source_heat_pump_non_ducted_multi_zone':  15.0,   # SEER1
     'air_conditioner_centrally_ducted':            15.0,   # SEER1
     'furnaces_gas_furnace':                        0.80,   # AFUE (decimal)
+    # Old boilers: the furnace floor, which is also the lowest AFUE the two
+    # REMDB boiler rows cover.
+    'boiler_gas_non_condensing': 0.80,  # AFUE (decimal)
+    'boiler_oil': 0.80,  # AFUE (decimal)
     # 'electric_baseboard_default' has pm2_coef=0, no floor needed
 }
 
