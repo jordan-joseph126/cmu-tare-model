@@ -3,7 +3,24 @@
 ## Heat-Pump Electrification Economics (ResStock 2022.1.1 / EUSS)
 #
 ```text
-# Last updated: 7 October 2026 — dual-fuel package (ResStock 2025.1, MP5) runs end to end
+# Last updated: 9 October 2026 — old boilers are priced on the REMDB boiler rows
+#   - The credit for an old gas or propane boiler uses the non-condensing gas boiler
+#     row, and for an old fuel oil boiler the oil boiler row, with a floor of AFUE
+#     0.80. Both were on the gas furnace row. Value-moving on both releases: 20,973
+#     rdu in 2022.1.1 and 2,528 in 2025.1; mean boiler credit $3,474 --> $7,638 and
+#     $3,443 --> $7,766.
+#   - `heatingLCC_coolingLCC` adoption with no rebate: MP3 18.81% --> 19.35%, MP4
+#     18.99% --> 19.47%, MP5 3.27% --> 3.39%. The three old-AC-only cases, every
+#     rebate, the bills and the study sample did not move. New rows are in
+#     `docs/REFERENCE_VALUES.md`.
+#   - Electric furnaces and electric boilers stay on the baseboard row, with a TODO
+#     to ask NLR's REMDB researchers (Limitation 16).
+#   - Limitation 9 and Limitations 15 to 18 say how each old system is priced and how
+#     many rdu fall outside a cost row's range.
+#   - Runs, grid impact off: 2022.1.1 `2026-10-09_00-46` and 2025.1 `2026-10-09_00-38`.
+#     The default release stays 2022.1.1.
+#
+# Previously: 7 October 2026 — dual-fuel package (ResStock 2025.1, MP5) runs end to end
 #   - ResStock 2025.1 package 5, a heat pump with a gas backup furnace, runs nationally:
 #     161,983 rdu (41,128,079 homes) in 2,973 counties, run `2026-10-07_19-14`. Its first
 #     reference values are in their own table in `docs/REFERENCE_VALUES.md`.
@@ -17,18 +34,6 @@
 #     household files for package 5 hold 182 and 332 columns (167 and 317 for 2022.1.1).
 #   - No 2022.1.1 value moved: run `2026-10-07_19-22` is byte-identical in all 22 files
 #     to run `2026-10-06_20-23`, made before the dual-fuel model code went in.
-#
-# Previously: 6 October 2026 — Tepper files, workbook tables and Fig 5 on the sample
-#   - Tepper household files hold study-sample rows only (221,205 rdu nationally, 1,146
-#     in Allegheny County) and ship `include_sample`. The main file gains the base-year
-#     fan, pump and backup columns (167 columns); a detailed copy adds per-fuel,
-#     per-year columns (317). The data dictionary is rewritten against the latest run.
-#   - The capital-cost validation tables are limited to the study sample, and the empty
-#     ASHP heating replacement table is dropped (five tables, none of them changed).
-#   - `plot_county_demand_grid` takes layout parameters. The main notebook draws the
-#     2x2 and a 1x2 with 100% adoption only, and `SAVE_FIGURES` is True.
-#   - No modeled value moved. The latest run is still `2026-10-05_21-33`; its paper
-#     numbers were re-measured and match `docs/REFERENCE_VALUES.md`.
 ```
 
 > This file is read by Claude Code at the start of every session. It is the authoritative
@@ -561,6 +566,25 @@ modeled — not an actual disbursement amount.
 7. Uncertainty surrounding fuel switiching and project eligibility. Will need to update logic with new federal guidance. We use guidance as of June 2026.
 8. Our analysis is focused marginal NPV (replacing existing fossil fuel systems with heat pumps) and does not include homes with existing heat pump systems.
 9. The capital cost estimation is currently performed for homes outside of the NRL REMDB regression cost formula bounds. Plans to update this and be more clear about the sample size after each filtering step and why the homes were removed. 
+    The rule in the code, kept as it is on 8 Oct 2026: a size or an efficiency
+    outside a REMDB row's range is priced by carrying the row's line beyond
+    the range. Nothing is held at the bound. Study-sample rdu outside a range,
+    2022.1.1 / 2025.1, on runs `2026-10-09_00-46` and `2026-10-09_00-38`:
+    - Credit for an old furnace (gas furnace row, 30,000 to 156,250 Btu/h):
+      16,859 / 18,210 below; 3,015 / 2,754 above.
+    - Credit for an old boiler (both boiler rows start at 27,000 Btu/h):
+      2,336 / 347 below. Propane boilers published at 90% AFUE, above the gas
+      boiler row's 0.87: 192 / 1.
+    - Credit for an old central AC (1.5 to 5 tons): 32,084 / 25,664 below;
+      22,578 / 18,260 above.
+    - Credit for an old room AC (0.4167 to 2.33 tons): 15,545 / 5,392 below;
+      1,780 / 690 above.
+    - Heat pump, ducted row (1.5 to 5 tons): below 24,787 (MP3), 21,120 (MP4)
+      and 18,201 (MP5); above 31,510, 31,782 and 25,662. Non-ducted row
+      (2022.1.1 only, 24,853 rdu): above 5 tons 15,560 (MP3) and 10,515 (MP4),
+      and MP4's SEER1 of 29.3 is above the row's 23 on every one.
+    - Backup furnace of the dual-fuel package (gas furnace row): 20,795 below;
+      2,992 above.
 10. For a dual-fuel heat pump (MP5), the split between heat-pump electricity
     and backup-furnace gas is fixed by ResStock's own base-year hours above and
     below the 35 F switchover. Degree-day factors scale each fuel by the same
@@ -600,6 +624,47 @@ modeled — not an actual disbursement amount.
     row, at the backup's own size and rated AFUE (0.925 or 0.95), and added to
     the capital cost (national mean $4,112 per home). Only a gas backup can
     be priced; a propane or fuel-oil backup stops the run.
+15. The credit for an old heating system is priced on the REMDB row that fits
+    its equipment type first, then its fuel (9 Oct 2026). Where the table has
+    no row for the fuel, the gas row of that type stands in:
+    - a propane or fuel oil furnace on the gas furnace row
+      (`furnaces_gas_furnace`): 11,594 and 9,888 rdu in 2022.1.1, 410 and
+      1,270 in 2025.1;
+    - a propane boiler on the non-condensing gas boiler row
+      (`boiler_gas_non_condensing`), with the gas boilers: 655 rdu in 2022.1.1
+      and 13 in 2025.1. A fuel oil boiler has a row of its own (`boiler_oil`).
+
+    Every old boiler is priced as a non-condensing unit, at AFUE 0.80 or at
+    its published value if that is higher. The condensing boiler row is not
+    used. Until 9 Oct 2026 every fossil system was priced on the gas furnace
+    row.
+16. An old electric furnace or electric boiler is priced as electric
+    baseboard (`electric_baseboard_default`), because REMDB has no row for
+    either: 47,155 and 265 rdu in 2022.1.1, 7,355 and 48 in 2025.1. The
+    efficiency terms of the rows that could price them do not line up. The
+    baseboard row has none: its price is a straight line through zero in size
+    alone. The gas furnace and gas boiler rows fit the equipment better, but
+    they price AFUE as burner efficiency (about $4,570 and $818 per 1.00 of
+    AFUE, 2025 dollars), and ResStock publishes these systems at 100% AFUE,
+    above both rows' ranges (0.97 and 0.87). Moving them to the gas rows at a
+    fixed AFUE of 0.80 was considered and not done (9 Oct 2026). Homes that
+    heat with electricity are a large share of adopters, so this credit
+    matters to the headline numbers.
+    TODO: revisit after asking NLR's REMDB researchers for advice (the TODO in
+    `_assign_replacement_row_id`, `remdb_v4_installed_cost_utils.py`).
+17. The credit for an old room AC has no efficiency floor. A central AC credit
+    is priced at SEER1 15 at least. A room AC credit is priced at its
+    published value, which is below the row's lowest value (9.4) for 2,768 rdu
+    in 2022.1.1 and 325 in 2025.1. The row takes CEER, and the value given to
+    it is ResStock's EER. The effect is small: about $6 for one point.
+18. No electric panel upgrade is assumed or priced. ResStock 2025.1 publishes
+    panel columns (18,020 MP5 sample rdu are capacity constrained), and REMDB
+    2024 has panel rows that the cost table leaves out. Two heat pump rows of
+    the cost table are never used:
+    `air_source_heat_pump_centrally_ducted_with_new_circuit` and
+    `air_source_heat_pump_non_ducted_single_zone`. Every home without ducts is
+    priced as a multi-zone system (24,853 rdu in 2022.1.1), and no home is
+    priced with a new circuit.
 
 ---
 

@@ -105,6 +105,10 @@ default-release switch, the grid impact guard.
 | D-6 | 8 Oct 2026 | The email to Chris is drafted in the Claude project chat, from Stage 2's results, as text the researcher edits. |
 | D-7 | 8 Oct 2026, earlier | Carried over from Session 7 (decision (S7)): the boiler fix comes first; the default release changes to 2025.1 only after it; the EUSS-to-ResStock rename is one future change, not piecemeal; a 2025.1 run must not enter the grid impact cells. |
 | D-8 | 8 Oct 2026 | Pricing rule for the credit for an old heating system: match the equipment type first, then the fuel (section 2.1). |
+| D-9 | 9 Oct 2026 | Electric furnaces and electric boilers stay on `electric_baseboard_default`. This takes back the Q3 and Q3b decisions of 8 Oct. Reasons (researcher): leaving them prevents further value moves for now, and the case for the gas rows does not hold up once the efficiency terms are compared. The gas rows price AFUE, ResStock publishes these systems at 100% AFUE, and the baseboard row has no efficiency term. Recorded as CLAUDE.md Limitation 16, with a TODO in the code to revisit after asking NLR's REMDB researchers. |
+| D-10 | 8 Oct 2026 | No grid impact guard in this stage (step 2 of section 4 dropped). Grid impact is off in every run of the stage, on both releases: the deliverable does not include the grid impact analysis. |
+| D-11 | 8 Oct 2026 | The default release stays 2022.1.1 (step 7 of section 4 dropped). The plan to make 2025.1 the default was a typo: a colleague's analysis uses 2022.1.1. The default is changed by hand only for a 2025.1 run. This replaces the second part of D-7 and item 10 of Session 7. The 17 tests that fail while the default reads 2025.1 have a known cause; fixing them is deferred. |
+| D-12 | 8 Oct 2026 | No change may alter the study sample: 221,205 rdu for 2022.1.1 and 161,983 rdu for 2025.1. |
 
 ### 2.1 The pricing rule for the credit for an old heating system (D-8)
 
@@ -128,6 +132,17 @@ Changes from today: every boiler row (Q2), and the electric furnace and electric
 boiler rows (Q3, Q3b), which today are all priced on `electric_baseboard_default`.
 An electric unit is fixed at 0.80 because on a gas row AFUE prices burner
 technology, not the unit's own efficiency (about 100% for electric resistance).
+
+**9 Oct 2026 (D-9): the two electric rows of this table were not carried out.**
+An electric furnace and an electric boiler stay on `electric_baseboard_default`,
+as before. The boiler rows (Q2) are in the code. What the code does:
+
+| Old system | REMDB row | Efficiency priced at |
+|---|---|---|
+| Gas, propane or fuel oil furnace | `furnaces_gas_furnace` | published AFUE, floor 0.80 |
+| Gas or propane boiler | `boiler_gas_non_condensing` | published AFUE, floor 0.80 |
+| Fuel oil boiler | `boiler_oil` | published AFUE, floor 0.80 |
+| Electric baseboard, electric furnace, electric boiler | `electric_baseboard_default` | (row has no efficiency term) |
 
 ---
 
@@ -205,6 +220,14 @@ through zero, so the credit runs from 1,773 to 9,309 dollars between the 5th and
   the price that rises with combustion efficiency, but not the venting and gas
   line in its fixed parts. A panel upgrade does not apply: the credit prices
   replacing the existing furnace, on a panel that already carries it.
+- **Changed 9 Oct 2026 (researcher), D-9:** leave electric furnaces on the
+  baseboard row. An electric furnace is published at 100% AFUE, so on the gas
+  furnace row it would be priced at 1.00 unless it were held at 0.80 by a step of
+  its own (1.00 against 0.80 is $865 in 2023 dollars); the baseboard row has no
+  efficiency term at all. With the efficiency terms that far apart, the case for
+  the gas row does not hold up well enough to move values. The discrepancy is
+  documented (CLAUDE.md Limitation 16) and a TODO in the code says to revisit it
+  after asking NLR's REMDB researchers. No code change, no value moved.
 
 ### Q3b -- Electric boiler (follows from Q3)
 
@@ -218,6 +241,9 @@ row (Q12). Count to be measured in Stage 1's Task 3.
   `boiler_gas_non_condensing` at AFUE 0.80, with the same limitation as Q3 written
   into CLAUDE.md (the gas row prices venting and a gas line an electric boiler does
   not have). Electric baseboard is now the only system on the baseboard row.
+- **Changed 9 Oct 2026 (researcher), D-9:** not carried out, for the reasons given
+  under Q3. Electric boilers stay on the baseboard row (265 rdu in 2022.1.1, 48
+  in 2025.1). On the gas boiler row, 1.00 against 0.80 is $155 in 2023 dollars.
 
 ### Q12 -- Which REMDB edition the costs come from
 
@@ -293,6 +319,8 @@ about 6 dollars per point.
   has no efficiency floor, that 2,768 rdu (2022.1.1) and 325 (2025.1) are priced
   below the row's lowest value, and that the row takes CEER where ResStock gives
   EER.
+- **Confirmed (researcher, 8 Oct 2026):** do not change; document only. Recorded
+  as CLAUDE.md Limitation 17.
 
 ### Q6 -- The two unused heat pump rows (Session 7 item 18)
 
@@ -313,13 +341,14 @@ about 6 dollars per point.
 
 - **Recommendation: later, with the EUSS-to-ResStock rename (D-7).** Neither is in
   a Tepper file, so Chris's files do not depend on them.
-- **Decision:** OPEN
+- **Decision (researcher, 8 Oct 2026):** DEFERRED. Not part of Stage 1.
 
 ### Q9 -- The AWS table for 2025.1 timeseries (Session 7 item 2)
 
 - **Recommendation: later.** Stage 1 adds only the grid impact guard (Session 7
   item 1).
-- **Decision:** OPEN
+- **Decision (researcher, 8 Oct 2026):** DEFERRED. The guard is not added either
+  (D-10): grid impact is switched off for every run of this stage.
 
 ### Q10 -- Which packages Chris receives
 
@@ -369,6 +398,21 @@ commit messages of decision (C)).
 | 8 | Records: CLAUDE.md limitations (item 15; Q3 and Q3b gas-row pricing of electric furnaces and boilers; Q4 out-of-range sizes in Limitation 9; Q5 room AC floor and CEER; Q6 no panel upgrade, unused heat pump rows) and "Last updated"; new REFERENCE_VALUES rows; SESSION_LOG entry; Tepper data dictionary; this plan's sections 6 and 7 | 15, 16, 17, 18 | no | own |
 | 9 | Final national runs on both releases, with the Tepper exports (national and Allegheny) for Stage 2 | -- | no | -- |
 
+**As carried out, 8 to 9 Oct 2026.** The table above is the plan as written on
+8 Oct. What was done:
+
+| Step | Outcome |
+|---:|---|
+| 1 | Done. Tree clean after the three plan documents were committed; 399 passed, 1 skipped. |
+| 2 | Dropped (D-10). No guard; grid impact off in every run. |
+| 3 | Done for the boiler decision (Q2). Electric furnaces were measured both ways and then left as they are (D-9). |
+| 4 | Done. Three files: the row choice, the two boiler floors, 18 tests. `VALUE-MOVING` on both releases. |
+| 5 | Dropped (D-9). A TODO in the code and CLAUDE.md Limitation 16 instead. |
+| 6 | Nothing to change, as planned. |
+| 7 | Dropped (D-11). The default release stays 2022.1.1. |
+| 8 | Done: `REFERENCE_VALUES.md` (17 rows), CLAUDE.md (Limitation 9, Limitations 15 to 18, "Last updated"), `SESSION_LOG.md`, the Tepper data dictionary, and this file. |
+| 9 | The national runs of step 4 serve as the final runs (section 7.1): they were made on the code as it is to be committed, and step 8 changed no code. The Tepper checks of sections 13 and 14.4 of the data dictionary pass on them. |
+
 **Size of the work.** Each code step is a small edit to existing code: step 2 a short
 function and its call in the notebook; step 4 the replacement row mapping and the floor
 table for boilers; step 5 the same mapping and a fixed AFUE for electric furnaces and
@@ -386,6 +430,11 @@ changes only by the tests a step adds.
 committed by the researcher; the final national runs' timestamps are in section 7;
 REFERENCE_VALUES holds new rows for them; the Tepper exports exist for every
 package of Q10.
+
+**Status, 9 Oct 2026:** Q5 is confirmed; the final runs' timestamps are in
+section 7.1; REFERENCE_VALUES holds their rows; the Tepper exports exist for MP3,
+MP4 and MP5, national and Allegheny. Still open: the researcher's commits. The
+code and the records are in the working tree, not yet committed.
 
 ---
 
@@ -449,7 +498,7 @@ CLAUDE.md.
 | 5 Oct 2026 | **Study sample narrowed** to homes with a central or room AC of their own (260,211 to 221,205 rdu); retrofit energy and the home table no longer rounded during the run; climate damages in 2025 dollars | yes: MP3 no-rebate adoption 18.81%, MP4 18.99% (221,205 rdu) | 2022.1.1 |
 | 6 Oct 2026 | **Tepper files**: study-sample rows only (1,146 rdu in Allegheny, 221,205 national), ship `include_sample`, gain the base-year fan, pump and backup columns (167 columns), and a detailed copy splits each year by fuel (317 columns) | no | 2022.1.1 |
 | 7 Oct 2026 | **ResStock 2025.1 MP5, dual fuel**: heat pump priced at SEER1 16.0; backup gas furnace priced and added to the capital cost; June 2026 rebate equals 2024 for MP5; winter and summer peak names; four electric panel columns; MP5 Tepper files hold 182 and 332 columns (1,091 rdu in Allegheny, 161,983 national) | new package | 2025.1 |
-| Stage 1 | Boiler pricing and the other cost items decided in section 3 | to be filled in | both |
+| 9 Oct 2026 | **Boiler pricing** (Stage 1): the credit for an old natural gas or propane boiler is priced on the REMDB non-condensing gas boiler row, and for an old fuel oil boiler on the oil boiler row, with a floor of AFUE 0.80. Until then they were priced as gas furnaces. 20,973 rdu (5,078,214 homes) in 2022.1.1 and 2,528 rdu (641,868 homes) in 2025.1; their mean credit goes from $3,473.72 to $7,638.08 and from $3,442.91 to $7,766.02. Nothing else decided in section 3 changed the code: electric furnaces and electric boilers stay on the baseboard row (D-9). | yes: no-rebate adoption with both credits, MP3 18.81% to 19.35%, MP4 18.99% to 19.47%, MP5 3.27% to 3.39% (section 7.2). In the Tepper files only homes with a fossil boiler differ, in the heating credit, the net capital cost, the NPV and the adopter flag | both |
 
 ---
 
@@ -468,6 +517,11 @@ timestamps, and where the detail is.
 | 8 Oct 2026 | REMDB 2024 attached and compared: the current table is an exact cut of it (32 rows, all values equal). Q12 decided (a). No electric furnace or electric boiler row exists, so Q3 uses the gas furnace row at AFUE 0.80. Panel rows noted under Q6 for later. |
 | 8 Oct 2026 | Q3b decided: electric boilers on `boiler_gas_non_condensing` at AFUE 0.80. Q3 and Q3b: no price adjustment to the gas rows; the difference (venting, gas line) is documented in CLAUDE.md's limitations. |
 | 8 Oct 2026 | Q1 (keep the sample), Q4 (no change, document), Q6 (no panel upgrade, no change, document), Q10 (MP3, MP4 and MP5 from the re-run) and Q11 (three-step comparison) decided. Q5 recorded as no change and document, inferred from the Q4 answer, to be confirmed. Stage 1 value-moving work is now the boiler fix (Q2) and the electric furnace and boiler pricing (Q3, Q3b) only. Q7 to Q9 stay open and outside Stage 1. |
+| 8 Oct 2026 | Stage 1 session, audit (step 1). Researcher: Q5 confirmed (document only); Q7, Q8 and Q9 deferred; no change may alter the study sample (D-12); no grid impact guard, grid impact off in every run (D-10); the default release stays 2022.1.1, since making 2025.1 the default was a typo (D-11). Found in the audit: 17 tests in five files assume 2022.1.1 when the default reads 2025.1; cause known, fix deferred. |
+| 9 Oct 2026 | Researcher: electric furnaces and electric boilers stay on the baseboard row (D-9). An electric furnace is published at 100% AFUE; on the gas furnace row that is $865 (2023 dollars) above the price at 0.80, and the baseboard row has no efficiency term. Document the discrepancy and leave a TODO to ask NLR's REMDB researchers. |
+| 9 Oct 2026 | Step 3, measured on the saved national runs before any edit (`~/tare_port/s8_task3_boiler_credit.py`): the boiler decision touches 20,973 rdu (2022.1.1) and 2,528 rdu (2025.1); the credit rises on every one; no rebate changes, because a rebate is worked out from the heat pump's installed cost only, so the NPV identity is exact for the rebated cases too. Corrected the same day after the researcher's question: with size held fixed, a 90% AFUE oil boiler is credited $110 less (2025 dollars) than an 80% one, not $570; the $570 was the difference in how much the two credits rise. The model's oil boiler row gives the three prices of NLR's website for 221,500 Btu/h at AFUE 0.875 exactly ($8,309.32, $9,295.97, $11,092.38). |
+| 9 Oct 2026 | Step 4, boiler fix made and run. Pennsylvania and national runs on both releases (section 7.1), grid impact off. Every comparison passed: only fossil boiler rdu differ, in 20 columns; new NPV = old NPV + change in credit to the cent; study sample unchanged; the national credits and the adoption of all nine cases equal step 3's figures. Tests 417 passed, 1 skipped (18 new). Results in section 7.2. |
+| 9 Oct 2026 | Steps 8 and 9, records and Tepper checks, made with the researcher away and every edit auto-approved for the session at the researcher's request. The national runs of step 4 are used as the final runs; the researcher may ask for a re-run after committing. The Tepper checks of sections 13 and 14.4 of the data dictionary pass on them (25 checks per package). Two things seen in those checks, both the same in the runs before the fix and neither a fault in the files: `occupancy` reads as text in the national package 5 file and as numbers in the Allegheny one; and a number in a Tepper file can differ from the same number in the results file in its last digits (relative difference up to 7.5e-13). Also noted: the county Tepper file is sorted by adoption rate, and counties with equal rates can change places between runs, so those files are compared county by county. Nothing is committed yet. |
 
 ### 7.1 Runs
 
@@ -476,3 +530,56 @@ timestamps, and where the detail is.
 | `2026-08-19_20-56` | 2022.1.1 | National | Data sent to Chris on 19 Aug 2026 | Reference for Stage 2 |
 | `2026-10-07_19-22` | 2022.1.1 | National | Results of record, MP3 and MP4 | Section 1 |
 | `2026-10-07_19-14` | 2025.1 | National | Results of record, MP5 | Section 1 |
+| `2026-10-08_01-51` | 2022.1.1 | Pennsylvania | Reference for Stage 1's Pennsylvania comparisons | -- |
+| `2026-10-08_01-49` | 2025.1 | Pennsylvania | Reference for Stage 1's Pennsylvania comparisons | -- |
+| `2026-10-09_00-29` | 2022.1.1 | Pennsylvania | After the boiler fix | Exit 0, 40 runner checks passed; differs from `2026-10-08_01-51` only on fossil boiler rdu (1,816 in the sample) |
+| `2026-10-09_00-28` | 2025.1 | Pennsylvania | After the boiler fix | Exit 0, 20 runner checks passed; differs from `2026-10-08_01-49` only on fossil boiler rdu (203 in the sample) |
+| `2026-10-09_00-46` | 2022.1.1 | National | After the boiler fix; **final run of Stage 1 for MP3 and MP4**, with the Tepper files, national and Allegheny | Exit 0, 40 runner checks passed; section 7.2 |
+| `2026-10-09_00-38` | 2025.1 | National | After the boiler fix; **final run of Stage 1 for MP5**, with the Tepper files, national and Allegheny | Exit 0, 20 runner checks passed; section 7.2 |
+
+Every run of 9 Oct was made with grid impact off, as the reference runs were. The
+final runs were made on the working tree, before the researcher's commit. The only
+change to a code file since they started is the researcher's
+`GRID_IMPACT_ANALYSIS = False` in `constants.py`, which changes no result: both
+runs already had grid impact off through the runner.
+
+### 7.2 Results after Stage 1
+
+Runs `2026-10-09_00-46` (2022.1.1, MP3 and MP4: 221,205 rdu) and `2026-10-09_00-38`
+(2025.1, MP5: 161,983 rdu). National, 7% discount rate, USD2025. They agree with
+the rows added to `REFERENCE_VALUES.md` on 9 Oct 2026. Section 1 holds the same
+tables before Stage 1.
+
+Adoption, percent of the study sample (no rebate / 2024 guidance / June 2026 guidance):
+
+| Credit scope | MP3 | MP4 | MP5 | Moved in Stage 1 |
+|---|---|---|---|---|
+| Old AC credit only (`heatingSavings_coolingLCC`) | 9.19 / 32.11 / 18.94 | 10.70 / 29.01 / 18.99 | 1.78 / 6.30 / 6.30 | no |
+| Old heating credit only (`heatingLCC_coolingSavings`) | 6.84 / 20.46 / 13.82 | 8.71 / 22.01 / 15.12 | 1.38 / 3.28 / 3.28 | yes |
+| Both credits (`heatingLCC_coolingLCC`) | 19.35 / 46.64 / 26.88 | 19.47 / 49.37 / 28.89 | 3.39 / 29.48 / 29.48 | yes |
+
+MP5, mean dollars per home (both credits):
+
+| Part | Before Stage 1 | After Stage 1 |
+|---|---|---|
+| Heat pump | 15,711.23 | 15,711.23 |
+| Backup gas furnace | 4,112.21 | 4,112.21 |
+| Credit for the old heating system | 3,742.25 | 3,809.72 |
+| Credit for the old AC | 5,842.98 | 5,842.98 |
+| Net capital cost, no rebate | 10,238.21 (median 9,548.51) | 10,170.74 (median 9,508.95) |
+| Bill savings, 15 years, discounted | 1,535.17 | 1,535.17 |
+| NPV, no rebate | -8,703.04 (median -7,941.37) | -8,635.57 (median -7,906.24) |
+
+Credit for the old heating system, 2022.1.1 (the same for MP3 and MP4): mean
+3,887.87 before and 4,282.71 after; for the 20,973 rdu with a fossil boiler,
+3,473.72 before and 7,638.08 after.
+
+What section 1.3 says about MP5, after Stage 1:
+
+- No-rebate adoption of natural gas homes: 0.93% (MP5), 5.33% (MP3). It was
+  0.82% and 4.61%.
+- The backup furnace costs 302 more on average than the credit for the old
+  heating system. It was 370.
+- Homes that heat with electricity are still 5.42% of the MP5 sample (8,778 rdu)
+  and are 59.30% of its no-rebate adopters (3,257 of 5,492 rdu). They were
+  61.52% (3,257 of 5,294).

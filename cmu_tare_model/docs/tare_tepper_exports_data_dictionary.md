@@ -90,6 +90,18 @@ the shares, and the worked example in section 10 are all read from the
 pipeline run `2026-10-05_21-33` (a national run, MP3 and MP4). The Allegheny
 figures are that run's Allegheny County rows.
 
+**9 October 2026 -- the heating credit of homes with a boiler changed.** A home
+whose existing heating system is a natural gas, propane or fuel oil boiler now
+has its heating credit priced as a boiler; before, it was priced as a gas
+furnace (group 12). In a file made from this date on, such a home's
+`mp{mp}_heating_replacement_installed_cost_v4MID` is about $4,160 higher on
+average ($4,320 in the package 5 files), its net capital cost is lower by the
+same amount, and its NPV is higher by the same amount. Every other home is unchanged, among them the home
+worked through in section 10, which has a gas furnace. The first files with
+the change are those of runs `2026-10-09_00-46` (MP3 and MP4) and
+`2026-10-09_00-38` (package 5). Do not mix files made before and after this
+date.
+
 ---
 
 ## 2. Files produced
@@ -619,6 +631,29 @@ upgrade cost; splitting one piece of equipment in two would double-count it.
 The two `replacement` columns are counterfactuals -- money the household does
 not spend because it bought a heat pump instead. They are credits, not costs.
 
+**How the heating credit is priced.** It comes from the REMDB cost table of
+the National Laboratory of the Rockies (NLR, formerly NREL), at the existing
+system's own size and efficiency. The table row is the closest one to the
+equipment: its type first, then its fuel.
+
+| Existing heating system (`heating_type`) | Priced as | Efficiency priced |
+|---|---|---|
+| Natural gas, propane or fuel oil furnace | a gas furnace | the published AFUE, and 0.80 at least |
+| Natural gas or propane boiler | a gas boiler, non-condensing | the published AFUE, and 0.80 at least |
+| Fuel oil boiler | an oil boiler | the published AFUE, and 0.80 at least |
+| Electric baseboard, electric furnace or electric boiler | electric baseboard | none: this row prices size only |
+
+- A boiler credit is about twice a furnace credit, because a boiler costs more
+  to install. On run `2026-10-09_00-46` the mean credit of the 20,973 rdu with
+  a fossil boiler is $7,638. Priced as gas furnaces, as they were until
+  9 October 2026, the same homes had a mean credit of $3,474.
+- The table has no row for a propane or fuel oil furnace, or for a propane
+  boiler, so the gas row of the same equipment type stands in.
+- The table has no row for an electric furnace or an electric boiler either,
+  so both are priced as baseboard. This is a known weak point: a furnace or a
+  boiler is a different piece of equipment from a set of baseboard heaters. It
+  is left as it is until NLR's researchers have been asked for advice.
+
 The last column is the cooling credit the NPV subtracted. In these files it
 equals `mp{mp}_cooling_replacement_installed_cost_v4MID` on every row, because
 every study-sample home has an air conditioner of its own with a replacement
@@ -1100,6 +1135,39 @@ with `export_tepper_household` from that run's saved results:
   nationally. The adoption and demand tables agree on every county's
   `home_count`.
 
+**Checked again on run `2026-10-09_00-46`** (9 October 2026, after the change
+to boiler pricing), for both MP3 and MP4, on the files the run itself wrote:
+
+- Row counts: 221,205 in each national household file and 1,146 in each
+  Allegheny file; 3,079 rows and 1 row in the county files.
+- Column counts: 167 in the main file and 317 in the detailed copy, plus
+  `bldg_id`, with no duplicate name. Every column of the main file is the same
+  in the detailed copy.
+- `include_sample`, `include_heating` and `include_cooling` are `True` on
+  every row of every file.
+- Each Allegheny file holds the national file's rows for the same homes, with
+  every value the same.
+- The national main file and the run's results table agree on each of the 107
+  columns they share, to 11 significant digits or better.
+- The only blanks in a national file are the 5 in `gea_region`.
+- Each stream's per-fuel columns add up to its total in every year, and the
+  base-year columns of groups 9 and 9b add up to the 2025 totals.
+- The net capital cost equals the heat pump cost minus the two credits.
+  Discounted heating saving + discounted cooling saving - net capital cost
+  equals the shipped NPV, with none off by more than half a cent. The adopter
+  flag is 1.0 exactly where the NPV is zero or above: 42,797 rdu (MP3) and
+  43,063 rdu (MP4) nationally, 45 and 68 in Allegheny County.
+- The county files have 11 columns and no blank cell, and `home_count` adds up
+  to 53,560,591 homes nationally. In every county, `adoption_rate_pct` and
+  `home_count` equal what the household file gives.
+
+The household files hold 20,973 rdu with a fossil boiler nationally and 164 in
+Allegheny County; only those rdu differ from the files of run
+`2026-10-07_19-22`, and only in the heating credit, the net capital cost, the
+NPV and the adopter flag. The check of the discounted savings against the
+per-year fuel costs was not repeated: this run's fuel-cost files are
+byte-identical to that run's, and the two savings columns did not change.
+
 ---
 
 ## 14. The ResStock 2025.1 files: package 5, a dual-fuel heat pump
@@ -1331,3 +1399,16 @@ rest of the chain in section 10 is the same.
   cooling saving - net capital cost equals the shipped NPV, with none off by
   more than half a cent, and the adopter flag is 1.0 exactly where the NPV is
   zero or above (5,294 rdu).
+
+**Checked again on run `2026-10-09_00-38`** (9 October 2026, after the change
+to boiler pricing), on the files the run itself wrote. Every check above holds
+with the same counts, apart from the last one: the adopter flag is 1.0 on
+5,492 rdu nationally (7 of them in Allegheny County, where it was 4). Also
+checked: the national main file and the run's results table agree on each of
+the 122 columns they share, to 11 significant digits or better; the county
+file's only blank is the one in `operating_cost_pct_change` (section 14.3);
+and in every county `adoption_rate_pct` and `home_count` equal what the
+household file gives. The files hold 2,528 rdu with a fossil boiler nationally
+and 32 in Allegheny County; only those rdu differ from the files of run
+`2026-10-07_19-14`, and only in the heating credit, the net capital cost, the
+NPV and the adopter flag.
