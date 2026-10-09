@@ -19,7 +19,9 @@ Session 5c: its opening answers are recorded (decision (5c)). Updated on 7 Oct
 2026, during Session 6: decision (m) is taken, and Session 6 gains two CLAUDE.md
 units, 5a and 5b (decision (m)). Updated on 8 Oct 2026, after Session 6's records
 were committed: decision (b) is taken, and this file is tracked from commit
-`5681706` on (decision (b)).
+`5681706` on (decision (b)). Updated again on 8 Oct 2026, after the port: Session
+7 is added for the 2025.1 grid impact work, the ResStock naming and the cleanup
+found after the port (decision (S7)).
 
 - `LOCAL_KICKOFF_PROMPT.md` and CLAUDE.md win wherever this plan differs from them.
   This plan relaxes neither.
@@ -304,6 +306,22 @@ repo root that the cloud copy did not have. All 9 are in
   yet set (Phase 7)", and is corrected to what decision (k) set; and
   CLAUDE.md's dated "Last updated" block gets an entry for the port. Each
   edit is still its own gated diff.
+- (S7) A session after the port (researcher, 8 Oct 2026: "Add another session to
+  the dual fuel implementation plan to include the dual fuel fix and other
+  cleanup items"). "The dual fuel fix" is read as the grid impact analysis for
+  the ResStock 2025.1 (dual fuel) run; the researcher asked for that TODO in the
+  same message. On names (same message): "EUSS is the nickname for the 2022
+  release only and for consistency it makes more sense to refer to them as
+  ResStock with the release year/number", with every dataframe and variable
+  holding `euss` renamed to `resstock`, as "a future commit and not to be messed
+  with now". Session 7 holds both, and the smaller things found after the port.
+  On costs (researcher, 8 Oct 2026, later): "The REMDB cost estimation should be
+  using the closest fit available. In other words, if there are boiler data
+  available it should be using the boiler data NOT furnace data"; Part 4 holds
+  that fix and the other cost questions found the same day. On the default
+  release (same message): it stays 2022.1.1, which the paper and a colleague's
+  work use, and changes to 2025.1 only after the boiler fix (item 10).
+  Nothing of Session 7 is started.
 
 ### 2.2 Pending
 
@@ -783,3 +801,99 @@ a time:
    `utils/measure_packages.py`, which that cleanup removes).
 5. Ask the researcher what becomes of `cloud_run/` (decision (b)), and list the by-hand
    items of (n).
+
+### Session 7 -- after the port: grid impact for 2025.1, ResStock naming, cleanup
+
+- **Why:** decision (S7). Three pieces of work the port left for later. Not started.
+- **Before it starts:** the working tree is clean. On 8 Oct 2026 it held four things
+  to settle first: the simulation notebook with its package cells grouped by
+  release and the main notebook's opening text, both not yet committed; saved
+  outputs in the main notebook, to clear; the notebook snapshots of decision (n),
+  still to export; and an edit to `constants.py` that makes 2025.1 the default
+  release, which the researcher puts back to 2022.1.1 for now (item 10).
+- **Decide first:** one question for each part, asked when that part starts. They
+  are marked "Decide first" in the tables below.
+- **Modeled values:** Part 1 adds results for 2025.1 (peaks) and moves no existing
+  value. Part 2 moves none; if the ten columns of item 6 are renamed, the header of
+  the results files changes, and new runs are no longer byte-identical to earlier
+  ones. Item 9 moves 2025.1 values if the sample changes. Part 4 moves values on
+  both releases, the paper's 2022.1.1 results among them: item 13 is decided, and
+  items 14, 16, 17 and 18 move values if taken. Each is `VALUE-MOVING`, in its own
+  commit, with new REFERENCE_VALUES rows. Item 10 moves none.
+- **Start line:**
+  `Read Part 2 of cmu_tare_model/docs/cloud_run/LOCAL_KICKOFF_PROMPT.md and Session 7 of cmu_tare_model/docs/cloud_run/LOCAL_PORT_SESSION_PLAN.md, then follow them. Stop at every gate. For tests, use C6 with --ignore=archived_files added, as decision (T) in the plan records. Suggest each commit message in my bracketed-bullet format, as decision (C) in the plan records.`
+
+Each part is its own work, with its own commit or commits, and can be a conversation
+of its own. Scratch files take the prefix `s8_`: `s7_` is in use in `~/tare_port` by
+the conversation of 8 Oct 2026 that closed Session 6.
+
+Order (researcher, 8 Oct 2026): the boiler fix of Part 4 comes first. The default
+release changes to 2025.1 only after it (item 10).
+
+**Part 1 -- grid impact for ResStock 2025.1**
+
+What happened on 8 Oct 2026: a national 2025.1 run made in VS Code went on into the
+grid impact cells. They sent the run's building ids to the ResStock 2022.1.1 table,
+read two timeseries of 0.8 GB each from AWS, wrote them into the query cache (8.06 GiB
+afterwards) and held about 76 GB of memory. Those results cannot be used. The runner
+avoids this only because every 2025.1 run is given `--skip-grid-impact`.
+
+| Item | Change |
+|---:|---|
+| 1 | First, and in a commit of its own: make the grid impact cells of `tare_model_main_v3_0.ipynb` stop with a clear message when the run's release is one the analysis does not support, so that a 2025.1 run cannot send its building ids to the 2022.1.1 table. |
+| 2 | Decide first: the AWS table that holds the 2025.1 timeseries, and whether it holds package 5. Cell 33 sets the workgroup, database, table and schema of `BuildStockQuery` for 2022.1.1 only; choose them by release. |
+| 3 | Use the release's own peak column names where the grid impact code names them. `REQUIRED_EXPORT_PEAK_COLUMN_TEMPLATES` in `grid_impact/build_parcel_frame.py` holds the 2022.1.1 names; build them with `create_peak_electricity_col`. |
+| 4 | Keep the two releases' query caches apart. Decide what becomes of the two entries the run of 8 Oct 2026 added to `resstock_amy2018_release_1_1_query_cache.pkl`: leave them, or rebuild the cache without them. |
+| 5 | When a 2025.1 run passes with grid impact on: take `--skip-grid-impact` out of the rule for 2025.1 runs (the runner's notes and CLAUDE.md); remove the five `TODO (grid impact, 2025.1)` comments (`constants.py`, `grid_impact/peak_load_functions.py`, `grid_impact/build_parcel_frame.py`, and cells 32 and 33 of the main notebook); and add REFERENCE_VALUES rows for the 2025.1 peaks. |
+
+**Part 2 -- "ResStock" and the release, in place of "EUSS"**
+
+One planned change, in commits of its own; not to be done piecemeal before then.
+Counted on 8 Oct 2026 at commit `bffd8e9`: `euss` is on 430 lines of 33 tracked `.py`
+and `.ipynb` files, archived files and snapshots left out. Start with a fresh
+inventory, as in Session 5b.
+
+| Item | Change |
+|---:|---|
+| 6 | Decide first: ten columns of the results file end `_euss` (`heating_upgrade_pm1_euss`, `heating_replacement_pm2_euss_original`, `heating_backupFurnace_pm1_euss` and the like). Renaming them changes the files' header, so runs must then be compared by value and not byte for byte. Rename them, or leave these ten as they are. |
+| 7 | Decide first: the file names `energy_consumption_and_metadata/process_euss_data.py` and `tests/energy_consumption_and_metadata/test_process_euss_data.py`. A rename is the researcher's `git mv`, with every import, CLAUDE.md and the documents that name the module updated in the same commit. |
+| 8 | Rename every dataframe, variable, function and constant that holds `euss` to `resstock` (`df_euss_am_mpX_home`, `df_euss_am_baseline_home`, `load_euss_baseline`, `load_euss_upgrade`, `pm1_euss`, `_EUSS_COL_ALIASES` and the rest), in the modules, the tests and the four notebooks. In printed lines, comments, docstrings and notebook markdown, write "ResStock" with the release where the text is about one release ("ResStock 2022.1.1"), and "ResStock" alone where it holds for both. Printed lines that say "EUSS" on a 2025.1 run today: the banner of simulation notebook cell 7, "Model Run Complete for EUSS Measure Package" in the six package run cells, baseline notebook cell 1, and scenarios notebook cell 23. CLAUDE.md's own "EUSS" entries follow. Names that ResStock itself publishes stay, and so do the `*_EXPORT_*.py` snapshots and the archived files. |
+
+**Part 3 -- cleanup found after the port**
+
+| Item | Change |
+|---:|---|
+| 9 | Decide first: homes that heat with electricity are in the dual-fuel sample, and the package gives them a gas backup furnace. They are 8,778 of the 161,983 sample rdu (2,228,766 homes, 5.42%), and 3,257 of the 5,294 rdu that adopt with no rebate (run `2026-10-07_19-14`). Keep them, or limit the package 5 sample to homes that heat with a fossil fuel. |
+| 10 | The default release stays 2022.1.1 for now: the paper and a colleague's work use it (researcher, 8 Oct 2026). The researcher puts the uncommitted edit in `constants.py` back. It changes to 2025.1 after the boiler fix of item 13, for the Tepper result files. That change is more than one line: with the default at 2025.1 and the variable unset, the test run of 8 Oct 2026 gave 8 failed and 9 errors (382 passed, 1 skipped), from tests that take 2022.1.1 for granted when the variable is unset, in `tests/test_constants.py`, `tests/utils/test_column_names.py`, `tests/private_impact/calculations/test_calculate_equipment_installation_costs.py` and `tests/adoption_kpis/test_demand_sample.py` among them. When the time comes: change the line and the comment above it, make those tests name the release they need, and update what says "unset means 2022.1.1" (CLAUDE.md, the runner's notes). One commit. A 2022.1.1 run then needs the variable or `--release 2022.1.1`. Until then, a way to choose the release for a VS Code session without editing `constants.py`. |
+| 11 | What is left of decision (n) when this session starts. Only if the researcher wants it: the order of the docstring in cell 30 of the scenarios notebook. |
+| 12 | Only if the researcher wants them: the two older CLAUDE.md sentences left as they are in Session 6 ("Program rules" names `REBATE_ELIGIBLE_HEATING_MPS`; Limitation 2 on June 2026 HOMES); and in `environment-cmu-tare-model.yml`, the `prefix:` line of another machine, three older versions, and the two conda lines for typing-extensions. |
+
+**Part 4 -- cost estimation: the closest REMDB fit**
+
+The rule (decision (S7)): each cost uses the REMDB row that fits the equipment most
+closely. How the costs are priced today, in `utils/remdb_v4_installed_cost_utils.py`:
+the credit for an old heating system uses one of two rows, at the old system's own
+size and efficiency: `furnaces_gas_furnace` for every fossil system (gas, propane and
+fuel oil; furnaces and boilers) and `electric_baseboard_default` for every electric
+one (baseboard, electric furnace, electric boiler). The counts below are study-sample
+rdu of the national runs `2026-10-07_19-22` (2022.1.1) and `2026-10-07_19-14`
+(2025.1). Start by measuring what each item moves, before any diff.
+
+| Item | Change |
+|---:|---|
+| 13 | Decided: price the credit for an old boiler with the boiler rows the table holds (`boiler_gas_non_condensing`, `boiler_gas_condensing`, `boiler_oil`), not with the gas furnace row. Boilers on the furnace row today: 20,973 rdu in 2022.1.1 (gas 16,335, fuel oil 3,983, propane 655) and 2,528 in 2025.1 (gas 2,362, fuel oil 153, propane 13). Decide first: the row for a propane boiler (a gas boiler row is the closest), how a gas boiler is split between the two gas rows (the condensing row covers AFUE 0.91 to 0.97, the other 0.80 to 0.87; 6.5% of the 2022.1.1 boilers and 2.0% of the 2025.1 ones are published at 0.90 or more), and the lowest efficiency a replacement is priced at (the furnace floor is 0.80). An electric boiler has no row and stays on the baseboard row. `VALUE-MOVING` on both releases. |
+| 14 | Decide first: an electric furnace is priced with the baseboard row, because the table has no electric furnace row: 47,155 rdu in 2022.1.1 and 7,355 in 2025.1. That row is a straight line through zero, so the credit follows the size closely: from 1,773 to 9,309 dollars between the 5th and 95th percentile in 2022.1.1, where a gas furnace's credit runs from 3,228 to 4,279. Homes that heat with electricity are most of the no-rebate adopters, so this credit matters to the headline numbers. Is the baseboard row the closest fit for a ducted electric furnace? |
+| 15 | No change, a line for the records: a propane or fuel oil furnace is priced with the gas furnace row, the closest the table has (2022.1.1: 11,594 and 9,888 rdu; 2025.1: 410 and 1,270). Say so in CLAUDE.md's limitations. |
+| 16 | Decide first: a size outside a row's range is priced by carrying the row's line beyond the range; nothing is held at the bound (CLAUDE.md Limitation 9). Credits on the gas furnace row below its 30,000 Btu/h: 19,994 rdu (2022.1.1) and 18,652 (2025.1); above its 156,250: 3,199 and 2,763. Central AC credits below 1.5 tons: 32,084 and 25,664; above 5 tons: 22,578 and 18,260. Room AC credits below 0.4167 tons: 15,593 and 5,402. The 2025.1 backup furnace below 30,000 Btu/h: 20,795 rdu; above 156,250: 2,992. The MP4 heat pump's SEER1 of 24 to 29.3 is above the ducted row's 24. Keep, hold at the bound, or flag. |
+| 17 | Efficiency floors are uneven. A central AC credit is priced at SEER1 15 for every home (133,890 of the 177,641 central AC rdu of 2022.1.1 are published below it). A room AC credit has no floor: 2,768 rdu (2022.1.1) and 325 (2025.1) are priced below the row's lowest value, 9.4, and the value given to the row is ResStock's EER where the row takes CEER. The effect on a room AC credit is small (about 6 dollars for one point). Decide whether room AC gets a floor, and settle the floors of the boiler rows with item 13. |
+| 18 | Two heat pump rows are never used: `air_source_heat_pump_centrally_ducted_with_new_circuit` and `air_source_heat_pump_non_ducted_single_zone`. Every home without ducts is priced as a multi-zone system (24,853 rdu in 2022.1.1), and no home is priced with a new circuit, though 2025.1 publishes electric panel columns. Decide whether either row is the closer fit for some homes. |
+
+- **How:** hand edits, as the kickoff prompt's step 2.9 sets out: each file one gated
+  diff from a scratch copy, endings kept; a notebook cell only through the
+  notebook-cell-edit skill; a file is removed or renamed by the researcher.
+- **Checks:** the test count stays 399 passed and 1 skipped unless a part adds tests.
+  After each commit that touches code or a notebook, a Pennsylvania run on each
+  release: every output identical to the run before it, apart from what the part
+  changes on purpose (new 2025.1 peak results in Part 1; the ten column names of
+  item 6 if renamed; 2025.1 values if item 9 changes the sample). A national run on
+  each release closes a part that adds or moves a value.
