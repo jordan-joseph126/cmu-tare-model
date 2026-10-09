@@ -449,10 +449,15 @@ Scratch files take the prefix `s9_`.
   household and county files, national and Allegheny, the `source_data/` CSVs sent
   with them, and the workbook `TARE_Export_Tepper_Cashflow_Model_JMJ_DRAFT.xlsx`
   (sheets README, Data Dictionary, Fuel Price Data, Projection Factors, TARE MP3
-  Data). The Tepper files of every run, old and new, are in
-  `cmu_tare_model/output_results/tepper_export/`, told apart by run stamp. The
-  workbook is not in the repo: the researcher places it in `~/tare_port/s9_inputs/`.
-- Stage 1's final runs (section 7) and their Tepper files.
+  Data). **Corrected 9 Oct 2026:** the 19 Aug Tepper files are not in
+  `cmu_tare_model/output_results/tepper_export/`. That folder holds the files of
+  the runs made from 6 Oct 2026 on, told apart by run stamp. The files as sent to
+  Chris (two national and two Allegheny household files, two national county
+  files; no Allegheny county file was sent), the two source CSVs sent with them
+  and the workbook are in `~/tare_port/s9_inputs/`, outside the repo, copied there
+  by the researcher on 9 Oct 2026.
+- Stage 1's final runs (section 7) and their Tepper files, which are in
+  `tepper_export/`.
 
 **What the 19 Aug files hold** (read from the Allegheny files on 8 Oct 2026): 155
 columns; 1,356 rdu in Allegheny (328,330 homes), which is every home that passed
@@ -522,6 +527,7 @@ timestamps, and where the detail is.
 | 9 Oct 2026 | Step 3, measured on the saved national runs before any edit (`~/tare_port/s8_task3_boiler_credit.py`): the boiler decision touches 20,973 rdu (2022.1.1) and 2,528 rdu (2025.1); the credit rises on every one; no rebate changes, because a rebate is worked out from the heat pump's installed cost only, so the NPV identity is exact for the rebated cases too. Corrected the same day after the researcher's question: with size held fixed, a 90% AFUE oil boiler is credited $110 less (2025 dollars) than an 80% one, not $570; the $570 was the difference in how much the two credits rise. The model's oil boiler row gives the three prices of NLR's website for 221,500 Btu/h at AFUE 0.875 exactly ($8,309.32, $9,295.97, $11,092.38). |
 | 9 Oct 2026 | Step 4, boiler fix made and run. Pennsylvania and national runs on both releases (section 7.1), grid impact off. Every comparison passed: only fossil boiler rdu differ, in 20 columns; new NPV = old NPV + change in credit to the cent; study sample unchanged; the national credits and the adoption of all nine cases equal step 3's figures. Tests 417 passed, 1 skipped (18 new). Results in section 7.2. |
 | 9 Oct 2026 | Steps 8 and 9, records and Tepper checks, made with the researcher away and every edit auto-approved for the session at the researcher's request. The national runs of step 4 are used as the final runs; the researcher may ask for a re-run after committing. The Tepper checks of sections 13 and 14.4 of the data dictionary pass on them (25 checks per package). Two things seen in those checks, both the same in the runs before the fix and neither a fault in the files: `occupancy` reads as text in the national package 5 file and as numbers in the Allegheny one; and a number in a Tepper file can differ from the same number in the results file in its last digits (relative difference up to 7.5e-13). Also noted: the county Tepper file is sorted by adoption rate, and counties with equal rates can change places between runs, so those files are compared county by county. Nothing is committed yet. |
+| 9 Oct 2026 | Stage 2 session, with every gate auto-approved until the commit point at the researcher's request. No model code changed, no model was run and no value moved. The files as sent to Chris on 19 Aug 2026 are in `~/tare_port/s9_inputs/`, not in `tepper_export/` (section 5 corrected). Comparison, validation, the two sheets and the facts file are done; results in section 7.3, files in `~/tare_port/s9_outputs/`, scripts `~/tare_port/s9_*.py`. Validation: the checks of sections 13 and 14.4 of the Tepper data dictionary, with two added for the Allegheny county file, pass on all 18 new files (27 per package); the three `source_data/` CSVs equal the model's inputs, and the two Chris has are unchanged byte for byte. Two differences between the old and the new files have no row of their own in section 6: what the county file's `home_count` and `adoption_rate_pct` are measured over (the nearest row is 25 Sep 2026), and a zero that was a blank in `baseline_heating_consumption` (1,020 rdu of today's sample) and `baseline_cooling_consumption` (7 rdu), which the hand-over note of 2 Oct 2026 records. Neither contradicts the plan, and section 6 is left as it is. Still open: the researcher's review of the workbook, and the email (D-6). |
 
 ### 7.1 Runs
 
@@ -583,3 +589,65 @@ What section 1.3 says about MP5, after Stage 1:
 - Homes that heat with electricity are still 5.42% of the MP5 sample (8,778 rdu)
   and are 59.30% of its no-rebate adopters (3,257 of 5,492 rdu). They were
   61.52% (3,257 of 5,294).
+
+### 7.3 Results of Stage 2
+
+The files as sent to Chris on 19 Aug 2026 (run `2026-08-19_20-56`) against the
+files of the final runs of section 7.1, in the shape of Q11. The case is the one
+the files ship (`heatingLCC_coolingLCC_unsub`), 7% discount rate, USD2025. The
+detail is in `~/tare_port/s9_outputs/s9_comparison_summary.md` and its tables.
+
+No-rebate adoption. "Today's study sample" is the 19 Aug data limited to the rdu
+of the new file, the homes with a result and a central or room AC of their own:
+
+| File and view | National | Allegheny |
+|---|---|---|
+| 19 Aug MP3, rdu with a result | 27.18% (70,715 of 260,211 rdu) | 18.88% (256 of 1,356 rdu) |
+| 19 Aug MP3, today's study sample | 30.18% (66,765 of 221,205) | 21.90% (251 of 1,146) |
+| New MP3 | 19.35% (42,797 of 221,205) | 3.93% (45 of 1,146) |
+| New MP5 (other homes; compared by group only) | 3.39% (5,492 of 161,983) | 0.64% (7 of 1,091) |
+| 19 Aug MP4, today's study sample | 19.71% (43,607 of 221,205) | 10.30% (118 of 1,146) |
+| New MP4 | 19.47% (43,063 of 221,205) | 5.93% (68 of 1,146) |
+
+The 19 Aug national file as shipped holds 331,531 rdu, 71,320 of them with no
+result; its 70,715 adopters are 21.33% of all its rows.
+
+Old MP3 to new MP3, national, the same 221,205 rdu matched by `bldg_id`:
+
+- Adopters: 66,765 in the 19 Aug data; 41,606 with today's savings and the old
+  heating credit (the consumption fix of 22 to 23 Sep); 42,797 with the boiler
+  pricing of 9 Oct.
+- 25,614 rdu (6,201,944 homes) stop adopting and 1,646 rdu (398,548 homes)
+  start. Those that stop lose 20,902 of discounted heating savings on average,
+  and for 25,496 of them it is the part that moved most. For 935 of those that
+  start it is the heating credit, and for 707 the cooling savings.
+- Mean per home: discounted heating savings 5,138.59 to -1,376.79; discounted
+  cooling savings 555.24 to 500.02; credit for the old heating system 3,887.87
+  to 4,282.71; net capital cost 9,385.80 to 8,990.96; NPV -3,691.96 to
+  -9,867.74.
+- The heat pump's installed cost (mean 18,580.45) and the credit for the old AC
+  (mean 5,306.78) are the same on every rdu. The heating credit differs on the
+  20,973 rdu with a fossil boiler and on no other.
+- Allegheny: 206 rdu stop and none start; 189 of the 206 heat with natural gas,
+  and no natural gas home adopts MP3 in the new file (0 of 1,050 rdu).
+
+The national county files, matched by `county`:
+
+- 3,098 counties on 19 Aug and 3,079 now, for MP3 and MP4 (2,973 for MP5). The
+  19 that left hold no rdu of today's study sample.
+- On 19 Aug `adoption_rate_pct` is adopters over every rdu of the county, a
+  blank flag counted as a non-adopter, in all 3,098 counties, and `home_count`
+  is every rdu times 242.13 (80,273,601 homes in all). Both are now measured
+  over the study sample (53,560,591 homes).
+- County rate, MP3, median over counties: 27.45% as shipped, 37.93% over rdu
+  with a flag (3,090 counties have one), 23.57% in the new file. Allegheny:
+  15.90%, 18.88% and 3.93%.
+
+Files written, all in `~/tare_port/s9_outputs/`:
+
+| File | Holds |
+|---|---|
+| `s9_comparison_summary.md`, `s9_t2_*.csv` | the comparison and its tables |
+| `s9_validation_report.md` | the checks on the 18 new files and the three source CSVs |
+| `TARE_Export_README_and_Dictionary.xlsx` | the README (73 rows) and the Data Dictionary (136 rows), laid out as the two sheets of the 19 Aug workbook. Every column of every new household file has one dictionary row |
+| `s9_email_facts.md` | the facts for the email (D-6) |
