@@ -436,6 +436,10 @@ section 7.1; REFERENCE_VALUES holds their rows; the Tepper exports exist for MP3
 MP4 and MP5, national and Allegheny. Still open: the researcher's commits. The
 code and the records are in the working tree, not yet committed.
 
+**Update, later on 9 Oct 2026:** the researcher committed the code as `5a91996` and the
+records as `0624802`, both at 01:58, after the final runs. Stage 1 is done. Stage 2 is
+recorded in commit `6a12e05`.
+
 ---
 
 ## 5. Stage 2 -- data validation and the data share
@@ -500,10 +504,30 @@ CLAUDE.md.
 | 2 to 3 Sep 2026 | Notebook cleanup; run `2026-09-02_19-04` byte-identical to `2026-08-19_20-56` | no | 2022.1.1 |
 | 22 to 23 Sep 2026 | **Consumption fix** (commit 5ff4d4f): heating and cooling energy count fans, pumps and heat-pump backup heat on both sides, and each fuel is priced at its own price. The 19 Aug run left out MP3 and MP4's electric backup heat and every system's fans. Also: household income drawn per home, seeded by `bldg_id`; 5 rdu with shared heating dropped. | **yes**: MP3 no-rebate adoption 27.18% to 16.66%, MP4 18.10% to 17.03% (260,211 rdu) | 2022.1.1 |
 | 25 Sep 2026 | **Study sample flag** `include_sample`: every result covers one set of homes | cooling results of out-of-sample homes only | 2022.1.1 |
+| 2 Oct 2026 | **County and state adoption rates** count study-sample homes only (commit e4b670d). In the 19 Aug county files `adoption_rate_pct` is adopters over every rdu of the county, a blank flag counted as a non-adopter, and `home_count` is every rdu times the weight. Row added 9 Oct 2026: Stage 2 found this difference had no row of its own | yes: county and state rates; national rates do not move | 2022.1.1 |
+| 3 Oct 2026 | **A true zero stays a zero** (commit cf43350). In the 19 Aug files `baseline_heating_consumption` is blank where the home used no energy (1,020 rdu of today's sample), and `baseline_cooling_consumption` on 7 rdu; both are 0 now. Row added 9 Oct 2026, for the same reason | no result moved | 2022.1.1 |
 | 5 Oct 2026 | **Study sample narrowed** to homes with a central or room AC of their own (260,211 to 221,205 rdu); retrofit energy and the home table no longer rounded during the run; climate damages in 2025 dollars | yes: MP3 no-rebate adoption 18.81%, MP4 18.99% (221,205 rdu) | 2022.1.1 |
 | 6 Oct 2026 | **Tepper files**: study-sample rows only (1,146 rdu in Allegheny, 221,205 national), ship `include_sample`, gain the base-year fan, pump and backup columns (167 columns), and a detailed copy splits each year by fuel (317 columns) | no | 2022.1.1 |
 | 7 Oct 2026 | **ResStock 2025.1 MP5, dual fuel**: heat pump priced at SEER1 16.0; backup gas furnace priced and added to the capital cost; June 2026 rebate equals 2024 for MP5; winter and summer peak names; four electric panel columns; MP5 Tepper files hold 182 and 332 columns (1,091 rdu in Allegheny, 161,983 national) | new package | 2025.1 |
 | 9 Oct 2026 | **Boiler pricing** (Stage 1): the credit for an old natural gas or propane boiler is priced on the REMDB non-condensing gas boiler row, and for an old fuel oil boiler on the oil boiler row, with a floor of AFUE 0.80. Until then they were priced as gas furnaces. 20,973 rdu (5,078,214 homes) in 2022.1.1 and 2,528 rdu (641,868 homes) in 2025.1; their mean credit goes from $3,473.72 to $7,638.08 and from $3,442.91 to $7,766.02. Nothing else decided in section 3 changed the code: electric furnaces and electric boilers stay on the baseboard row (D-9). | yes: no-rebate adoption with both credits, MP3 18.81% to 19.35%, MP4 18.99% to 19.47%, MP5 3.27% to 3.39% (section 7.2). In the Tepper files only homes with a fossil boiler differ, in the heating credit, the net capital cost, the NPV and the adopter flag | both |
+
+**The commit and the run behind each row** (added 9 Oct 2026, from the change audit in
+`~/tare_port/s11_outputs/`). A session's date and its commit's date can differ by a day
+or two: a run was usually made just before its commit. Run `2026-08-19_20-56` itself
+was made on commit `68f0964` plus the old-system size fix, before `2f54ed2` existed.
+
+| Row above | Commits | Run that shows the effect |
+|---|---|---|
+| Before the 19 Aug data: the credit is priced at the old system's own size | `2f54ed2`, committed 28 Aug | `2026-08-19_20-56` against `2026-08-19_13-19` |
+| 22 to 23 Sep, consumption fix and income per home | `5ff4d4f`, committed 24 Sep; `3ea1a40` | `2026-09-23_15-34` against `2026-08-19_20-56` |
+| 25 Sep, study sample flag | `ef849cc`, committed 26 Sep | `2026-09-25_22-55` against `2026-09-23_15-34` |
+| 2 Oct, county and state rates | `e4b670d` | no run of its own; the figures are in the commit message |
+| 3 Oct, zeros; 5 Oct, no rounding during the run | `cf43350`, `c35eacf` | `2026-10-05_00-54` against `2026-10-04_23-02` |
+| 5 Oct, study sample narrowed | `55848a1` (2 Oct, homes with no AC), `6d82f3b` (3 Oct, shared cooling) | `2026-09-30_22-35` against `2026-09-30_19-06`; `2026-10-05_00-54` |
+| 5 Oct, climate damages in 2025 dollars | `43a8ef9` | `2026-10-05_21-33` against `2026-10-05_00-54` |
+| 6 Oct, Tepper files | `ed56dc3`, committed 5 Oct | checked on `2026-10-05_21-33` |
+| 7 Oct, ResStock 2025.1 MP5 | `6e5c549` to `3944048` | `2026-10-07_19-14`; `2026-10-07_19-22` is byte-identical to `2026-10-06_20-23` |
+| 9 Oct, boiler pricing | `5a91996` | `2026-10-09_00-46` and `2026-10-09_00-38` against `2026-10-07_19-22` and `2026-10-07_19-14` |
 
 ---
 
@@ -528,6 +552,7 @@ timestamps, and where the detail is.
 | 9 Oct 2026 | Step 4, boiler fix made and run. Pennsylvania and national runs on both releases (section 7.1), grid impact off. Every comparison passed: only fossil boiler rdu differ, in 20 columns; new NPV = old NPV + change in credit to the cent; study sample unchanged; the national credits and the adoption of all nine cases equal step 3's figures. Tests 417 passed, 1 skipped (18 new). Results in section 7.2. |
 | 9 Oct 2026 | Steps 8 and 9, records and Tepper checks, made with the researcher away and every edit auto-approved for the session at the researcher's request. The national runs of step 4 are used as the final runs; the researcher may ask for a re-run after committing. The Tepper checks of sections 13 and 14.4 of the data dictionary pass on them (25 checks per package). Two things seen in those checks, both the same in the runs before the fix and neither a fault in the files: `occupancy` reads as text in the national package 5 file and as numbers in the Allegheny one; and a number in a Tepper file can differ from the same number in the results file in its last digits (relative difference up to 7.5e-13). Also noted: the county Tepper file is sorted by adoption rate, and counties with equal rates can change places between runs, so those files are compared county by county. Nothing is committed yet. |
 | 9 Oct 2026 | Stage 2 session, with every gate auto-approved until the commit point at the researcher's request. No model code changed, no model was run and no value moved. The files as sent to Chris on 19 Aug 2026 are in `~/tare_port/s9_inputs/`, not in `tepper_export/` (section 5 corrected). Comparison, validation, the two sheets and the facts file are done; results in section 7.3, files in `~/tare_port/s9_outputs/`, scripts `~/tare_port/s9_*.py`. Validation: the checks of sections 13 and 14.4 of the Tepper data dictionary, with two added for the Allegheny county file, pass on all 18 new files (27 per package); the three `source_data/` CSVs equal the model's inputs, and the two Chris has are unchanged byte for byte. Two differences between the old and the new files have no row of their own in section 6: what the county file's `home_count` and `adoption_rate_pct` are measured over (the nearest row is 25 Sep 2026), and a zero that was a blank in `baseline_heating_consumption` (1,020 rdu of today's sample) and `baseline_cooling_consumption` (7 rdu), which the hand-over note of 2 Oct 2026 records. Neither contradicts the plan, and section 6 is left as it is. Still open: the researcher's review of the workbook, and the email (D-6). |
+| 9 Oct 2026 | Change audit and writeup session, with each gate approved by the researcher. No model code changed, no model was run and no value moved. Found: no commit is exactly the code of run `2026-08-19_20-56`. It was made on `68f0964` plus the old-system size fix, first committed as `2f54ed2` on 28 Aug. From there to `6a12e05` are 69 commits, 14 of them value-moving. Stage 1 is committed as `5a91996` (code) and `0624802` (records), so the status line of section 4 has an update. Section 6 gains two rows (county rates, and a zero that was a blank) and a table of the commit and the run behind each row. Section 7.4 holds the nine cases of Stage 2's follow-up, which were only in `~/tare_port/s9_outputs/`. Q5 was already recorded as confirmed (8 Oct). `SESSION_LOG.md` gains seven rows. Researcher: `GRID_IMPACT_ANALYSIS = False` stays uncommitted for now, because the dual-fuel analysis for Chris does not need grid impact; a separate ResStock 2022.1.1 run with it on is planned for the paper. Documents: the change audit and the detailed writeup, in `~/tare_port/s11_outputs/`. |
 
 ### 7.1 Runs
 
@@ -548,6 +573,10 @@ final runs were made on the working tree, before the researcher's commit. The on
 change to a code file since they started is the researcher's
 `GRID_IMPACT_ANALYSIS = False` in `constants.py`, which changes no result: both
 runs already had grid impact off through the runner.
+
+**Update, later on 9 Oct 2026:** the Stage 1 code is commit `5a91996`, made after both
+final runs. The `GRID_IMPACT_ANALYSIS = False` line is still uncommitted, on purpose;
+the committed value is True.
 
 ### 7.2 Results after Stage 1
 
@@ -651,3 +680,51 @@ Files written, all in `~/tare_port/s9_outputs/`:
 | `s9_validation_report.md` | the checks on the 18 new files and the three source CSVs |
 | `TARE_Export_README_and_Dictionary.xlsx` | the README (73 rows) and the Data Dictionary (136 rows), laid out as the two sheets of the 19 Aug workbook. Every column of every new household file has one dictionary row |
 | `s9_email_facts.md` | the facts for the email (D-6) |
+
+### 7.4 Stage 2 follow-up: all nine cases
+
+Added to this file on 9 Oct 2026. Measured the same day by
+`~/tare_port/s9_task2b_rebate_cases.py`, which reads each run's results table; no model
+was run. Detail: section 6 of `~/tare_port/s9_outputs/s9_comparison_summary.md` and the
+tables `s9_t2_rebate_cases_*.csv` and `s9_t2_cost_offsets_*.csv`. "19 Aug MP3" is run
+`2026-08-19_20-56` limited to the rdu of today's study sample. 7% discount rate,
+USD2025.
+
+Adoption, national, percent of the study sample (no rebate / 2024 guidance / June 2026
+guidance):
+
+| Credit scope | 19 Aug MP3 | New MP3 | New MP4 | New MP5 |
+|---|---|---|---|---|
+| Both credits | 30.18 / 67.48 / 37.37 | 19.35 / 46.64 / 26.88 | 19.47 / 49.37 / 28.89 | 3.39 / 29.48 / 29.48 |
+| Old heating credit only | 13.43 / 33.42 / 19.87 | 6.84 / 20.46 / 13.82 | 8.71 / 22.01 / 15.12 | 1.38 / 3.28 / 3.28 |
+| Old AC credit only | 17.13 / 48.92 / 26.04 | 9.19 / 32.11 / 18.94 | 10.70 / 29.01 / 18.99 | 1.78 / 6.30 / 6.30 |
+
+Adoption, Allegheny County (1,146 rdu; 1,091 rdu for MP5):
+
+| Credit scope | 19 Aug MP3 | New MP3 | New MP4 | New MP5 |
+|---|---|---|---|---|
+| Both credits | 21.90 / 62.13 / 22.25 | 3.93 / 10.30 / 4.36 | 5.93 / 14.31 / 6.72 | 0.64 / 18.70 / 18.70 |
+| Old heating credit only | 6.37 / 28.97 / 6.72 | 2.44 / 4.45 / 3.49 | 4.28 / 7.16 / 5.67 | 0.27 / 0.73 / 0.73 |
+| Old AC credit only | 8.29 / 43.19 / 8.55 | 3.14 / 4.80 / 3.75 | 4.28 / 7.33 / 5.85 | 0.27 / 1.19 / 1.19 |
+
+Mean dollars per home in the new files:
+
+| Part | MP3, national | MP5, national | MP3, Allegheny | MP5, Allegheny |
+|---|---|---|---|---|
+| Credit for the old heating system | 4,283 | 3,810 | 4,371 | 3,895 |
+| Credit for the old AC | 5,307 | 5,843 | 4,268 | 4,724 |
+| Rebate, 2024 guidance, over every home (share of homes with one) | 5,483 (89.15%) | 4,959 (74.97%) | 5,603 (96.51%) | 4,812 (71.49%) |
+| Rebate, June 2026 guidance, over every home (share of homes with one) | 1,539 (23.55%) | 4,959 (74.97%) | 309 (5.24%) | 4,812 (71.49%) |
+
+- With no rebate, the credit for the old AC moves MP3 adoption more than the credit for
+  the old heating system: 19.35% with both, 9.19% with the AC credit alone, 6.84% with
+  the heating credit alone.
+- Under the June 2026 guidance, as modeled, no home that heats with natural gas, propane
+  or fuel oil gets a rebate for MP3 or MP4, so its adoption is the no-rebate rate. For
+  MP3 and MP4 the June 2026 HOMES rebate is still limited to homes that heat with
+  electricity (CLAUDE.md, "Fuel gate": the fuel-neutral change is deferred). MP5 passes
+  both fuel gates. Read the June 2026 comparison of MP5 with MP3 and MP4 with that in
+  mind.
+- The script stops unless the adopters of every case listed in `REFERENCE_VALUES.md` are
+  the ones in the run (37 counts), and unless the NPV equals savings less net capital
+  cost on every rdu in all nine cases. All passed.

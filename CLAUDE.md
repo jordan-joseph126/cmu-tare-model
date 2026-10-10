@@ -19,6 +19,16 @@
 #     many rdu fall outside a cost row's range.
 #   - Runs, grid impact off: 2022.1.1 `2026-10-09_00-46` and 2025.1 `2026-10-09_00-38`.
 #     The default release stays 2022.1.1.
+#   - Later on 9 October, with no code or value changed: Stage 2 checked the new files
+#     for Chris (27 checks per package, all passed) and compared them with the 19 Aug
+#     data. On the same 221,205 rdu, no-rebate adoption went from 30.18% to 19.35%
+#     (MP3) and from 19.71% to 19.47% (MP4). Results: sections 7.3 and 7.4 of
+#     `docs/DF_COST_FIXES_AND_DATA_SHARE_PLAN.md`.
+#   - A change audit of 19 Aug to 9 Oct found that run `2026-08-19_20-56` was made on
+#     commit 68f0964 plus the old-system size fix, first committed as 2f54ed2. From
+#     there to 6a12e05 are 69 commits, 14 of them value-moving. `docs/SESSION_LOG.md`
+#     gains the rows missing since 19 Sep. The audit and a detailed writeup are in
+#     `~/tare_port/s11_outputs/`, off the repo.
 #
 # Previously: 7 October 2026 — dual-fuel package (ResStock 2025.1, MP5) runs end to end
 #   - ResStock 2025.1 package 5, a heat pump with a gas backup furnace, runs nationally:
