@@ -3,7 +3,27 @@
 ## Heat-Pump Electrification Economics (ResStock 2022.1.1 / EUSS)
 #
 ```text
-# Last updated: 9 October 2026 — old boilers are priced on the REMDB boiler rows
+# Last updated: 11 October 2026 — paper numbers verified against the final run
+#   - Every modeled number the Nature Communications draft prints was worked out again
+#     from the saved runs: draft run `2026-08-19_20-56` against final run
+#     `2026-10-09_00-46`, MP3 and MP4. The result is
+#     `docs/PAPER_NUMBERS_VERIFIED_2026-10-09.md` (106 numbered rows, 28 discrepancy
+#     lines). Use it as the source of numbers for the manuscript revision.
+#   - Run `2026-10-09_00-46` was loaded again in the main notebook on 11 October with
+#     grid impact on. Allegheny economic-adopter peak after the boiler fix: 713.86 MW
+#     (MP3, 45 adopters) and 715.16 MW (MP4, 68 adopters), both at hour 4433. The new
+#     row in `docs/REFERENCE_VALUES.md` supersedes 715.26 MW (67 adopters) for MP4.
+#   - No code or modeled value changed. The 12 export files the notebook wrote again
+#     are byte-identical to those of 9 October, and every number it printed equals
+#     the records.
+#   - The main notebook is committed with its outputs, because they are the values
+#     the paper shows (run `2026-10-09_00-46`, grid impact on).
+#   - Deferred to a future session, planned for the week of 12 October 2026 while the
+#     co-authors review the new draft: notebook cleanup and the move from version 3.0
+#     to 3.1, the merge with main, the 3.1 release on GitHub, and the Zenodo update
+#     (the staged Zenodo files still hold the draft run).
+#
+# Previously: 9 October 2026 — old boilers are priced on the REMDB boiler rows
 #   - The credit for an old gas or propane boiler uses the non-condensing gas boiler
 #     row, and for an old fuel oil boiler the oil boiler row, with a floor of AFUE
 #     0.80. Both were on the gas furnace row. Value-moving on both releases: 20,973
@@ -29,21 +49,6 @@
 #     there to 6a12e05 are 69 commits, 14 of them value-moving. `docs/SESSION_LOG.md`
 #     gains the rows missing since 19 Sep. The audit and a detailed writeup are in
 #     `~/tare_port/s11_outputs/`, off the repo.
-#
-# Previously: 7 October 2026 — dual-fuel package (ResStock 2025.1, MP5) runs end to end
-#   - ResStock 2025.1 package 5, a heat pump with a gas backup furnace, runs nationally:
-#     161,983 rdu (41,128,079 homes) in 2,973 counties, run `2026-10-07_19-14`. Its first
-#     reference values are in their own table in `docs/REFERENCE_VALUES.md`.
-#   - The release is chosen with the environment variable `TARE_RESSTOCK_RELEASE`, and
-#     `scripts/run_tare_notebooks.py` runs the notebooks without the keyboard.
-#   - The heat pump is priced at SEER1 16.0 (from SEER2 15.2), and the backup gas furnace
-#     is priced and added to the capital cost (Limitation 14).
-#   - A dual-fuel retrofit passes both June 2026 fuel gates, so its June 2026 rebate
-#     equals its 2024 rebate. DOE Program Notice 26-3 is not yet reviewed.
-#   - 2025.1 peak electric demand columns are named for winter and summer. The Tepper
-#     household files for package 5 hold 182 and 332 columns (167 and 317 for 2022.1.1).
-#   - No 2022.1.1 value moved: run `2026-10-07_19-22` is byte-identical in all 22 files
-#     to run `2026-10-06_20-23`, made before the dual-fuel model code went in.
 ```
 
 > This file is read by Claude Code at the start of every session. It is the authoritative
@@ -778,6 +783,8 @@ Validated baseline numbers from past model runs, used to confirm whether a code 
 - deciding whether a code change is expected to move a modeled value
 
 **When you do change a value:** never silently overwrite a row in that file. Add a new row marked "supersedes" and keep the old row, exactly as that file itself documents.
+
+**Numbers for the Nature Communications manuscript:** open `docs/PAPER_NUMBERS_VERIFIED_2026-10-09.md`. It maps every modeled number the 5 Oct 2026 draft prints to its value on run `2026-10-09_00-46`, gives suggested text, and lists what in the draft does not check.
 
 ---
 

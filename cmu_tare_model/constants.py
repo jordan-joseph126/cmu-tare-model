@@ -121,7 +121,12 @@ RESSTOCK_RELEASE_AND_MP = {
 # notebook runner (scripts/run_tare_notebooks.py --release) sets the variable
 # first; with it unset, nothing changes from the 2022.1.1 analysis.
 RESSTOCK_RELEASE_ENV_VAR = 'TARE_RESSTOCK_RELEASE'
+
+# Set ResStock data release for this run.
 RESSTOCK_RELEASE_THIS_RUN = os.environ.get(RESSTOCK_RELEASE_ENV_VAR, '2022.1.1')
+# RESSTOCK_RELEASE_THIS_RUN = os.environ.get(RESSTOCK_RELEASE_ENV_VAR, '2025.1')
+
+
 if RESSTOCK_RELEASE_THIS_RUN not in RESSTOCK_RELEASE_AND_MP:
     raise ValueError(
         f"{RESSTOCK_RELEASE_ENV_VAR}={RESSTOCK_RELEASE_THIS_RUN!r} is not a known "
@@ -192,7 +197,9 @@ CAPITAL_COST_VALIDATION = True
 # TODO (grid impact, 2025.1): the grid impact analysis works on ResStock 2022.1.1
 # only for now. It will be updated for the dual-fuel analysis (2025.1). Until
 # then switch it off for a 2025.1 run (run_tare_notebooks.py --skip-grid-impact).
-GRID_IMPACT_ANALYSIS = True
+
+# Temporary switch to skip grid impact analysis for 2025.1 runs (dual-fuel study).
+GRID_IMPACT_ANALYSIS = True 
 
 # =============================================================
 # CONSTANTS: TARE MODEL - GENERAL
