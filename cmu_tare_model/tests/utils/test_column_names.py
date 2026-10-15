@@ -231,3 +231,86 @@ def test_all_categories_in_fuel_cost_col():
     for cat in ['heating', 'waterHeating', 'clothesDrying', 'cooking']:
         result = create_fuel_cost_col('baseline_', 'year1', cat)
         assert cat in result
+
+
+# -- Peak electric demand names follow the release ----------------------------
+
+def test_peak_electricity_names_2022_are_unchanged():
+    """2022.1.1 keeps its heating and cooling peak names."""
+    from cmu_tare_model.utils.column_names import create_peak_electricity_col
+    assert create_peak_electricity_col('base_', 'heating', '2022.1.1') == (
+        'base_peak_electricity_heating_kw')
+    assert create_peak_electricity_col('mp4_', 'cooling', '2022.1.1', savings=True) == (
+        'mp4_peak_electricity_cooling_kw_savings')
+
+
+def test_peak_electricity_names_2025_say_winter_and_summer():
+    """2025.1 names say winter and summer; an unknown release or end use stops."""
+    from cmu_tare_model.utils.column_names import create_peak_electricity_col
+    assert create_peak_electricity_col('base_', 'heating', '2025.1') == (
+        'base_peak_electricity_winter_kw')
+    assert create_peak_electricity_col('base_', 'cooling', '2025.1') == (
+        'base_peak_electricity_summer_kw')
+    assert create_peak_electricity_col('mp5_', 'heating', '2025.1', savings=True) == (
+        'mp5_peak_electricity_winter_kw_savings')
+    with pytest.raises(KeyError):
+        create_peak_electricity_col('base_', 'heating', '2030.1')
+    with pytest.raises(KeyError, match='waterHeating'):
+        create_peak_electricity_col('base_', 'waterHeating', '2025.1')
+
+
+def test_tepper_list_uses_the_release_peak_names():
+    """Under the default release (2022.1.1) the export keeps its peak names."""
+    from cmu_tare_model.utils.export_tepper_csv import build_household_column_list
+    columns = build_household_column_list(4, summary_columns=[])
+    assert 'base_peak_electricity_heating_kw' in columns
+    assert 'mp4_peak_electricity_cooling_kw_savings' in columns
+    assert not any(
+        'winter' in column or 'summer' in column for column in columns)
+
+
+def test_tepper_list_adds_furnace_and_dual_fuel_columns_only_for_dual_fuel(
+        monkeypatch):
+    """Only a dual-fuel package gets the furnace cost and dual-fuel ratings."""
+    from cmu_tare_model.utils import export_tepper_csv
+    columns_mp4 = export_tepper_csv.build_household_column_list(
+        4, summary_columns=[])
+    assert not any('backupFurnace' in column for column in columns_mp4)
+    assert 'upgrade_backup_afue' not in columns_mp4
+    # The same list for a package treated as dual fuel.
+    monkeypatch.setattr(
+        export_tepper_csv, 'is_dual_fuel_package', lambda menu_mp: True)
+    columns_dual = export_tepper_csv.build_household_column_list(
+        4, summary_columns=[])
+    assert 'mp4_heating_backupFurnace_installed_cost_v4MID' in columns_dual
+    for column in ('upgrade_hp_seer2', 'upgrade_hp_seer1', 'upgrade_backup_afue',
+                   'size_heat_pump_backup_primary_k_btu_h'):
+        assert column in columns_dual
+    # The furnace cost sits beside the heat pump's upgrade cost.
+    position = columns_dual.index('mp4_heating_backupFurnace_installed_cost_v4MID')
+    assert columns_dual[position - 1] == 'mp4_heating_upgrade_installed_cost_v4MID'
+
+
+def test_tepper_list_holds_the_panel_columns_only_for_2025(monkeypatch):
+    """A 2025.1 run's list holds the four electric panel columns; 2022.1.1 none."""
+    from cmu_tare_model.utils import export_tepper_csv
+    panel_columns = [
+        'panel_service_rating_amps',
+        'mp4_panel_constraint_overall',
+        'mp4_panel_constraint_capacity',
+        'mp4_panel_constraint_breaker_space',
+    ]
+    monkeypatch.setattr(export_tepper_csv, 'RESSTOCK_RELEASE_THIS_RUN', '2022.1.1')
+    columns_2022 = export_tepper_csv.build_household_column_list(
+        4, summary_columns=[])
+    assert not any('panel' in column for column in columns_2022)
+    # The same package number as a 2025.1 run: the panel columns follow the
+    # release, not the package, so package 4 can stand in for any package.
+    monkeypatch.setattr(export_tepper_csv, 'RESSTOCK_RELEASE_THIS_RUN', '2025.1')
+    columns_2025 = export_tepper_csv.build_household_column_list(
+        4, summary_columns=[])
+    for column in panel_columns:
+        assert column in columns_2025
+    # They sit together, in this order.
+    position = columns_2025.index('panel_service_rating_amps')
+    assert columns_2025[position:position + 4] == panel_columns

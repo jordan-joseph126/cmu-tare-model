@@ -44,6 +44,11 @@ from cmu_tare_model.constants import (
 
 MetricType = Literal["replacement", "upgrade"]
 
+# A heat pump's SEER1 rating converted from its published SEER2 rating, set
+# only for packages rated in SEER2 (add_dual_fuel_spec_columns in
+# process_euss_data.py). The upgrade cost prices these homes from it.
+SEER1_FROM_SEER2_COL = 'upgrade_hp_seer1'
+
 
 # ============================================================
 # HELPER FUNCTIONS
@@ -95,7 +100,19 @@ def _assign_replacement_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
     # the regression instead. Non-ducted homes default to multi-zone (no
     # single-zone or new-circuit sizing modeled yet).
     if end_use == 'heating':
+        # An old boiler is priced on a boiler row, the closest REMDB has to it.
+        # Gas and propane boilers share the non-condensing gas row: REMDB has
+        # no propane boiler row, and the boilers being replaced are older,
+        # less efficient units. np.select takes the first match, so these two
+        # come before the fuel-only lines that price furnaces.
+        heating_type = df_copy['heating_type']
+        is_oil_boiler = heating_type == 'Fuel Oil Fuel Boiler'
+        is_gas_or_propane_boiler = heating_type.isin(
+            ['Natural Gas Fuel Boiler', 'Propane Fuel Boiler'])
+
         conditions = [
+            is_oil_boiler,
+            is_gas_or_propane_boiler,
             (df_copy['base_heating_fuel'] == 'Propane'),
             (df_copy['base_heating_fuel'] == 'Fuel Oil'),
             (df_copy['base_heating_fuel'] == 'Natural Gas'),
@@ -105,9 +122,16 @@ def _assign_replacement_row_id(df: pd.DataFrame, end_use: str) -> pd.DataFrame:
         ]
 
         choices = [
+            'boiler_oil',
+            'boiler_gas_non_condensing',
             'furnaces_gas_furnace',  # Proxy for propane
             'furnaces_gas_furnace',  # Proxy for fuel oil
             'furnaces_gas_furnace',
+            # TODO (electric furnace and boiler): REMDB has no row for either,
+            # so both are priced as baseboard, a row with no efficiency term.
+            # The gas furnace and gas boiler rows fit the equipment but price
+            # AFUE, which ResStock publishes as 100% for these systems, above
+            # both rows' ranges. Revisit after asking NLR's REMDB researchers.
             'electric_baseboard_default',
             'air_source_heat_pump_centrally_ducted',
             'air_source_heat_pump_non_ducted_multi_zone'
@@ -726,6 +750,28 @@ def add_remdb_metrics(
         pm2_metric_col=f'{prefix}pm2_metric',
         pm2_unit_col=f'{prefix}pm2_unit'
     )
+
+    # =========================================================================
+    # STEP 4a: Heat pumps rated in SEER2 (upgrade only)
+    # =========================================================================
+    # _convert_pm2 takes the first number in the option string. For the
+    # 2025.1 dual-fuel package that number is its SEER2 rating (15.2), but the
+    # REMDB heat-pump row's pm2 metric is SEER1. Fed unconverted, 15.2 sits
+    # inside the regression's bounds, so nothing would flag it, and the heat
+    # pump would be priced as a less efficient (cheaper) unit. Homes whose
+    # rating was parsed as SEER2 (add_dual_fuel_spec_columns in
+    # process_euss_data.py) get their SEER1 rating instead.
+    if metric_type == 'upgrade' and SEER1_FROM_SEER2_COL in df_copy.columns:
+        is_seer2_rated = df_copy[SEER1_FROM_SEER2_COL].notna()
+        pm2_metric = df_copy.loc[is_seer2_rated, f'{prefix}pm2_metric']
+        not_seer1 = pm2_metric.str.upper().str.strip() != 'SEER1'
+        if not_seer1.any():
+            raise ValueError(
+                f"{int(not_seer1.sum()):,} SEER2-rated homes map to a REMDB row "
+                f"whose pm2 metric is not SEER1: "
+                f"{sorted(pm2_metric[not_seer1].dropna().unique())}")
+        df_copy.loc[is_seer2_rated, pm2_col] = (
+            df_copy.loc[is_seer2_rated, SEER1_FROM_SEER2_COL])
     
     # Diagnostic: Explain NaN sources for pm1 and pm2
     if verbose:
@@ -869,3 +915,161 @@ def add_remdb_metrics(
     df_detailed = df_copy[detailed_existing].copy()
     
     return df_main, df_detailed  # ← Always return both
+
+
+# =============================================================================
+# DUAL-FUEL BACKUP FURNACE (2025.1 Upgrade 05)
+# =============================================================================
+
+# Prefix of the backup furnace's REMDB columns. Kept apart from the heat
+# pump's 'heating_upgrade_' columns: the dual-fuel retrofit installs both, and
+# each is priced on its own REMDB row.
+BACKUP_FURNACE_PREFIX = 'heating_backupFurnace_'
+
+# The backup furnace's own size from the retrofit run, and its parsed fuel and
+# AFUE (add_dual_fuel_spec_columns in process_euss_data.py).
+BACKUP_FURNACE_SIZE_COL = 'size_heat_pump_backup_primary_k_btu_h'
+BACKUP_FURNACE_FUEL_COL = 'upgrade_backup_fuel'
+BACKUP_FURNACE_AFUE_COL = 'upgrade_backup_afue'
+
+# REMDB row for each backup fuel. Only a gas backup is published today. A
+# propane or oil backup would need its own decision on a proxy row (the
+# replacement cost uses the gas furnace row as a proxy for both), so it is
+# left out here and stops the run instead of being priced as gas.
+BACKUP_FURNACE_ROW_BY_FUEL = {'Natural Gas': 'furnaces_gas_furnace'}
+
+# A condensing furnace's AFUE as a fraction. Anything outside this range
+# means the value was read wrongly (0.00925 from dividing a fraction by 100
+# again, or 92.5 left as a percentage), not that the furnace is unusual.
+BACKUP_FURNACE_AFUE_RANGE = (0.5, 1.0)
+
+
+def add_backup_furnace_metrics(
+    df: pd.DataFrame,
+    remdb_v4_costs: pd.DataFrame,
+    percentile: str = 'mid',
+    verbose: bool = True,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Prepares the REMDB v4 inputs that price a dual-fuel backup furnace.
+
+    The dual-fuel retrofit installs a new condensing gas furnace next to the
+    heat pump. It is priced with the same REMDB row and coefficients that
+    price a gas furnace replacement ('furnaces_gas_furnace': pm1 = heating
+    capacity in BTU/hr, pm2 = AFUE as a fraction), as the researcher decided,
+    at the furnace's own size and rating:
+
+    - pm1: the backup furnace's size from the retrofit run
+      (size_heat_pump_backup_primary_k_btu_h, kBtu/h, x 1000). ResStock
+      sizes the backup again in the retrofit run; for boiler and baseboard
+      homes it is about a third larger than the old system, so the old
+      system's size is not used.
+    - pm2: the furnace's AFUE parsed from the option string (0.925 or 0.95).
+      It is already a fraction, so it does not go through _convert_pm2,
+      which would divide it by 100 again.
+
+    No efficiency floor is applied: the furnace is new equipment at its rated
+    AFUE, which is above every floor.
+
+    Args:
+        df: Retrofit frame holding the three BACKUP_FURNACE_*_COL columns.
+        remdb_v4_costs: REMDB v4 cost table, indexed by row_id.
+        percentile: Cost percentile ('low', 'mid', 'high').
+        verbose: Whether to print the row and metric summary.
+
+    Returns:
+        Tuple (df_main, df_detailed), as add_remdb_metrics returns:
+            df_main: df with row_id_heating_backupFurnace and the two
+                converted metrics added.
+            df_detailed: the REMDB parameters for each home.
+
+    Raises:
+        KeyError: If a required column is missing.
+        ValueError: If percentile is unknown, a home's backup fuel has no
+            REMDB row, the row's metrics are not BTU/hr and AFUE, or an AFUE
+            is outside BACKUP_FURNACE_AFUE_RANGE.
+    """
+    # Step 1 -- validate inputs
+    if percentile not in ('low', 'mid', 'high'):
+        raise ValueError(f"Invalid percentile: '{percentile}'")
+    for col in (BACKUP_FURNACE_SIZE_COL, BACKUP_FURNACE_FUEL_COL,
+                BACKUP_FURNACE_AFUE_COL):
+        if col not in df.columns:
+            raise KeyError(f"Missing required column: '{col}'")
+
+    df_copy = df.copy()
+    metric_type = 'backupFurnace'
+    prefix = BACKUP_FURNACE_PREFIX
+    row_id_col = f'row_id_heating_{metric_type}'
+
+    # Step 2 -- REMDB row from the backup fuel. A home with no backup fuel
+    # (outside the package) gets no row and so no cost.
+    backup_fuel = df_copy[BACKUP_FURNACE_FUEL_COL]
+    has_backup = backup_fuel.notna()
+    unpriced_fuels = sorted(
+        set(backup_fuel[has_backup].unique()) - set(BACKUP_FURNACE_ROW_BY_FUEL))
+    if unpriced_fuels:
+        raise ValueError(
+            f"No REMDB furnace row for backup fuel(s) {unpriced_fuels}; add "
+            "one to BACKUP_FURNACE_ROW_BY_FUEL once a pricing proxy is decided")
+    df_copy[row_id_col] = backup_fuel.map(BACKUP_FURNACE_ROW_BY_FUEL)
+
+    # Step 3 -- coefficients and units of that row
+    df_copy = _map_remdb_parameters(
+        df_copy, remdb_v4_costs, 'heating', metric_type, percentile)
+    pm1_unit_col = f'{prefix}pm1_unit'
+    pm2_metric_col = f'{prefix}pm2_metric'
+    priced = df_copy[row_id_col].notna()
+    pm1_units = set(df_copy.loc[priced, pm1_unit_col].str.lower().str.strip())
+    pm2_metrics = set(df_copy.loc[priced, pm2_metric_col].str.upper().str.strip())
+    if not pm1_units <= {'btu/hr'} or not pm2_metrics <= {'AFUE'}:
+        raise ValueError(
+            f"The backup furnace's REMDB row must take BTU/hr and AFUE; it "
+            f"takes {sorted(pm1_units)} and {sorted(pm2_metrics)}")
+
+    # Step 4 -- metrics in the regression's units
+    pm1_col = f'{prefix}pm1_euss'
+    pm2_col = f'{prefix}pm2_euss'
+    df_copy[pm1_col] = _convert_pm1(
+        df=df_copy, pm1_euss_value_col=BACKUP_FURNACE_SIZE_COL,
+        pm1_metric_col=f'{prefix}pm1_metric', pm1_unit_col=pm1_unit_col)
+    df_copy.loc[~priced, pm1_col] = np.nan
+    df_copy[pm2_col] = df_copy[BACKUP_FURNACE_AFUE_COL].where(priced)
+    low, high = BACKUP_FURNACE_AFUE_RANGE
+    afue = df_copy.loc[priced, pm2_col]
+    out_of_range = ~((afue > low) & (afue <= high))
+    if out_of_range.any():
+        raise ValueError(
+            f"{int(out_of_range.sum()):,} backup furnace AFUE values are not a "
+            f"fraction between {low} and {high}: "
+            f"{sorted(afue[out_of_range].unique())[:5]}")
+
+    if verbose:
+        print(f"\n{'='*60}")
+        print("Preparing heating BACKUP FURNACE metrics (REMDB v4)")
+        print(f"{'='*60}")
+        print(f"  Row ID Distribution ({row_id_col}):")
+        print(df_copy[row_id_col].value_counts(dropna=False).to_string())
+        print(f"  pm1 (BTU/hr): mean {df_copy[pm1_col].mean():,.0f}")
+        print(f"  pm2 (AFUE) values: "
+              f"{df_copy[pm2_col].value_counts().sort_index().to_dict()}")
+        _report_bounds_comparison(
+            df=df_copy, row_id_col=row_id_col, pm_col=pm1_col,
+            lower_bound_col=f'{prefix}pm1_lower_bound',
+            upper_bound_col=f'{prefix}pm1_upper_bound',
+            metric_name='capacity', verbose=verbose)
+
+    # Step 5 -- outputs in the same shape as add_remdb_metrics
+    summary_cols = [row_id_col, pm1_col, pm2_col]
+    detailed_cols = summary_cols + [
+        f'{prefix}pm1_metric', f'{prefix}pm1_unit', f'{prefix}pm1_coef_{percentile}',
+        f'{prefix}pm1_lower_bound', f'{prefix}pm1_upper_bound',
+        f'{prefix}pm2_metric', f'{prefix}pm2_unit', f'{prefix}pm2_coef_{percentile}',
+        f'{prefix}pm2_lower_bound', f'{prefix}pm2_upper_bound',
+        f'{prefix}intercept_{percentile}',
+        f'{prefix}multiplier_retrofit', f'{prefix}adder_retrofit',
+    ]
+    df_main = pd.concat(
+        [df.drop(columns=[c for c in summary_cols if c in df.columns]),
+         df_copy[summary_cols]], axis=1)
+    df_detailed = df_copy[[c for c in detailed_cols if c in df_copy.columns]].copy()
+    return df_main, df_detailed

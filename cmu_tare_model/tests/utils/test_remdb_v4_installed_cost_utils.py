@@ -14,10 +14,15 @@ size and the heat pump's size are clearly different numbers, making it
 obvious which one the function actually used.
 """
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from cmu_tare_model.utils.remdb_v4_installed_cost_utils import add_remdb_metrics
+from cmu_tare_model.utils.remdb_v4_installed_cost_utils import (
+    _assign_replacement_row_id,
+    add_backup_furnace_metrics,
+    add_remdb_metrics,
+)
 
 
 @pytest.fixture
@@ -99,3 +104,152 @@ def test_cooling_replacement_uses_old_ac_size(df_home, remdb_v4_costs):
         df_home, remdb_v4_costs, 'cooling', 'replacement', verbose=False)
     # 36 kBtu/h old AC -> 3.0 tons after the unit conversion.
     assert df_main['cooling_replacement_pm1_euss'].iloc[0] == pytest.approx(36.0 / 12.0)
+
+
+# -- Credit for an old heating system: its REMDB row and its lowest AFUE ------
+
+@pytest.mark.parametrize('heating_fuel, heating_type, expected_row', [
+    ('Natural Gas', 'Natural Gas Fuel Boiler', 'boiler_gas_non_condensing'),
+    ('Propane', 'Propane Fuel Boiler', 'boiler_gas_non_condensing'),
+    ('Fuel Oil', 'Fuel Oil Fuel Boiler', 'boiler_oil'),
+    ('Natural Gas', 'Natural Gas Fuel Furnace', 'furnaces_gas_furnace'),
+    ('Propane', 'Propane Fuel Furnace', 'furnaces_gas_furnace'),
+    ('Fuel Oil', 'Fuel Oil Fuel Furnace', 'furnaces_gas_furnace'),
+    ('Electricity', 'Electricity Electric Furnace', 'electric_baseboard_default'),
+    ('Electricity', 'Electricity Electric Boiler', 'electric_baseboard_default'),
+    ('Electricity', 'Electricity Baseboard', 'electric_baseboard_default'),
+])
+def test_old_heating_system_is_priced_on_its_remdb_row(
+        heating_fuel, heating_type, expected_row):
+    """A fossil boiler gets a boiler row; every other old system keeps its row."""
+    df_old_system = pd.DataFrame({
+        'base_heating_fuel': [heating_fuel],
+        'heating_type': [heating_type],
+        'hvac_has_ducts': ['Yes'],
+    })
+    df_rows = _assign_replacement_row_id(df_old_system, 'heating')
+    assert df_rows['row_id_heating_replacement'].iloc[0] == expected_row
+
+
+def _boiler_costs() -> pd.DataFrame:
+    """The two boiler rows, with the units and metric of the real REMDB table."""
+    boiler_row = {
+        'pm1_metric': 'Heating Capacity', 'pm1_unit': 'BTU/hr',
+        'pm2_metric': 'AFUE', 'pm2_unit': 'Unitless',
+    }
+    rows = {'boiler_gas_non_condensing': boiler_row, 'boiler_oil': boiler_row}
+    return pd.DataFrame.from_dict(rows, orient='index')
+
+
+@pytest.mark.parametrize('heating_fuel, heating_type', [
+    ('Natural Gas', 'Natural Gas Fuel Boiler'),
+    ('Propane', 'Propane Fuel Boiler'),
+    ('Fuel Oil', 'Fuel Oil Fuel Boiler'),
+])
+@pytest.mark.parametrize('published_efficiency, published_afue, priced_afue', [
+    # Below 0.80: priced at 0.80.
+    ('Fuel Boiler, 76% AFUE', 0.76, 0.80),
+    ('Fuel Boiler, 80% AFUE', 0.80, 0.80),
+    # Above 0.80: priced as published, even past the gas row's top (0.87).
+    ('Fuel Boiler, 90% AFUE', 0.90, 0.90),
+])
+def test_old_boiler_is_priced_at_afue_080_or_its_own_if_higher(
+        df_home, heating_fuel, heating_type,
+        published_efficiency, published_afue, priced_afue):
+    """An old boiler below AFUE 0.80 is priced at 0.80; its own value is kept."""
+    df_boiler = df_home.assign(
+        base_heating_fuel=[heating_fuel], heating_type=[heating_type],
+        base_heating_efficiency=[published_efficiency])
+    df_main, _ = add_remdb_metrics(
+        df_boiler, _boiler_costs(), 'heating', 'replacement', verbose=False)
+    priced = df_main['heating_replacement_pm2_euss'].iloc[0]
+    published = df_main['heating_replacement_pm2_euss_original'].iloc[0]
+    assert priced == pytest.approx(priced_afue)
+    assert published == pytest.approx(published_afue)
+    # The size priced is still the old boiler's own (60 kBtu/h in df_home).
+    assert df_main['heating_replacement_pm1_euss'].iloc[0] == pytest.approx(60_000.0)
+
+
+# -- SEER2-rated heat pumps (the 2025.1 dual-fuel package) --------------------
+
+def _seer1_costs() -> pd.DataFrame:
+    """Heat-pump row whose pm2 metric is SEER1, as in the real REMDB table."""
+    rows = {
+        'air_source_heat_pump_centrally_ducted': {
+            'pm1_metric': 'Cooling Capacity', 'pm1_unit': 'Tons',
+            'pm2_metric': 'SEER1', 'pm2_unit': 'Unitless',
+        },
+    }
+    return pd.DataFrame.from_dict(rows, orient='index')
+
+
+def test_seer2_rated_heat_pump_is_priced_at_seer1(df_home):
+    # The option string's first number is the SEER2 rating, 15.2; the
+    # regression must see the SEER1 value, 16.0.
+    df_dual_fuel = df_home.assign(
+        upgrade_hvac_heating_efficiency=[
+            'Dual-Fuel ASHP, SEER 15.2, 7.8 HSPF2, Integrated Backup, '
+            '92.5% AFUE NG, 35F switchover'],
+        upgrade_hp_seer1=[16.0])
+    df_main, _ = add_remdb_metrics(
+        df_dual_fuel, _seer1_costs(), 'heating', 'upgrade', verbose=False)
+    assert df_main['heating_upgrade_pm2_euss'].iloc[0] == pytest.approx(16.0)
+
+
+def test_seer1_rated_heat_pump_is_unchanged(df_home):
+    # A 2022.1.1 package carries no SEER2 column, so its rating is used as is.
+    df_mp3 = df_home.assign(
+        upgrade_hvac_heating_efficiency=['ASHP, SEER 16, 9.5 HSPF'])
+    df_main, _ = add_remdb_metrics(
+        df_mp3, _seer1_costs(), 'heating', 'upgrade', verbose=False)
+    assert df_main['heating_upgrade_pm2_euss'].iloc[0] == pytest.approx(16.0)
+
+
+def test_seer2_rated_heat_pump_needs_a_seer1_row(df_home, remdb_v4_costs):
+    # The fixture's heat-pump row says 'SEER', not 'SEER1'; converting to
+    # SEER1 for a row that does not take SEER1 must stop, not pass silently.
+    df_dual_fuel = df_home.assign(upgrade_hp_seer1=[16.0])
+    with pytest.raises(ValueError, match='SEER1'):
+        add_remdb_metrics(
+            df_dual_fuel, remdb_v4_costs, 'heating', 'upgrade', verbose=False)
+
+
+# -- Backup furnace of a dual-fuel retrofit -----------------------------------
+# df_backup_furnace_homes and backup_furnace_remdb_costs are fixtures in
+# tests/conftest.py.
+
+def test_metrics_use_the_backup_size_and_afue_fraction(
+        df_backup_furnace_homes, backup_furnace_remdb_costs):
+    """The furnace is priced from its own backup size and its AFUE as a fraction."""
+    df_main, df_detailed = add_backup_furnace_metrics(
+        df_backup_furnace_homes, backup_furnace_remdb_costs, verbose=False)
+    pm1 = df_main['heating_backupFurnace_pm1_euss']
+    pm2 = df_main['heating_backupFurnace_pm2_euss']
+    assert pm1.iloc[:3].tolist() == pytest.approx([63200.0, 80000.0, 40000.0])
+    # The AFUE reaches the regression as the fraction, not divided again.
+    assert pm2.iloc[:3].tolist() == pytest.approx([0.925, 0.95, 0.925])
+    # The home outside the package gets no row and no metrics.
+    assert pd.isna(df_main['row_id_heating_backupFurnace'].iloc[3])
+    assert np.isnan(pm1.iloc[3]) and np.isnan(pm2.iloc[3])
+    assert 'heating_backupFurnace_intercept_mid' in df_detailed.columns
+
+
+@pytest.mark.parametrize('bad_afue', [0.00925, 92.5])
+def test_metrics_stop_on_an_afue_read_wrongly(
+        df_backup_furnace_homes, backup_furnace_remdb_costs, bad_afue):
+    """An AFUE outside the range a furnace can have stops the run."""
+    df_bad = df_backup_furnace_homes.copy()
+    df_bad.loc[1, 'upgrade_backup_afue'] = bad_afue
+    with pytest.raises(ValueError, match='AFUE'):
+        add_backup_furnace_metrics(
+            df_bad, backup_furnace_remdb_costs, verbose=False)
+
+
+def test_metrics_stop_on_a_backup_fuel_with_no_row(
+        df_backup_furnace_homes, backup_furnace_remdb_costs):
+    """A backup fuel with no REMDB furnace row stops the run."""
+    df_propane = df_backup_furnace_homes.copy()
+    df_propane.loc[2, 'upgrade_backup_fuel'] = 'Propane'
+    with pytest.raises(ValueError, match='Propane'):
+        add_backup_furnace_metrics(
+            df_propane, backup_furnace_remdb_costs, verbose=False)

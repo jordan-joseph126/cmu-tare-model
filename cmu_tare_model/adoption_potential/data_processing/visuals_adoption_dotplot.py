@@ -35,7 +35,8 @@ import matplotlib.ticker as mtick
 import numpy as np
 import pandas as pd
 
-from cmu_tare_model.constants import FIGURE_DPI
+from cmu_tare_model.constants import FIGURE_DISPLAY_DPI, FIGURE_DPI
+from cmu_tare_model.utils.calculation_utils import is_dual_fuel_package
 from cmu_tare_model.utils.column_names import create_adoption_col
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 
@@ -50,7 +51,8 @@ plt.rcParams.update({
     'axes.labelsize': 11,
     'xtick.labelsize': 9,
     'ytick.labelsize': 9,
-    'figure.dpi': FIGURE_DPI,
+    'figure.dpi': FIGURE_DISPLAY_DPI,
+    'savefig.dpi': FIGURE_DPI,
 })
 
 # ===========================================================================
@@ -178,6 +180,126 @@ GROUPING_ORDER: List[str] = [
 
 
 # ===================================================================
+# adoption_reconciliation_table
+# ===================================================================
+
+# Baseline fuels that get no rebate under the June 2026 rules in this model
+# (HEEHR funds electric-resistance baselines only; June 2026 HOMES is still
+# electric-gated), so their June 2026 adoption must equal their unsubsidized
+# adoption. Not true of a dual-fuel package, which passes the June 2026 fuel
+# gates (dual_fuel_passes_fuel_gates in constants.py); rule 2 skips it.
+_FOSSIL_BASELINE_FUELS = ('Natural Gas', 'Fuel Oil', 'Propane')
+
+
+def adoption_reconciliation_table(
+    source_df: pd.DataFrame,
+    mp: int,
+    discount_rate: str = 'fixed_base',
+    fuel_col: str = 'base_heating_fuel',
+    check_june2026_fossil_rule: Optional[bool] = None,
+) -> pd.DataFrame:
+    """Adopters by baseline fuel for every NPV case, over homes in the study sample.
+
+    Adoption is reported as a share of homes in the study sample
+    (include_sample = True), and every homes count refers to that population.
+    Adopters are counted directly (sum of weight x adopter flag), never as a
+    rate times a population, so the national row always equals the fuel rows
+    plus any sample homes with no fuel group.
+
+    Raises if either rule fails:
+      1. National adopters = fuel-row adopters + adopters with no fuel group.
+      2. June 2026 rule: a fossil-baseline home's June 2026 adopter status
+         equals its unsubsidized status, for every replacement-credit scope.
+
+    Args:
+        source_df: TARE summary frame for one measure package, all homes.
+        mp: Measure package number.
+        discount_rate: Discount-rate key used in the adopter column names.
+        fuel_col: Column holding the baseline heating fuel.
+        check_june2026_fossil_rule: Whether to enforce rule 2. None (the
+            default) decides from the package: rule 2 applies unless the
+            package is dual fuel (is_dual_fuel_package), since a dual-fuel
+            retrofit funds fossil baselines under June 2026.
+
+    Returns:
+        DataFrame with one row per (NPV case, group), group being 'National'
+        or a baseline fuel, and columns 'npv_case', 'group',
+        'homes_in_scope_m', 'adopters_m', 'share_pct', and
+        'nan_adopter_homes_m' (in-scope homes with no adopter value;
+        expected 0).
+
+    Raises:
+        KeyError: If include_sample, weight, fuel_col, or an adopter column
+            is missing.
+        ValueError: If rule 1 or rule 2 fails.
+    """
+    required = ['include_sample', 'weight', fuel_col]
+    missing = [col for col in required if col not in source_df.columns]
+    if missing:
+        raise KeyError(f"adoption_reconciliation_table needs columns {missing}")
+
+    if check_june2026_fossil_rule is None:
+        check_june2026_fossil_rule = not is_dual_fuel_package(mp)
+
+    scenario_prefix = define_scenario_params(mp)[0]
+    method_suffix = f'_{discount_rate}'
+    in_scope = source_df.loc[source_df['include_sample'].astype(bool)]
+    fuels = sorted(in_scope[fuel_col].dropna().unique())
+    everyone = pd.Series(True, index=in_scope.index)
+    no_fuel_group = in_scope[fuel_col].isna()
+
+    rows = []
+    for scope, _label in REPLACEMENT_CREDIT_SCOPES:
+        for token in REBATE_POLICY_SCENARIO_ORDER:
+            npv_case = f'{scope}_{token}'
+            adopter = in_scope[create_adoption_col(scenario_prefix, npv_case, method_suffix)]
+            weighted_adopters = adopter.fillna(0.0) * in_scope['weight']
+
+            case_rows = []
+            groups = [('National', everyone)] + [
+                (fuel, in_scope[fuel_col] == fuel) for fuel in fuels]
+            for group, mask in groups:
+                homes_m = in_scope.loc[mask, 'weight'].sum() / 1e6
+                adopters_m = weighted_adopters[mask].sum() / 1e6
+                case_rows.append({
+                    'npv_case': npv_case,
+                    'group': group,
+                    'homes_in_scope_m': homes_m,
+                    'adopters_m': adopters_m,
+                    'share_pct': adopters_m / homes_m * 100 if homes_m else np.nan,
+                    'nan_adopter_homes_m':
+                        in_scope.loc[mask & adopter.isna(), 'weight'].sum() / 1e6,
+                })
+
+            # Rule 1 -- the fuel rows (plus homes with no fuel group) add up
+            # to the national row.
+            parts_m = (sum(row['adopters_m'] for row in case_rows[1:])
+                       + weighted_adopters[no_fuel_group].sum() / 1e6)
+            if not np.isclose(case_rows[0]['adopters_m'], parts_m, rtol=0, atol=1e-9):
+                raise ValueError(
+                    f"MP{mp} {npv_case}: national adopters "
+                    f"{case_rows[0]['adopters_m']:.6f}M != fuel rows + no-fuel "
+                    f"homes {parts_m:.6f}M.")
+            rows.extend(case_rows)
+
+        # Rule 2 -- June 2026 changes no fossil-baseline home's decision.
+        if check_june2026_fossil_rule:
+            unsub = in_scope[create_adoption_col(
+                scenario_prefix, f'{scope}_unsub', method_suffix)]
+            june = in_scope[create_adoption_col(
+                scenario_prefix, f'{scope}_sub_june2026', method_suffix)]
+            fossil = in_scope[fuel_col].isin(_FOSSIL_BASELINE_FUELS)
+            changed = fossil & (unsub.fillna(-1.0) != june.fillna(-1.0))
+            if changed.any():
+                raise ValueError(
+                    f"MP{mp} {scope}: {int(changed.sum())} fossil-baseline rdu "
+                    f"change adopter status between unsubsidized and June "
+                    f"2026, but June 2026 gives fossil baselines no rebate.")
+
+    return pd.DataFrame(rows)
+
+
+# ===================================================================
 # build_econ_plot_df
 # ===================================================================
 
@@ -189,10 +311,10 @@ def build_econ_plot_df(
     fuel_col: str = 'base_heating_fuel',
     income_col: str = 'lmi_or_mui',
     income_groups: Optional[List[str]] = None,
-    scaling_factor: float = 242.0,
     shape_by: str = 'replacement_credit_scenario',
     fixed_replacement_credit_scenario: str = 'heatingLCC_coolingSavings',
     rebate_vintage: str = 'sub',
+    check_june2026_fossil_rule: Optional[bool] = None,
 ) -> pd.DataFrame:
     """Build a DataFrame for the economic adoption dotplot.
 
@@ -205,9 +327,6 @@ def build_econ_plot_df(
         fuel_col: Column holding the baseline heating fuel.
         income_col: Column holding the income group.
         income_groups: Income groups to break out (default ['LMI']).
-        scaling_factor: Fallback homes-per-sample weight, used only when
-            source_df has no 'weight' column. When a weight column is present the
-            weighted-homes column is derived from the actual weight sum instead.
         shape_by: Which axis the marker shape encodes.
             'replacement_credit_scenario' (default) emits three rows per grouping
             -- one per replacement-credit scope (heating replacement only,
@@ -226,13 +345,20 @@ def build_econ_plot_df(
             is the unsubsidized rate and the (unshown) subsidy delta is 0.
             Ignored when shape_by='rebate_policy_scenario' (that mode plots all
             three vintages).
+        check_june2026_fossil_rule: Passed to adoption_reconciliation_table.
+            None (the default) applies rule 2 unless the package is dual fuel.
 
     Returns:
-        DataFrame formatted for ``plot_adoption_panel()``.
+        DataFrame formatted for ``plot_adoption_panel()``. Every homes count
+        in it (and the markers' homes labels built from it) covers homes in
+        the study sample only.
 
     Raises:
         ValueError: If shape_by, fixed_replacement_credit_scenario, or
-            rebate_vintage is invalid.
+            rebate_vintage is invalid, or adoption_reconciliation_table's
+            checks fail.
+        KeyError: If source_df lacks a column adoption_reconciliation_table
+            needs (include_sample, weight, fuel_col, or an adopter column).
     """
     valid_shape_by = ('replacement_credit_scenario', 'rebate_policy_scenario')
     if shape_by not in valid_shape_by:
@@ -253,6 +379,14 @@ def build_econ_plot_df(
 
     if income_groups is None:
         income_groups = ['LMI']
+
+    # Adoption is a share of homes in the study sample, and every homes count
+    # in the figure refers to it. Homes outside the sample have no adopter
+    # value, so the rates are unchanged; only the homes counts are.
+    adoption_reconciliation_table(
+        source_df, mp, discount_rate=discount_rate, fuel_col=fuel_col,
+        check_june2026_fossil_rule=check_june2026_fossil_rule)
+    source_df = source_df.loc[source_df['include_sample'].astype(bool)]
 
     scenario_prefix = define_scenario_params(mp)[0]
     method_suffix = f'_{discount_rate}'
@@ -312,18 +446,16 @@ def build_econ_plot_df(
 
     rows: List[dict] = []
 
-    def _weighted_homes_millions(sub_df: pd.DataFrame, n: int) -> float:
-        """Weighted homes (millions) for a grouping.
+    def _weighted_homes_millions(sub_df: pd.DataFrame) -> float:
+        """Weighted homes in the study sample (millions) for a grouping.
 
-        Uses the actual household weight sum when a 'weight' column is present --
-        the same weight-derived approach the notebook uses for fuel_counts -- so
-        the per-group homes annotation is consistent with the y-axis fuel totals.
-        Falls back to the sample count times the scaling_factor default only when
-        no weight column exists.
+        The sum of the household weights -- the same weight-derived approach
+        the notebook uses for fuel_counts -- so the per-group homes annotation
+        is consistent with the y-axis fuel totals. Every frame here has a
+        'weight' column: adoption_reconciliation_table, called above, stops
+        without one.
         """
-        if 'weight' in sub_df.columns:
-            return sub_df['weight'].sum() / 1_000_000
-        return n * scaling_factor / 1_000_000
+        return sub_df['weight'].sum() / 1_000_000
 
     def _append_group(
         grouping: str,
@@ -333,7 +465,7 @@ def build_econ_plot_df(
         n: int,
     ) -> None:
         """Append this grouping's rows for the active shape_by mode."""
-        homes_m = _weighted_homes_millions(sub_df, n)
+        homes_m = _weighted_homes_millions(sub_df)
         if shape_by == 'replacement_credit_scenario':
             # One row per credit scope, in REPLACEMENT_CREDIT_SCOPES order. The
             # plotted value is the scope's subsidized rate; the delta is that
@@ -390,7 +522,7 @@ def prepare_plot_data(
     income_col: str = 'lmi_or_mui',
     income_groups: Optional[List[str]] = None,
     sample_total: Optional[int] = None,
-    scaling_factor: float = 242.0,
+    scaling_factor: Optional[float] = None,
 ) -> pd.DataFrame:
     """Flatten two MultiIndex adoption DataFrames into plot-ready long format.
 
@@ -423,8 +555,11 @@ def prepare_plot_data(
         Income sub-groups to show (default ``['LMI']``).
     sample_total : int, optional
         Denominator for "% of sample" (default ``len(source_df)``).
-    scaling_factor : float
-        Sample-to-national multiplier (default 242).
+    scaling_factor : float, optional
+        Sample-to-national multiplier. None (the default) reads it from
+        *source_df*'s 'weight' column, which must hold one value (ResStock's
+        weight is the same for every row: 242.131013 in 2022.1.1,
+        253.90367272727272 in 2025.1).
 
     Returns
     -------
@@ -439,6 +574,14 @@ def prepare_plot_data(
         sample_total = len(source_df)
     if mi_df_b is None:
         mi_df_b = mi_df_a
+    if scaling_factor is None:
+        # Read the weight from the data, never a release's number typed in.
+        weights = source_df['weight'].unique() if 'weight' in source_df.columns else []
+        if len(weights) != 1:
+            raise ValueError(
+                "scaling_factor not given and source_df's 'weight' column does "
+                f"not hold exactly one value: {list(weights)[:3]}")
+        scaling_factor = float(weights[0])
 
     group_counts = source_df.groupby([fuel_col, income_col], observed=True).size()
     total_homes = int(group_counts.sum())
@@ -1214,13 +1357,14 @@ def plot_econ_adoption_dotplot_figure(
     if not measure_packages:
         return None
 
-    # National fuel counts, weighted to homes. The fuel mix is a property of
-    # the housing stock, not the measure package, so any MP's frame gives the
-    # same counts -- the first one is used.
+    # Sample homes by baseline fuel, weighted to homes: the same population
+    # the marker labels count (see build_econ_plot_df). The sample is the same
+    # for every package in the run, so the first MP's frame is used.
     _src = dataframes_by_mp[measure_packages[0]][discount_rate]
+    _in_scope = _src.loc[_src['include_sample'].astype(bool)]
     fuel_counts_millions = {
         str(fuel): weighted_homes / 1_000_000
-        for fuel, weighted_homes in _src.groupby(
+        for fuel, weighted_homes in _in_scope.groupby(
             'base_heating_fuel', observed=True)['weight'].sum().items()
     }
 

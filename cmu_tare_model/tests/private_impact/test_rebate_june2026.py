@@ -21,6 +21,24 @@ from cmu_tare_model.utils.column_names import create_rebate_col
 COST = 'v4MID'
 
 
+@pytest.fixture(autouse=True)
+def mock_release(monkeypatch):
+    """Every test here exercises MP3/MP4, the 2022.1.1-style numbering.
+
+    get_rebate_eligible_mps() (determine_rebate_eligibility_and_amount.py)
+    is keyed on RESSTOCK_RELEASE_THIS_RUN, so tests need to pin that release
+    explicitly rather than rely on whatever the module-level default happens
+    to be. Patching it here, in the module get_rebate_eligible_mps() reads
+    it from, reaches every caller (this file's calls and
+    calculate_lifetime_private_impact.py's) -- it's a function, not a
+    re-exported constant, so one patch is enough.
+    """
+    monkeypatch.setattr(
+        'cmu_tare_model.private_impact.data_processing.'
+        'determine_rebate_eligibility_and_amount.RESSTOCK_RELEASE_THIS_RUN',
+        '2022.1.1')
+
+
 def _rebate_col(mp):
     return f'mp{mp}_heating_rebate_amount_june2026_{COST}'
 
@@ -45,6 +63,7 @@ def june2026_df():
     n = 6
     data = {
         'include_heating': [True] * n,
+        'include_sample': True,
         'valid_fuel_heating': [True] * n,
         'valid_tech_heating': [True] * n,
         'upgrade_hvac_heating_efficiency': ['ASHP'] * n,
@@ -118,6 +137,7 @@ def test_june2026_excluded_home_is_nan():
     """An excluded home (no valid heating) is NaN, not 0, in both columns."""
     df = pd.DataFrame({
         'include_heating': [True, False],
+        'include_sample': True,
         'valid_fuel_heating': [True, False],
         'valid_tech_heating': [True, False],
         'upgrade_hvac_heating_efficiency': ['ASHP', None],
@@ -141,6 +161,7 @@ def test_june2026_south_dakota_excluded():
     """An otherwise-eligible electric MP4 home in SD gets no rebate."""
     df = pd.DataFrame({
         'include_heating': [True, True],
+        'include_sample': True,
         'valid_fuel_heating': [True, True],
         'valid_tech_heating': [True, True],
         'upgrade_hvac_heating_efficiency': ['ASHP', 'ASHP'],
@@ -168,6 +189,7 @@ def test_2024_south_dakota_excluded():
     )
     df = pd.DataFrame({
         'include_heating': [True, True],
+        'include_sample': True,
         'valid_fuel_heating': [True, True],
         'valid_tech_heating': [True, True],
         'upgrade_hvac_heating_efficiency': ['ASHP', 'ASHP'],
@@ -315,3 +337,111 @@ def test_june2026_homes_still_electric_gated(june2026_df):
     # Fossil home above 150% AMI: HOMES electric gate -> $0 / Not Eligible under June 2026.
     assert result[_rebate_col(4)].iloc[4] == 0.0
     assert result[_elig_col(4)].iloc[4] == 'Not Eligible'
+
+
+def test_income_cut_off_uses_the_unrounded_income_share(monkeypatch):
+    """A home at 80.004% of area median income is above the 80% cut-off, so it
+    is Moderate-Income. Rounding the share to 80.00 would call it Low-Income."""
+    from cmu_tare_model.private_impact.data_processing import (
+        determine_rebate_eligibility_and_amount as rebate_module)
+
+    def fixed_area_median_income(df, df_county, df_state):
+        df['census_area_medianIncome'] = 100000.0
+        return df
+
+    monkeypatch.setattr(
+        rebate_module, 'generate_household_medianIncome_2025',
+        lambda row, random_seed: 80004.0)
+    monkeypatch.setattr(
+        rebate_module, 'fill_na_with_hierarchy', fixed_area_median_income)
+
+    df_home = pd.DataFrame(
+        {'income': ['60000-69999']}, index=pd.Index([1], name='bldg_id'))
+    df_result = rebate_module.calculate_percent_AMI(df_home)
+
+    assert df_result['percent_AMI'].iloc[0] == pytest.approx(80.004)
+    assert df_result['income_level'].iloc[0] == 'Moderate-Income'
+
+
+# =============================================================================
+# Dual-fuel package (2025.1 Upgrade 05): passes the June 2026 fuel gates
+# =============================================================================
+
+@pytest.fixture
+def as_release_2025(monkeypatch):
+    """Runs a test as ResStock 2025.1, where package 5 is the dual-fuel one."""
+    monkeypatch.setattr(
+        'cmu_tare_model.private_impact.data_processing.'
+        'determine_rebate_eligibility_and_amount.RESSTOCK_RELEASE_THIS_RUN',
+        '2025.1')
+    monkeypatch.setattr(
+        'cmu_tare_model.utils.calculation_utils.RESSTOCK_RELEASE_THIS_RUN',
+        '2025.1')
+
+
+@pytest.fixture
+def dual_fuel_df():
+    """Seven dual-fuel retrofits. Heating cost 10,000, cooling 6,000, as above.
+
+      0 natural gas, 50% AMI            -> HEEHR full 8,000 (passes the gate)
+      1 propane,    120% AMI            -> HEEHR half 5,000
+      2 fuel oil,   200% AMI, 25% save  -> HOMES tier 1 2,000
+      3 natural gas, 200% AMI, 40% save -> HOMES tier 2 4,000
+      4 natural gas, 200% AMI, 10% save -> below the 20% floor, 0
+      5 natural gas, 50% AMI, SD        -> state never participated, 0
+      6 electricity, 50% AMI            -> HEEHR full 8,000, as before
+    """
+    n = 7
+    return pd.DataFrame({
+        'include_heating': [True] * n,
+        'include_sample': True,
+        'valid_fuel_heating': [True] * n,
+        'valid_tech_heating': [True] * n,
+        'upgrade_hvac_heating_efficiency': ['Dual-Fuel ASHP'] * n,
+        'base_heating_fuel': [
+            'Natural Gas', 'Propane', 'Fuel Oil', 'Natural Gas',
+            'Natural Gas', 'Natural Gas', 'Electricity'],
+        'state': ['PA', 'MN', 'NY', 'OH', 'IL', 'SD', 'FL'],
+        'percent_AMI': [50.0, 120.0, 200.0, 200.0, 200.0, 50.0, 50.0],
+        'mp5_heating_upgrade_installed_cost_v4MID': [10000.0] * n,
+        'mp5_cooling_upgrade_installed_cost_v4MID': [6000.0] * n,
+        'mp5_modeled_savings_frac': [0.50, 0.50, 0.25, 0.40, 0.10, 0.50, 0.50],
+    })
+
+
+def test_dual_fuel_june2026_funds_fossil_baselines(as_release_2025, dual_fuel_df):
+    result = calculate_rebate_june2026(
+        df_results_IRA=dual_fuel_df, category='heating', menu_mp=5,
+        cost_scenario=COST, verbose=False)
+    assert result[_rebate_col(5)].tolist() == [
+        8000.0, 5000.0, 2000.0, 4000.0, 0.0, 0.0, 8000.0]
+    assert result[_elig_col(5)].tolist() == [
+        'HEEHR', 'HEEHR', 'HOMES', 'HOMES', 'Not Eligible', 'Not Eligible',
+        'HEEHR']
+
+
+def test_dual_fuel_2024_columns_do_not_change(
+        as_release_2025, dual_fuel_df, monkeypatch):
+    from cmu_tare_model.private_impact.data_processing import (
+        determine_rebate_eligibility_and_amount as rebates,
+    )
+    as_dual_fuel = rebates.calculate_rebateIRA(
+        dual_fuel_df, 'heating', 5, COST, verbose=False)
+    # The same package treated as heat-pump-only: 2024 has no fuel gate, so
+    # the dual-fuel rule cannot change any 2024 amount or label.
+    monkeypatch.setattr(rebates, 'is_dual_fuel_package', lambda mp: False)
+    as_heat_pump_only = rebates.calculate_rebateIRA(
+        dual_fuel_df, 'heating', 5, COST, verbose=False)
+    pd.testing.assert_frame_equal(as_dual_fuel, as_heat_pump_only)
+
+
+def test_heat_pump_only_package_keeps_the_june2026_fuel_gates(june2026_df):
+    # 2022.1.1 MP4 (the autouse fixture's release) is not dual fuel: its
+    # fossil home 5 still gets nothing under June 2026, and HOMES stays
+    # electric-gated (the deferred hold).
+    result = calculate_rebate_june2026(
+        df_results_IRA=june2026_df.assign(
+            base_heating_fuel=['Electricity'] * 4 + ['Electricity', 'Natural Gas']),
+        category='heating', menu_mp=4, cost_scenario=COST, verbose=False)
+    assert result[_rebate_col(4)].iloc[5] == 0.0
+    assert result[_elig_col(4)].iloc[5] == 'Not Eligible'

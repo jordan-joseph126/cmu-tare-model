@@ -4,6 +4,7 @@ Tests all four public functions using synthetic data — no AWS/BSQ
 connection required.
 """
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
@@ -15,6 +16,8 @@ from cmu_tare_model.grid_impact.peak_load_functions import (
     extract_adopter_ids,
     find_adoption_column,
     gisjoin_to_fips,
+    plot_county_demand_grid,
+    summarize_hourly_timeseries,
 )
 
 
@@ -321,3 +324,99 @@ class TestComputeCountyScenarioProfile:
         df_u = _make_hourly_df([1], "retrofit_kwh", 80.0, n_hours=24)
         with pytest.raises(ValueError, match="Expected 8,760"):
             compute_county_scenario_profile(df_b, df_u, adopter_bldg_ids=[1])
+
+
+# ============================================================================
+# summarize_hourly_timeseries
+# ============================================================================
+
+
+class TestSummarizeHourlyTimeseries:
+    """Tests for summarize_hourly_timeseries()."""
+
+    def test_quiet_pass_prints_one_line(self, capsys):
+        """A full year with verbose off prints one [OK] line, no summary."""
+        df_ts = _make_hourly_df([1, 2], "baseline_kwh", 100.0)
+        capsys.readouterr()  # drop anything printed while importing
+        summarize_hourly_timeseries(
+            df_ts, "baseline_kwh", "baseline", query_time_s=1.0, verbose=False
+        )
+        printed_lines = capsys.readouterr().out.strip().splitlines()
+        assert printed_lines == ["[OK] baseline: 2 buildings x 8,760 hours"]
+
+    def test_short_year_prints_summary_and_raises(self, capsys):
+        """A building missing hours prints the summary and stops, even quiet."""
+        df_ts = _make_hourly_df([1], "baseline_kwh", 100.0, n_hours=24)
+        with pytest.raises(ValueError, match="expected exactly 8,760 hours"):
+            summarize_hourly_timeseries(
+                df_ts, "baseline_kwh", "baseline", query_time_s=1.0, verbose=False
+            )
+        assert "Hours/bldg : 24 - 24" in capsys.readouterr().out
+
+
+# ============================================================================
+# plot_county_demand_grid
+# ============================================================================
+
+
+class TestPlotCountyDemandGrid:
+    """Tests for the layouts plot_county_demand_grid() can draw."""
+
+    @pytest.fixture
+    def demand_inputs(self, monkeypatch):
+        """Made-up year-long profiles and peaks for MP3 and MP4."""
+        # Draw off screen: no window opens and plt.show() returns at once.
+        plt.switch_backend("Agg")
+        monkeypatch.setattr(plt, "show", lambda *args, **kwargs: None)
+
+        hours = np.arange(1, 8761)
+        baseline_mw = 100.0 + 10.0 * np.sin(hours / 500.0)
+        profiles_by_mp, peaks_by_mp = {}, {}
+        for mp in (3, 4):
+            profiles_by_mp[mp], peaks_by_mp[mp] = {}, {}
+            for scenario, scale in (("constrained", 1.1), ("100pct", 2.0)):
+                scenario_mw = baseline_mw * scale
+                profiles_by_mp[mp][scenario] = pd.DataFrame({
+                    "hour": hours,
+                    "baseline_mw": baseline_mw,
+                    "scenario_mw": scenario_mw,
+                    "delta_mw": scenario_mw - baseline_mw,
+                })
+                peaks_by_mp[mp][scenario] = {
+                    "baseline_peak_mw": float(baseline_mw.max()),
+                    "scenario_peak_mw": float(scenario_mw.max()),
+                    "peak_hour_baseline": int(hours[baseline_mw.argmax()]),
+                    "peak_hour_scenario": int(hours[scenario_mw.argmax()]),
+                }
+        yield profiles_by_mp, peaks_by_mp
+        plt.close("all")
+
+    def test_default_layout_is_two_by_two(self, demand_inputs):
+        """With no layout arguments: one row per MP, both scenarios."""
+        profiles_by_mp, peaks_by_mp = demand_inputs
+        fig = plot_county_demand_grid(profiles_by_mp, peaks_by_mp, [3, 4])
+        assert [ax.get_title() for ax in fig.axes] == [
+            "Minimum-efficiency heat pump (Only Economic Adopters)",
+            "Minimum-efficiency heat pump (100% Adoption)",
+            "High-efficiency heat pump (Only Economic Adopters)",
+            "High-efficiency heat pump (100% Adoption)",
+        ]
+        assert list(fig.get_size_inches()) == [16.0, 11.0]
+
+    def test_one_row_with_full_adoption_only(self, demand_inputs):
+        """panels and subplot_positions give a 1x2 figure, 100% adoption."""
+        profiles_by_mp, peaks_by_mp = demand_inputs
+        fig = plot_county_demand_grid(
+            profiles_by_mp,
+            peaks_by_mp,
+            [3, 4],
+            panels=[(3, "100pct"), (4, "100pct")],
+            subplot_positions=[(0, 0), (0, 1)],
+            figure_size=(16, 6.5),
+            legend_space=0.21,
+        )
+        assert [ax.get_title() for ax in fig.axes] == [
+            "Minimum-efficiency heat pump (100% Adoption)",
+            "High-efficiency heat pump (100% Adoption)",
+        ]
+        assert list(fig.get_size_inches()) == [16.0, 6.5]

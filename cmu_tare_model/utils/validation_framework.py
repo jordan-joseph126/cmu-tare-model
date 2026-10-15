@@ -129,7 +129,8 @@ def get_valid_calculation_mask(
         Series of boolean values indicating which homes should be included in calculations.
         
     Raises:
-        ValueError: If the inclusion flag for the given category doesn't exist in the DataFrame.
+        ValueError: If the inclusion flag for the given category, or the
+            include_sample study-sample flag, doesn't exist in the DataFrame.
     """
     # Standardize menu_mp to facilitate comparisons
     menu_mp_str = str(menu_mp).lower()
@@ -143,6 +144,11 @@ def get_valid_calculation_mask(
     
     # Get data validation mask
     data_valid_mask = df[include_col]
+    # Only homes in the study sample are ever calculated.
+    if 'include_sample' not in df.columns:
+        raise ValueError("'include_sample' not found in DataFrame. It is set in "
+                         "df_enduse_refactored; every frame must carry it.")
+    data_valid_mask = data_valid_mask & df['include_sample'].astype(bool)
 
     # For baseline scenarios, only use data validation
     if is_baseline:
@@ -343,12 +349,16 @@ def mask_category_specific_data(
         DataFrame with specified columns masked based on the category's inclusion flag.
 
     Raises:
-        ValueError: If the category's inclusion flag is not found in the DataFrame.
+        ValueError: If the category's inclusion flag, or the include_sample
+            study-sample flag, is not found in the DataFrame.
     """
     include_col = f'include_{category}'
 
     if include_col not in df.columns:
         raise ValueError(f"Inclusion flag '{include_col}' not found in DataFrame")
+    if 'include_sample' not in df.columns:
+        raise ValueError("'include_sample' not found in DataFrame. It is set in "
+                         "df_enduse_refactored; every frame must carry it.")
 
     # Filter out columns that don't exist in the DataFrame
     valid_columns = [col for col in columns if col in df.columns]
@@ -366,7 +376,9 @@ def mask_category_specific_data(
     df_result = df if inplace else df.copy()
 
     # Pre-compute the mask once for efficiency
-    invalid_mask = ~df_result[include_col]
+    # Out-of-sample homes are masked too, matching get_valid_calculation_mask.
+    invalid_mask = ~(df_result[include_col]
+                     & df_result['include_sample'].astype(bool))
 
     for col in valid_columns:
         # Count non-NaN values before masking

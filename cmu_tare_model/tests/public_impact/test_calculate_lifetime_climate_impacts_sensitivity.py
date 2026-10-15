@@ -54,6 +54,7 @@ def climate_df():
         'census_division': ['Pacific', 'WSC', 'MA', 'SA', 'ENC', 'Pacific'],
         'gea_region': ['CAL', 'TXS', 'NYC', 'FLA', 'CEN', 'CAL'],
         'include_heating': [True, True, False, True, True, False],
+        'include_sample': True,
         'include_waterHeating': [True, False, True, True, False, True],
         'include_clothesDrying': [True, True, True, False, True, True],
         'include_cooking': [True, True, True, True, False, True],
@@ -116,6 +117,21 @@ def mock_scc_lookup():
     return lookup
 
 
+def _fake_consumption_table(df: pd.DataFrame, menu_mp: int,
+                            verbose: bool = False) -> pd.DataFrame:
+    """Stand-in for build_projected_consumption: 1,000 kWh of electricity per
+    home, every category and year, 0 for the other fuels."""
+    prefix = 'baseline_' if menu_mp == 0 else f'ref2025_mp{menu_mp}_'
+    columns = {}
+    for cat, lifetime in FULL_EQUIPMENT_SPECS.items():
+        for year in range(BASE_YEAR, BASE_YEAR + lifetime):
+            for fuel in FULL_FUEL_MAPPING.values():
+                use = 1000.0 if fuel == 'electricity' else 0.0
+                columns[f'{prefix}{year}_{cat}_{fuel}_consumption'] = use
+            columns[f'{prefix}{year}_{cat}_consumption'] = 1000.0
+    return pd.DataFrame(columns, index=df.index)
+
+
 # =============================================================================
 # PARAMETER VALIDATION
 # =============================================================================
@@ -136,14 +152,14 @@ def test_climate_impacts_invalid_policy():
 
 @patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.lookup_climate_impact_scc')
 @patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.calculate_fossil_fuel_emissions')
-@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.get_electricity_consumption_for_year')
+@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.build_projected_consumption',
+       side_effect=_fake_consumption_table)
 @patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_params')
 def test_baseline_climate_output_structure(mock_params, mock_elec, mock_fossil, mock_scc,
                                            climate_df, mock_emissions_electricity_climate,
                                            mock_scc_lookup):
     """Baseline produces df_main and df_detailed with expected column patterns."""
     mock_params.return_value = ('baseline_', 'MidCase', {}, mock_emissions_electricity_climate, {})
-    mock_elec.return_value = pd.Series(1000.0, index=climate_df.index)
     mock_fossil.return_value = {
         'co2e': pd.Series(0.5, index=climate_df.index),
         'so2': pd.Series(0.001, index=climate_df.index),
@@ -169,14 +185,14 @@ def test_baseline_climate_output_structure(mock_params, mock_elec, mock_fossil, 
 
 @patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.lookup_climate_impact_scc')
 @patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.calculate_fossil_fuel_emissions')
-@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.get_electricity_consumption_for_year')
+@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.build_projected_consumption',
+       side_effect=_fake_consumption_table)
 @patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_params')
 def test_baseline_climate_damages_columns_exist(mock_params, mock_elec, mock_fossil, mock_scc,
                                                  climate_df, mock_emissions_electricity_climate,
                                                  mock_scc_lookup):
     """Lifetime damages columns exist for all (MER, SCC) combinations."""
     mock_params.return_value = ('baseline_', 'MidCase', {}, mock_emissions_electricity_climate, {})
-    mock_elec.return_value = pd.Series(1000.0, index=climate_df.index)
     mock_fossil.return_value = {
         'co2e': pd.Series(0.5, index=climate_df.index),
         'so2': pd.Series(0.001, index=climate_df.index),
@@ -202,14 +218,14 @@ def test_baseline_climate_damages_columns_exist(mock_params, mock_elec, mock_fos
 
 @patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.lookup_climate_impact_scc')
 @patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.calculate_fossil_fuel_emissions')
-@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.get_electricity_consumption_for_year')
+@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.build_projected_consumption',
+       side_effect=_fake_consumption_table)
 @patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_params')
 def test_mp_invalid_homes_masked(mock_params, mock_elec, mock_fossil, mock_scc,
                                   climate_df, mock_emissions_electricity_climate,
                                   mock_scc_lookup):
     """Invalid homes get NaN in measure package lifetime climate columns."""
     mock_params.return_value = ('ref2025_mp8_', 'MidCase', {}, mock_emissions_electricity_climate, {})
-    mock_elec.return_value = pd.Series(1000.0, index=climate_df.index)
     mock_fossil.return_value = {
         'co2e': pd.Series(0.5, index=climate_df.index),
         'so2': pd.Series(0.001, index=climate_df.index),
@@ -245,14 +261,14 @@ def test_mp_invalid_homes_masked(mock_params, mock_elec, mock_fossil, mock_scc,
 
 @patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.lookup_climate_impact_scc')
 @patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.calculate_fossil_fuel_emissions')
-@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.get_electricity_consumption_for_year')
+@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.build_projected_consumption',
+       side_effect=_fake_consumption_table)
 @patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_params')
 def test_all_years_in_detailed(mock_params, mock_elec, mock_fossil, mock_scc,
                                 climate_df, mock_emissions_electricity_climate,
                                 mock_scc_lookup):
     """df_detailed has annual columns for every year of the full lifetime."""
     mock_params.return_value = ('baseline_', 'MidCase', {}, mock_emissions_electricity_climate, {})
-    mock_elec.return_value = pd.Series(1000.0, index=climate_df.index)
     mock_fossil.return_value = {
         'co2e': pd.Series(0.5, index=climate_df.index),
         'so2': pd.Series(0.001, index=climate_df.index),
@@ -300,6 +316,7 @@ def test_calculate_climate_emissions_and_damages_returns_three_dicts(climate_df,
             total_fossil_fuel_emissions={'co2e': pd.Series(0.5, index=climate_df.index)},
             scenario_prefix='baseline_',
             menu_mp=0,
+            df_consumption=_fake_consumption_table(climate_df, 0),
         )
 
     assert isinstance(climate_results, dict)
@@ -314,6 +331,40 @@ def test_calculate_climate_emissions_and_damages_returns_three_dicts(climate_df,
     for mer in ['lrmer', 'srmer']:
         for scc in ['lower', 'central', 'upper']:
             assert (mer, scc) in annual_damages
+
+
+# =============================================================================
+# NO ROUNDING OF THE RETURNED TABLES
+# =============================================================================
+
+@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.lookup_climate_impact_scc')
+@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.calculate_fossil_fuel_emissions')
+@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.build_projected_consumption',
+       side_effect=_fake_consumption_table)
+@patch('cmu_tare_model.public_impact.calculate_lifetime_climate_impacts_sensitivity.define_scenario_params')
+def test_home_table_is_not_rounded(mock_params, mock_elec, mock_fossil, mock_scc,
+                                   climate_df, mock_emissions_electricity_climate,
+                                   mock_scc_lookup):
+    """Neither returned table is rounded. A column the function only carries
+    through keeps every decimal (the ResStock weight is 242.131013, not
+    242.13), and so do the yearly emissions and damages."""
+    mock_params.return_value = ('baseline_', 'MidCase', {}, mock_emissions_electricity_climate, {})
+    mock_fossil.return_value = {
+        'co2e': pd.Series(0.5, index=climate_df.index),
+        'so2': pd.Series(0.001, index=climate_df.index),
+        'nox': pd.Series(0.002, index=climate_df.index),
+        'pm25': pd.Series(0.0005, index=climate_df.index),
+    }
+    mock_scc.__getitem__ = lambda self, key: mock_scc_lookup[key]
+
+    df_main, df_detailed = calculate_lifetime_climate_impacts(
+        climate_df.assign(weight=242.131013), menu_mp=0,
+        policy_scenario='2025 Reference Case', verbose=False
+    )
+
+    assert (df_main['weight'] == 242.131013).all()
+    yearly_values = df_detailed.select_dtypes('float')
+    assert not yearly_values.equals(yearly_values.round(2))
 
 
 # Import helper for inline usage

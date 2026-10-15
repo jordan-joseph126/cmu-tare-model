@@ -126,9 +126,10 @@ def calculate_replacement_installed_cost(
     if verbose:
         print(f"\nCalculating {end_use} replacement costs ({cost_scenario})")
 
-    # ===== SPECIAL HANDLING FOR COOLING (METADATA-ONLY) =====
-    # Cooling is not in EQUIPMENT_SPECS so doesn't have include_cooling flag.
-    # Create temporary flag for validation framework, then clean up.
+    # ===== SPECIAL HANDLING FOR COOLING =====
+    # Fallback for a frame that arrives without an include_cooling flag. A
+    # model run always has one (cooling is in EQUIPMENT_SPECS), so during a
+    # run nothing below adds a category or a temporary flag.
     added_cooling_to_categories = False
     created_temp_flag = False
 
@@ -186,6 +187,10 @@ def calculate_replacement_installed_cost(
 
     # Update result series with calculated values (only for valid homes)
     result_series.loc[valid_mask] = installed_cost.loc[valid_mask].round(2)
+    # TODO (no-AC homes): when end_use is 'cooling', a home with no existing
+    # cooling has nothing to replace, so its replacement cost would be set to
+    # $0 here on purpose (see ALLOWED_TECHNOLOGIES in constants.py). Today
+    # those homes are outside the sample and stay blank.
 
     # Build column name using centralized utility
     cost_col = create_cost_col(menu_mp=menu_mp, category=end_use, cost_type='replacement', cost_scenario=cost_scenario)

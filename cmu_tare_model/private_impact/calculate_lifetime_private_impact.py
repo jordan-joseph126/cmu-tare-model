@@ -7,23 +7,26 @@ from cmu_tare_model.constants import (
     ANCHOR_YEAR,
     EQUIPMENT_SPECS,
     PRIVATE_DISCOUNTING_METHOD_SUFFIXES,
-    REBATE_ELIGIBLE_HEATING_MPS,
     REBATE_GUIDANCE_JUNE2026,
     REMDB_COST_SCENARIO_KEYS,
+)
+from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import (
+    get_rebate_eligible_mps,
 )
 from cmu_tare_model.utils.modeling_params import define_scenario_params
 from cmu_tare_model.utils.discounting import calculate_discount_factors
 from cmu_tare_model.utils.validation_framework import (
     create_retrofit_only_series,
     calculate_avoided_values,
-    initialize_validation_tracking,
-    replace_small_values_with_nan
+    initialize_validation_tracking
 )
 from cmu_tare_model.utils.calculation_utils import (
     validate_common_parameters,
+    is_dual_fuel_package,
     apply_temporary_validation_and_mask
 )
 from cmu_tare_model.utils.column_names import (
+    COST_TYPE_BACKUP_FURNACE,
     create_fuel_cost_col,
     create_cost_col,
     create_rebate_col,
@@ -97,9 +100,9 @@ def calculate_private_npv(
       - heatingLCC_coolingSavings: credit avoided heating replacement only
       - heatingLCC_coolingLCC:     credit both avoided replacements
 
-    Cooling savings and the cooling replacement credit are zero for homes with
-    no AC (include_cooling = False). For those homes heatingLCC_coolingLCC ==
-    heatingLCC_coolingSavings, and heatingSavings_coolingLCC carries no credit.
+    Every home in the calculation has a central or room AC of its own (the
+    study sample requires it), so cooling savings and the cooling replacement
+    credit apply to every home.
 
     The NPV is the lifetime savings minus the incremental (net) capital cost of
     the heat pump over a like-for-like replacement. A single willingness-to-pay
@@ -134,7 +137,8 @@ def calculate_private_npv(
         gross capital cost column (see NPV_CASE_CATEGORIES).
 
     Raises:
-        ValueError: If policy_scenario, menu_mp, or cost_scenario is invalid.
+        ValueError: If policy_scenario, menu_mp, or cost_scenario is invalid,
+            or a home in the calculation has a blank cooling replacement cost.
         KeyError: If a required cost or fuel-cost column is missing.
     """
     # ===== STEP 0: Validate input parameters =====
@@ -205,14 +209,6 @@ def calculate_private_npv(
     _, heating_valid_mask, _, _ = initialize_validation_tracking(
         df_copy, 'heating', menu_mp, verbose=verbose, copy=False)
 
-    # Homes with no AC (include_cooling = False) get zero cooling savings and
-    # zero cooling replacement credit, so for them Case 2 == Case 1 and
-    # Case 3 == Case 1.
-    if 'include_cooling' in df_copy.columns:
-        include_cooling = df_copy['include_cooling'].fillna(False).astype(bool)
-    else:
-        include_cooling = pd.Series(False, index=df_copy.index)
-
     # ===== STEP 2-4: Discounted lifetime savings per category =====
     # Baseline cooling assumption: the home's existing AC (efficiency from the
     # ResStock source data) versus the ASHP in cooling mode (MP3 SEER1=15;
@@ -229,7 +225,7 @@ def calculate_private_npv(
         menu_mp=menu_mp,
         verbose=verbose,
     )
-    cooling_savings_raw = _calculate_discounted_savings(
+    cooling_savings = _calculate_discounted_savings(
         df_measure_costs=df_fuel_costs_copy,
         df_baseline_costs=df_baseline_costs_copy,
         category='cooling',
@@ -240,9 +236,10 @@ def calculate_private_npv(
         menu_mp=menu_mp,
         verbose=verbose,
     )
-
-    # Zero cooling savings for no-AC homes; keep them where the home has AC.
-    cooling_savings = cooling_savings_raw.where(include_cooling, other=0.0)
+    # TODO (no-AC homes): if homes with no existing cooling are brought into
+    # the sample, leave their cooling savings as calculated. Baseline cooling
+    # use is 0 and the heat pump adds cooling, so the savings are negative: a
+    # new service the home pays for. Do not set them to $0.
     heating_and_cooling_savings = heating_savings + cooling_savings
 
     # Save the discounted heating savings and the discounted cooling savings.
@@ -252,9 +249,6 @@ def calculate_private_npv(
     # subtraction for any case. Until now both figures were discarded after
     # the nine cases were built, leaving the savings side of the NPV
     # unverifiable from the exported columns.
-    # Store the cooling figure AFTER the include_cooling adjustment above, so
-    # the column holds what the NPV actually used: 0.0 for a home with
-    # include_cooling = False, not the raw cooling savings.
     heating_savings_col = create_discounted_savings_col(
         scenario_prefix, 'heating', method_suffix)
     cooling_savings_col = create_discounted_savings_col(
@@ -279,14 +273,30 @@ def calculate_private_npv(
         verbose=verbose,
     )
 
-    # Two of the three cases credit the avoided cooling-system replacement, but
-    # only for homes that actually have AC (include_cooling = True).
+    # Two of the three cases credit the avoided cooling-system replacement.
     cooling_replacement_col = create_cost_col(
         menu_mp=menu_mp, category='cooling',
         cost_type='replacement', cost_scenario=cost_scenario)
-    
-    cooling_replacement_cost = (
-        df_copy[cooling_replacement_col].fillna(0).where(include_cooling, other=0.0))
+    cooling_replacement_cost = df_copy[cooling_replacement_col]
+
+    # TODO (no-AC homes): a home with no existing cooling has nothing to
+    # replace, so its credit would be $0 on purpose, for example:
+    #   has_cooling = df_copy['include_cooling'].astype(bool)
+    #   cooling_replacement_cost = cooling_replacement_cost.where(has_cooling, 0.0)
+    # The stop below would then apply only to homes that have a cooling system.
+
+    # Every home in the calculation has a cooling system to replace, so a
+    # blank cost is a data error, not a $0 credit.
+    n_blank = int(cooling_replacement_cost[heating_valid_mask].isna().sum())
+    if n_blank > 0:
+        raise ValueError(
+            f"{cooling_replacement_col} is blank for {n_blank:,} rdu in the NPV "
+            "calculation. The study sample is limited to homes with a central "
+            "or room AC of their own, and each of those has a cooling "
+            "replacement cost, so a blank means the sample rule and the cost "
+            "data disagree. Homes with no existing cooling are not supported "
+            "yet: see 'TODO (no-AC homes)' in constants.py. For them this "
+            "credit would be set to $0 on purpose, not left blank.")
 
     # FIXED 20 Aug 2026: this credit is now priced off the existing air
     # conditioner's own size, not the retrofit heat pump's -- see
@@ -296,12 +306,9 @@ def calculate_private_npv(
     # AC is much smaller than the whole-home heat pump replacing it. Full
     # numbers: docs/SESSION_CHANGELOG_2026-08-20.md.
 
-    # Save the cooling replacement credit the NPV actually subtracted. It
-    # differs from the raw mp{mp}_cooling_replacement_installed_cost_{scenario}
-    # column in two ways: it is 0.0 for a home with include_cooling = False,
-    # and it is 0.0 where the raw column is blank. Nationally 269 homes have
-    # include_cooling = True but no recorded cooling replacement cost, so
-    # their credit is 0.0 while the raw column reads blank.
+    # Save the cooling replacement credit the NPV subtracted. For every home
+    # in the calculation it equals the raw
+    # mp{mp}_cooling_replacement_installed_cost_{scenario} column.
     cooling_credit_col = create_cooling_credit_applied_col(
         menu_mp=menu_mp, cost_scenario=cost_scenario)
     df_new_columns[cooling_credit_col] = cooling_replacement_cost
@@ -317,7 +324,7 @@ def calculate_private_npv(
     # Compute the raw unsubsidized net capital first, then subtract the rebate
     # to obtain the subsidized values. This is more intuitive than adding the
     # rebate back to an already-subsidized number.
-    if menu_mp in REBATE_ELIGIBLE_HEATING_MPS:
+    if menu_mp in get_rebate_eligible_mps():
         rebate_col = create_rebate_col(menu_mp=menu_mp, category='heating', cost_scenario=cost_scenario)
         rebate_amount = df_copy[rebate_col].fillna(0.0).where(heating_valid_mask, other=0.0)
     else:
@@ -384,6 +391,8 @@ def calculate_private_npv(
         # replacement. This is the value the economic adoption decision uses
         # (NPV >= 0). A single willingness-to-pay framing is modeled, so the
         # column name carries no WTP token.
+        # Rounded to cents on purpose: a leftover such as -0.0000000001 from
+        # the arithmetic must not fail the NPV >= 0 test.
         npv_case_value = round(case_savings - case_net_capital, 2)
 
         npv_col = create_npv_case_col(
@@ -490,10 +499,6 @@ def _calculate_discounted_savings(
     else:
         total_discounted_savings = discounted_savings_template
 
-    # Replace tiny values with NaN to avoid numerical artifacts.
-    total_discounted_savings = replace_small_values_with_nan(
-        total_discounted_savings)
-
     if verbose and years_processed < lifetime:
         raise ValueError(
             f"Only processed {years_processed}/{lifetime} years for '{category}'")
@@ -538,6 +543,10 @@ def calculate_capital_costs(
     for replacement costs) based on the equipment category, measure package, and whether
     IRA rebates are applied. Net capital cost is the total capital cost minus
     the avoided heating-system replacement cost.
+
+    For a dual-fuel package (is_dual_fuel_package) the heating installation
+    cost is the heat pump's upgrade cost plus the new backup furnace's cost
+    (COST_TYPE_BACKUP_FURNACE). No other package has a furnace cost.
 
     Args:
         df_copy: DataFrame containing cost data.
@@ -585,14 +594,24 @@ def calculate_capital_costs(
     replacement_cost_col_name = create_cost_col(menu_mp=menu_mp, category=category, cost_type='replacement', cost_scenario=cost_scenario)
     required_cols = [upgrade_cost_col_name, replacement_cost_col_name]
 
+    # A dual-fuel retrofit installs a new backup furnace as well as the heat
+    # pump, and the household pays for both.
+    furnace_cost_col_name = create_cost_col(
+        menu_mp=menu_mp, category=category,
+        cost_type=COST_TYPE_BACKUP_FURNACE, cost_scenario=cost_scenario)
+    has_backup_furnace = category == 'heating' and is_dual_fuel_package(menu_mp)
+
     if category == 'heating':
         if input_mp in ['upgrade09', 'upgrade10']:
             required_cols.append(create_enclosure_cost_col(menu_mp=menu_mp, cost_scenario=cost_scenario))
             # Weatherization rebate applies to MP9 and MP10.
             required_cols.append(create_weatherization_rebate_col(cost_scenario=cost_scenario))
 
+        if has_backup_furnace:
+            required_cols.append(furnace_cost_col_name)
+
         # Only high-efficiency MPs are eligible for heating rebates.
-        if menu_mp in REBATE_ELIGIBLE_HEATING_MPS:
+        if menu_mp in get_rebate_eligible_mps():
             required_cols.append(create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario))
 
     else:
@@ -625,8 +644,20 @@ def calculate_capital_costs(
             df_copy[create_cost_col(menu_mp=menu_mp, category=category, cost_type='upgrade', cost_scenario=cost_scenario)].fillna(0)
             + weatherization_cost)
 
+        # Dual fuel: add the backup furnace. A blank cost for a home in the
+        # calculation is a data error, not a free furnace, so it stops here.
+        if has_backup_furnace:
+            furnace_cost = df_copy[furnace_cost_col_name]
+            n_blank = int(furnace_cost[valid_mask].isna().sum())
+            if n_blank > 0:
+                raise ValueError(
+                    f"{furnace_cost_col_name} is blank for {n_blank:,} rdu in "
+                    "the NPV calculation; every dual-fuel retrofit has a backup "
+                    "furnace cost")
+            installation_cost = installation_cost + furnace_cost
+
         # Only high-efficiency MPs are eligible for heating rebates.
-        if menu_mp in REBATE_ELIGIBLE_HEATING_MPS:
+        if menu_mp in get_rebate_eligible_mps():
             rebate_amount = df_copy[create_rebate_col(menu_mp=menu_mp, category=category, cost_scenario=cost_scenario)].fillna(0)
         else:
             rebate_amount = 0.0

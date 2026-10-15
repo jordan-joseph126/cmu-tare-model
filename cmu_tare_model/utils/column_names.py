@@ -30,6 +30,55 @@ from cmu_tare_model.constants import REMDB_COST_SCENARIO_KEYS
 from typing import Optional
 
 # =============================================================================
+# PEAK ELECTRIC DEMAND COLUMNS (release-specific)
+# =============================================================================
+# ResStock 2022.1.1 reports a home's peak electric demand during the hours its
+# heating or its cooling runs. ResStock 2025.1 reports the largest daily peak
+# in the winter or the summer months instead, whatever is running. They are
+# different measurements, so the 2025.1 columns carry 'winter' and 'summer'
+# and never share a name with the 2022.1.1 ones.
+PEAK_ELECTRICITY_PERIODS = {
+    '2022.1.1': {'heating': 'heating', 'cooling': 'cooling'},
+    '2025.1': {'heating': 'winter', 'cooling': 'summer'},
+}
+
+
+def create_peak_electricity_col(
+    prefix: str,
+    end_use: str,
+    release: str,
+    savings: bool = False) -> str:
+    """Build a peak electric demand column name for one ResStock release.
+
+    Args:
+        prefix: 'base_' for the baseline, or 'mp{mp}_' for a retrofit.
+        end_use: 'heating' or 'cooling': the season the peak belongs to.
+        release: ResStock release, a key of PEAK_ELECTRICITY_PERIODS.
+        savings: True for ResStock's baseline-minus-retrofit change, which
+            only the retrofit files carry.
+
+    Returns:
+        Column name string, e.g. 'base_peak_electricity_heating_kw' (2022.1.1)
+        or 'mp5_peak_electricity_winter_kw_savings' (2025.1).
+
+    Raises:
+        KeyError: If release or end_use is unknown.
+    """
+    if release not in PEAK_ELECTRICITY_PERIODS:
+        raise KeyError(
+            f"No peak demand names for release '{release}'; expected one of "
+            f"{sorted(PEAK_ELECTRICITY_PERIODS)}")
+    periods_by_end_use = PEAK_ELECTRICITY_PERIODS[release]
+    if end_use not in periods_by_end_use:
+        raise KeyError(
+            f"No peak demand name for end use '{end_use}'; expected one of "
+            f"{sorted(periods_by_end_use)}")
+    period = periods_by_end_use[end_use]
+    suffix = '_savings' if savings else ''
+    return f'{prefix}peak_electricity_{period}_kw{suffix}'
+
+
+# =============================================================================
 # PRIVATE IMPACT: COST COLUMNS
 # =============================================================================
 
@@ -78,6 +127,39 @@ def create_annual_consumption_col(
     return f'{scenario_prefix}{year_label}_{category}_consumption'
 
 
+def create_annual_fuel_consumption_col(
+    scenario_prefix: str,
+    year_label: int,
+    category: str,
+    fuel: str) -> str:
+    """Build the per-year, per-fuel projected consumption column name.
+
+    The per-fuel version of create_annual_consumption_col: the fuel sits
+    between the category and 'consumption'. Each value is that fuel's full use
+    for the category (primary energy plus fans, pumps, and heat-pump backup),
+    so a reader can price each fuel at its own price. The per-fuel columns for
+    one home, year and category add up to the create_annual_consumption_col
+    total.
+
+    Args:
+        scenario_prefix: Scenario prefix (e.g. 'baseline_', 'ref2025_mp3_').
+        year_label: Calendar year (e.g. 2025).
+        category: Equipment category (e.g. 'heating').
+        fuel: Fuel as spelled in FUEL_MAPPING's values (e.g. 'naturalGas').
+
+    Returns:
+        Column name string, e.g.
+        'ref2025_mp3_2039_heating_electricity_consumption'.
+    """
+    return f'{scenario_prefix}{year_label}_{category}_{fuel}_consumption'
+
+
+# Cost type of a dual-fuel package's new backup furnace, priced apart from the
+# heat pump ('upgrade') so each can be read on its own: for example
+# 'mp5_heating_backupFurnace_installed_cost_v4MID'.
+COST_TYPE_BACKUP_FURNACE = 'backupFurnace'
+
+
 def create_cost_col(
     menu_mp: int,
     category: str,
@@ -88,7 +170,7 @@ def create_cost_col(
     Args:
         menu_mp: Measure package number.
         category: Equipment category (e.g. 'heating').
-        cost_type: 'upgrade' or 'replacement'.
+        cost_type: 'upgrade', 'replacement', or COST_TYPE_BACKUP_FURNACE.
         cost_scenario: 'v3' or 'v4LOW/MID/HIGH'.
 
     Returns:

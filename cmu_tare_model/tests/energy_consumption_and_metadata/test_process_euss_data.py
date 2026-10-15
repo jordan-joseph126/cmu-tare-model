@@ -1,7 +1,8 @@
 """Tests for cmu_tare_model.energy_consumption_and_metadata.process_euss_data module.
 
 Verifies pure utility functions: extract_city_name, map_metro_status,
-standardize_fuel_name, and preprocess_fuel_data.
+standardize_fuel_name, and preprocess_fuel_data; and the savings check,
+check_savings_against_resstock.
 """
 
 import pytest
@@ -139,3 +140,307 @@ def test_preprocess_fuel_data_non_dataframe_raises():
     from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import preprocess_fuel_data
     with pytest.raises(TypeError, match="pandas DataFrame"):
         preprocess_fuel_data("not_a_df", 'col')
+
+
+# -- check_savings_against_resstock -------------------------------------------
+
+@pytest.fixture
+def savings_check_inputs():
+    """Three retrofitted homes with ResStock's 2022.1.1 column names. Homes 1
+    and 2 heated with natural gas; home 3 heated with electricity and uses no
+    natural gas. No home uses propane or fuel oil."""
+    bldg_ids = pd.Index([1, 2, 3], name='bldg_id')
+    energy = 'energy_consumption.kwh'
+    df_mp = pd.DataFrame({
+        # Retrofit use, then ResStock's savings (baseline minus retrofit).
+        f'out.electricity.heating.{energy}': [6000.0, 4000.0, 5000.0],
+        f'out.electricity.heating.{energy}.savings': [-6000.0, -4000.0, 7000.0],
+        f'out.electricity.cooling.{energy}': [2500.0, 1500.0, 2000.0],
+        f'out.electricity.cooling.{energy}.savings': [500.0, 300.0, 400.0],
+        f'out.natural_gas.heating.{energy}': [0.0, 0.0, 0.0],
+        f'out.natural_gas.heating.{energy}.savings': [20000.0, 15000.0, 0.0],
+        # Side effects ResStock reports outside heating and cooling.
+        f'out.electricity.hot_water.{energy}.savings': [0.0, 50.0, -30.0],
+        f'out.electricity.refrigerator.{energy}.savings': [10.0, 0.0, 0.0],
+        f'out.natural_gas.hot_water.{energy}.savings': [0.0, 0.0, 0.0],
+        # Whole home: heating + cooling savings plus the side effects.
+        f'out.electricity.total.{energy}': [18000.0, 12000.0, 9000.0],
+        f'out.electricity.total.{energy}.savings': [-5490.0, -3650.0, 7370.0],
+        f'out.natural_gas.total.{energy}': [5000.0, 4000.0, 0.0],
+        f'out.natural_gas.total.{energy}.savings': [20000.0, 15000.0, 0.0],
+        f'out.propane.total.{energy}': [0.0] * 3,
+        f'out.propane.total.{energy}.savings': [0.0] * 3,
+        f'out.fuel_oil.total.{energy}': [0.0] * 3,
+        f'out.fuel_oil.total.{energy}.savings': [0.0] * 3,
+    }, index=bldg_ids)
+    tare_savings_by_fuel = {
+        'electricity': pd.Series([-5500.0, -3700.0, 7400.0], index=bldg_ids),
+        'naturalGas': pd.Series([20000.0, 15000.0, 0.0], index=bldg_ids),
+        'propane': pd.Series(0.0, index=bldg_ids),
+        'fuelOil': pd.Series(0.0, index=bldg_ids),
+    }
+    return tare_savings_by_fuel, df_mp, bldg_ids
+
+
+def test_savings_check_passes(savings_check_inputs):
+    """Matching savings pass; hot water and refrigerator changes are set aside."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        check_savings_against_resstock)
+    tare_savings_by_fuel, df_mp, bldg_ids = savings_check_inputs
+    df_check = check_savings_against_resstock(
+        tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1')
+    assert list(df_check['status']) == ['[OK]'] * 4
+    assert df_check['rdu_failed'].sum() == 0
+
+
+def test_savings_check_left_out_part_raises(savings_check_inputs):
+    """Energy the parts do not count shows up against the whole home."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        check_savings_against_resstock)
+    tare_savings_by_fuel, df_mp, bldg_ids = savings_check_inputs
+    # Home 1 used 800 kWh more electricity than its heating and cooling parts
+    # explain, as if backup heat had been left out.
+    df_mp.loc[1, 'out.electricity.total.energy_consumption.kwh.savings'] -= 800.0
+    with pytest.raises(ValueError, match='electricity'):
+        check_savings_against_resstock(
+            tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1')
+
+
+def test_savings_check_part_mismatch_raises(savings_check_inputs):
+    """TARE's savings must equal ResStock's part savings within 1 kWh."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        check_savings_against_resstock)
+    tare_savings_by_fuel, df_mp, bldg_ids = savings_check_inputs
+    # 5 kWh is well inside the whole-home limit, so only the part test fails.
+    tare_savings_by_fuel['naturalGas'].loc[2] += 5.0
+    with pytest.raises(ValueError, match='naturalGas'):
+        check_savings_against_resstock(
+            tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1')
+
+
+def test_savings_check_home_without_the_fuel(savings_check_inputs):
+    """A home that does not use a fuel passes at zero and fails on anything else."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        check_savings_against_resstock)
+    tare_savings_by_fuel, df_mp, bldg_ids = savings_check_inputs
+    # Home 3 uses no natural gas, and no home uses propane or fuel oil.
+    check_savings_against_resstock(
+        tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1')
+    # 0.5 kWh is inside the part test's 1 kWh limit, but 1% of zero use is zero.
+    tare_savings_by_fuel['naturalGas'].loc[3] = 0.5
+    with pytest.raises(ValueError, match='naturalGas'):
+        check_savings_against_resstock(
+            tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1')
+
+
+def test_savings_check_blank_raises(savings_check_inputs):
+    """A sample home with a blank savings value fails; it is not counted as zero."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        check_savings_against_resstock)
+    tare_savings_by_fuel, df_mp, bldg_ids = savings_check_inputs
+    df_mp.loc[2, 'out.electricity.cooling.energy_consumption.kwh.savings'] = np.nan
+    with pytest.raises(ValueError, match='electricity'):
+        check_savings_against_resstock(
+            tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1')
+
+
+def test_savings_check_quiet_pass_prints_one_line(savings_check_inputs, capsys):
+    """A passing check with verbose off prints one [OK] line and no table."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        check_savings_against_resstock)
+    tare_savings_by_fuel, df_mp, bldg_ids = savings_check_inputs
+    capsys.readouterr()  # drop anything printed while importing
+    check_savings_against_resstock(
+        tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1',
+        verbose=False)
+    printed_lines = capsys.readouterr().out.strip().splitlines()
+    assert len(printed_lines) == 1
+    assert printed_lines[0].startswith('[OK] MP3')
+    assert '3 rdu, 4 fuels' in printed_lines[0]
+
+
+def test_savings_check_quiet_failure_prints_table(savings_check_inputs, capsys):
+    """A failing check prints the full table even with verbose off."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        check_savings_against_resstock)
+    tare_savings_by_fuel, df_mp, bldg_ids = savings_check_inputs
+    # Same 5 kWh mismatch as test_savings_check_part_mismatch_raises.
+    tare_savings_by_fuel['naturalGas'].loc[2] += 5.0
+    with pytest.raises(ValueError, match='naturalGas'):
+        check_savings_against_resstock(
+            tare_savings_by_fuel, df_mp, bldg_ids, menu_mp=3, release='2022.1.1',
+            verbose=False)
+    printed = capsys.readouterr().out
+    assert 'rdu_failed' in printed
+    assert '[WARNING]' in printed
+
+
+# -- select_resstock_2025_1_columns (column-limited 2025.1 read) ---------------
+
+def _made_up_2025_1_file_columns():
+    """A small made-up 2025.1 column list: names the pipeline reads, and names
+    it must leave out (per-square-foot, pre-weighted, unrelated end uses)."""
+    from cmu_tare_model.utils.resstock_schema import RESSTOCK_COLUMN_MAP
+    mapped = list(RESSTOCK_COLUMN_MAP['2025.1'].values())
+    extra = [
+        'completed_status',
+        'in.hvac_has_ducts',
+        'out.electricity.heating_hp_bkup_fa.energy_consumption..kwh',
+        'out.electricity.heating_hp_bkup_fa.energy_savings..kwh',
+        'out.electricity.heating.energy_savings..kwh',
+        'out.natural_gas.heating.energy_savings..kwh',
+        'out.electricity.cooling.energy_savings..kwh',
+        'out.electricity.hot_water.energy_savings..kwh',
+        'out.electricity.hot_water_solar_th.energy_savings..kwh',
+        'out.electricity.refrigerator.energy_savings..kwh',
+        'out.electricity.total.energy_savings..kwh',
+        'out.site_energy.total.energy_savings..kwh',
+        # Must be left out:
+        'out.electricity.heating.energy_consumption_intensity..kwh_per_ft2',
+        'out.electricity.total.energy_savings_intensity..kwh_per_ft2',
+        'calc.weighted.electricity.total.energy_savings..tbtu',
+        'out.electricity.lighting_interior.energy_consumption..kwh',
+        'out.electricity.lighting_interior.energy_savings..kwh',
+        'out.electricity.pool_heater.energy_savings..kwh',
+    ]
+    return mapped + extra
+
+
+def test_select_2025_1_columns_keeps_what_the_pipeline_reads():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        select_resstock_2025_1_columns,
+    )
+    file_columns = _made_up_2025_1_file_columns()
+    selected = select_resstock_2025_1_columns(file_columns)
+    for column in (
+            'bldg_id', 'weight', 'applicability', 'in.hvac_has_ducts',
+            'out.electricity.heating_hp_bkup_fa.energy_consumption..kwh',
+            'out.electricity.heating_hp_bkup_fa.energy_savings..kwh',
+            'out.natural_gas.heating.energy_savings..kwh',
+            'out.electricity.hot_water.energy_savings..kwh',
+            'out.electricity.hot_water_solar_th.energy_savings..kwh',
+            'out.electricity.refrigerator.energy_savings..kwh',
+            'out.site_energy.total.energy_savings..kwh'):
+        assert column in selected, column
+
+
+def test_select_2025_1_columns_leaves_out_weighted_and_unrelated():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        select_resstock_2025_1_columns,
+    )
+    selected = select_resstock_2025_1_columns(_made_up_2025_1_file_columns())
+    for column in (
+            'completed_status',
+            'out.electricity.heating.energy_consumption_intensity..kwh_per_ft2',
+            'out.electricity.total.energy_savings_intensity..kwh_per_ft2',
+            'calc.weighted.electricity.total.energy_savings..tbtu',
+            'out.electricity.lighting_interior.energy_consumption..kwh',
+            'out.electricity.lighting_interior.energy_savings..kwh',
+            'out.electricity.pool_heater.energy_savings..kwh'):
+        assert column not in selected, column
+
+
+def test_select_2025_1_columns_keeps_file_order():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        select_resstock_2025_1_columns,
+    )
+    file_columns = _made_up_2025_1_file_columns()[::-1]
+    selected = select_resstock_2025_1_columns(file_columns)
+    assert selected == [c for c in file_columns if c in set(selected)]
+
+
+def test_select_2025_1_columns_needs_bldg_id_and_weight():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        select_resstock_2025_1_columns,
+    )
+    file_columns = [c for c in _made_up_2025_1_file_columns() if c != 'weight']
+    with pytest.raises(ValueError, match='weight'):
+        select_resstock_2025_1_columns(file_columns)
+
+
+# -- is_dual_fuel_package and the dual-fuel option string ---------------------
+
+_DUAL_FUEL_925 = ("Dual-Fuel ASHP, SEER 15.2, 7.8 HSPF2, Integrated Backup, "
+                  "92.5% AFUE NG, 35F switchover")
+_DUAL_FUEL_950 = ("Dual-Fuel ASHP, SEER 15.2, 7.8 HSPF2, Integrated Backup, "
+                  "95.0% AFUE NG, 35F switchover")
+
+
+def test_is_dual_fuel_package_checks_the_release_too():
+    from cmu_tare_model.utils.calculation_utils import is_dual_fuel_package
+    assert is_dual_fuel_package(5, '2025.1')
+    # The same number in another release, and other packages, are not.
+    assert not is_dual_fuel_package(5, '2022.1.1')
+    assert not is_dual_fuel_package(3, '2022.1.1')
+    assert not is_dual_fuel_package(4, '2022.1.1')
+    assert not is_dual_fuel_package(0, '2025.1')
+    with pytest.raises(ValueError, match='2030.1'):
+        is_dual_fuel_package(5, '2030.1')
+
+
+def test_dual_fuel_spec_columns_parse_each_home():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        add_dual_fuel_spec_columns,
+    )
+    df = pd.DataFrame(
+        {'upgrade_hvac_heating_efficiency': [_DUAL_FUEL_925, _DUAL_FUEL_950,
+                                             _DUAL_FUEL_925]},
+        index=pd.Index([11, 12, 13], name='bldg_id'))
+    df_out = add_dual_fuel_spec_columns(df)
+    assert df_out['upgrade_hp_seer2'].tolist() == [15.2, 15.2, 15.2]
+    assert df_out['upgrade_hp_hspf2'].tolist() == [7.8, 7.8, 7.8]
+    # AFUE is a fraction, the form the REMDB regression takes.
+    assert df_out['upgrade_backup_afue'].tolist() == pytest.approx(
+        [0.925, 0.95, 0.925])
+    assert df_out['upgrade_backup_fuel'].tolist() == ['Natural Gas'] * 3
+    assert df_out['upgrade_switchover_f'].tolist() == [35.0, 35.0, 35.0]
+    # The input frame is not changed.
+    assert 'upgrade_hp_seer2' not in df.columns
+
+
+def test_dual_fuel_spec_columns_stop_on_a_blank_or_other_string():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        add_dual_fuel_spec_columns,
+    )
+    df_blank = pd.DataFrame(
+        {'upgrade_hvac_heating_efficiency': [_DUAL_FUEL_925, None]})
+    with pytest.raises(ValueError, match='1 rdu'):
+        add_dual_fuel_spec_columns(df_blank)
+    df_other = pd.DataFrame(
+        {'upgrade_hvac_heating_efficiency': ['ASHP, SEER 15, 9.0 HSPF']})
+    with pytest.raises(ValueError, match='dual-fuel'):
+        add_dual_fuel_spec_columns(df_other)
+
+
+def test_dual_fuel_spec_columns_add_seer1_and_hspf1():
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        add_dual_fuel_spec_columns,
+    )
+    df = pd.DataFrame({'upgrade_hvac_heating_efficiency': [_DUAL_FUEL_925]})
+    df_out = add_dual_fuel_spec_columns(df)
+    assert df_out['upgrade_hp_seer1'].iloc[0] == pytest.approx(16.0)
+    assert df_out['upgrade_hp_hspf1'].iloc[0] == pytest.approx(7.8 / 0.85)
+
+
+# -- require_true_false (applicability must be a true boolean) -----------------
+
+def test_require_true_false_accepts_booleans():
+    """True and False pass, and come back as a bool column whatever the dtype."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        require_true_false,
+    )
+    flag = pd.Series([True, False, True], name='applicability')
+    assert require_true_false(flag).tolist() == [True, False, True]
+    as_objects = pd.Series([True, False], dtype=object, name='applicability')
+    assert require_true_false(as_objects).dtype == bool
+
+
+@pytest.mark.parametrize('values', [['True', 'False'], [True, None], [1, 0]])
+def test_require_true_false_refuses_text_blanks_and_numbers(values):
+    """Text, a blank or a number in place of True or False stops the read."""
+    from cmu_tare_model.energy_consumption_and_metadata.process_euss_data import (
+        require_true_false,
+    )
+    # Text "False" would become True under astype(bool), and a blank True.
+    with pytest.raises(TypeError, match='True or False'):
+        require_true_false(pd.Series(values, dtype=object, name='applicability'))

@@ -156,7 +156,7 @@ def economic_adoption_decision(
 
         econ_adopter_cols.append(econ_adopter_col)
 
-    # Attach the three columns and re-apply include_heating masking.
+    # Attach the adopter columns and blank them again outside the study sample.
     df_copy, all_columns_to_mask = apply_new_columns_to_dataframe(
         df_copy,
         df_new_columns,

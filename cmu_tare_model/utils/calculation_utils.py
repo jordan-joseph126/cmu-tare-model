@@ -8,12 +8,23 @@ This module contains utilities that support specific calculation operations
 but aren't part of the core validation framework.
 """
 
+import re
+
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Tuple, Optional, Union, Callable
+from typing import Dict, Iterable, List, Tuple, Optional, Union, Callable
 from scipy.stats import norm
 
-from cmu_tare_model.constants import EQUIPMENT_SPECS, FUEL_MAPPING, ALLOWED_TECHNOLOGIES, VERBOSE
+from cmu_tare_model.constants import (
+    EQUIPMENT_SPECS,
+    FUEL_MAPPING,
+    ALLOWED_TECHNOLOGIES,
+    SHARED_COOLING_EFFICIENCY,
+    DUAL_FUEL_PACKAGES_BY_RELEASE,
+    RESSTOCK_RELEASE_AND_MP,
+    RESSTOCK_RELEASE_THIS_RUN,
+    VERBOSE,
+)
 from cmu_tare_model.utils.validation_framework import (
     apply_final_masking,
     get_valid_fuel_types,
@@ -94,6 +105,182 @@ def get_post_retrofit_columns(
     return [f'mp{menu_mp}_{category}_consumption']
 
 
+# ResStock's fuel names, as they appear in 'out.{fuel}.{end use}...' columns,
+# mapped to the fuel spelling TARE uses in its own column names.
+RESSTOCK_FUEL_NAMES = {
+    'electricity': 'electricity',
+    'natural_gas': 'naturalGas',
+    'propane': 'propane',
+    'fuel_oil': 'fuelOil',
+}
+
+# TARE's name for each separately reported part of an end use. Only names the
+# parts; which parts count is decided by what the ResStock file contains. A
+# part not listed here raises, so a new one is named on purpose.
+# Every part counts on both the baseline and retrofit side: a furnace blower is
+# not a heat pump's fan, and a dual-fuel heat pump's backup furnace burns gas.
+ENDUSE_COMPONENT_NAMES = {
+    '': 'primary_system',
+    'fans_pumps': 'fansPumps',
+    'hp_bkup': 'hpBackup',
+    'hp_bkup_fa': 'hpBackupFans',
+}
+
+# 'out.{fuel}.{end use}{_part}.energy_consumption.kwh'; 2025.1 writes '..kwh'.
+# Anchored at both ends, so '.savings' columns and look-alikes such as
+# 'pool_heater' never match.
+_ENDUSE_COLUMN_PATTERN = re.compile(
+    r'^out\.(?P<fuel>[a-z_]+)\.(?P<end_use>[a-z]+?)(?:_(?P<part>[a-z_]+))?'
+    r'\.energy_consumption\.{1,2}kwh$')
+
+
+def find_enduse_columns(
+    resstock_columns: Iterable[str],
+    category: str,
+) -> List[Tuple[str, str, str]]:
+    """Finds every ResStock column that reports energy for one end use.
+
+    ResStock publishes each end use as separate parts -- primary-system
+    energy, fans and pumps, heat-pump backup -- one column per fuel and part,
+    and the parts do not overlap. Adding every part of a fuel gives that fuel's full
+    use for the end use. Reading the parts from the file, rather than from a
+    fixed list, picks up whatever a release publishes.
+
+    Args:
+        resstock_columns: Column names of a raw ResStock frame.
+        category: 'heating' or 'cooling'.
+
+    Returns:
+        (TARE fuel, TARE part name, ResStock column) for every match, in the
+        order the columns appear.
+
+    Raises:
+        ValueError: If category is not 'heating' or 'cooling', no
+            primary-system column is found, or a match has a fuel or part
+            TARE does not name.
+    """
+    if category not in ('heating', 'cooling'):
+        raise ValueError(f"category must be 'heating' or 'cooling', got {category!r}")
+
+    found = []
+    for col in resstock_columns:
+        match = _ENDUSE_COLUMN_PATTERN.match(col)
+        if not match or match['end_use'] != category:
+            continue
+        part = match['part'] or ''
+        if match['fuel'] not in RESSTOCK_FUEL_NAMES:
+            raise ValueError(f"{col}: fuel {match['fuel']!r} is not one TARE prices")
+        if part not in ENDUSE_COMPONENT_NAMES:
+            raise ValueError(
+                f"{col}: part {part!r} has no TARE name; add it to "
+                "ENDUSE_COMPONENT_NAMES")
+        found.append((RESSTOCK_FUEL_NAMES[match['fuel']],
+                      ENDUSE_COMPONENT_NAMES[part], col))
+
+    if not any(part == 'primary_system' for _, part, _ in found):
+        raise ValueError(
+            f"No primary-system {category} column found in the ResStock frame")
+    return found
+
+
+def get_resstock_savings_column(energy_column: str) -> str:
+    """Returns the name of ResStock's own savings column for an energy column.
+
+    Each upgrade file publishes baseline minus upgrade for every energy column
+    (positive = use fell). 2022.1.1 adds '.savings' to the energy column name
+    ('...energy_consumption.kwh.savings'); 2025.1 renames it instead
+    ('...energy_savings..kwh').
+
+    Args:
+        energy_column: A ResStock energy column, ending in
+            '.energy_consumption.kwh' (2022.1.1) or
+            '.energy_consumption..kwh' (2025.1).
+
+    Returns:
+        The savings column name in the same release's naming.
+
+    Raises:
+        ValueError: If energy_column does not end in either form.
+    """
+    # 2025.1 first: its '..kwh' ending is the more specific of the two.
+    if energy_column.endswith('.energy_consumption..kwh'):
+        return energy_column.replace(
+            '.energy_consumption..kwh', '.energy_savings..kwh')
+    if energy_column.endswith('.energy_consumption.kwh'):
+        return f'{energy_column}.savings'
+    raise ValueError(
+        f"{energy_column!r} is not a ResStock energy consumption column")
+
+
+def get_consumption_component_columns(
+    category: str,
+    menu_mp: int,
+    columns: Iterable[str],
+) -> List[Tuple[str, str]]:
+    """Returns every (fuel, column) pair that makes up one category's energy use.
+
+    Covers the primary heating or cooling energy plus each separately reported
+    component (fans and pumps, heat-pump backup), for the baseline (menu_mp=0)
+    or one measure package's retrofit. Summing a fuel's columns gives that
+    fuel's full energy use for the category. The components are the ones
+    present in the frame (created from whatever the ResStock file publishes).
+
+    Args:
+        category: Equipment category name.
+        menu_mp: Measure package number; 0 for the baseline.
+        columns: Column names of the frame the components will be read from.
+
+    Returns:
+        List of (fuel, column name) pairs, with fuel spelled as in
+        FUEL_MAPPING's values (e.g. 'naturalGas'). A fuel can appear more
+        than once.
+
+    Raises:
+        TypeError: If menu_mp is not an integer.
+        ValueError: If category is invalid or menu_mp is negative.
+    """
+    if not isinstance(menu_mp, (int, np.integer)):
+        raise TypeError(
+            f"menu_mp must be an integer, got {type(menu_mp).__name__}")
+    if menu_mp < 0:
+        raise ValueError(f"menu_mp must be 0 or greater, got {menu_mp}")
+
+    # Step 1 -- primary-system energy. The baseline may use any fuel valid for the
+    # category; every retrofit's primary heating or cooling energy is electric.
+    if menu_mp == 0:
+        baseline_cols = get_all_possible_fuel_columns(category)
+        pairs = [
+            (fuel, f'base_{fuel}_{category}_consumption')
+            for fuel in FUEL_MAPPING.values()
+            if f'base_{fuel}_{category}_consumption' in baseline_cols
+        ]
+        prefix = 'base'
+    else:
+        pairs = [('electricity', col)
+                 for col in get_post_retrofit_columns(category, menu_mp)]
+        prefix = f'mp{menu_mp}'
+
+    # Step 2 -- separately reported components (fans, heat-pump backup)
+    # Read from the frame. Sorted by fuel, then part, in the order of
+    # RESSTOCK_FUEL_NAMES and ENDUSE_COMPONENT_NAMES, so the sum is always
+    # added up in the same order.
+    fuel_order = list(RESSTOCK_FUEL_NAMES.values())
+    part_order = [part for part in ENDUSE_COMPONENT_NAMES.values()
+                  if part != 'primary_system']
+    component_pattern = re.compile(
+        rf'^{prefix}_(?P<fuel>{"|".join(fuel_order)})_{category}_'
+        rf'(?P<part>{"|".join(part_order)})_consumption$')
+    found = []
+    for col in columns:
+        match = component_pattern.match(col)
+        if match:
+            found.append((fuel_order.index(match['fuel']),
+                          part_order.index(match['part']),
+                          match['fuel'], col))
+    pairs.extend((fuel, col) for _, _, fuel, col in sorted(found))
+    return pairs
+
+
 def identify_valid_homes(
     df: pd.DataFrame,
     verbose: bool = VERBOSE
@@ -109,6 +296,9 @@ def identify_valid_homes(
         
     Returns:
         DataFrame with added data quality flags.
+
+    Raises:
+        KeyError: If the frame has cooling_type but no base_cooling_efficiency.
     """    
     # Initialize the overall inclusion flag
     df['include_all'] = True
@@ -171,6 +361,11 @@ def identify_valid_homes(
                 
                 # Check if the technology type is in the allowed list
                 df[tech_flag] = df[tech_col].isin(ALLOWED_TECHNOLOGIES[category])
+                # Shared cooling is typed 'Central AC' but has no replacement
+                # cost, so it is not a cooling system the study can replace.
+                if category == 'cooling':
+                    df[tech_flag] &= (
+                        df['base_cooling_efficiency'] != SHARED_COOLING_EFFICIENCY)
 
                 # Invalid technology count and percentage
                 invalid_tech_count = (~df[tech_flag]).sum()
@@ -220,6 +415,142 @@ def identify_valid_homes(
     if verbose:
         print(f"\nOverall: Total {overall_excluded} homes ({overall_pct:.1f}%) excluded from ALL categories")
     return df
+
+
+# Fuel bucket order shared by compute_funnel_stage_row and
+# print_masking_funnel_stage, so the two funnel-reporting entry points can
+# never drift out of sync on which buckets exist or what order they print in.
+_FUNNEL_FUEL_ORDER = [
+    'Electricity', 'Electricity ASHP', 'Fuel Oil', 'Natural Gas', 'Propane']
+
+# Existing heat pumps are excluded from the study (nothing to replace).
+EXISTING_HEAT_PUMP_TYPES = ['Electricity ASHP', 'Electricity MSHP']
+
+
+def compute_funnel_stage_row(
+    df: pd.DataFrame,
+    stage_label: str,
+    stage_mask: Optional[pd.Series] = None,
+    weight_col: str = 'weight',
+    heating_fuel_col: str = 'base_heating_fuel',
+    heating_type_col: str = 'heating_type',
+) -> Dict[str, Union[str, int, float]]:
+    """Computes one row of the masking filter funnel, without printing it.
+
+    Holds the rdu-count/weighted-count/fuel-share math in exactly one place,
+    shared by print_masking_funnel_stage (console reporting) and any caller
+    that accumulates funnel stages into a DataFrame instead (for example
+    load_and_filter_2025_1_upgrade's df_funnel).
+
+    Existing electric heat pumps ('Electricity ASHP' and its variants, such
+    as MSHP) are broken out of the general 'Electricity' fuel bucket, since
+    CLAUDE.md treats "any variant" of an existing heat pump as excluded for
+    a different reason than a home's baseline fuel (Documented Limitation
+    8).
+
+    Args:
+        df: The DataFrame at this filter stage.
+        stage_label: A short name for this stage, e.g. 'applicability'.
+        stage_mask: Optional boolean mask aligned to df's index; if given,
+            only rows where True are counted, so a stage can be reported
+            without pre-filtering df itself. If None, every row in df is
+            counted.
+        weight_col: Name of the dwelling-unit weight column.
+        heating_fuel_col: Name of the baseline heating fuel column.
+        heating_type_col: Name of the baseline heating type-and-fuel column
+            (used only to identify existing heat pumps).
+
+    Returns:
+        A dict with keys 'stage', 'rdu_count', 'weighted_count', and one
+        '{fuel}_pct' key per bucket in _FUNNEL_FUEL_ORDER.
+
+    Raises:
+        KeyError: If a required column is missing from df.
+    """
+    required_cols = [weight_col, heating_fuel_col, heating_type_col]
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        raise KeyError(
+            f"compute_funnel_stage_row requires columns {required_cols}, "
+            f"missing: {missing_cols}")
+
+    df_stage = df if stage_mask is None else df.loc[stage_mask]
+
+    rdu_count = len(df_stage)
+    weighted_count = df_stage[weight_col].sum()
+
+    is_existing_heat_pump = df_stage[heating_type_col].isin(
+        EXISTING_HEAT_PUMP_TYPES)
+    fuel_bucket = df_stage[heating_fuel_col].where(
+        ~is_existing_heat_pump, 'Electricity ASHP')
+
+    weight_by_fuel = df_stage.groupby(fuel_bucket)[weight_col].sum()
+    share_by_fuel = {
+        fuel: (weight_by_fuel.get(fuel, 0.0) / weighted_count * 100
+               if weighted_count > 0 else 0.0)
+        for fuel in _FUNNEL_FUEL_ORDER
+    }
+
+    row: Dict[str, Union[str, int, float]] = {
+        'stage': stage_label,
+        'rdu_count': rdu_count,
+        'weighted_count': weighted_count,
+    }
+    row.update({f'{fuel}_pct': share_by_fuel[fuel] for fuel in _FUNNEL_FUEL_ORDER})
+    return row
+
+
+def print_masking_funnel_stage(
+    df: pd.DataFrame,
+    stage_label: str,
+    stage_mask: Optional[pd.Series] = None,
+    weight_col: str = 'weight',
+    heating_fuel_col: str = 'base_heating_fuel',
+    heating_type_col: str = 'heating_type',
+) -> None:
+    """Prints one row of the 2025.1 masking filter funnel.
+
+    A thin console-reporting wrapper around compute_funnel_stage_row -- see
+    that function's docstring for the rdu/weighted-count/fuel-share math and
+    the existing-heat-pump bucketing rule.
+
+    The applicability, occupancy, and housing-type filter stages run on the
+    raw ResStock parquet, before df_enduse_refactored/df_enduse_compare have
+    renamed anything -- so their fuel and technology columns are still the
+    raw names ('in.heating_fuel', 'in.hvac_heating_type_and_fuel'). Later
+    stages run on the TARE-side frame, where those columns are renamed to
+    'base_heating_fuel'/'heating_type'. heating_fuel_col and heating_type_col
+    let the same funnel call report either.
+
+    Args:
+        df: The DataFrame at this filter stage.
+        stage_label: A short name for this stage, e.g. 'applicability'.
+        stage_mask: Optional boolean mask aligned to df's index; if given,
+            only rows where True are counted, so a stage can be reported
+            without pre-filtering df itself. If None, every row in df is
+            counted.
+        weight_col: Name of the dwelling-unit weight column.
+        heating_fuel_col: Name of the baseline heating fuel column.
+        heating_type_col: Name of the baseline heating type-and-fuel column
+            (used only to identify existing heat pumps).
+
+    Returns:
+        None. Prints the funnel row.
+
+    Raises:
+        KeyError: If a required column is missing from df.
+    """
+    row = compute_funnel_stage_row(
+        df, stage_label, stage_mask,
+        weight_col=weight_col, heating_fuel_col=heating_fuel_col,
+        heating_type_col=heating_type_col)
+
+    share_str = " | ".join(
+        f"{fuel}={row[f'{fuel}_pct']:.2f}%" for fuel in _FUNNEL_FUEL_ORDER)
+
+    print(
+        f"[FUNNEL] {row['stage']}: {row['rdu_count']:,} rdu | "
+        f"{row['weighted_count']:,.0f} weighted homes | {share_str}")
 
 
 def mask_invalid_data(
@@ -421,6 +752,38 @@ def validate_common_parameters(
     # No longer validating discounting_method because using both methods for private NPV
 
     return menu_mp_int, policy_scenario
+
+
+# ===== Measure Package Type =====
+def is_dual_fuel_package(menu_mp: int, release: Optional[str] = None) -> bool:
+    """Says whether a measure package installs a dual-fuel heating system.
+
+    A dual-fuel package keeps a fossil furnace as the heat pump's backup. Its
+    retrofit therefore has a furnace cost on top of the heat pump's, burns gas
+    after the retrofit, and passes the June 2026 rebate fuel gates whatever the
+    home's heating fuel was before.
+
+    Package numbers repeat across ResStock releases, so the answer always
+    comes from the release and the package number together.
+
+    Args:
+        menu_mp: Measure package number (0 is the baseline, never dual fuel).
+        release: ResStock release. None uses RESSTOCK_RELEASE_THIS_RUN.
+
+    Returns:
+        True only if the package is listed as dual fuel for that release in
+        DUAL_FUEL_PACKAGES_BY_RELEASE (constants.py).
+
+    Raises:
+        ValueError: If the release is not a known release.
+    """
+    if release is None:
+        release = RESSTOCK_RELEASE_THIS_RUN
+    if release not in RESSTOCK_RELEASE_AND_MP:
+        raise ValueError(
+            f"Unknown ResStock release '{release}'; expected one of "
+            f"{sorted(RESSTOCK_RELEASE_AND_MP)}")
+    return int(menu_mp) in DUAL_FUEL_PACKAGES_BY_RELEASE.get(release, [])
 
 
 # ===== Shared DataFrame Helpers =====

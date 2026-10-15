@@ -4,6 +4,7 @@ from typing import Dict
 
 # import from cmu-tare-model package
 from config import PROJECT_ROOT
+from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2025_2020
 
 # ====================================================================================================================================================================================
 # Set print_verbose to True for detailed output, or False for minimal output
@@ -21,11 +22,15 @@ CLIMATE CHANGE IMPACT SENSITIVITY: SCC LOOKUP
 def create_scc_lookup(df: pd.DataFrame) -> Dict[str, Dict[int, float]]:
     """
     Create a nested dictionary that maps SCC assumptions ('lower', 'central', 'upper')
-    to a year-based lookup of the Social Cost of Carbon (USD 2023).
+    to a year-based lookup of the Social Cost of Carbon (USD 2025).
+
+    The source values are published in 2020 dollars. They are inflated to 2025
+    dollars here, so climate damages share the dollar year of every private
+    cost in the model.
 
     Args:
         df (pd.DataFrame): DataFrame containing columns:
-            'emissions_year', 'scc_lower_usd2023', 'scc_central_usd2023', 'scc_upper_usd2023'.
+            'emissions_year', 'scc_lower_usd2020', 'scc_central_usd2020', 'scc_upper_usd2020'.
 
     Returns:
         Dict[str, Dict[int, float]]:
@@ -50,9 +55,12 @@ def create_scc_lookup(df: pd.DataFrame) -> Dict[str, Dict[int, float]]:
     # Non-trivial iteration that ensures each row is inserted into the correct assumption dict
     for _, row in df.iterrows():
         year = int(row["emissions_year"])
-        lookup_climate_impact_scc["lower"][year] = row["scc_lower_usd2023"]
-        lookup_climate_impact_scc["central"][year] = row["scc_central_usd2023"]
-        lookup_climate_impact_scc["upper"][year] = row["scc_upper_usd2023"]
+        lookup_climate_impact_scc["lower"][year] = (
+            row["scc_lower_usd2020"] * cpi_ratio_2025_2020)
+        lookup_climate_impact_scc["central"][year] = (
+            row["scc_central_usd2020"] * cpi_ratio_2025_2020)
+        lookup_climate_impact_scc["upper"][year] = (
+            row["scc_upper_usd2020"] * cpi_ratio_2025_2020)
     
     return lookup_climate_impact_scc
 

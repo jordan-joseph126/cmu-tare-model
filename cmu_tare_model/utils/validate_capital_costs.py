@@ -11,8 +11,9 @@ Equipment types validated:
   - Propane Furnace
 
 For each equipment configuration, reports the 10th, 50th, and 90th percentile
-of installed costs across homes in the DataFrame, for each cost scenario
-(v3, v4MID, or whichever scenarios are active).
+of installed costs across the study-sample homes in the DataFrame
+(include_sample = True), for each cost scenario (v3, v4MID, or whichever
+scenarios are active).
 
 Binning approach:
   - Capacity (tons): round to nearest integer — [N-0.5, N+0.5) maps to bin N.
@@ -40,7 +41,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 from typing import Dict, List, Optional, Tuple
 
-from cmu_tare_model.constants import REMDB_COST_SCENARIO_KEYS
+from cmu_tare_model.constants import REMDB_COST_SCENARIO_KEYS, VERBOSE
+from cmu_tare_model.utils.calculation_utils import get_consumption_component_columns
 from cmu_tare_model.utils.column_names import create_cost_col
 from cmu_tare_model.utils.data_visualization_histograms import create_subplot_grid_histogram
 
@@ -123,15 +125,15 @@ def _print_outlier_counts(outliers: Dict,
     eff_hi = outliers.get('eff_hi', '?')
 
     print(f"  Outliers excluded from bins:")
-    print(f"    Capacity  < {cap_lo} {cap_unit}: {outliers.get('cap_below', 0):,} homes")
-    print(f"    Capacity >= {cap_hi} {cap_unit}: {outliers.get('cap_above', 0):,} homes")
-    print(f"    {eff_label}  < {eff_lo}: {outliers.get('eff_below', 0):,} homes")
-    print(f"    {eff_label} >= {eff_hi}: {outliers.get('eff_above', 0):,} homes")
+    print(f"    Capacity  < {cap_lo} {cap_unit}: {outliers.get('cap_below', 0):,} rdu")
+    print(f"    Capacity >= {cap_hi} {cap_unit}: {outliers.get('cap_above', 0):,} rdu")
+    print(f"    {eff_label}  < {eff_lo}: {outliers.get('eff_below', 0):,} rdu")
+    print(f"    {eff_label} >= {eff_hi}: {outliers.get('eff_above', 0):,} rdu")
     cap_nan = outliers.get('cap_nan', 0)
     eff_nan = outliers.get('eff_nan', 0)
     if cap_nan > 0 or eff_nan > 0:
-        print(f"    Capacity NaN (missing data): {cap_nan:,} homes")
-        print(f"    {eff_label} NaN (missing/unparseable): {eff_nan:,} homes")
+        print(f"    Capacity NaN (missing data): {cap_nan:,} rdu")
+        print(f"    {eff_label} NaN (missing/unparseable): {eff_nan:,} rdu")
 
 
 def _build_clamping_summary(
@@ -178,7 +180,7 @@ def _build_clamping_summary(
 
     lines = [
         f"  Efficiency floor impact on {eff_label} {floor_display:.0f} bin composition "
-        f"({in_floor_bin:,} homes in bin):"
+        f"({in_floor_bin:,} rdu in bin):"
     ]
 
     # Group clamped homes by their original efficiency for the migration summary
@@ -187,7 +189,7 @@ def _build_clamping_summary(
         pct_of_total = count / total_filtered * 100
         pct_of_bin = count / in_floor_bin * 100
         lines.append(
-            f"    {orig_val:.0f} {eff_label} ({count:,} / {total_filtered:,} homes, "
+            f"    {orig_val:.0f} {eff_label} ({count:,} / {total_filtered:,} rdu, "
             f"{pct_of_total:.1f}%) --> {floor_display:.0f} {eff_label} "
             f"({count:,} / {in_floor_bin:,} in bin, {pct_of_bin:.1f}%)"
         )
@@ -322,24 +324,43 @@ def _bin_group_summarize(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _analyze_ashp(df: pd.DataFrame, menu_mp: int, cost_scenarios: List[str],
-                  cost_type: str = 'replacement') -> Tuple[pd.DataFrame, Dict]:
-    """Analyze ASHP heating costs by SEER × capacity (tons)."""
+                  cost_type: str = 'upgrade') -> Tuple[pd.DataFrame, Dict]:
+    """Analyze ASHP heating costs by SEER × capacity (tons).
+
+    Only the upgrade table (the new heat pump) is built today. The
+    replacement table would select homes that already have a heat pump, and
+    those are outside the study sample. Its filter and its capacity column
+    are kept below, commented out, in case existing heat pumps are costed
+    later. Bringing it back also needs an 'ASHP (Heating Replacement)' entry
+    in run_capital_cost_validation's analyses list.
+
+    Raises:
+        ValueError: If cost_type is not 'upgrade'.
+    """
+    if cost_type != 'upgrade':
+        raise ValueError(
+            f"_analyze_ashp builds the 'upgrade' table only, got {cost_type!r}. "
+            "The replacement table is switched off: homes with an existing "
+            "heat pump are outside the study sample.")
+
     mask = pd.Series(True, index=df.index)
-    if cost_type == 'replacement':
-        if 'heating_type' in df.columns:
-            mask &= (df['heating_type'] == 'Electricity ASHP')
-        elif 'hvac_heating_type_and_fuel' in df.columns:
-            mask &= (df['hvac_heating_type_and_fuel'] == 'Electricity ASHP')
-        else:
-            return pd.DataFrame(), {}
-        if 'hvac_has_ducts' in df.columns:
-            mask &= (df['hvac_has_ducts'] == 'Yes')
+    # Replacement table, switched off: homes whose existing system is a ducted
+    # air-source heat pump.
+    # if cost_type == 'replacement':
+    #     if 'heating_type' in df.columns:
+    #         mask &= (df['heating_type'] == 'Electricity ASHP')
+    #     elif 'hvac_heating_type_and_fuel' in df.columns:
+    #         mask &= (df['hvac_heating_type_and_fuel'] == 'Electricity ASHP')
+    #     else:
+    #         return pd.DataFrame(), {}
+    #     if 'hvac_has_ducts' in df.columns:
+    #         mask &= (df['hvac_has_ducts'] == 'Yes')
+    # else:
+    pm2_col = f'heating_{cost_type}_pm2_euss'
+    if pm2_col in df.columns:
+        mask &= df[pm2_col].notna() & (df[pm2_col] > 0)
     else:
-        pm2_col = f'heating_{cost_type}_pm2_euss'
-        if pm2_col in df.columns:
-            mask &= df[pm2_col].notna() & (df[pm2_col] > 0)
-        else:
-            return pd.DataFrame(), {}
+        return pd.DataFrame(), {}
 
     df_f = df.loc[mask]
     if len(df_f) == 0:
@@ -358,11 +379,10 @@ def _analyze_ashp(df: pd.DataFrame, menu_mp: int, cost_scenarios: List[str],
     else:
         return pd.DataFrame(), {}
         
-    # Capacity source depends on cost_type: replacement costs are now priced
-    # off the OLD system's own size (see calculate_equipment_replacement_costs.py,
-    # 20 Aug 2026 fix); upgrade costs are priced off the new heat pump's size.
-    capacity_col = ('base_size_heating_system_primary_k_btu_h' if cost_type == 'replacement'
-                    else 'size_heating_system_primary_k_btu_h')
+    # Upgrade costs are priced off the new heat pump's size. The replacement
+    # table, switched off above, would be priced off the OLD system's own size:
+    # capacity_col = 'base_size_heating_system_primary_k_btu_h'
+    capacity_col = 'size_heating_system_primary_k_btu_h'
     if capacity_col not in df_f.columns:
         return pd.DataFrame(), {}
     cap = _capacity_tons(df_f[capacity_col])
@@ -529,7 +549,7 @@ def _print_table(title: str,
     # Print outlier counts
     if outliers:
         total = outliers.get('total_filtered', 0)
-        print(f"  Total homes matching filter: {total:,}")
+        print(f"  Total rdu matching filter: {total:,}")
         _print_outlier_counts(outliers, cap_unit=cap_unit, eff_label=eff_label)
 
         # Print clamping impact summary (replacement metrics only)
@@ -542,7 +562,7 @@ def _print_table(title: str,
         print()
 
     if df_result.empty:
-        print("  No matching homes found in the DataFrame for this equipment type.")
+        print("  No matching rdu found in the DataFrame for this equipment type.")
         print(f"{'=' * 110}")
         return
 
@@ -586,38 +606,56 @@ def run_capital_cost_validation(
     menu_mp: int,
     capital_costs_mpx: Optional[Dict] = None,
     cost_scenarios: Optional[List[str]] = None,
+    verbose: bool = VERBOSE,
 ) -> Dict[str, pd.DataFrame]:
     """
     Run capital cost validation disaggregated by equipment type and capacity.
 
     Analyzes installed costs already computed in the DataFrame, filtering and
     grouping by equipment SEER/AFUE ratings and capacity (tons or kBTU/h).
+    Every table covers the study sample only (include_sample = True).
 
     Args:
         df: The main home-level DataFrame (df_euss_am_mpX_home) with cost
-            columns already computed.
+            columns already computed and the include_sample column.
         menu_mp: Measure package number (e.g. 3, 4, 8).
         capital_costs_mpx: Optional CAPITAL_COSTS_MPX dict. If provided and
             the active scenarios include v4MID, the v4MID DataFrame is used
             for scenarios that may have additional columns.
         cost_scenarios: List of cost scenario keys (default: REMDB_COST_SCENARIO_KEYS).
+        verbose: Whether to print the five tables and the summary. When False,
+            one line is printed. The returned tables are the same either way.
 
     Returns:
         Dict structured as results[category][technology][cost_type] = DataFrame:
           - category: 'heating', 'cooling'
           - technology: 'ashp', 'central_ac', 'gas_furnace', 'propane_furnace'
-          - cost_type: 'replacement', 'upgrade'
+          - cost_type: 'replacement', 'upgrade' ('ashp' has 'upgrade' only)
         Each DataFrame contains numeric columns: Capacity, Efficiency rating,
         and per-scenario N/P10/P50/P90 values (e.g. 'v4MID N', 'v4MID P50').
+
+    Raises:
+        KeyError: If df has no include_sample column.
     """
+    if 'include_sample' not in df.columns:
+        raise KeyError(
+            "df has no 'include_sample' column, so the study sample cannot "
+            "be selected.")
+    in_sample = df['include_sample'].astype(bool)
+
     if cost_scenarios is None:
         cost_scenarios = list(REMDB_COST_SCENARIO_KEYS)
 
-    print("\n" + "#" * 110)
-    print(f"#  CAPITAL COST VALIDATION: Equipment-Level Disaggregation (MP{menu_mp})")
-    print(f"#  Active cost scenarios: {cost_scenarios}")
-    print(f"#  Total homes in DataFrame: {len(df):,}")
-    print("#" * 110)
+    if verbose:
+        print("\n" + "#" * 110)
+        print(
+            "#  CAPITAL COST VALIDATION: Equipment-Level Disaggregation "
+            f"(MP{menu_mp})")
+        print(f"#  Active cost scenarios: {cost_scenarios}")
+        print(
+            f"#  rdu in DataFrame: {len(df):,} | "
+            f"in the study sample: {int(in_sample.sum()):,}")
+        print("#" * 110)
 
     # ── Determine which DataFrame to use for each scenario ──
     # If CAPITAL_COSTS_MPX is provided, v4 scenario columns may only exist
@@ -654,6 +692,11 @@ def run_capital_cost_validation(
     else:
         df_work = df
 
+    # Every table describes the study sample only, as the get_*_homes helpers
+    # below do. Filtered after the extra columns are attached, because those
+    # are matched to df by row position.
+    df_work = df_work.loc[in_sample]
+
     total_homes = len(df_work)
     results = {}
     outlier_info = {}
@@ -662,24 +705,9 @@ def run_capital_cost_validation(
     # Each entry defines one equipment-type analysis to run.
     # 'category', 'technology', and 'cost_type' define the structured return dict keys:
     #   results_structured[category][technology][cost_type] = DataFrame
+    # There is no 'ASHP (Heating Replacement)' table: it would select homes
+    # that already have a heat pump, and those are outside the study sample.
     analyses = [
-        {
-            'label': 'ASHP (Heating Replacement)',
-            'category': 'heating',
-            'technology': 'ashp',
-            'cost_type': 'replacement',
-            'title': 'ASHP — Air Source Heat Pump (Heating Replacement, Centrally Ducted)',
-            'fn': _analyze_ashp,
-            'fn_kwargs': {'cost_type': 'replacement'},
-            'id_cols': ['Capacity (tons)', 'SEER'],
-            'cap_unit': 'tons', 'eff_label': 'SEER',
-            'notes': [
-                'Cost type: heating replacement (like-for-like ASHP)',
-                'Filter: heating_type = Electricity ASHP, hvac_has_ducts = Yes',
-                'SEER bins: heating_replacement_pm2_euss (floored efficiency, see clamping summary)',
-                'Costs: computed using floored efficiency (see Section 5 of protocol)',
-            ],
-        },
         {
             'label': 'Central AC (Cooling Replacement)',
             'category': 'cooling',
@@ -786,25 +814,33 @@ def run_capital_cost_validation(
         ct = spec['cost_type']
         results_structured.setdefault(cat, {}).setdefault(tech, {})[ct] = df_result
 
-        _print_table(
-            title=spec['title'],
-            df_result=df_result,
-            cost_scenarios=cost_scenarios,
-            id_cols=spec['id_cols'],
-            notes=spec['notes'],
-            outliers=oi,
-            cap_unit=spec['cap_unit'],
-            eff_label=spec['eff_label'],
-        )
+        if verbose:
+            _print_table(
+                title=spec['title'],
+                df_result=df_result,
+                cost_scenarios=cost_scenarios,
+                id_cols=spec['id_cols'],
+                notes=spec['notes'],
+                outliers=oi,
+                cap_unit=spec['cap_unit'],
+                eff_label=spec['eff_label'],
+            )
+
+    # Quiet: one line, and skip the printed summary below.
+    if not verbose:
+        print(
+            f"[OK] MP{menu_mp} capital cost validation: {len(results)} "
+            f"equipment tables built ({cost_scenarios})")
+        return results_structured
 
     # ── Summary ──
     print(f"\n{'#' * 110}")
     print(f"#  VALIDATION SUMMARY")
-    print(f"#  Total homes in DataFrame: {total_homes:,}")
+    print(f"#  Study-sample rdu: {total_homes:,}")
     print(f"{'#' * 110}")
     for label, df_r in results.items():
         if df_r.empty:
-            print(f"  {label:<45}  No matching homes")
+            print(f"  {label:<45}  No matching rdu")
         else:
             # Use the max N across ALL scenarios (not just the first) to avoid
             # the v3 issue where Central AC has no v3 data.
@@ -820,7 +856,7 @@ def run_capital_cost_validation(
 
             total_bins = len(df_r)
 
-            # Percentage of total homes in DataFrame
+            # Percentage of the study-sample rdu
             pct_of_total = (total_n / total_homes * 100) if total_homes > 0 else 0.0
 
             # Percentage of appliance-filtered homes (from outlier info)
@@ -829,8 +865,8 @@ def run_capital_cost_validation(
             pct_of_appliance = (total_n / appliance_filtered * 100) if appliance_filtered > 0 else 0.0
 
             print(f"  {label:<45}  {n_bins_with_data}/{total_bins} bins with data  |  "
-                  f"{total_n:,} homes matched  |  "
-                  f"{pct_of_total:.1f}% of all homes  |  "
+                  f"{total_n:,} rdu matched  |  "
+                  f"{pct_of_total:.1f}% of sample rdu  |  "
                   f"{pct_of_appliance:.1f}% of {appliance_filtered:,} filtered")
 
     print(f"{'#' * 110}\n")
@@ -848,20 +884,20 @@ def get_ashp_upgrade_homes(df: pd.DataFrame) -> pd.DataFrame:
 
     heating_upgrade_pm2_euss is populated for nearly every row regardless of
     adoption eligibility -- the new heat pump's spec doesn't depend on the
-    home's baseline -- so include_heating is applied explicitly here.
+    home's baseline -- so include_sample is applied explicitly here.
     _analyze_ashp's own N counts stay correct without this gate because they
     group on the cost column (NaN for ineligible homes), not on this
     population directly.
 
     Args:
         df: Home-level DataFrame with heating_upgrade_pm2_euss and
-            include_heating columns.
+            include_sample columns.
 
     Returns:
         The subset of df in the ASHP upgrade population.
     """
     pm2_col = 'heating_upgrade_pm2_euss'
-    mask = df[pm2_col].notna() & (df[pm2_col] > 0) & df['include_heating']
+    mask = df[pm2_col].notna() & (df[pm2_col] > 0) & df['include_sample']
     return df.loc[mask]
 
 
@@ -869,13 +905,13 @@ def get_central_ac_replacement_homes(df: pd.DataFrame) -> pd.DataFrame:
     """Homes in the baseline Central AC replacement population.
 
     Args:
-        df: Home-level DataFrame with hvac_cooling_type and include_cooling
+        df: Home-level DataFrame with hvac_cooling_type and include_sample
             columns.
 
     Returns:
         The subset of df with a baseline Central AC.
     """
-    return df.loc[(df['hvac_cooling_type'] == 'Central AC') & df['include_cooling']]
+    return df.loc[(df['hvac_cooling_type'] == 'Central AC') & df['include_sample']]
 
 
 def get_natural_gas_furnace_replacement_homes(df: pd.DataFrame) -> pd.DataFrame:
@@ -883,11 +919,11 @@ def get_natural_gas_furnace_replacement_homes(df: pd.DataFrame) -> pd.DataFrame:
 
     A plain 'Furnace' substring match on heating_type also catches Wall/Floor
     Furnace homes, which are excluded from the modeled population (invalid
-    heating tech -- include_heating = False), so that gate is applied here.
+    heating tech -- include_sample = False), so that gate is applied here.
 
     Args:
         df: Home-level DataFrame with base_heating_fuel, heating_type, and
-            include_heating columns.
+            include_sample columns.
 
     Returns:
         The subset of df with a baseline natural gas furnace.
@@ -895,7 +931,7 @@ def get_natural_gas_furnace_replacement_homes(df: pd.DataFrame) -> pd.DataFrame:
     mask = (
         (df['base_heating_fuel'] == 'Natural Gas')
         & df['heating_type'].str.contains('Furnace', case=False, na=False)
-        & df['include_heating']
+        & df['include_sample']
     )
     return df.loc[mask]
 
@@ -983,8 +1019,8 @@ def build_capital_cost_distribution_figure(
         'Heating Consumption (kWh)', 'Heating Size (kBTU/h)',
         'Cooling Consumption (kWh)', 'Cooling Size (kBTU/h)',
         'Cooling Consumption (kWh)', 'Cooling Size (kBTU/h)',
-        'Heating Consumption (therms)', 'Heating Size (kBTU/h)',
-        'Heating Consumption (therms)', 'Heating Size (kBTU/h)',
+        'Heating Consumption (kWh)', 'Heating Size (kBTU/h)',
+        'Heating Consumption (kWh)', 'Heating Size (kBTU/h)',
     ]
 
     suptitle = (
@@ -1000,6 +1036,318 @@ def build_capital_cost_distribution_figure(
         subplot_titles=subplot_titles,
         suptitle=suptitle,
         figure_size=figure_size,
+        color_code='base_heating_fuel',
+        bin_number=bin_number,
+        lower_percentile=lower_percentile,
+        upper_percentile=upper_percentile,
+        include_zero=True,
+        show_legend=False,
+    )
+
+
+def build_furnace_ashp_metric_comparison_figure(
+    df_mp3: pd.DataFrame,
+    df_mp4: pd.DataFrame,
+    baseline_col: str,
+    mp3_col: str,
+    mp4_col: str,
+    x_label: str,
+    metric_label: str,
+    figure_size: Tuple[int, int] = (24, 8),
+    bin_number: int = 30,
+    lower_percentile: float = 2.5,
+    upper_percentile: float = 97.5,
+    include_zero: bool = True,
+) -> Figure:
+    """Build a 1x3 NG-furnace-vs-ASHP comparison for any per-home metric.
+
+    One row, three columns -- NG furnace baseline, ASHP MP3, ASHP MP4 --
+    for whichever column is passed in (heating consumption, heating
+    capacity, operating cost, and so on). Each panel uses its own
+    population, the same ones as the matching panels in
+    build_capital_cost_distribution_figure (get_natural_gas_furnace_replacement_homes
+    for the baseline panel, get_ashp_upgrade_homes for the MP3/MP4 panels),
+    stacked and color-coded by base_heating_fuel with one shared legend. Each
+    panel's display range is trimmed independently to its own
+    [lower_percentile, upper_percentile] range, same as
+    build_capital_cost_distribution_figure -- the three populations have
+    different scales (the ASHP populations are much larger and span a wider
+    tail than the furnace-only population), so a shared axis compresses the
+    ASHP panels down to a sliver.
+
+    Args:
+        df_mp3: MP3 home-level DataFrame (e.g. DATAFRAMES_BY_MP[3]['fixed_base']).
+        df_mp4: MP4 home-level DataFrame (e.g. DATAFRAMES_BY_MP[4]['fixed_base']).
+        baseline_col: Column name plotted for the NG furnace panel, read
+            from the natural gas furnace replacement population.
+        mp3_col: Column name plotted for the ASHP MP3 panel, read from the
+            MP3 ASHP upgrade population.
+        mp4_col: Column name plotted for the ASHP MP4 panel, read from the
+            MP4 ASHP upgrade population.
+        x_label: Axis label shown under all three panels, e.g.
+            'Heating Consumption (kWh)', 'Heating Capacity (kBTU/h)', or
+            'Annual Heating Cost ($)'.
+        metric_label: Short name for the metric being compared, used in the
+            panel titles and the figure's suptitle, e.g.
+            'Heating Consumption', 'Heating Capacity', 'Annual Heating Cost'.
+        figure_size: Figure (width, height) in inches.
+        bin_number: Number of bins per panel.
+        lower_percentile: Lower bound (0-100) of each panel's own display range.
+        upper_percentile: Upper bound (0-100) of each panel's own display range.
+        include_zero: Whether to include zero values in each panel.
+
+    Returns:
+        The matplotlib Figure.
+    """
+    df_furnace = get_natural_gas_furnace_replacement_homes(df_mp3)
+    df_ashp_mp3 = get_ashp_upgrade_homes(df_mp3)
+    df_ashp_mp4 = get_ashp_upgrade_homes(df_mp4)
+
+    print(
+        f"NG Furnace baseline population: {len(df_furnace):,} | "
+        f"ASHP upgrade population: MP3 {len(df_ashp_mp3):,} | "
+        f"MP4 {len(df_ashp_mp4):,}"
+    )
+
+    dataframes = [df_furnace, df_ashp_mp3, df_ashp_mp4]
+    dataframe_indices = [0, 1, 2]
+    subplot_positions = [(0, 0), (0, 1), (0, 2)]
+    x_cols = [baseline_col, mp3_col, mp4_col]
+    x_labels = [x_label] * 3
+    subplot_titles = [
+        f'NG Furnace {metric_label} (Baseline)',
+        f'ASHP {metric_label} (MP3)',
+        f'ASHP {metric_label} (MP4)',
+    ]
+
+    suptitle = (
+        f'NG Furnace Baseline vs. ASHP (MP3/MP4) -- {metric_label} '
+        f'(each panel shown at its {lower_percentile:g}-{upper_percentile:g} '
+        'percentile range)'
+    )
+    return create_subplot_grid_histogram(
+        dataframes=dataframes,
+        dataframe_indices=dataframe_indices,
+        subplot_positions=subplot_positions,
+        x_cols=x_cols,
+        x_labels=x_labels,
+        subplot_titles=subplot_titles,
+        suptitle=suptitle,
+        figure_size=figure_size,
+        color_code='base_heating_fuel',
+        bin_number=bin_number,
+        lower_percentile=lower_percentile,
+        upper_percentile=upper_percentile,
+        include_zero=include_zero,
+        show_legend=False,
+    )
+
+
+def _with_annual_heating_consumption(df: pd.DataFrame, menu_mp: int) -> pd.DataFrame:
+    """Returns df with the all-component annual heating totals, adding any missing.
+
+    Runs made before these columns existed still carry every component column,
+    so the totals are rebuilt from them: the same sum df_enduse_compare stores
+    (every factor is 1.0 at ANCHOR_YEAR). A home with no values stays NaN.
+
+    Args:
+        df: Home-level DataFrame for one measure package.
+        menu_mp: That package's number.
+
+    Returns:
+        df, or a copy with 'baseline_heating_annual_consumption_kwh' and
+        'mp{menu_mp}_heating_annual_consumption_kwh' added.
+
+    Raises:
+        KeyError: If a total is missing and so is a component column it needs.
+    """
+    totals = {}
+    for mp, total_col in [(0, 'baseline_heating_annual_consumption_kwh'),
+                          (menu_mp, f'mp{menu_mp}_heating_annual_consumption_kwh')]:
+        if total_col in df.columns:
+            continue
+        component_cols = [col for _, col in get_consumption_component_columns(
+            'heating', mp, columns=df.columns)]
+        missing = [col for col in component_cols if col not in df.columns]
+        if missing:
+            raise KeyError(
+                f"'{total_col}' is missing and cannot be rebuilt; missing "
+                f"component columns: {missing}")
+        totals[total_col] = df[component_cols].sum(axis=1, min_count=1)
+    return df.assign(**totals) if totals else df
+
+
+def build_furnace_ashp_consumption_comparison_figure(
+    df_mp3: pd.DataFrame,
+    df_mp4: pd.DataFrame,
+    figure_size: Tuple[int, int] = (24, 8),
+    bin_number: int = 30,
+    lower_percentile: float = 2.5,
+    upper_percentile: float = 97.5,
+) -> Figure:
+    """Build the 1x3 heating consumption comparison: NG furnace vs. ASHP.
+
+    A thin wrapper around build_furnace_ashp_metric_comparison_figure that
+    fills in the heating consumption columns, kept so existing notebook
+    cells calling this name do not need to change. Counts every component:
+    the furnace's gas and blower electricity, and the heat pump's
+    electricity, backup heat and fans.
+
+    Args:
+        df_mp3: MP3 home-level DataFrame (e.g. DATAFRAMES_BY_MP[3]['fixed_base']).
+        df_mp4: MP4 home-level DataFrame (e.g. DATAFRAMES_BY_MP[4]['fixed_base']).
+        figure_size: Figure (width, height) in inches.
+        bin_number: Number of bins per panel.
+        lower_percentile: Lower bound (0-100) of each panel's own display range.
+        upper_percentile: Upper bound (0-100) of each panel's own display range.
+
+    Returns:
+        The matplotlib Figure.
+    """
+    return build_furnace_ashp_metric_comparison_figure(
+        df_mp3=_with_annual_heating_consumption(df_mp3, 3),
+        df_mp4=_with_annual_heating_consumption(df_mp4, 4),
+        baseline_col='baseline_heating_annual_consumption_kwh',
+        mp3_col='mp3_heating_annual_consumption_kwh',
+        mp4_col='mp4_heating_annual_consumption_kwh',
+        x_label='Annual Heating Energy, all fuels and components (kWh)',
+        metric_label='Heating Consumption',
+        figure_size=figure_size,
+        bin_number=bin_number,
+        lower_percentile=lower_percentile,
+        upper_percentile=upper_percentile,
+    )
+
+
+def build_ashp_primary_vs_total_consumption_figure(
+    df_mp3: pd.DataFrame,
+    df_mp4: pd.DataFrame,
+    figure_size: Tuple[int, int] = (24, 16),
+    bin_number: int = 30,
+    lower_percentile: float = 2.5,
+    upper_percentile: float = 97.5,
+    sharex: bool = True,
+    sharey: bool = False,
+) -> Figure:
+    """Build a 2x2 grid of ASHP heating use: primary energy only vs. every component.
+
+    Top row: primary heat-pump electricity only, the amount earlier versions
+    of the model counted. Bottom row: the all-component total, which adds
+    electric backup heat and fans. Columns are MP3 (left) and MP4 (right).
+    Every panel uses the ASHP upgrade population (get_ashp_upgrade_homes),
+    stacked and color-coded by base_heating_fuel.
+
+    By default all four panels share one x-axis so the shift from primary to
+    total reads directly. The shared range runs from the lowest panel's
+    lower_percentile to the highest panel's upper_percentile, so each panel's
+    own central range stays fully in view. With sharex=False, each panel is
+    trimmed to its own percentile range instead.
+
+    Args:
+        df_mp3: MP3 home-level DataFrame (e.g. DATAFRAMES_BY_MP[3]['fixed_base']).
+        df_mp4: MP4 home-level DataFrame (e.g. DATAFRAMES_BY_MP[4]['fixed_base']).
+        figure_size: Figure (width, height) in inches.
+        bin_number: Number of bins per panel, spread over the display range.
+        lower_percentile: Lower percentile (0-100) of the display range.
+        upper_percentile: Upper percentile (0-100) of the display range.
+        sharex: Whether all panels share one x-axis range and bin edges.
+        sharey: Whether all panels share one y-axis range.
+
+    Returns:
+        The matplotlib Figure.
+
+    Raises:
+        ValueError: If the percentiles are out of order or outside 0-100.
+        KeyError: If a total is missing and so is a component column it needs.
+    """
+    if not 0 <= lower_percentile < upper_percentile <= 100:
+        raise ValueError(
+            "Expected 0 <= lower_percentile < upper_percentile <= 100, got "
+            f"{lower_percentile} and {upper_percentile}")
+
+    df_ashp_mp3 = get_ashp_upgrade_homes(_with_annual_heating_consumption(df_mp3, 3))
+    df_ashp_mp4 = get_ashp_upgrade_homes(_with_annual_heating_consumption(df_mp4, 4))
+    print(
+        f"ASHP upgrade population: MP3 {len(df_ashp_mp3):,} rdu | "
+        f"MP4 {len(df_ashp_mp4):,} rdu"
+    )
+
+    dataframes = [df_ashp_mp3, df_ashp_mp4]
+    dataframe_indices = [0, 1, 0, 1]
+    subplot_positions = [(0, 0), (0, 1), (1, 0), (1, 1)]
+    x_cols = [
+        'mp3_heating_consumption', 'mp4_heating_consumption',
+        'mp3_heating_annual_consumption_kwh', 'mp4_heating_annual_consumption_kwh',
+    ]
+    subplot_titles = [
+        'ASHP Primary Heating Consumption (MP3)',
+        'ASHP Primary Heating Consumption (MP4)',
+        'ASHP Total Heating Consumption (MP3)',
+        'ASHP Total Heating Consumption (MP4)',
+    ]
+    x_labels = [
+        'Primary Heating Energy (kWh)', 'Primary Heating Energy (kWh)',
+        'Total Heating Energy, incl. backup and fans (kWh)',
+        'Total Heating Energy, incl. backup and fans (kWh)',
+    ]
+
+    # Without a shared range, each panel would work out its own limits and the
+    # last one drawn would set the axis for all of them.
+    # Zeros are kept when plotting (include_zero=True), so keep them here
+    # too; the stats and shared range then describe exactly what each panel shows.
+    panel_values = [
+        dataframes[i][col].dropna()
+        for i, col in zip(dataframe_indices, x_cols)
+    ]
+
+    # Summary stats per panel, all fuels pooled. "Min" and "Max" are the trim
+    # bounds, not the true extremes, which are long-tail outliers.
+    min_label = f'Min (P{lower_percentile:g})'
+    max_label = f'Max (P{upper_percentile:g})'
+    stats_rows = {
+        title: {
+            'N (rdu)': len(values),
+            'Mean': values.mean(),
+            min_label: values.quantile(lower_percentile / 100),
+            'P25': values.quantile(0.25),
+            'P50': values.quantile(0.50),
+            'P75': values.quantile(0.75),
+            max_label: values.quantile(upper_percentile / 100),
+        }
+        for title, values in zip(subplot_titles, panel_values)
+    }
+    # Pair each package's primary row with its total row (MP3, then MP4).
+    stats_order = [subplot_titles[i] for i in (0, 2, 1, 3)]
+    stats_rows = {title: stats_rows[title] for title in stats_order}
+    df_stats = pd.DataFrame.from_dict(stats_rows, orient='index')
+    print('\nHeating consumption summary (kWh, all baseline fuels):')
+    print(df_stats.to_string(float_format=lambda x: f'{x:,.0f}'))
+
+    shared_xlim = None
+    if sharex:
+        shared_xlim = (
+            min(v.quantile(lower_percentile / 100) for v in panel_values),
+            max(v.quantile(upper_percentile / 100) for v in panel_values),
+        )
+
+    axis_note = 'shared axis' if sharex else 'each panel'
+    suptitle = (
+        'ASHP Heating Consumption -- Primary Energy Only vs. All Components '
+        f'({axis_note}, {lower_percentile:g}-{upper_percentile:g} percentile range)'
+    )
+    return create_subplot_grid_histogram(
+        dataframes=dataframes,
+        dataframe_indices=dataframe_indices,
+        subplot_positions=subplot_positions,
+        x_cols=x_cols,
+        x_labels=x_labels,
+        subplot_titles=subplot_titles,
+        suptitle=suptitle,
+        figure_size=figure_size,
+        sharex=sharex,
+        sharey=sharey,
+        shared_xlim=shared_xlim,
+        include_zero=True,
         color_code='base_heating_fuel',
         bin_number=bin_number,
         lower_percentile=lower_percentile,

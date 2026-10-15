@@ -20,16 +20,20 @@ from cmu_tare_model.utils.calculation_utils import (
     apply_temporary_validation_and_mask
 )
 
-from cmu_tare_model.utils.degree_day_consumption_utils import (
-    get_hdd_adjusted_consumption
+from cmu_tare_model.energy_consumption_and_metadata.projected_consumption import (
+    build_projected_consumption,
 )
-from cmu_tare_model.utils.column_names import create_annual_consumption_col
+from cmu_tare_model.utils.column_names import (
+    create_annual_consumption_col,
+    create_annual_fuel_consumption_col,
+)
 
 def calculate_lifetime_fuel_costs(
     df: pd.DataFrame,
     menu_mp: int,
     policy_scenario: str,
     df_baseline_costs: Optional[pd.DataFrame] = None,
+    df_consumption: Optional[pd.DataFrame] = None,
     verbose: bool = VERBOSE
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
@@ -53,12 +57,16 @@ def calculate_lifetime_fuel_costs(
             '2025 Reference Case'.
         df_baseline_costs: Optional DataFrame with baseline costs for computing operational savings.
             Default is None.
+        df_consumption: This scenario's table from build_projected_consumption
+            (per-fuel, per-year consumption, every component counted). Built
+            here from df if not given; pass it in to share one table with the
+            emissions step.
         verbose: Whether to print detailed processing information. Default is VERBOSE constant.
 
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]:
-            - df_main: Main summary of lifetime fuel costs (rounded to 2 decimals).
-            - df_detailed: Detailed annual and lifetime results (rounded to 2 decimals).
+            - df_main: Main summary of lifetime fuel costs.
+            - df_detailed: Detailed annual and lifetime results.
 
     Raises:
         RuntimeError: If processing fails at the category or year level.
@@ -115,6 +123,14 @@ def calculate_lifetime_fuel_costs(
         raise KeyError(f"Missing required data: {str(e)}")
     except Exception as e:
         raise RuntimeError(f"Error configuring scenario parameters: {str(e)}")
+
+    # One consumption table for every year and category: the single source
+    # of the energy use priced below.
+    if df_consumption is None:
+        df_consumption = build_projected_consumption(df_copy, menu_mp, verbose=verbose)
+    if not df_consumption.index.equals(df_copy.index):
+        raise ValueError(
+            "df_consumption must have the same homes, in the same order, as df.")
 
     # Loop over each equipment category and its lifetime
     for category, lifetime in EQUIPMENT_SPECS.items():
@@ -184,12 +200,6 @@ def calculate_lifetime_fuel_costs(
                 
                 # Map each baseline fuel to its lower-case version
                 df_copy[f'fuel_type_{category}'] = df_copy[fuel_col].map(FUEL_MAPPING)
-                
-                # Create a boolean mask indicating which rows use 'state' vs. 'census_division'
-                # This differentiates between electricity/gas (state-based) and other fuels (census division-based)
-                is_elec_or_gas = df_copy[f'fuel_type_{category}'].isin(['electricity', 'naturalGas'])
-            else:
-                is_elec_or_gas = None
 
             # ===== STEP 3 & 4: Valid-Only Calculation and Updates =====
             # Loop over each year in the equipment's lifetime
@@ -210,7 +220,7 @@ def calculate_lifetime_fuel_costs(
                         lookup_fuel_prices=lookup_fuel_prices,
                         policy_scenario=policy_scenario,
                         scenario_prefix=scenario_prefix,
-                        is_elec_or_gas=is_elec_or_gas,
+                        df_consumption=df_consumption,
                         valid_mask=valid_mask,  # Pass the valid mask for proper masking
                         verbose=verbose  # Pass verbose to show warnings
                     )
@@ -250,6 +260,13 @@ def calculate_lifetime_fuel_costs(
                             annual_costs[baseline_consumption_col] = (
                                 df_baseline_costs[baseline_consumption_col])
                             category_columns_to_mask.append(baseline_consumption_col)
+                        for fuel in FUEL_MAPPING.values():
+                            baseline_fuel_col = create_annual_fuel_consumption_col(
+                                'baseline_', year_label, category, fuel)
+                            if baseline_fuel_col in df_baseline_costs.columns:
+                                annual_costs[baseline_fuel_col] = (
+                                    df_baseline_costs[baseline_fuel_col])
+                                category_columns_to_mask.append(baseline_fuel_col)
 
                     # Add annual costs to detailed DataFrame
                     if annual_costs:
@@ -398,10 +415,8 @@ def calculate_lifetime_fuel_costs(
     # Use apply_final_masking for df_detailed
     df_detailed = apply_final_masking(df_detailed, all_columns_to_mask, verbose=verbose)
     
-    # Round final results
-    df_main = df_main.round(2)
-    df_detailed = df_detailed.round(2)
-    
+    # Not rounded here: rounding every column would also round ResStock's own
+    # values and the savings fraction that sets the rebate tier.
     return df_main, df_detailed
 
 
@@ -422,10 +437,10 @@ def _lookup_annual_fuel_price(
     - An unmapped FUEL returns NaN. Roughly 10,000 ResStock homes burn
       'Other Fuel' or have no heating fuel recorded, so FUEL_MAPPING leaves
       them blank. That is a real condition in the source data, not a mistake
-      in the model, and every one of those homes is already excluded from
-      results by include_heating. NaN is used rather than 0 because a zero
-      price would silently pull down any average it reached, while a NaN
-      cannot hide in one.
+      in the model, and every one of those homes is already left out of the
+      study sample (include_sample = False). NaN is used rather than 0
+      because a zero price would silently pull down any average it reached,
+      while a NaN cannot hide in one.
     - A missing REGION, POLICY SCENARIO, or YEAR raises. If the fuel resolved,
       the price table was meant to carry that combination, so a miss means the
       model asked for something the data does not contain -- most likely a
@@ -482,6 +497,45 @@ def _lookup_annual_fuel_price(
     return scenario_prices[year_label]
 
 
+def _annual_fuel_price_series(
+    df: pd.DataFrame,
+    lookup_fuel_prices: Dict[str, Dict[str, Dict[str, Dict[int, float]]]],
+    fuel_type: str,
+    policy_scenario: str,
+    year_label: int,
+    uses_fuel: pd.Series,
+) -> pd.Series:
+    """Per-home price of one fuel in one year, for the homes that use it.
+
+    Electricity and natural gas are priced by state; fuel oil and propane by
+    census division. Each region is looked up once, then mapped onto homes.
+
+    Args:
+        df: DataFrame with 'state' and 'census_division'.
+        lookup_fuel_prices: Nested price table, in USD per kWh.
+        fuel_type: 'electricity', 'naturalGas', 'fuelOil', or 'propane'.
+        policy_scenario: Policy scenario key, e.g. '2025 Reference Case'.
+        year_label: Calendar year to price.
+        uses_fuel: True for homes with nonzero use of this fuel; only their
+            regions are looked up, so a fuel nobody in a region uses cannot
+            raise a missing-price error.
+
+    Returns:
+        Price per home in USD per kWh; NaN for homes that do not use the fuel.
+
+    Raises:
+        KeyError: If a region with a home using the fuel has no price.
+    """
+    region_col = 'state' if fuel_type in ('electricity', 'naturalGas') else 'census_division'
+    regions = df.loc[uses_fuel, region_col].unique()
+    price_by_region = {
+        region: _lookup_annual_fuel_price(
+            lookup_fuel_prices, region, fuel_type, policy_scenario, year_label)
+        for region in regions
+    }
+    return df[region_col].map(price_by_region).where(uses_fuel)
+
+
 def calculate_annual_fuel_costs(
     df: pd.DataFrame,
     category: str,
@@ -490,150 +544,111 @@ def calculate_annual_fuel_costs(
     lookup_fuel_prices: Dict[str, Dict[str, Dict[str, Dict[int, float]]]],
     policy_scenario: str,
     scenario_prefix: str,
-    is_elec_or_gas: Optional[pd.Series] = None,
+    df_consumption: pd.DataFrame,
     valid_mask: Optional[pd.Series] = None,
     verbose: bool = VERBOSE
 ) -> Tuple[Dict[str, pd.Series], pd.Series]:
     """
     Calculate annual fuel costs for a given category/year.
 
-    This function looks up fuel prices for the specified region/state and year, 
-    and calculates annual costs based on consumption. It uses a temporary column
-    for storing per-row price lookups.
+    Reads this scenario's per-fuel consumption from df_consumption (every
+    component counted: primary energy, fans and pumps, heat-pump backup) and
+    prices each fuel at its own price, so a home that uses several fuels pays
+    each at the right rate.
 
     Args:
-        df: DataFrame containing consumption data and region info.
-        category: Equipment category (e.g., 'heating', 'waterHeating').
+        df: DataFrame with region info ('state', 'census_division').
+        category: Equipment category (e.g., 'heating', 'cooling').
         year_label: The calendar year (e.g., 2025).
         menu_mp: Measure package identifier (0 for baseline, nonzero for a measure scenario).
         lookup_fuel_prices: Nested dict with fuel prices for different locations and years.
         policy_scenario: The policy scenario to use for fuel price lookups.
         scenario_prefix: Prefix for output column naming.
-        is_elec_or_gas: Boolean mask indicating which rows use state vs. census_division.
-            Default is None. Required for baseline (menu_mp=0) calculations.
+        df_consumption: This scenario's table from build_projected_consumption,
+            indexed like df.
         valid_mask: Boolean Series indicating which homes have valid data.
             Default is None. If provided, will be used for masking calculations.
         verbose: Whether to print detailed processing information. Default is VERBOSE.
 
     Returns:
         Tuple[Dict[str, pd.Series], pd.Series]:
-            - Dict[str, pd.Series]: Annual columns of fuel costs, keyed by output column names.
+            - Dict[str, pd.Series]: Annual cost and consumption columns, keyed by output column names.
             - pd.Series: Annual fuel costs (for aggregation).
 
     Raises:
         KeyError: If fuel prices for a specific region/year are missing.
-        ValueError: If the required consumption column does not exist in the DataFrame
-                   or if is_elec_or_gas mask is missing for baseline calculations.
+        ValueError: If the 'state' or 'census_division' column is not in df;
+            if df_consumption has no consumption columns for this scenario,
+            category and year; or if a home in the calculation has blank
+            energy use.
+
+    Note:
+        Homes outside the calculation arrive with blank energy use, on
+        purpose. df_enduse_refactored and df_enduse_compare
+        (process_euss_data.py) blank the heating and cooling energy of homes
+        outside the study sample, and build_projected_consumption
+        (projected_consumption.py) keeps them blank.
     """
     # Results dictionaries (no rounding here)
     annual_costs = {}
-    
-    try:
-        if menu_mp == 0:
-            # For baseline, look up the appropriate price based on fuel type
-            # Required fields check
-            if is_elec_or_gas is None:
-                raise ValueError("is_elec_or_gas mask is required for baseline calculations")
-            
-            if 'state' not in df.columns or 'census_division' not in df.columns:
-                raise ValueError("Required columns 'state' and 'census_division' not found")
-                
-            if f'fuel_type_{category}' not in df.columns:
-                raise ValueError(f"Required column 'fuel_type_{category}' not found")
-            
-            # Build a list/Series of per-row prices using a dictionary lookup based on state/census_division
-            df['_temp_price'] = [
-                _lookup_annual_fuel_price(
-                    lookup_fuel_prices=lookup_fuel_prices,
-                    # Electricity and natural gas are priced by state; fuel oil
-                    # and propane by census division.
-                    region=state_val if use_state else cdiv_val,
-                    fuel_type=fueltype_val,
-                    policy_scenario=policy_scenario,
-                    year_label=year_label,
-                )
-                for state_val, cdiv_val, fueltype_val, use_state in zip(
-                    df['state'],
-                    df['census_division'],
-                    df[f'fuel_type_{category}'],
-                    is_elec_or_gas
-                )
-            ]
 
-            # Consumption now comes from the get_hdd_adjusted_consumption function
+    for col in ('state', 'census_division'):
+        if col not in df.columns:
+            raise ValueError(f"Required column '{col}' not found")
 
-        else:
-            # For measure packages, everything is mapped to electricity (via 'state')
-            if 'state' not in df.columns:
-                raise ValueError("Required column 'state' not found")
-                
-            df['_temp_price'] = [
-                _lookup_annual_fuel_price(
-                    lookup_fuel_prices=lookup_fuel_prices,
-                    region=state_name,
-                    fuel_type='electricity',
-                    policy_scenario=policy_scenario,
-                    year_label=year_label,
-                )
-                for state_name in df['state']
-            ]
+    # Price each fuel at its own price and add them up. A home that uses
+    # several fuels (a gas furnace's electric blower, a dual-fuel heat pump's
+    # gas backup) pays each at the right rate.
+    fuel_costs = pd.Series(0.0, index=df.index)
+    fuels_found = 0
+    for fuel in FUEL_MAPPING.values():
+        fuel_col = create_annual_fuel_consumption_col(
+            scenario_prefix, year_label, category, fuel)
+        if fuel_col not in df_consumption.columns:
+            continue
+        fuels_found += 1
+        fuel_use = df_consumption[fuel_col]
+        uses_fuel = fuel_use > 0
+        price = _annual_fuel_price_series(
+            df, lookup_fuel_prices, fuel, policy_scenario, year_label, uses_fuel)
+        fuel_costs += (fuel_use * price).where(uses_fuel, 0.0)
+        # Keep each fuel's consumption next to the cost it produced.
+        annual_costs[fuel_col] = df_consumption[fuel_col]
 
-            # Consumption now comes from the get_hdd_adjusted_consumption function
-                            
-        # Get consumption data from the appropriate column (with null safety)
-        consumption = get_hdd_adjusted_consumption(
-            df=df,
-            category=category,
-            year_label=year_label,
-            menu_mp=menu_mp
-        ).fillna(0)
+    # ValueError, not KeyError: a missing table column is a setup mistake and
+    # must not be mistaken for the missing-data case callers skip.
+    total_col = create_annual_consumption_col(scenario_prefix, year_label, category)
+    if fuels_found == 0 or total_col not in df_consumption.columns:
+        raise ValueError(
+            f"df_consumption has no '{scenario_prefix}' consumption columns for "
+            f"{category} in {year_label}; build it with build_projected_consumption "
+            f"for menu_mp={menu_mp}.")
+    consumption = df_consumption[total_col]
 
-        # ===== STEP 3: Valid-Only Calculation =====
-        # Apply valid mask if provided
-        if valid_mask is not None and not valid_mask.all():
-            # Make a copy to avoid modifying the original Series
-            consumption = consumption.copy()
-            # Set values to NaN for invalid homes (not zero)
-            consumption.loc[~valid_mask] = np.nan  # Changed from 0.0 to np.nan
+    # A blank in a home the calculation covers is a data error, not zero use.
+    # annual_costs holds only the per-fuel use columns so far.
+    df_covered = df_consumption[list(annual_costs) + [total_col]]
+    if valid_mask is not None:
+        df_covered = df_covered[valid_mask]
+    blank_counts = df_covered.isna().sum()
+    if blank_counts.any():
+        raise ValueError(
+            "Homes in the calculation have blank energy use (column: rdu): "
+            f"{blank_counts[blank_counts > 0].to_dict()}")
 
-        # Calculate fuel costs
-        fuel_costs = consumption * df['_temp_price']
-        
-        # Store the result
-        cost_col = f'{scenario_prefix}{year_label}_{category}_fuel_cost'
-        annual_costs[cost_col] = fuel_costs
+    # Homes outside the calculation are NaN, not 0.
+    if valid_mask is not None and not valid_mask.all():
+        consumption = consumption.copy()
+        consumption.loc[~valid_mask] = np.nan
+        fuel_costs.loc[~valid_mask] = np.nan
 
-        # Keep the projected consumption that produced this cost. Without it a
-        # reader can see the dollars but cannot check them against a fuel
-        # price, because the degree-day-adjusted consumption existed only
-        # inside this function. Stored in the same dictionary as the cost
-        # column, so the caller applies the same masking to both.
-        consumption_col = create_annual_consumption_col(
-            scenario_prefix, year_label, category)
-        annual_costs[consumption_col] = consumption
+    # Store the result
+    cost_col = f'{scenario_prefix}{year_label}_{category}_fuel_cost'
+    annual_costs[cost_col] = fuel_costs
 
-        # Note: No baseline or avoided cost calculations here - consistent with climate and health modules
-    
-    except KeyError as e:
-        if "consumption" in str(e):
-            # More informative error for missing consumption columns
-            if verbose:
-                raise ValueError(f"Warning: Missing consumption data for year {year_label}, category '{category}': {e}")
-            return {}, pd.Series(0, index=df.index)
-        else:
-            # Re-raise other KeyErrors
-            raise
-    except Exception as e:
-        # Re-raise to preserve the exception stack
-        raise
-    
-    finally:
-        # Drop the temporary column after processing (using try to ensure this happens even on error)
-        try:
-            if '_temp_price' in df.columns:
-                df.drop(columns=['_temp_price'], inplace=True)
-        except:
-            # Ignore errors in cleanup
-            pass
-    
+    # Keep the projected consumption that produced this cost, so a reader can
+    # check the dollars against a fuel price. Stored in the same dictionary as
+    # the cost column, so the caller applies the same masking to both.
+    annual_costs[total_col] = consumption
+
     return annual_costs, fuel_costs

@@ -5,7 +5,8 @@ from typing import Dict, List, Optional, Tuple, Union, Callable
 
 from cmu_tare_model.constants import (
     REBATE_MAPPING,
-    REBATE_ELIGIBLE_HEATING_MPS,
+    RESSTOCK_RELEASE_THIS_RUN,
+    RESSTOCK_RELEASE_AND_MP,
     REBATE_GUIDANCE_IRA2024,
     REBATE_GUIDANCE_JUNE2026,
     REBATE_RULE_CONFIG,
@@ -27,6 +28,7 @@ from cmu_tare_model.constants import (
     VERBOSE,
 )
 from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2025_2018
+from cmu_tare_model.utils.calculation_utils import is_dual_fuel_package
 from cmu_tare_model.utils.column_names import (
     create_cost_col,
     create_rebate_col,
@@ -52,7 +54,8 @@ FUNCTIONS: AMI AND INCOME GROUP DESIGNATION FOR REBATE ELIGIBILITY
 """
 
 
-def generate_household_medianIncome_2025(row: pd.Series) -> float:
+def generate_household_medianIncome_2025(
+        row: pd.Series, random_seed: int = 42) -> float:
     """
     Generate a household median income value in USD2025 using a probabilistic
     approach.
@@ -60,8 +63,16 @@ def generate_household_medianIncome_2025(row: pd.Series) -> float:
     Samples from a normal distribution based on income range bounds, then
     ensures the final value remains within the valid income range.
 
+    Each home's draw comes from its own random stream, keyed by random_seed and
+    the home's bldg_id (the row's index label). So a home gets the same income
+    in every run -- national, state, or county, and whichever other homes are
+    filtered in or out. A single shared stream drawn in row order would give a
+    home a different income whenever the rows before it changed.
+
     Args:
-        row: DataFrame row containing income_low, income_high, and income values
+        row: DataFrame row containing income_low, income_high, and income
+            values, with the home's bldg_id as its index label (row.name).
+        random_seed: Seed shared by every home; combined with bldg_id.
 
     Returns:
         float: Generated median income value in 2025 dollars
@@ -75,8 +86,9 @@ def generate_household_medianIncome_2025(row: pd.Series) -> float:
     # Calculate std assuming 10th and 90th percentiles
     std = (high - low) / (norm.ppf(0.90) - norm.ppf(0.10))
 
-    # Sample from the normal distribution
-    ami_2025 = np.random.normal(loc=mean, scale=std)
+    # Sample from the normal distribution, using this home's own stream
+    home_rng = np.random.default_rng([random_seed, int(row.name)])
+    ami_2025 = home_rng.normal(loc=mean, scale=std)
 
     # Ensure the generated income is within the bounds
     ami_2025 = max(low, min(high, ami_2025))
@@ -136,7 +148,8 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame, random_seed: int = 42) -
                        - Other demographic/geographic columns for median income lookup
         random_seed: Random seed for reproducible income sampling. Ensures consistent
                     income classifications across different measure package runs (e.g.,
-                    MP4 and MP8 produce identical rebate eligibility). Default: 42.
+                    MP3 and MP4 produce identical rebate eligibility), and across
+                    national, state, and county runs. Default: 42.
 
     Returns:
         DataFrame: Modified DataFrame with additional columns:
@@ -148,7 +161,16 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame, random_seed: int = 42) -
         
     Raises:
         ValueError: If an unexpected income format is encountered during processing
+        TypeError: If the DataFrame index is not integer bldg_id values.
     """
+    # Each home's income draw is keyed by its bldg_id (the index), so the
+    # index must hold the integer building IDs.
+    if not pd.api.types.is_integer_dtype(df_results_IRA.index):
+        raise TypeError(
+            "calculate_percent_AMI needs the DataFrame indexed by integer "
+            f"bldg_id; got an index of dtype {df_results_IRA.index.dtype} "
+            f"named {df_results_IRA.index.name!r}.")
+
     # Create a mapping for special income ranges
     income_map = {
         '<10000': (9999.0, 9999.0),
@@ -184,14 +206,11 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame, random_seed: int = 42) -
     df_results_IRA['income_low'], df_results_IRA['income_high'] = zip(*income_ranges)
     df_results_IRA['income'] = (df_results_IRA['income_low'] + df_results_IRA['income_high']) / 2
     
-    # Set random seed for reproducible income sampling across MP runs.
-    # This ensures identical income classifications (and thus identical rebate
-    # eligibility) for the same homes regardless of which measure package is
-    # being processed — critical for MP4 vs MP8 result consistency.
-    np.random.seed(random_seed)
-    
-    # Apply the generate_household_medianIncome_2025 function
-    df_results_IRA['household_income'] = df_results_IRA.apply(generate_household_medianIncome_2025, axis=1)
+    # Draw each home's income from its own seeded stream (seed + bldg_id), so
+    # the same home gets the same income in every measure package and every
+    # geographic run -- see generate_household_medianIncome_2025.
+    df_results_IRA['household_income'] = df_results_IRA.apply(
+        generate_household_medianIncome_2025, axis=1, random_seed=random_seed)
 
     # Drop the intermediate columns
     df_results_IRA.drop(['income_low', 'income_high'], axis=1, inplace=True)
@@ -208,8 +227,12 @@ def calculate_percent_AMI(df_results_IRA: pd.DataFrame, random_seed: int = 42) -
     df_results_IRA['household_income'] = df_results_IRA['household_income'].astype(float).round(2)
     df_results_IRA['census_area_medianIncome'] = df_results_IRA['census_area_medianIncome'].astype(float).round(2)
 
-    # Calculate percent_AMI
-    df_results_IRA['percent_AMI'] = ((df_results_IRA['household_income'] / df_results_IRA['census_area_medianIncome']) * 100).round(2)
+    # Calculate percent_AMI. Not rounded: the 80% and 150% income cut-offs
+    # below are tested on this value.
+    df_results_IRA['percent_AMI'] = (
+        df_results_IRA['household_income']
+        / df_results_IRA['census_area_medianIncome']
+    ) * 100
 
     # Create detailed income level categories
     income_conditions = [
@@ -436,6 +459,41 @@ def _homes_rebate_amount(
     return pd.Series(amount, index=df_copy.index, dtype=float), qualifies_savings
 
 
+def get_rebate_eligible_mps() -> List[int]:
+    """Returns the measure package numbers eligible for federal rebates.
+
+    Only ENERGY STAR-certified heat pumps qualify. Under 2022.1.1, MP3's
+    modeled heat pump (SEER 15 / 9.0 HSPF) sits just below the ENERGY STAR
+    minimum, but is re-specified to the ENERGY STAR floor (>= 16.0 SEER1 /
+    >= 9.5 HSPF1) in process_euss_data.df_enduse_compare so it qualifies --
+    and its capital cost reflects that ENERGY STAR install. MP4/MP8/MP9/MP10
+    use high-efficiency ASHP (SEER 24+) and qualify as modeled. Under
+    2025.1, MP5 (dual fuel) is registered eligible -- this
+    only marks the package as participating. Its June 2026 fuel-gate
+    exception is set by dual_fuel_passes_fuel_gates in REBATE_RULE_CONFIG
+    (constants.py) and applied in calculate_rebate_program.
+
+    Keyed on RESSTOCK_RELEASE_THIS_RUN rather than a flat, release-unaware
+    list, since 2025.1 Upgrades 03/04 will later reuse the mp=3/mp=4 numbers
+    for different packages than 2022.1.1's MP3/MP4.
+
+    Returns:
+        A list of measure package numbers eligible for a federal rebate
+        under the active release.
+
+    Raises:
+        ValueError: If RESSTOCK_RELEASE_THIS_RUN is not a known release.
+    """
+    if RESSTOCK_RELEASE_THIS_RUN == '2022.1.1':
+        return [3, 4, 8, 9, 10]
+    elif RESSTOCK_RELEASE_THIS_RUN == '2025.1':
+        return [5]
+    else:
+        raise ValueError(
+            f"Unknown RESSTOCK_RELEASE_THIS_RUN '{RESSTOCK_RELEASE_THIS_RUN}'; "
+            f"expected one of {sorted(RESSTOCK_RELEASE_AND_MP)}")
+
+
 def calculate_rebate_program(
     df_results_IRA: pd.DataFrame,
     category: str,
@@ -460,13 +518,16 @@ def calculate_rebate_program(
     REBATE_RULE_CONFIG[guidance] -- see constants.py for the field meanings.
 
     Gates applied before program routing (all vintages):
-      - Efficiency (ENERGY STAR): only REBATE_ELIGIBLE_HEATING_MPS qualify.
+      - Efficiency (ENERGY STAR): only get_rebate_eligible_mps() qualify.
       - State participation: homes in a never-participating state (e.g. South
         Dakota) get 0 / 'None'.
     HEEHR additionally applies a fuel gate under June 2026 (only existing
     electric-resistance heating qualifies, because a rebate may not fund removing
     a fossil system). HOMES is fuel-neutral (see the config note on the 2026
     homes_fuel_gate, kept only for byte-identity pending re-derivation).
+    A dual-fuel retrofit keeps a fossil furnace as the heat pump's backup, so it
+    removes no fossil system: where the config's dual_fuel_passes_fuel_gates is
+    True it passes both fuel gates whatever the baseline fuel.
 
     Args:
         df_results_IRA: DataFrame with percent_AMI, base_heating_fuel, state, the
@@ -532,7 +593,7 @@ def calculate_rebate_program(
 
     # Step 3 -- efficiency gate: only high-efficiency (ENERGY STAR) MPs qualify.
     # Applies to BOTH programs. Ineligible MPs stay at 0.0 / 'None'.
-    if menu_mp not in REBATE_ELIGIBLE_HEATING_MPS:
+    if menu_mp not in get_rebate_eligible_mps():
         if verbose:
             print(f"  MP{menu_mp} is NOT rebate-eligible ({guidance}, standard "
                   f"efficiency). All amounts 0, eligibility 'None'.")
@@ -545,8 +606,15 @@ def calculate_rebate_program(
     # base_heating_fuel only when a fuel gate is actually active so the 2024
     # (fuel-neutral) path does not require the column. When no gate is active the
     # mask is all-True and never filters anyone out.
-    homes_fuel_gate_active = config['homes_enabled'] and config['homes_fuel_gate']
-    if config['heehr_fuel_gate'] or homes_fuel_gate_active:
+    # A dual-fuel retrofit keeps a fossil furnace, so the fossil-removal
+    # restriction behind both fuel gates does not apply to it (see
+    # dual_fuel_passes_fuel_gates in constants.py).
+    passes_fuel_gates = (
+        config['dual_fuel_passes_fuel_gates'] and is_dual_fuel_package(menu_mp))
+    heehr_fuel_gate = config['heehr_fuel_gate'] and not passes_fuel_gates
+    homes_fuel_gate = config['homes_fuel_gate'] and not passes_fuel_gates
+    homes_fuel_gate_active = config['homes_enabled'] and homes_fuel_gate
+    if heehr_fuel_gate or homes_fuel_gate_active:
         electric_mask = df_copy['base_heating_fuel'].isin(
             ELECTRIC_RESISTANCE_BASELINE)
     else:
@@ -560,7 +628,7 @@ def calculate_rebate_program(
 
     # Step 5 -- HEEHR (percent_AMI <= 150%). Fixed cap; income sets the share.
     heehr_mask = valid_mask & participating_mask & (pct_ami <= mod_cut)
-    if config['heehr_fuel_gate']:
+    if heehr_fuel_gate:
         heehr_mask = heehr_mask & electric_mask
     heehr_amount = _heehr_rebate_amount(
         df_copy, menu_mp, cost_scenario,
@@ -571,7 +639,7 @@ def calculate_rebate_program(
     # Step 6 -- HOMES (percent_AMI > 150%), savings-based, non-LMI amounts.
     if config['homes_enabled']:
         homes_mask = valid_mask & participating_mask & (pct_ami > mod_cut)
-        if config['homes_fuel_gate']:
+        if homes_fuel_gate:
             homes_mask = homes_mask & electric_mask
         # Only read the HOMES inputs (modeled savings, cooling cost) when at
         # least one home routes to HOMES; a run with no home above 150% AMI need
@@ -658,7 +726,7 @@ def calculate_rebate_june2026(
         doubling is unreachable and only the non-LMI amounts apply.
 
     June 2026 gates, applied before routing:
-      - Efficiency (ENERGY STAR): only REBATE_ELIGIBLE_HEATING_MPS qualify, both
+      - Efficiency (ENERGY STAR): only get_rebate_eligible_mps() qualify, both
         programs. MP3 gets no rebate.
       - Fuel: rebates may not fund removing a fossil heating system. TARE models
         only full electrification, so only existing electric-resistance homes

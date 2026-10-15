@@ -18,6 +18,8 @@ import pandas as pd
 from cmu_tare_model.adoption_kpis.data_loading import (
     CLIMATE_ZONE_COL,
     COUNTY_COL,
+    GAS_FUEL_COL,
+    HEATING_ELEC_COL,
     HEATING_LOAD_COL,
     HP_BACKUP_ELEC_COL,
     HP_FANS_PUMPS_COL,
@@ -146,11 +148,11 @@ def compute_thermal_cop(
     if group_cols is None:
         group_cols = ["state"]
 
-    elec_col = "out.electricity.heating.energy_consumption.kwh"
+    elec_col = HEATING_ELEC_COL
     bkup_col = HP_BACKUP_ELEC_COL
     fans_col = HP_FANS_PUMPS_COL
     load_col = HEATING_LOAD_COL
-    gas_col = "out.natural_gas.heating.energy_consumption.kwh"
+    gas_col = GAS_FUEL_COL
 
     # Validate required columns
     for col in [load_col, gas_col]:
@@ -286,6 +288,13 @@ def compute_thermal_cop(
     return grouped.sort_values(group_cols[0]).reset_index(drop=True)
 
 
+# DEPRECATED (5 Oct 2026): the break-even COP is no longer part of the
+# analysis. compute_breakeven_cop and assign_breakeven_category are kept for
+# reference only. To fix first if they are used again: the spark gap arrives
+# already rounded to 2 decimals (calculate_spark_gap in spark_gap.py), the
+# break-even COP is rounded to 2 decimals again below, and
+# plot_categorical_breakeven_map then tests each state's COP against that
+# rounded value. Test on unrounded values and round only for display.
 def compute_breakeven_cop(
     df_prices: pd.DataFrame,
     df_cop: pd.DataFrame,

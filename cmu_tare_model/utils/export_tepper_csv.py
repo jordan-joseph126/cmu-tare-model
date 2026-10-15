@@ -1,10 +1,14 @@
 """One-time Tepper CSV exports for the TARE model (household and county).
 
-This module produces two additive, human-readable CSVs per measure package for
+This module produces additive, human-readable CSVs per measure package for
 the Tepper MBA team's cash-flow analysis:
 
-    tepper_household_mp{mp}_{location_id}_{date}.csv   (one row per home)
-    tepper_county_mp{mp}_{location_id}_{date}.csv      (one row per county)
+    tepper_household_mp{mp}_{location_id}_{date}.csv
+        one row per representative dwelling unit (rdu) in the study sample
+    tepper_household_detailed_mp{mp}_{location_id}_{date}.csv
+        the same rows and columns, plus each year's energy use split by fuel
+    tepper_county_mp{mp}_{location_id}_{date}.csv
+        one row per county
 
 It is strictly additive. It does not touch the frozen export/load contract
 (export_model_run_output / load_model_run_output), recomputes nothing, and
@@ -13,14 +17,14 @@ rounds nothing -- every value is copied straight from a loaded DataFrame.
 Household export
 ----------------
 The source is the final loaded household frame DATAFRAMES_BY_MP[mp]['fixed_base'],
-indexed by bldg_id. An explicit, ordered list of included data columns selects
-what to ship; bookkeeping columns (REMDB row lookups, validation flags) are
-dropped. NaN is
-preserved everywhere -- it means "not applicable / failed validation," never
-zero -- so the exported row count equals the input row count.
+indexed by bldg_id. Only rows in the study sample (include_sample = True) are
+written, so every row is a home the model priced. An explicit, ordered list of
+included data columns selects what to ship; bookkeeping columns (REMDB row
+lookups, most validation flags) are dropped. A blank is never filled: it means
+the value is missing, never zero.
 
-Scope note: MP3 and MP4, discount rate 'fixed_base'. Each run writes one
-household CSV and one county CSV per export scope. A scope is a column and a
+Scope note: MP3 and MP4, discount rate 'fixed_base'. Each run writes two
+household CSVs and one county CSV per export scope. A scope is a column and a
 value -- 'state' = 'PA', or 'county' = a Census GISJOIN code -- or no filter at
 all for the whole run. Filtering happens here at export time, not at model run
 scope, so a national run can emit a national file and any number of state or
@@ -30,7 +34,7 @@ county files from the same results.
 import os
 import pathlib
 import shutil
-from typing import List, Optional, Union
+from typing import Iterable, List, Optional, Union
 
 import pandas as pd
 
@@ -38,17 +42,26 @@ from config import PROJECT_ROOT
 from cmu_tare_model.constants import (
     ANCHOR_YEAR,
     EQUIPMENT_SPECS,
+    FUEL_MAPPING,
     REBATE_GUIDANCE_JUNE2026,
+    RESSTOCK_RELEASE_THIS_RUN,
+)
+from cmu_tare_model.utils.calculation_utils import (
+    get_consumption_component_columns,
+    is_dual_fuel_package,
 )
 from cmu_tare_model.utils.column_names import (
     BASE_CASE_NPV_CASE,
+    COST_TYPE_BACKUP_FURNACE,
     create_adoption_col,
     create_annual_consumption_col,
+    create_annual_fuel_consumption_col,
     create_capital_col,
     create_cooling_credit_applied_col,
     create_cost_col,
     create_discounted_savings_col,
     create_npv_case_col,
+    create_peak_electricity_col,
     create_rebate_col,
 )
 from cmu_tare_model.utils.modeling_params import define_scenario_params
@@ -155,27 +168,46 @@ def export_source_data_copies(output_folder_path: str) -> List[str]:
     return written_paths
 
 
-def build_annual_consumption_column_list(menu_mp: Union[int, str]) -> List[str]:
-    """Build the 60 per-year consumption column names for one measure package.
+def build_annual_consumption_column_list(
+    menu_mp: Union[int, str],
+    by_fuel_columns: Optional[Iterable[str]] = None,
+) -> List[str]:
+    """Build the per-year consumption column names for one measure package.
 
     Four streams -- baseline heating, retrofit heating, baseline cooling,
     retrofit cooling -- each covering ANCHOR_YEAR through the end of the
     equipment lifetime (2025-2039 for a 15-year lifetime). Grouped by stream
     rather than interleaved by year, so a spreadsheet user can select one
-    stream as a single block of columns.
+    stream as a single block of columns. That is 60 columns of totals.
 
-    These 60 columns live in the supplemental fuel-cost frame, not in the
+    Each total adds every fuel and every part of the end use (primary system,
+    fans and pumps, heat-pump backup). A gas furnace's total therefore mixes
+    gas with the electricity its fan uses, and cannot be priced at one price.
+    When by_fuel_columns is given, each stream's totals are followed by that
+    stream's per-fuel columns, which add up to the total (150 more columns
+    for ResStock 2022.1.1). The fuels are the ones the fuel-cost frame holds
+    for the stream, not a fixed list.
+
+    All of these columns live in the supplemental fuel-cost frame, not in the
     household summary frame, which is why they are listed separately from
     build_household_column_list.
 
     Args:
-        menu_mp: Measure package number (3 or 4).
+        menu_mp: Measure package number (3 or 4 in 2022.1.1, 5 in 2025.1).
+        by_fuel_columns: Column names of the supplemental fuel-cost frame.
+            None lists the totals only.
 
     Returns:
-        Ordered list of 60 column names.
+        Ordered list of column names: the 60 totals, or the totals with each
+        stream's per-fuel columns after them.
+
+    Raises:
+        KeyError: If by_fuel_columns is given and holds no per-fuel column
+            for one of the four streams.
     """
     menu_mp = int(menu_mp)
     scenario_prefix = define_scenario_params(menu_mp, POLICY_SCENARIO)[0]
+    available_columns = None if by_fuel_columns is None else set(by_fuel_columns)
 
     columns = []
     for category in ("heating", "cooling"):
@@ -185,10 +217,33 @@ def build_annual_consumption_column_list(menu_mp: Union[int, str]) -> List[str]:
                 create_annual_consumption_col(prefix, year, category)
                 for year in years
             )
+            if available_columns is None:
+                continue
+
+            # A fuel belongs to this stream if the frame holds its first year.
+            stream_fuels = [
+                fuel for fuel in FUEL_MAPPING.values()
+                if create_annual_fuel_consumption_col(
+                    prefix, ANCHOR_YEAR, category, fuel) in available_columns
+            ]
+            if not stream_fuels:
+                raise KeyError(
+                    f"The fuel-cost frame has no per-fuel {category} "
+                    f"consumption column starting with {prefix!r}.")
+            for fuel in stream_fuels:
+                columns.extend(
+                    create_annual_fuel_consumption_col(
+                        prefix, year, category, fuel)
+                    for year in years
+                )
     return columns
 
 
-def build_household_column_list(menu_mp: Union[int, str]) -> List[str]:
+def build_household_column_list(
+    menu_mp: Union[int, str],
+    summary_columns: Iterable[str],
+    by_fuel_columns: Optional[Iterable[str]] = None,
+) -> List[str]:
     """Build the ordered list of household columns to include for one MP.
 
     The list is explicit and ordered so it reads left to right as the
@@ -197,10 +252,14 @@ def build_household_column_list(menu_mp: Union[int, str]) -> List[str]:
     the adoption flag. bldg_id is the frame index and is therefore not in this
     list; it is written as the CSV index.
 
-    Three notes on what is and is not here.
+    Four notes on what is and is not here.
 
-    The 60 per-year consumption columns come from a different frame
+    The per-year consumption columns come from a different frame
     (build_annual_consumption_column_list) and are spliced in at export time.
+
+    The base-year fan, pump and heat-pump backup columns are read from the
+    summary frame's own column names, so the list follows whatever parts the
+    ResStock release reports (12 columns for 2022.1.1).
 
     Only one of the nine NPV cases is shipped: the unsubsidized case that
     credits both the avoided heating replacement and the avoided cooling
@@ -211,22 +270,35 @@ def build_household_column_list(menu_mp: Union[int, str]) -> List[str]:
     Emissions and climate damages are not shipped at all. They play no part in
     the adoption decision, which is based on the private NPV alone.
 
+    Some groups depend on the package and release. A dual-fuel package
+    (is_dual_fuel_package) adds its parsed ratings, its backup furnace's size
+    and the furnace's installed cost. ResStock 2025.1 adds the electric panel
+    columns, and its peak electric demand columns are named for winter and
+    summer (create_peak_electricity_col).
+
     Every measure-package-specific name is derived from the scenario prefix
     helper and a plain 'mp{mp}_' token, so no scenario string is hardcoded.
 
     Args:
-        menu_mp: Measure package number (3 or 4).
+        menu_mp: Measure package number (3 or 4 in 2022.1.1, 5 in 2025.1).
+        summary_columns: Column names of the household summary frame.
+        by_fuel_columns: Column names of the supplemental fuel-cost frame.
+            Given only for the detailed copy, which adds the per-fuel,
+            per-year columns. None gives the main file's list.
 
     Returns:
         Ordered list of column names to select, excluding the bldg_id index.
     """
     menu_mp = int(menu_mp)
+    summary_columns = list(summary_columns)
     # 'ref2025_mp{mp}_' -- carries the scenario; drives fuel-cost, emissions,
     # total-capital, NPV, net-capital, and adopter names.
     scenario_prefix = define_scenario_params(menu_mp, POLICY_SCENARIO)[0]
     # 'mp{mp}_' -- the bare measure-package token used by the REMDB input cost
     # and rebate columns, which carry no scenario prefix.
     mp_token = f"mp{menu_mp}_"
+    # One release per run; several groups below are release-specific.
+    release = RESSTOCK_RELEASE_THIS_RUN
 
     identifiers = [
         "weight", "state", "county", "county_fips", "puma", "county_and_puma",
@@ -257,13 +329,41 @@ def build_household_column_list(menu_mp: Union[int, str]) -> List[str]:
     retrofit_hvac = [
         "upgrade_hvac_heating_efficiency", "upgrade_hvac_cooling_efficiency",
     ]
-    # Whether the model produced a result for this home at all. Shipped so a
-    # reader can tell a blank meaning "not applicable" from a real zero.
+    # A dual-fuel retrofit adds a backup furnace. Its ratings are parsed from
+    # the option string above (the heat pump's SEER2 and the SEER1 its cost is
+    # priced at; the backup's fuel, AFUE and switchover temperature) and the
+    # furnace's own size is the one its cost is priced at.
+    dual_fuel = is_dual_fuel_package(menu_mp)
+    if dual_fuel:
+        retrofit_hvac += [
+            "upgrade_hp_seer2", "upgrade_hp_seer1",
+            "upgrade_hp_hspf2", "upgrade_hp_hspf1",
+            "upgrade_backup_fuel", "upgrade_backup_afue", "upgrade_switchover_f",
+            "size_heat_pump_backup_primary_k_btu_h",
+        ]
+    # Electric panel: the home's service rating and whether the retrofit runs
+    # into the panel's capacity or breaker space (2023 NEC load calculation).
+    # Reporting only: no panel cost is modeled. Published from 2025.1 on.
+    panel = []
+    if release == "2025.1":
+        panel = [
+            "panel_service_rating_amps",
+            f"{mp_token}panel_constraint_overall",
+            f"{mp_token}panel_constraint_capacity",
+            f"{mp_token}panel_constraint_breaker_space",
+        ]
+    # The study-sample flag and the two checks behind it. Every exported row
+    # is in the sample, so all three are True; shipped so the file states the
+    # filter it was built with.
     applicability = [
+        "include_sample",
         "include_heating",
         "include_cooling",
     ]
     base_year_consumption = [
+        # Primary-system energy only: the furnace, boiler, baseboard, air
+        # conditioner or heat pump itself. Fans, pumps and heat-pump backup
+        # are in base_year_parts below.
         "base_electricity_heating_consumption",
         "base_electricity_cooling_consumption",
         "base_fuelOil_heating_consumption",
@@ -282,24 +382,40 @@ def build_household_column_list(menu_mp: Union[int, str]) -> List[str]:
         # HOMES rebate tiers. Without it that fraction cannot be checked.
         "baseline_total_site_consumption",
     ]
+    # Fans, pumps and heat-pump backup, base year. Adding these to the
+    # primary-system columns above gives each fuel's full heating or cooling
+    # use, which is what the per-year columns hold. Read from the frame, not
+    # from a fixed list, so a part a later release reports is picked up.
+    base_year_parts = []
+    for part_mp in (0, menu_mp):
+        for category in ("heating", "cooling"):
+            for _fuel, column in get_consumption_component_columns(
+                    category, part_mp, summary_columns):
+                if column not in base_year_consumption:
+                    base_year_parts.append(column)
     # Per-year projected consumption, 2025-2039, four streams. Sourced from
     # the supplemental fuel-cost frame, not the household summary frame.
-    annual_consumption = build_annual_consumption_column_list(menu_mp)
+    annual_consumption = build_annual_consumption_column_list(
+        menu_mp, by_fuel_columns)
     # Per-home peak demand pass-through for a short-term peak-load approximation
     # done per building ID outside this model (a simple annual max per home, not
     # aligned in time across homes). Baseline values have no savings variant;
     # the post-retrofit block carries ResStock's baseline-minus-upgrade delta as
     # the '..._savings' columns. The kW electric-demand pair and the kBtu/hr
     # thermal-load pair are distinct quantities -- both are kept, not combined.
+    # The electric peak is measured differently in each release (while heating
+    # or cooling runs in 2022.1.1; in the winter or summer months in 2025.1),
+    # so its names follow the release: '..._heating_kw' / '..._cooling_kw' or
+    # '..._winter_kw' / '..._summer_kw' (create_peak_electricity_col).
     peak = [
-        "base_peak_electricity_cooling_kw",
-        "base_peak_electricity_heating_kw",
+        create_peak_electricity_col("base_", "cooling", release),
+        create_peak_electricity_col("base_", "heating", release),
         "base_peak_load_cooling_kbtu_hr",
         "base_peak_load_heating_kbtu_hr",
-        f"{mp_token}peak_electricity_cooling_kw",
-        f"{mp_token}peak_electricity_heating_kw",
-        f"{mp_token}peak_electricity_cooling_kw_savings",
-        f"{mp_token}peak_electricity_heating_kw_savings",
+        create_peak_electricity_col(mp_token, "cooling", release),
+        create_peak_electricity_col(mp_token, "heating", release),
+        create_peak_electricity_col(mp_token, "cooling", release, savings=True),
+        create_peak_electricity_col(mp_token, "heating", release, savings=True),
         f"{mp_token}peak_load_cooling_kbtu_hr",
         f"{mp_token}peak_load_heating_kbtu_hr",
         f"{mp_token}peak_load_cooling_kbtu_hr_savings",
@@ -326,11 +442,16 @@ def build_household_column_list(menu_mp: Union[int, str]) -> List[str]:
         create_cost_col(menu_mp, "heating", "replacement", COST_SCENARIO),
         create_cost_col(menu_mp, "heating", "upgrade", COST_SCENARIO),
         create_cost_col(menu_mp, "cooling", "replacement", COST_SCENARIO),
-        # The cooling credit the NPV actually subtracted, which is 0.0 for a
-        # home with no air conditioner and 0.0 where the cooling replacement
-        # cost above is blank.
+        # The cooling credit the NPV subtracted. Every sample home has an air
+        # conditioner of its own, so it equals the cooling replacement cost
+        # above on every row.
         create_cooling_credit_applied_col(menu_mp, COST_SCENARIO),
     ]
+    # A dual-fuel retrofit's new backup furnace, priced apart from the heat
+    # pump and added to it in the capital cost.
+    if dual_fuel:
+        installed_costs.insert(2, create_cost_col(
+            menu_mp, "heating", COST_TYPE_BACKUP_FURNACE, COST_SCENARIO))
     # The heat-pump rebate applies to the whole system (heating and cooling)
     # and is recorded once on the heating side, not split by end use. Only the
     # June 2026-guidance amount is carried, with its program label and the
@@ -366,10 +487,10 @@ def build_household_column_list(menu_mp: Union[int, str]) -> List[str]:
 
     return (
         identifiers + geography + building + household_income + existing_hvac
-        + retrofit_hvac + applicability + peak + base_year_consumption
-        + annual_consumption + lifetime_fuel_costs + installed_costs
-        + rebate + model_parameters + discounted_savings + net_capital
-        + npv + adopter
+        + retrofit_hvac + applicability + peak + panel + base_year_consumption
+        + base_year_parts + annual_consumption + lifetime_fuel_costs
+        + installed_costs + rebate + model_parameters + discounted_savings
+        + net_capital + npv + adopter
     )
 
 
@@ -380,14 +501,24 @@ def export_tepper_household(
     output_folder_path: str,
     location_id: str,
     results_export_formatted_date: str,
-) -> str:
-    """Write the household CSV of included columns for one measure package.
+) -> List[str]:
+    """Write the two household CSVs for one measure package.
 
-    Draws from two frames. The household summary frame supplies 94 columns;
-    the supplemental fuel-cost frame supplies the 60 per-year consumption
-    columns. Both are indexed by bldg_id. Values are copied verbatim from
-    both: no fillna, no rounding, no row drops, so blanks and row count
-    survive the round trip.
+    Only rows in the study sample (include_sample = True) are written, so
+    every row is a home the model priced, and no result is blank because a
+    home was left out.
+
+    Two files hold the same rows:
+
+      - the main file. For ResStock 2022.1.1 it has 167 columns: 107 from the
+        household summary frame and the 60 per-year consumption totals from
+        the supplemental fuel-cost frame.
+      - the detailed copy. The same columns, plus each per-year total split
+        by fuel (150 more columns for 2022.1.1), for readers who price each
+        fuel themselves.
+
+    Both frames are indexed by bldg_id. Values are copied as they are: no
+    fillna and no rounding.
 
     The annual frame may hold more homes than the household frame, which is
     what happens when exporting one county out of a national run: the caller
@@ -396,25 +527,29 @@ def export_tepper_household(
 
     Args:
         df_household: Final loaded household frame
-            (DATAFRAMES_BY_MP[mp]['fixed_base']), indexed by bldg_id.
+            (DATAFRAMES_BY_MP[mp]['fixed_base']), indexed by bldg_id, with
+            the include_sample column.
         df_annual_consumption: Supplemental fuel-cost frame for the same
             measure package and run, indexed by bldg_id. Must cover every home
             in df_household.
-        menu_mp: Measure package number (3 or 4).
+        menu_mp: Measure package number (3 or 4 in 2022.1.1, 5 in 2025.1).
         output_folder_path: Base directory for exports.
         location_id: Location identifier for the filename (e.g. 'National',
             'Allegheny'). Used for naming only; it does not filter rows.
         results_export_formatted_date: Date string for the filename.
 
     Returns:
-        The full path of the written CSV.
+        The full paths of the two written CSVs: the main file, then the
+        detailed copy.
 
     Raises:
         TypeError: If either input is not a DataFrame.
-        ValueError: If either frame is not indexed by bldg_id, or the annual
-            frame is missing homes that the household frame contains.
-        KeyError: If any included column is absent (names every missing one).
-        OSError: If the directory cannot be created or the file cannot be written.
+        ValueError: If either frame is not indexed by bldg_id, no row is in
+            the study sample, or the annual frame is missing homes that the
+            household frame contains.
+        KeyError: If include_sample or any included column is absent (names
+            every missing column).
+        OSError: If the directory cannot be created or a file cannot be written.
     """
     if not isinstance(df_household, pd.DataFrame):
         raise TypeError(
@@ -436,14 +571,34 @@ def export_tepper_household(
             f"name {df_annual_consumption.index.name!r}"
         )
 
+    # Only the study sample is exported, so every row is a home the model
+    # priced and a blank cannot be read as a zero in a spreadsheet.
+    if "include_sample" not in df_household.columns:
+        raise KeyError(
+            "df_household has no 'include_sample' column, so the study "
+            "sample cannot be selected."
+        )
+    df_household = df_household.loc[df_household["include_sample"].astype(bool)]
+    if len(df_household) == 0:
+        raise ValueError(
+            "No row of df_household is in the study sample, so the export "
+            "would be empty."
+        )
+
     menu_mp = int(menu_mp)
-    included_columns = build_household_column_list(menu_mp)
-    annual_columns = build_annual_consumption_column_list(menu_mp)
+    # The detailed copy has every column of the main file plus the per-fuel,
+    # per-year columns, so the checks below run on its list.
+    main_columns = build_household_column_list(menu_mp, df_household.columns)
+    detailed_columns = build_household_column_list(
+        menu_mp, df_household.columns,
+        by_fuel_columns=df_annual_consumption.columns)
+    annual_columns = build_annual_consumption_column_list(
+        menu_mp, by_fuel_columns=df_annual_consumption.columns)
 
     # Split the export list by which frame each column comes from.
     annual_column_set = set(annual_columns)
     summary_columns = []
-    for column in included_columns:
+    for column in detailed_columns:
         if column not in annual_column_set:
             summary_columns.append(column)
 
@@ -489,33 +644,44 @@ def export_tepper_household(
             f"{missing_from_annual}"
         )
 
-    # Line the annual frame up with the household frame, then take the columns
-    # in their declared order. The two frames share no column names, so
-    # nothing is overwritten when they are joined.
+    # Line the annual frame up with the household frame. The annual columns
+    # taken here are not in the household frame, so nothing is overwritten
+    # when the two are joined.
     df_annual_aligned = df_annual_consumption.loc[
         df_household.index, annual_columns]
     df_joined = pd.concat([df_household, df_annual_aligned], axis=1)
-    df_out = df_joined.loc[:, included_columns]
 
     directory = os.path.join(output_folder_path, TEPPER_SUBDIR)
     pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
-    filename = (
-        f"tepper_household_mp{menu_mp}_{location_id}_"
-        f"{results_export_formatted_date}.csv"
+
+    # The main file first, then the detailed copy, each with its columns in
+    # their declared order.
+    files_to_write = (
+        ("tepper_household", main_columns),
+        ("tepper_household_detailed", detailed_columns),
     )
-    full_path = os.path.join(directory, filename)
+    written_paths = []
+    for file_label, file_columns in files_to_write:
+        df_out = df_joined.loc[:, file_columns]
+        filename = (
+            f"{file_label}_mp{menu_mp}_{location_id}_"
+            f"{results_export_formatted_date}.csv"
+        )
+        full_path = os.path.join(directory, filename)
 
-    try:
-        df_out.to_csv(full_path)  # index=True writes bldg_id as the first column
-    except Exception as exc:
-        raise OSError(f"Error writing Tepper household CSV to {full_path}: {exc}")
+        try:
+            df_out.to_csv(full_path)  # index=True writes bldg_id first
+        except Exception as exc:
+            raise OSError(
+                f"Error writing Tepper household CSV to {full_path}: {exc}")
 
-    print(f"""\
+        print(f"""\
 [OK] Tepper household export written
      MP{menu_mp} | {df_out.shape[0]:,} rows x {df_out.shape[1]} columns (+ bldg_id index)
      Path: {full_path}""")
+        written_paths.append(full_path)
 
-    return full_path
+    return written_paths
 
 
 # Columns each county result table must supply, and the final ordered output
@@ -523,11 +689,12 @@ def export_tepper_household(
 # rather than silently reshaping the export.
 COUNTY_ADOPTION_COLS = ["county", "state", "home_count", "adoption_rate_pct"]
 COUNTY_BILL_COLS = ["county", "operating_cost_pct_change"]
-# NOTE: 'site_energy_change_gwh' and 'pct_site_energy_change' are ALIASES of the
-# electricity metrics (see demand.py) -- with whole-home electrification measured
-# on the electricity total, site-energy change equals electricity change. They
-# are NOT independent all-fuel numbers; prefer 'elec_change_gwh' /
-# 'pct_elec_demand_change' for an electricity read.
+# NOTE: 'site_energy_change_gwh' and 'pct_site_energy_change' are all-fuel site
+# energy (natural gas, fuel oil, and propane counted in kWh), read from
+# ResStock's whole-home site energy (see demand.py). They are separate from the
+# electricity metrics and usually have the opposite sign: electricity rises
+# while site energy falls. For an electricity read use 'elec_change_gwh' /
+# 'pct_elec_demand_change'.
 COUNTY_DEMAND_METRIC_COLS = [
     "baseline_elec_gwh", "retrofit_elec_gwh", "elec_change_gwh",
     "site_energy_change_gwh", "pct_elec_demand_change", "pct_site_energy_change",
@@ -568,7 +735,7 @@ def export_tepper_county(
             baseline_elec_gwh, retrofit_elec_gwh, elec_change_gwh,
             site_energy_change_gwh, pct_elec_demand_change,
             pct_site_energy_change.
-        menu_mp: Measure package number (3 or 4).
+        menu_mp: Measure package number (3 or 4 in 2022.1.1, 5 in 2025.1).
         output_folder_path: Base directory for exports.
         location_id: Location identifier for the filename (e.g. 'PA').
         results_export_formatted_date: Date string for the filename.

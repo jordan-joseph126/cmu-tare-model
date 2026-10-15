@@ -105,6 +105,7 @@ def test_replacement_installed_cost_v4_output(mock_constants):
     prefix = 'heating_replacement_'
     df = pd.DataFrame({
         'include_heating': [True, True, True, False, True],
+        'include_sample': True,
         'base_heating_fuel': ['Natural Gas', 'Propane', 'Fuel Oil', 'Electricity', 'Natural Gas'],
         'upgrade_hvac_heating_efficiency': ['ASHP', 'ASHP', 'ASHP', None, 'ASHP'],
     })
@@ -132,6 +133,7 @@ def test_replacement_installed_cost_v3_requires_cost_dict(mock_constants):
     )
     df = pd.DataFrame({
         'include_heating': [True],
+        'include_sample': True,
         'base_heating_fuel': ['Natural Gas'],
         'upgrade_hvac_heating_efficiency': ['ASHP'],
     })
@@ -150,6 +152,7 @@ def test_replacement_cost_clipped_to_zero(mock_constants):
     prefix = 'heating_replacement_'
     df = pd.DataFrame({
         'include_heating': [True, True, True],
+        'include_sample': True,
         'base_heating_fuel': ['Natural Gas'] * n,
         'upgrade_hvac_heating_efficiency': ['ASHP'] * n,
     })

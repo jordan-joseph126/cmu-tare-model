@@ -596,6 +596,10 @@ def prepare_county_geodataframe(
 # ============================================================================
 # Categorical Break-Even Map
 # ============================================================================
+# DEPRECATED (5 Oct 2026): the break-even COP is no longer part of the
+# analysis. Before using this map again, read the note at
+# compute_breakeven_cop in thermal_cop.py: the COP test in
+# plot_categorical_breakeven_map runs on rounded break-even values.
 
 BREAKEVEN_COLORS: list = ['#D32F2F', '#EF9A9A', '#90CAF9', '#1565C0']
 """Fill colors for 4 break-even favorability categories (0=Unfavorable … 3=Very Favorable)."""

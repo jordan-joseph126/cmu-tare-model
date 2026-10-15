@@ -5,7 +5,7 @@ import seaborn as sns
 from typing import List, Optional, Tuple, Dict, Union
 from matplotlib.ticker import FuncFormatter
 
-from cmu_tare_model.constants import COLOR_MAP_FUEL
+from cmu_tare_model.constants import COLOR_MAP_FUEL, FIGURE_DISPLAY_DPI
 
 def thousands_formatter(
         x: float,
@@ -136,7 +136,7 @@ def create_subplot_grid_boxplot(
         figsize=figure_size,
         sharex=sharex,
         sharey=sharey,
-        dpi=600  # High resolution for better quality!
+        dpi=FIGURE_DISPLAY_DPI
     )
 
     # Ensure axes is always 2D for consistent indexing

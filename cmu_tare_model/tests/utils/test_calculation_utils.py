@@ -183,6 +183,7 @@ def test_apply_temporary_validation_and_mask_basic():
 
     df_copy = pd.DataFrame({
         'include_heating': [True, False, True],
+        'include_sample': True,
         'valid_fuel_heating': [True, False, True],
         'existing_col': [1, 2, 3],
     })
@@ -210,6 +211,7 @@ def test_apply_temporary_validation_and_mask_removes_temp_columns():
 
     df_copy = pd.DataFrame({
         'include_heating': [True, False],
+        'include_sample': True,
         'valid_fuel_heating': [True, False],
         'valid_tech_heating': [True, False],
     })
@@ -228,6 +230,7 @@ def test_apply_temporary_validation_and_mask_overlapping_columns():
 
     df_copy = pd.DataFrame({
         'include_heating': [True, True],
+        'include_sample': True,
         'overlap_col': [1.0, 2.0],
     })
     df_new = pd.DataFrame({'overlap_col': [10.0, 20.0]})
@@ -260,6 +263,27 @@ def test_identify_valid_homes_include_all_is_intersection(sample_df):
     for cat in FULL_EQUIPMENT_SPECS:
         expected = expected & result[f'include_{cat}']
     pd.testing.assert_series_equal(result['include_all'], expected, check_names=False)
+
+
+def test_identify_valid_homes_leaves_out_shared_cooling(monkeypatch):
+    """A Central AC that is a shared system is not a valid cooling technology."""
+    from cmu_tare_model.utils.calculation_utils import identify_valid_homes
+
+    # The file's shared setup has no cooling category; this test needs only that.
+    monkeypatch.setattr(
+        'cmu_tare_model.utils.calculation_utils.EQUIPMENT_SPECS', {'cooling': 15})
+    df_homes = pd.DataFrame({
+        'base_cooling_fuel': ['Electricity'] * 3,
+        'cooling_type': ['Central AC', 'Central AC', 'None'],
+        'base_cooling_efficiency': ['AC, SEER 13', 'Shared Cooling', 'None'],
+    })
+    result = identify_valid_homes(df_homes.copy(), verbose=False)
+    assert list(result['valid_tech_cooling']) == [True, False, False]
+    assert list(result['include_cooling']) == [True, False, False]
+
+    with pytest.raises(KeyError, match='base_cooling_efficiency'):
+        identify_valid_homes(
+            df_homes.drop(columns=['base_cooling_efficiency']), verbose=False)
 
 
 # =============================================================================

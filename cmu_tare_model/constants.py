@@ -5,6 +5,7 @@
 # - Rest of codebase updated so only initial columns created for cooling and replacement cost calculations performed
 # - This allows for a scenario where only heating is replaced AND one where heating and cooling systems are both replace with HP
 # - Resolves the excessive data columns and double counting with $8000 rebate. No longer need CDD projections.
+import os
 
 # =============================================================
 # TARE MODEL RUN CONFIGURATION
@@ -14,6 +15,9 @@ VERBOSE = False
 PRINT_DEBUG = False
 PRINT_VERBOSE_DATAFRAMES = False
 FIGURE_DPI = 600
+# Resolution of figures drawn on screen and in the notebook. Saved files use
+# FIGURE_DPI. 300 keeps a figure copied out of the notebook at print quality.
+FIGURE_DISPLAY_DPI = 300
 MAP_TITLE_FONT_SIZE = 18
 MAP_TITLE_PAD = 5
 MAP_CBAR_LABEL_FONT_SIZE = 18
@@ -29,15 +33,40 @@ ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached', 'Mo
 # enumeration_dictionary.tsv provides additional details on the allowed technologies for each equipment category.
 # Trane GC focuses on heating and cooling. Cooling category is used for initial replacement cost estimates.
 ALLOWED_TECHNOLOGIES = {
-    # in.hvac_heating_type_and_fuel exclude existing heat pump options
+    # in.hvac_heating_type_and_fuel: this list defines the study sample (with
+    # the fuel rule: electricity, natural gas, propane, fuel oil). The study
+    # models replacing a home's existing heating system with a heat pump, so:
+    # - existing heat pumps (ASHP; MSHP in 2025.1) are left out: nothing to replace;
+    # - wall/floor furnaces and shared heating are left out: there is no cost
+    #   data to estimate their replacement cost.
+    # 2022.1.1 result: 260,211 rdu (63.0M homes) pass this heating rule; the
+    # cooling rule below brings the study sample to 221,205 rdu (53.56M homes).
     'heating': [
-        'Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace', 
+        'Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace',
         # 'Electricity ASHP',
-        'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace', 
+        'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace',
         'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
         'Propane Fuel Boiler', 'Propane Fuel Furnace'
     ],
-    # in.hvac_cooling_type exclude existing heat pump options
+    # in.hvac_cooling_type: central and room AC only, as in the submitted
+    # 2022.1.1 analysis. Same list for both releases, so both share one scope.
+    # This list also limits the study sample: a home with valid heating but no
+    # central or room AC (38,910 rdu, 9.42M homes in 2022.1.1) is left out,
+    # because the heat pump would add cooling it never had (CLAUDE.md
+    # Limitation 11).
+    # Shared cooling is left out too (SHARED_COOLING_EFFICIENCY, below): ResStock
+    # files it under 'Central AC', so this list alone does not catch it.
+    # TODO (no-AC homes): a future session may bring homes with no existing
+    # cooling into the sample, for analyses with a different scope. For them:
+    # ResStock energy values stay as published; the cooling replacement cost
+    # and credit are $0 (nothing to replace); cooling savings are negative
+    # (the heat pump adds cooling as a new service). Plan: a switch here, for
+    # example INCLUDE_HOMES_WITHOUT_COOLING = False, read at each point tagged
+    # 'TODO (no-AC homes)': process_euss_data.py (sample rule),
+    # calculate_equipment_replacement_costs.py (cooling replacement cost), and
+    # calculate_lifetime_private_impact.py (NPV).
+    # PLACEHOLDER -- that session may also decide whether existing heat pump
+    # homes ('Ducted Heat Pump' / 'Non-Ducted Heat Pump' in 2025.1) belong here.
     'cooling': [
         'Central AC',
         'Room AC'
@@ -59,6 +88,11 @@ ALLOWED_TECHNOLOGIES = {
     # ]
 } 
 
+# in.hvac_cooling_efficiency label for a cooling system shared between homes.
+# Left out of the study sample: no cost data for its replacement, as with
+# shared heating (96 rdu, 23,245 homes in 2022.1.1; all typed 'Central AC').
+SHARED_COOLING_EFFICIENCY = 'Shared Cooling'
+
 # Trane GC focuses on heating and cooling. Cooling category is used for initial replacement cost estimates.
 # Cooling is excluded from EQUIPMENT_SPECS and VALID_CATEGORIES because other calculations are not performed.
 EQUIPMENT_SPECS = {
@@ -70,16 +104,63 @@ EQUIPMENT_SPECS = {
     }
 VALID_CATEGORIES = list(EQUIPMENT_SPECS.keys())
 
+# Measure packages available in each release. Add 2025.1 Upgrades 04 and 03
+# to the '2025.1' list once Upgrade 05 has finished every phase.
+RESSTOCK_RELEASE_AND_MP = {
+    '2022.1.1': [0, 3, 4],
+    '2025.1': [0, 5],
+}
+
+# ResStock release this run reads. MP numbers repeat across releases (2025.1
+# Upgrades 03/04 will later load as mp=3/4, unlike 2022.1.1 MP3/MP4), so any
+# check on an MP number must also check the release.
+# Set by the environment variable TARE_RESSTOCK_RELEASE ('2022.1.1' or
+# '2025.1'), defaulting to '2022.1.1'. It has to be fixed before any TARE
+# module is imported: several functions copy this value as a default argument
+# at import, so changing it later would leave them on the old release. The
+# notebook runner (scripts/run_tare_notebooks.py --release) sets the variable
+# first; with it unset, nothing changes from the 2022.1.1 analysis.
+RESSTOCK_RELEASE_ENV_VAR = 'TARE_RESSTOCK_RELEASE'
+
+# Set ResStock data release for this run.
+RESSTOCK_RELEASE_THIS_RUN = os.environ.get(RESSTOCK_RELEASE_ENV_VAR, '2022.1.1')
+# RESSTOCK_RELEASE_THIS_RUN = os.environ.get(RESSTOCK_RELEASE_ENV_VAR, '2025.1')
+
+
+if RESSTOCK_RELEASE_THIS_RUN not in RESSTOCK_RELEASE_AND_MP:
+    raise ValueError(
+        f"{RESSTOCK_RELEASE_ENV_VAR}={RESSTOCK_RELEASE_THIS_RUN!r} is not a known "
+        f"ResStock release; expected one of {sorted(RESSTOCK_RELEASE_AND_MP)}")
+
 # Run the model for all measure packages (MPs) or a specific MP
 # Enclosure upgrades (MP9 and MP10) are excluded for now since they are not yet included in the REMDB v4 code.
-VALID_MENU_MPS = [
-    0,
-    3,
-    4,
-    # 8,
-    # 9,
-    # 10
-    ]
+VALID_MENU_MPS = RESSTOCK_RELEASE_AND_MP[RESSTOCK_RELEASE_THIS_RUN]
+
+# Measure packages, by release, that install a dual-fuel system: a heat pump
+# plus a new fossil backup furnace that takes over below a switchover
+# temperature. Such a package needs a furnace cost and its own rebate fuel-gate
+# rule. Package numbers repeat across releases, so a package is dual fuel only
+# under the release it is listed for. Ask is_dual_fuel_package
+# (utils/calculation_utils.py); never test a package number on its own.
+DUAL_FUEL_PACKAGES_BY_RELEASE = {
+    '2022.1.1': [],
+    '2025.1': [5],  # Upgrade 05, Dual Fuel Heating System
+}
+
+# States excluded from the 2025.1 dual-fuel study (researcher's 19 Sep 2026
+# decision). Hawaii has limited natural gas infrastructure and essentially no
+# heating demand, so a dual-fuel package has almost nothing to act on there.
+# Alaska has gas available but fuel-oil heating dominates, and a very high
+# electricity-to-gas price ratio combined with very high heating demand makes
+# it a poor candidate for either a dual-fuel or a cold-climate heat pump
+# relative to other states. This also matches the 49-state-plus-DC footprint
+# the 2022.1.1 pipeline already has by construction (it has no AK/HI rows).
+# Two-letter USPS abbreviations, matching the `state` column. Applying this
+# filter also avoids a silent bug: 2025.1's AK/HI counties are name strings
+# (for example "HI, Honolulu County"), not the GISJOIN format the county-FIPS
+# parse in process_euss_data.py expects, so an unfiltered AK/HI row gets a
+# garbage FIPS key instead of raising an error.
+EXCLUDED_STATES = {'AK', 'HI'}
 
 # Short key identifiers for discount rates (used in dictionaries and user-facing code)
 PRIVATE_DISCOUNT_RATE_SHORT_KEYS = [
@@ -113,7 +194,12 @@ PUBLIC_DISCOUNTING_METHOD_SUFFIXES = {
 CAPITAL_COST_VALIDATION = True  
 
 # Set True to run BSQ-based grid impact analysis
-GRID_IMPACT_ANALYSIS = True
+# TODO (grid impact, 2025.1): the grid impact analysis works on ResStock 2022.1.1
+# only for now. It will be updated for the dual-fuel analysis (2025.1). Until
+# then switch it off for a 2025.1 run (run_tare_notebooks.py --skip-grid-impact).
+
+# Temporary switch to skip grid impact analysis for 2025.1 runs (dual-fuel study).
+GRID_IMPACT_ANALYSIS = True 
 
 # =============================================================
 # CONSTANTS: TARE MODEL - GENERAL
@@ -207,13 +293,10 @@ REBATE_MAPPING = {
 # =============================================================
 # CONSTANTS: IRA REBATE ELIGIBILITY BY MEASURE PACKAGE
 # =============================================================
-# Only ENERGY STAR-certified heat pumps qualify for the federal rebates.
-# MP3's modeled heat pump (SEER 15 / 9.0 HSPF) sits just below the ENERGY STAR
-# minimum, but is re-specified to the ENERGY STAR floor (>= 16.0 SEER1 /
-# >= 9.5 HSPF1) in process_euss_data.df_enduse_compare so it qualifies -- and
-# its capital cost reflects that ENERGY STAR install. MP4/MP8/MP9/MP10 use
-# high-efficiency ASHP (SEER 24+) and qualify as modeled.
-REBATE_ELIGIBLE_HEATING_MPS = [3, 4, 8, 9, 10]
+# Rebate eligibility is release-aware (2022.1.1 MP3/MP4/MP8/MP9/MP10 vs.
+# 2025.1 MP5), so it can't be one flat, release-unaware list here -- see
+# get_rebate_eligible_mps() in
+# private_impact/data_processing/determine_rebate_eligibility_and_amount.py.
 
 # =============================================================
 # CONSTANTS: REBATE-POLICY-SCENARIO SENSITIVITY AXIS (2024 vs June 2026 DOE guidance)
@@ -298,6 +381,23 @@ REBATE_HOMES = "HOMES"
 #       HEEHR-only), so 2024 is False. 2026 is True ONLY to preserve the current
 #       byte-identical June 2026 output; making 2026 HOMES fuel-neutral is a
 #       separate value move deferred to the full-run re-derivation session.
+#   dual_fuel_passes_fuel_gates -- True lets a dual-fuel retrofit (a heat pump
+#       that keeps a fossil furnace as backup; is_dual_fuel_package in
+#       utils/calculation_utils.py) pass both fuel gates above, whatever the
+#       home's heating fuel before the retrofit. The fuel gates exist because a
+#       rebate may not fund removing a fossil heating system, and a dual-fuel
+#       retrofit does not remove one. Under June 2026 this means: HEEHR at or
+#       below 150% AMI for every baseline fuel, and HOMES
+#       fuel-neutral above 150% AMI, as CLAUDE.md documents that program
+#       (researcher's decision, 6 Oct 2026). Caps, cost shares, income
+#       routing, savings tiers and the state gate are unchanged. It changes
+#       nothing for 2022.1.1 packages, none of which is dual fuel, so June 2026
+#       HOMES stays electric-gated for them (deferred, see homes_fuel_gate).
+#
+# Program Notice 26-3: DOE has released new guidance in Program Notice 26-3.
+# The researcher has not yet reviewed how it differs from Program Notices 26-1
+# and 26-2 or how it affects this code. The rebate rules modeled here are the
+# ones documented in CLAUDE.md; no rule below was changed because of 26-3.
 REBATE_RULE_CONFIG = {
     REBATE_GUIDANCE_IRA2024: {
         "column_guidance": None,
@@ -311,6 +411,8 @@ REBATE_RULE_CONFIG = {
         # HEEHR-only), so homes_fuel_gate stays False.
         "homes_enabled": True,
         "homes_fuel_gate": False,
+        # No fuel gate is active in 2024, so this changes nothing there.
+        "dual_fuel_passes_fuel_gates": True,
         "heehr_python_round": True,
     },
     REBATE_GUIDANCE_JUNE2026: {
@@ -319,6 +421,7 @@ REBATE_RULE_CONFIG = {
         "heehr_fuel_gate": True,
         "homes_enabled": True,
         "homes_fuel_gate": True,
+        "dual_fuel_passes_fuel_gates": True,
         "heehr_python_round": False,
     },
 }
@@ -376,7 +479,7 @@ VALID_HVAC_REPLACEMENT_SCENARIOS = ['heating', 'heating_and_cooling']
 # equipment a homeowner can legally purchase.
 #
 # Values are in REMDB pm2 units (SEER1 for cooling/heat-pumps,
-# decimal AFUE for furnaces).
+# decimal AFUE for furnaces and boilers).
 #
 # Sources:
 #   - DOE 2023 final rule: SEER2 14.3 (South) / 13.4 (North) for CAC
@@ -390,8 +493,30 @@ EFFICIENCY_FLOORS_PM2 = {
     'air_source_heat_pump_non_ducted_multi_zone':  15.0,   # SEER1
     'air_conditioner_centrally_ducted':            15.0,   # SEER1
     'furnaces_gas_furnace':                        0.80,   # AFUE (decimal)
+    # Old boilers: the furnace floor, which is also the lowest AFUE the two
+    # REMDB boiler rows cover.
+    'boiler_gas_non_condensing': 0.80,  # AFUE (decimal)
+    'boiler_oil': 0.80,  # AFUE (decimal)
     # 'electric_baseboard_default' has pm2_coef=0, no floor needed
 }
+
+# =============================================================
+# CONSTANTS: SEER2 / HSPF2 RATINGS (DOE APPENDIX M1)
+# =============================================================
+# Heat pumps sold from 2023 are rated under DOE's Appendix M1 test
+# (SEER2, HSPF2), which gives lower numbers than the older test (SEER, HSPF;
+# called SEER1 and HSPF1 here) for the same equipment. The REMDB heat-pump
+# regression takes SEER1 (its pm2 metric), so a SEER2 rating is converted
+# before it is priced: SEER1 = SEER2 / SEER2_PER_SEER1. The 2025.1 dual-fuel
+# package's SEER2 15.2 becomes SEER1 16.0, the ENERGY STAR floor written as
+# 16.0 SEER1 in process_euss_data.py. HSPF is converted for the record only;
+# it has no cost lever in this model.
+# The two factors are a reasonable and standard assumption for the vast
+# majority of residential installations, ducted split systems in particular,
+# the kind of system the dual-fuel package installs. Used only in
+# add_dual_fuel_spec_columns (process_euss_data.py).
+SEER2_PER_SEER1 = 0.95
+HSPF2_PER_HSPF1 = 0.85
 
 # =============================================================
 # CONSTANTS: CAPACITY BOUNDS FOR REPLACEMENT COSTS
@@ -436,10 +561,13 @@ STATE_COL: str = "in.state"       # 2-char state code
 WEIGHT_COL: str = "weight"        # BSQ reads per-row from metadata (see about changing this to match count)
 
 # Minimum sample count per county/state for spatial aggregation.
-# Set to 1 — all counties are included regardless of sample size.
+# Set to 1 -- all counties are included regardless of sample size.
 # Sparsely populated counties naturally have fewer samples; excluding
 # them introduces geographic bias.  Consistent with approaches in
 # similar ResStock-based studies.
+# In 2022.1.1, 74 of the 3,079 study-sample counties have 1 rdu and 280 have
+# 3 or fewer, so one rdu can set a county's value. The paper lists this as a
+# limitation; check a county's rdu count before quoting its value.
 MIN_HOME_COUNT: int = 1
 
 # Reference values for Allegheny County validation
@@ -464,7 +592,7 @@ JENKINS_BREAKEVEN_REF_90: dict = {
 # PA climate zone spot-check ranges for COP benchmark validation.
 # PA is primarily CZ 4-5 (Pittsburgh, Philadelphia).
 # Source: Literature estimates for ASHP performance in mixed-humid climate.
-# TODO: follow-up (P0.2) — PA CZ 6-7 spot check currently fails.
+# TODO: follow-up -- PA CZ 6-7 spot check currently fails.
 PA_COP_RANGES: dict = {
     'mp3': (1.8, 2.4),
     'mp4': (2.5, 3.4),
