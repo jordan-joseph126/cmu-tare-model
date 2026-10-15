@@ -243,7 +243,7 @@ conda env export > environment-exact.yml
 
 ## Quick Reference
 
-**Main Model Notebook**: `tare_model_main_v3_0.ipynb`
+**Main Model Notebook**: `tare_model_main_v3_1.ipynb`
 
 **Scenario Notebooks**: Located in `cmu_tare_model/model_scenarios/`
 
@@ -267,9 +267,9 @@ cmu-tare-model/
 │   │   └── retrofit_costs/                  # Equipment and installation costs (mostly REMDB pre-2024 update)
 │   ├── energy_consumption_and_metadata/     # EUSS data processing
 │   ├── model_scenarios/                     # Scenario notebooks
-│   │   ├── tare_baseline_v3_0.ipynb
-│   │   ├── tare_scenarios_v3_0.ipynb
-│   │   └── tare_run_simulation_v3_0.ipynb
+│   │   ├── tare_baseline_v3_1.ipynb
+│   │   ├── tare_scenarios_v3_1.ipynb
+│   │   └── tare_run_simulation_v3_1.ipynb
 │   ├── adoption_kpis/                       # Adoption KPIs, maps, dot plots
 │   ├── grid_impact/                         # County peak-load / demand profiles
 │   ├── output_results/                      # Model outputs (created on run)
@@ -278,16 +278,15 @@ cmu-tare-model/
 │   ├── tests/                               # Unit tests (pytest)
 │   ├── docs/                                # Session changelogs
 │   ├── utils/                               # Utility and visualization functions
-│   ├── tare_model_main_v3_0.ipynb           # **MAIN NOTEBOOK - START HERE**
+│   ├── tare_model_main_v3_1.ipynb           # **MAIN NOTEBOOK - START HERE**
 │   └── constants.py                         # Constants used throughout the codebase
 ├── environment-cmu-tare-model.yml           # Conda environment (see ENVIRONMENT_SETUP.md)
 ├── setup.py                                 # Package installation script
 ├── config.py                                # Project configuration
-├── ENVIRONMENT_SETUP.md                     # Detailed environment setup reference
-└── TARE_MODEL_USER_GUIDE.md                 # User guide and technical documentation
+└── ENVIRONMENT_SETUP.md                     # Detailed environment setup reference
 ```
 
 ---
 
-**Last Updated**: 2025-10-23  
+**Last Updated**: 2026-10-14  
 **Status**: ✅ Working - Python 3.11.13, all packages verified

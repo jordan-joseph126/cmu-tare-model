@@ -1,6 +1,6 @@
 """Reusable functions for post-TARE peak load analysis.
 
-Used by the main notebook, tare_model_main_v3_0.ipynb.
+Used by the main notebook, tare_model_main_v3_1.ipynb.
 
 TODO (grid impact, 2025.1): the grid impact analysis works on ResStock 2022.1.1
 only for now. It will be updated for the dual-fuel analysis (2025.1).

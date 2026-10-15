@@ -9,10 +9,7 @@ history (what was tried, what broke, what was decided and why) lives in
 
 The code lives in `cmu_tare_model/grid_impact/peak_load_functions.py` (the module with all
 the reusable functions) and the grid-impact section of
-`cmu_tare_model/tare_model_main_v3_0.ipynb` (the notebook that calls them). A plain-`.py`
-mirror of the current notebook, for reading without opening Jupyter, is at
-`cmu_tare_model/tare_model_main_v3_0_EXPORT_18Sep2026.py` -- it is read-only; edit the
-`.ipynb` and the module, never the export.
+`cmu_tare_model/tare_model_main_v3_1.ipynb` (the notebook that calls them).
 
 ---
 

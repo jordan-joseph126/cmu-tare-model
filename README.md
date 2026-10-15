@@ -1,5 +1,5 @@
 # cmu-tare-model
-The Tradeoff Analysis of Residential Energy (TARE) Model v3.0
+The Tradeoff Analysis of Residential Energy (TARE) Model v3.1
 
 Copyright (C) 2021-2026 Jordan M. Joseph
 
@@ -178,9 +178,9 @@ Best for: One-time use or if you don't have Git installed
 cmu-tare-model/
 ├── cmu_tare_model/                          # Main model package
 │   ├── model_scenarios/                     # SCENARIO NOTEBOOKS
-│   │   ├── tare_baseline_v3_0.ipynb
-│   │   ├── tare_scenarios_v3_0.ipynb
-│   │   └── tare_run_simulation_v3_0.ipynb
+│   │   ├── tare_baseline_v3_1.ipynb
+│   │   ├── tare_scenarios_v3_1.ipynb
+│   │   └── tare_run_simulation_v3_1.ipynb
 │   ├── private_impact/                      # Private cost/benefit calculations
 │   ├── public_impact/                       # Climate and health impacts
 │   ├── adoption_potential/                  # Technology adoption analysis
@@ -199,7 +199,7 @@ cmu-tare-model/
 │   │   └── [additional data folders...]
 │   ├── output_results/                      # Model outputs (created on run)
 │   ├── figures/                             # Generated figures
-│   ├── tare_model_main_v3_0.ipynb           # MAIN ENTRY POINT
+│   ├── tare_model_main_v3_1.ipynb           # MAIN ENTRY POINT
 │   └── constants.py                         # Model constants
 ├── environment-cmu-tare-model.yml           # Conda environment specification
 ├── setup.py                                 # Package installation script
@@ -208,7 +208,7 @@ cmu-tare-model/
 ```
 
 **Key Entry Points:**
-- **Main Analysis:** `tare_model_main_v3_0.ipynb` - Start here
+- **Main Analysis:** `tare_model_main_v3_1.ipynb` - Start here
 - **Individual Scenarios:** `model_scenarios/` folder
 - **Functions/Modules:** Navigate to respective directories (e.g., `public_impact/`)
 
@@ -300,7 +300,7 @@ code .
 
 ### Running Notebooks
 
-1. Open `cmu_tare_model/tare_model_main_v3_0.ipynb`
+1. Open `cmu_tare_model/tare_model_main_v3_1.ipynb`
 2. Click kernel selector (top-right corner)
 3. Select **"Python 3.11.13 (cmu-tare-model)"**
 4. Verify `(cmu-tare-model)` appears in kernel indicator
@@ -408,7 +408,7 @@ conda update --all
 
 ## 2.1 Version Information
 
-**Current Version:** 3.0
+**Current Version:** 3.1
 
 **Development Status:** Production/Stable
 
@@ -456,4 +456,4 @@ Carnegie Mellon University. https://github.com/jordan-joseph126/cmu-tare-model
 
 ---
 
-**Last Updated:** 2025-11-12
+**Last Updated:** 2026-10-14

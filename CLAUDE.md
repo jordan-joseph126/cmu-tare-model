@@ -3,7 +3,32 @@
 ## Heat-Pump Electrification Economics (ResStock 2022.1.1 / EUSS)
 #
 ```text
-# Last updated: 11 October 2026 — paper numbers verified against the final run
+# Last updated: 14 October 2026 — version 3.1
+#   - The four model notebooks are renamed from `_v3_0` to `_v3_1`:
+#     `tare_model_main_v3_1.ipynb` and, in `model_scenarios/`, `tare_baseline`,
+#     `tare_scenarios` and `tare_run_simulation`. Their contents are unchanged apart
+#     from the notebook names they call. The main notebook keeps its saved outputs of
+#     run `2026-10-09_00-46`.
+#   - The 3.0 notebooks and their four `_EXPORT_8Oct2026.py` snapshots are out of the
+#     repo, in the local `archived_files/` folder and in git history. The runner, the
+#     notebook-cell-edit skill, the README and the setup and grid impact guides name
+#     the 3.1 notebooks; logs and dated records keep the 3.0 names. `setup.py` reads 3.1.
+#   - No model code or modeled value changed. Tests: 412 passed, 1 skipped. The runner
+#     ran Pennsylvania on both releases, grid impact off: 2022.1.1 `2026-10-14_21-29` and
+#     2025.1 `2026-10-14_21-37`.
+#   - No longer tracked: `cmu_tare_model.egg-info/` and `reference_material/`. Moved to
+#     the local archive: `CLAUDE_BACKUP_17Sep2026.md` and
+#     `REFACTORING_GUIDE_17Sept2026_DualFuel_ResStock2025_1.md`.
+#   - Notebook cleanup for 3.1 is the name fix only: the cost workbook path, the grid
+#     impact switch and new `.py` snapshots stay as they are. This branch goes into
+#     `main` by fast-forward.
+#   - Waiting for a new version of the Zenodo data deposit: the README data link (it
+#     cites record 17509167 of Nov 2025) and where the ResStock 2025.1 files go,
+#     `.zenodo.json`, `CITATION.cff`, the `v3.1.0` tag and the GitHub release.
+#   - To merge `TM_dev_load_data`: merge `845d71a` first, then `main`, so git follows
+#     the notebook rename.
+#
+# Previously: 11 October 2026 — paper numbers verified against the final run
 #   - Every modeled number the Nature Communications draft prints was worked out again
 #     from the saved runs: draft run `2026-08-19_20-56` against final run
 #     `2026-10-09_00-46`, MP3 and MP4. The result is
@@ -22,33 +47,6 @@
 #     co-authors review the new draft: notebook cleanup and the move from version 3.0
 #     to 3.1, the merge with main, the 3.1 release on GitHub, and the Zenodo update
 #     (the staged Zenodo files still hold the draft run).
-#
-# Previously: 9 October 2026 — old boilers are priced on the REMDB boiler rows
-#   - The credit for an old gas or propane boiler uses the non-condensing gas boiler
-#     row, and for an old fuel oil boiler the oil boiler row, with a floor of AFUE
-#     0.80. Both were on the gas furnace row. Value-moving on both releases: 20,973
-#     rdu in 2022.1.1 and 2,528 in 2025.1; mean boiler credit $3,474 --> $7,638 and
-#     $3,443 --> $7,766.
-#   - `heatingLCC_coolingLCC` adoption with no rebate: MP3 18.81% --> 19.35%, MP4
-#     18.99% --> 19.47%, MP5 3.27% --> 3.39%. The three old-AC-only cases, every
-#     rebate, the bills and the study sample did not move. New rows are in
-#     `docs/REFERENCE_VALUES.md`.
-#   - Electric furnaces and electric boilers stay on the baseboard row, with a TODO
-#     to ask NLR's REMDB researchers (Limitation 16).
-#   - Limitation 9 and Limitations 15 to 18 say how each old system is priced and how
-#     many rdu fall outside a cost row's range.
-#   - Runs, grid impact off: 2022.1.1 `2026-10-09_00-46` and 2025.1 `2026-10-09_00-38`.
-#     The default release stays 2022.1.1.
-#   - Later on 9 October, with no code or value changed: Stage 2 checked the new files
-#     for Chris (27 checks per package, all passed) and compared them with the 19 Aug
-#     data. On the same 221,205 rdu, no-rebate adoption went from 30.18% to 19.35%
-#     (MP3) and from 19.71% to 19.47% (MP4). Results: sections 7.3 and 7.4 of
-#     `docs/DF_COST_FIXES_AND_DATA_SHARE_PLAN.md`.
-#   - A change audit of 19 Aug to 9 Oct found that run `2026-08-19_20-56` was made on
-#     commit 68f0964 plus the old-system size fix, first committed as 2f54ed2. From
-#     there to 6a12e05 are 69 commits, 14 of them value-moving. `docs/SESSION_LOG.md`
-#     gains the rows missing since 19 Sep. The audit and a detailed writeup are in
-#     `~/tare_port/s11_outputs/`, off the repo.
 ```
 
 > This file is read by Claude Code at the start of every session. It is the authoritative
