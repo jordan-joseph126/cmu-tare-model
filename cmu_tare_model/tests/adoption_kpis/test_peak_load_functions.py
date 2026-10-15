@@ -276,6 +276,7 @@ class TestComputeCountyScenarioProfile:
             "delta_mw",
             "n_adopters",
             "n_total_buildings",
+            "pct_adopters",
         }
         assert set(peak_dict.keys()) == expected_keys
 
