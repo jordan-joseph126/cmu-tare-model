@@ -211,11 +211,8 @@ that does not.
 ## 5. Where to go next
 
 The grid-impact code is the `if GRID_IMPACT_ANALYSIS:` block in
-`cmu_tare_model/tare_model_main_v3_0.ipynb`. Set `GRID_IMPACT_ANALYSIS = True`
+`cmu_tare_model/tare_model_main_v3_1.ipynb`. Set `GRID_IMPACT_ANALYSIS = True`
 and run the notebook.
-
-The exported snapshot `tare_model_main_v3_0_EXPORT_3Sep2026.py` mirrors that
-notebook for reading and diffing. It is read-only; the notebook is what runs.
 
 ### Sampling weight -- do not apply it twice
 

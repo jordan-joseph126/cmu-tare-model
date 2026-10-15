@@ -14,7 +14,7 @@ A changes file looks like this ("new" is the new line, null to delete the
 line, or a list of lines to put in its place):
 
     {"changes": [
-        {"notebook": "cmu_tare_model/model_scenarios/tare_scenarios_v3_0.ipynb",
+        {"notebook": "cmu_tare_model/model_scenarios/tare_scenarios_v3_1.ipynb",
          "cell": 16, "line": 14, "old": "VERBOSE = True", "new": null}
     ]}
 

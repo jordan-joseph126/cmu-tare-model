@@ -8,7 +8,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="cmu_tare_model",
-    version="3.0",
+    version="3.1",
     packages=find_packages(),
     install_requires=[
         # Add dependencies here, e.g., 'numpy', 'pandas', etc.

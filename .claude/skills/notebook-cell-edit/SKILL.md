@@ -55,11 +55,11 @@ the repo.
 
 ```json
 {"changes": [
-  {"notebook": "cmu_tare_model/model_scenarios/tare_scenarios_v3_0.ipynb",
+  {"notebook": "cmu_tare_model/model_scenarios/tare_scenarios_v3_1.ipynb",
    "cell": 16, "line": 14,
    "old": "VERBOSE = True",
    "new": null},
-  {"notebook": "cmu_tare_model/tare_model_main_v3_0.ipynb",
+  {"notebook": "cmu_tare_model/tare_model_main_v3_1.ipynb",
    "cell": 9, "line": 56,
    "old": "print(f\"Baseline: {len(df_baseline):,} occupied SF homes\")",
    "new": "print(f\"Baseline: {len(df_baseline):,} occupied SF rdu\")"}

@@ -1,6 +1,6 @@
 """Runs the TARE model notebooks end to end with no keyboard input.
 
-The researcher runs the model by opening tare_model_main_v3_0.ipynb, running
+The researcher runs the model by opening tare_model_main_v3_1.ipynb, running
 every cell, and typing three answers. This script does the same thing: it runs
 the main notebook from the first cell to the last, and the main notebook in
 turn runs the simulation, baseline and scenario notebooks with its own
@@ -48,7 +48,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-MAIN_NOTEBOOK = REPO_ROOT / "cmu_tare_model" / "tare_model_main_v3_0.ipynb"
+MAIN_NOTEBOOK = REPO_ROOT / "cmu_tare_model" / "tare_model_main_v3_1.ipynb"
 
 # The question the main notebook asks first, and the other questions the
 # notebooks can ask, each found by a piece of its text. The text is matched
