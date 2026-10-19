@@ -11,7 +11,7 @@ import os
 # TARE MODEL RUN CONFIGURATION
 # =============================================================
 # Configuration
-VERBOSE = False
+VERBOSE = True
 PRINT_DEBUG = False
 PRINT_VERBOSE_DATAFRAMES = False
 FIGURE_DPI = 600
@@ -43,7 +43,7 @@ ALLOWED_TECHNOLOGIES = {
     # cooling rule below brings the study sample to 221,205 rdu (53.56M homes).
     'heating': [
         'Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace',
-        # 'Electricity ASHP',
+        'Electricity ASHP',
         'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace',
         'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
         'Propane Fuel Boiler', 'Propane Fuel Furnace'
