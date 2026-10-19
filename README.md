@@ -1,5 +1,5 @@
 # cmu-tare-model
-The Tradeoff Analysis of Residential Energy (TARE) Model v3.1
+The Tradeoff Analysis of Residential Energy (TARE) Model v3.1.0
 
 Copyright (C) 2021-2026 Jordan M. Joseph
 
@@ -191,16 +191,19 @@ cmu-tare-model/
 │   ├── tests/                               # Unit tests (pytest)
 │   ├── docs/                                # Session changelogs
 │   ├── data/                                # Input data (download separately)
-│   │   ├── euss_data/                       # NREL energy consumption data
-│   │   ├── fuel_prices/                     # EIA price data and projections
+│   │   ├── ami_calculations_data/           # Census ACS area median income
+│   │   ├── euss_data/                       # ResStock 2022.1.1 national files
+│   │   ├── fuel_prices/                     # EIA fuel prices
+│   │   ├── inflation_data/                  # BLS consumer price index
+│   │   ├── projections/                     # AEO2026 factors, Cambium, social cost of carbon
 │   │   ├── retrofit_costs/                  # REMDB equipment costs
-│   │   ├── projections/                     # Cambium, NEI projections
-│   │   ├── marginal_social_costs/           # SCC, health damages
-│   │   └── [additional data folders...]
+│   │   └── shapefiles/                      # Census county and state boundaries
 │   ├── output_results/                      # Model outputs (created on run)
 │   ├── figures/                             # Generated figures
 │   ├── tare_model_main_v3_1.ipynb           # MAIN ENTRY POINT
 │   └── constants.py                         # Model constants
+├── data/resstock_2025_1/                    # ResStock 2025.1 files (optional, download separately)
+├── scripts/                                 # run_tare_notebooks.py runs the notebooks end to end
 ├── environment-cmu-tare-model.yml           # Conda environment specification
 ├── setup.py                                 # Package installation script
 ├── config.py                                # Project configuration
@@ -214,13 +217,21 @@ cmu-tare-model/
 
 ## 1.4 Data Download
 
-The model requires input data hosted separately on Zenodo:
+The model requires input data hosted separately on Zenodo (DOI: [10.5281/zenodo.23460993](https://doi.org/10.5281/zenodo.23460993)). Use version 4 of the data record, made for v3.1.0: earlier versions lack files that v3.1.0 reads.
 
-1. **Download data:** https://zenodo.org/records/17509167
-2. **Extract All Files**
-3. Unzip the data folder and extract all contents into `cmu-tare-model/cmu_tare_model/` to create the path: `cmu-tare-model/cmu_tare_model/data/`
+1. **Download data:** `data.zip` (2.8 GB) from https://zenodo.org/records/23460993
+2. **Extract All Files.** The zip holds one folder, `data/`, with the model inputs: the ResStock 2022.1.1 national files, fuel prices, retrofit costs, projections, area median income, inflation data, and county and state boundary files.
+3. Move the `data/` folder into `cmu-tare-model/cmu_tare_model/` to create the path `cmu-tare-model/cmu_tare_model/data/`. Keep its subfolders as they are.
 
-This provides the required EUSS data, fuel prices, retrofit costs, projections, and social cost data.
+The results of the final run behind the paper submitted in October 2026 (run `2026-10-09_00-46`) are in a separate record, [10.5281/zenodo.23399051](https://doi.org/10.5281/zenodo.23399051). The model does not need them to run.
+
+**ResStock 2025.1 files (optional, preliminary results).** Version 3.1.0 also runs the ResStock 2025.1 dual-fuel heat pump package (MP5). Its results are preliminary until further code updates are made, including the grid impact analysis and the switch for homes with no existing AC. The 2025.1 files are not in the Zenodo record:
+
+1. Download `upgrade0.parquet` (baseline, 465 MB) and `upgrade5.parquet` (dual fuel, 692 MB) from the NREL OEDI data lake:
+   - https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2025/resstock_amy2018_release_1/metadata_and_annual_results/national/full/parquet/upgrade0.parquet
+   - https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2025/resstock_amy2018_release_1/metadata_and_annual_results/national/full/parquet/upgrade5.parquet
+2. Put both files in `cmu-tare-model/data/resstock_2025_1/`, at the repo root (not under `cmu_tare_model/data/`).
+3. Choose the release with the environment variable `TARE_RESSTOCK_RELEASE`, which is read when the package is first imported (unset means ResStock 2022.1.1). For example, from Git Bash: `python scripts/run_tare_notebooks.py --release 2025.1 --skip-grid-impact`, or start VS Code with `TARE_RESSTOCK_RELEASE=2025.1 code .` to run the notebooks by hand.
 
 ## 1.5 Environment Setup
 
@@ -408,7 +419,9 @@ conda update --all
 
 ## 2.1 Version Information
 
-**Current Version:** 3.1
+**Current Version:** 3.1.0
+
+**Scope:** version 3.1.0 supports the techno-economic adoption potential and grid impact analysis on ResStock 2022.1.1 (MP3 and MP4). The ResStock 2025.1 dual-fuel package (MP5) also runs, but its results are preliminary (see [1.4 Data Download](#14-data-download)).
 
 **Development Status:** Production/Stable
 
@@ -431,8 +444,14 @@ python setup.py --version
 
 **Citation:** See [CITATION.cff](CITATION.cff), or use GitHub's "Cite this repository" button.
 ```
-Joseph, J. (2026). TARE Model: Tradeoff Analysis of Residential Energy (Version 3.0).
+Joseph, J. (2026). TARE Model: Tradeoff Analysis of Residential Energy (Version 3.1.0).
 Carnegie Mellon University. https://github.com/jordan-joseph126/cmu-tare-model
+```
+
+**Data:** [10.5281/zenodo.23460993](https://doi.org/10.5281/zenodo.23460993)
+```
+Joseph, J. (2026). DATA FOLDER - Tradeoff Analysis of Residential Energy (TARE) Model
+[Data set]. Zenodo. https://doi.org/10.5281/zenodo.23460993
 ```
 
 **Intended Usage:**
@@ -456,4 +475,4 @@ Carnegie Mellon University. https://github.com/jordan-joseph126/cmu-tare-model
 
 ---
 
-**Last Updated:** 2026-10-14
+**Last Updated:** 2026-10-15
