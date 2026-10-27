@@ -8,6 +8,7 @@ from cmu_tare_model.constants import (
     EQUIPMENT_SPECS,
     PRIVATE_DISCOUNTING_METHOD_SUFFIXES,
     REBATE_GUIDANCE_JUNE2026,
+    REBATE_GUIDANCE_LOCAL,
     REMDB_COST_SCENARIO_KEYS,
 )
 from cmu_tare_model.private_impact.data_processing.determine_rebate_eligibility_and_amount import (
@@ -360,7 +361,30 @@ def calculate_private_npv(
     net_capital_heating_and_cooling_sub_june2026 = (
         net_capital_heating_and_cooling_unsub - rebate_june2026_amount)
 
-    # ===== Assemble the nine NPV cases =====
+    #Simplified local rebate scenario 
+    rebate_local_col = create_rebate_col(
+        menu_mp=menu_mp, category='heating', cost_scenario=cost_scenario,
+        guidance=REBATE_GUIDANCE_LOCAL)
+
+    
+    if rebate_local_col in df_copy.columns:
+        rebate_local_amount = (
+            df_copy[rebate_local_col].fillna(0.0)
+            .where(heating_valid_mask, other=0.0))
+    else:
+        rebate_local_amount = pd.Series(0.0, index=df_copy.index)
+
+    #(not related to federal rebates, so compared to unsubsidized capital costs)
+    net_capital_cooling_only_sub_local = (
+        net_capital_cooling_only_unsub - rebate_local_amount)
+    net_capital_heating_sub_local = (
+        net_capital_heating_unsub - rebate_local_amount)
+    net_capital_heating_and_cooling_sub_local = (
+        net_capital_heating_and_cooling_unsub - rebate_local_amount)
+
+
+
+    # ===== Assemble the 12 NPV cases =====
     # Every case counts both heating and cooling operating savings; the cases
     # differ only in which avoided-replacement credit reduces the net capital
     # cost, and each scope has three rebate-policy-scenario variants:
@@ -376,6 +400,10 @@ def calculate_private_npv(
         'heatingLCC_coolingLCC_unsub': (heating_and_cooling_savings, net_capital_heating_and_cooling_unsub),
         'heatingLCC_coolingLCC_sub': (heating_and_cooling_savings, net_capital_heating_and_cooling_sub),
         'heatingLCC_coolingLCC_sub_june2026': (heating_and_cooling_savings, net_capital_heating_and_cooling_sub_june2026),
+        'heatingSavings_coolingLCC_sub_local': (heating_and_cooling_savings, net_capital_cooling_only_sub_local),
+        'heatingLCC_coolingSavings_sub_local': (heating_and_cooling_savings, net_capital_heating_sub_local),
+        'heatingLCC_coolingLCC_sub_local': (heating_and_cooling_savings, net_capital_heating_and_cooling_sub_local),
+
     }
 
     # The shared gross capital is stored once under the heating category.

@@ -329,6 +329,8 @@ def create_npv_col(
 # subsidized under June 2026 DOE guidance (adds the fuel gate and the HOMES
 # pathway). The "_sub" and "_unsub" cases are unchanged; "_sub_june2026" is the
 # new case added for the rebate-policy-scenario comparison.
+#"_sub_local" represents a simplified local rebate scenario defined in constants.py
+
 #
 #   heatingSavings_coolingLCC_sub          -> 2024 subsidized; cooling replacement only
 #   heatingSavings_coolingLCC_unsub        -> unsubsidized; cooling replacement only
@@ -353,6 +355,9 @@ NPV_CASE_CATEGORIES = (
     "heatingLCC_coolingLCC_sub",
     "heatingLCC_coolingLCC_unsub",
     "heatingLCC_coolingLCC_sub_june2026",
+    "heatingSavings_coolingLCC_sub_local",
+    "heatingLCC_coolingSavings_sub_local",
+    "heatingLCC_coolingLCC_sub_local"
 )
 
 # The study base case: the single NPV case reported as the headline result and

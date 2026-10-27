@@ -9,6 +9,8 @@ from cmu_tare_model.constants import (
     RESSTOCK_RELEASE_AND_MP,
     REBATE_GUIDANCE_IRA2024,
     REBATE_GUIDANCE_JUNE2026,
+    REBATE_GUIDANCE_LOCAL,
+    LOCAL_REBATE_AMOUNT,
     REBATE_RULE_CONFIG,
     AMI_LOW_CUTOFF,
     AMI_MODERATE_CUTOFF,
@@ -448,6 +450,7 @@ def _homes_rebate_amount(
         cooling_cost = pd.Series(0.0, index=df_copy.index)
     total_project_cost = heating_cost + cooling_cost
 
+    #compared to existing heating system, how much energy is saved 
     savings_frac = df_copy[f'mp{menu_mp}_modeled_savings_frac']
     homes_cap = np.where(
         savings_frac >= HOMES_TIER2_SAVINGS_FRAC,
@@ -764,6 +767,58 @@ def calculate_rebate_june2026(
     )
 
 
+def calculate_rebate_local(
+    df_results: pd.DataFrame,
+    category: str,
+    menu_mp: int,
+    cost_scenario: str,
+    verbose: bool = VERBOSE,   
+) -> pd.DataFrame:
+    """Applies a local rebate scenario in a very simplified context
+    Rebate amount defined in LOCAL_REBATE_AMOUNT in constants.py
+    
+    Args:
+        df_results: DataFrame of homes for this measure package.
+        category: Equipment category. Only 'heating' carries the rebate;
+            'cooling' is a no-op (the heat-pump rebate covers both end uses).
+        menu_mp: Measure package identifier.
+        cost_scenario: Cost methodology key (e.g. 'v4MID').
+        verbose: Whether to print progress detail.
+
+    Returns:
+        The DataFrame with one new float64 column, from
+        create_rebate_col(..., guidance=REBATE_GUIDANCE_LOCAL):
+        LOCAL_REBATE_AMOUNT for every home in the study sample, NaN for
+        every other home.
+
+    """
+    # Step 1 -- shared validation bookkeeping so homes outside the study
+    # sample stay NaN.
+    df_copy, valid_mask, all_columns_to_mask, category_columns_to_mask = (
+        initialize_validation_tracking(
+            df_results, category, menu_mp, verbose=verbose)
+    )
+
+    #creates a column for the rebate amount with masking consistent elsewhere
+    rebate_col = create_rebate_col(
+        menu_mp=menu_mp, category=category, cost_scenario=cost_scenario,
+        guidance=REBATE_GUIDANCE_LOCAL)
+    df_copy[rebate_col] = create_retrofit_only_series(df_copy, valid_mask)
+    df_copy.loc[valid_mask, rebate_col] = 0.0
+    category_columns_to_mask.append(rebate_col)
+
+    #Can later update this to change eligibility rules
+    eligible_mask = valid_mask
+
+    #Applies flat rebate to all eligible homes
+    df_copy.loc[eligible_mask, rebate_col] = float(LOCAL_REBATE_AMOUNT)
+
+    #final masking keeps homes outside the sample NaN.
+    df_copy = apply_final_masking(df_copy, all_columns_to_mask, verbose=verbose)
+
+    return df_copy
+
+
 def summarize_june2026_rebate_totals(
     df_results_IRA: pd.DataFrame,
     menu_mp: int,
@@ -831,6 +886,8 @@ def summarize_june2026_rebate_totals(
 
     return by_state, national
 
+ 
+    
 
 def summarize_rebate_funding(
     df_results_IRA: pd.DataFrame,

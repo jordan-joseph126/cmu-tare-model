@@ -409,7 +409,7 @@ def run_checks(
     method_suffixes = {
         suffix.lstrip("_"): suffix
         for suffix in PRIVATE_DISCOUNTING_METHOD_SUFFIXES.values()}
-    rebate_scenarios = ("unsub", "sub", "sub_june2026")
+    rebate_scenarios = ("unsub", "sub", "sub_june2026", "sub_local")
 
     for menu_mp, frames in dataframes_by_mp.items():
         scenario_prefix = define_scenario_params(menu_mp, "2025 Reference Case")[0]

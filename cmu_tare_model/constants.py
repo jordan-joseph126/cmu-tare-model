@@ -314,6 +314,18 @@ REBATE_GUIDANCE_IRA2024 = "ira2024"
 REBATE_GUIDANCE_JUNE2026 = "june2026"
 REBATE_POLICY_SCENARIOS = [REBATE_GUIDANCE_IRA2024, REBATE_GUIDANCE_JUNE2026]
 
+#Simplified standalone local rebate scenario
+# Based on these simplified eligibility assumptions:
+    # Power Ahead CO	                $1,500
+    # Colorado Heat Pump Tax Credit	    $1,000
+    # Xcel Energy	                    $4,500
+    # Efficiency works	                $2,000	
+    # Total	                            $9,000
+REBATE_GUIDANCE_LOCAL = "local"
+LOCAL_REBATE_AMOUNT = 9000
+
+
+
 # --- June 2026 DOE guidance rule constants ---
 # Income cutoffs are AMI ratios. The percent_AMI column is on a 0-150+ percent
 # scale, so the call site compares percent_AMI against these values x 100
