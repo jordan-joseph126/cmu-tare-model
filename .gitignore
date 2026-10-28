@@ -17,6 +17,8 @@ study_validation/
 reference_material/
 tepper_mba_capstone/
 tamar_grid_impact/
+# Colorado baseline results, 28 MB (kept locally, not versioned)
+/CO_baseline_metadata_and_annual_results.csv
 # cmu_tare_model/docs/
 
 # Python cache files
