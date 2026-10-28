@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: "TARE Model: Tradeoff Analysis of Residential Energy"
-version: "3.0"
-date-released: "2026-09-09"
+version: "3.1.0"
+date-released: "2026-10-15"
 authors:
   - family-names: "Joseph"
     given-names: "Jordan"

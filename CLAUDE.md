@@ -3,7 +3,28 @@
 ## Heat-Pump Electrification Economics (ResStock 2022.1.1 / EUSS)
 #
 ```text
-# Last updated: 14 October 2026 — version 3.1
+# Last updated: 18 October 2026 — version 3.1.0 release files
+#   - The README, `setup.py`, `CITATION.cff` and `.zenodo.json` are final for the
+#     `v3.1.0` tag and the GitHub release: version 3.1.0, written in full like the tags,
+#     released 2026-10-15, the date on the Zenodo data record. The release work is done
+#     on `main`.
+#   - Input data: Zenodo record 10.5281/zenodo.23460993, version 4 of the TARE data
+#     record (concept 10.5281/zenodo.17509166). Its `data.zip` unzips to `data/`, which
+#     goes in `cmu_tare_model/`; its 50 files equal the local `cmu_tare_model/data/`.
+#     Earlier versions lack the 2021 boundary files the maps read.
+#   - Results of run `2026-10-09_00-46`, the record the paper links:
+#     10.5281/zenodo.23399051 (version 2 of concept 10.5281/zenodo.22258625).
+#   - The ResStock 2025.1 files are not in either record: the README says to download
+#     `upgrade0.parquet` and `upgrade5.parquet` from the OEDI data lake into
+#     `data/resstock_2025_1/` at the repo root. Version 3.1.0 is a ResStock 2022.1.1
+#     release; the 2025.1 results are preliminary until the grid impact analysis and the
+#     switch for homes with no existing AC are done.
+#   - TARE stands for Tradeoff Analysis of Residential Energy in every live file; dated
+#     records keep the old name.
+#   - No model code or modeled value changed. Tests: 412 passed, 1 skipped.
+#   - Still to come: the software DOI Zenodo gives the v3.1.0 release.
+#
+# Previously: 14 October 2026 — version 3.1
 #   - The four model notebooks are renamed from `_v3_0` to `_v3_1`:
 #     `tare_model_main_v3_1.ipynb` and, in `model_scenarios/`, `tare_baseline`,
 #     `tare_scenarios` and `tare_run_simulation`. Their contents are unchanged apart
@@ -27,26 +48,6 @@
 #     `.zenodo.json`, `CITATION.cff`, the `v3.1.0` tag and the GitHub release.
 #   - To merge `TM_dev_load_data`: merge `845d71a` first, then `main`, so git follows
 #     the notebook rename.
-#
-# Previously: 11 October 2026 — paper numbers verified against the final run
-#   - Every modeled number the Nature Communications draft prints was worked out again
-#     from the saved runs: draft run `2026-08-19_20-56` against final run
-#     `2026-10-09_00-46`, MP3 and MP4. The result is
-#     `docs/PAPER_NUMBERS_VERIFIED_2026-10-09.md` (106 numbered rows, 28 discrepancy
-#     lines). Use it as the source of numbers for the manuscript revision.
-#   - Run `2026-10-09_00-46` was loaded again in the main notebook on 11 October with
-#     grid impact on. Allegheny economic-adopter peak after the boiler fix: 713.86 MW
-#     (MP3, 45 adopters) and 715.16 MW (MP4, 68 adopters), both at hour 4433. The new
-#     row in `docs/REFERENCE_VALUES.md` supersedes 715.26 MW (67 adopters) for MP4.
-#   - No code or modeled value changed. The 12 export files the notebook wrote again
-#     are byte-identical to those of 9 October, and every number it printed equals
-#     the records.
-#   - The main notebook is committed with its outputs, because they are the values
-#     the paper shows (run `2026-10-09_00-46`, grid impact on).
-#   - Deferred to a future session, planned for the week of 12 October 2026 while the
-#     co-authors review the new draft: notebook cleanup and the move from version 3.0
-#     to 3.1, the merge with main, the 3.1 release on GitHub, and the Zenodo update
-#     (the staged Zenodo files still hold the draft run).
 ```
 
 > This file is read by Claude Code at the start of every session. It is the authoritative
