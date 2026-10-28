@@ -31,11 +31,15 @@ df_anchor = pd.read_csv(_PATH_ANCHOR)
 # ====================================================================================================
 #same projection factors applied, just changes baseline for 2025 prices
 
+#looks for the electricity fuel price for the given state
 if CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH is not None:
     _is_case_study = ((df_anchor['fuel_type'] == 'electricity')
                       & (df_anchor['state'] == CASE_STUDY_STATE))
+
+    #sets state electricity price to input value
     df_anchor.loc[_is_case_study, 'price_usd2025_per_kwh'] = (
         CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH / 100)
+    
     print(f"Case study electricity price: {CASE_STUDY_STATE} = "
           f"{CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH} cents/kWh in {ANCHOR_YEAR}")
 
