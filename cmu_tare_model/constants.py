@@ -26,6 +26,13 @@ MAP_LEGEND_FONT_SIZE = 16
 
 FIGURE_TITLE_FONT_SIZE = 18
 
+# Case study electricity price from EIA Table 6:
+# https://www.eia.gov/electricity/sales_revenue_price/pdf/table_6.pdf
+CASE_STUDY_STATE = "CO"
+CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH = 12.3
+# CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH = None
+
+
 ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached', 'Mobile Home', 'Multi-Family with 2 - 4 Units']
 # ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached']
 

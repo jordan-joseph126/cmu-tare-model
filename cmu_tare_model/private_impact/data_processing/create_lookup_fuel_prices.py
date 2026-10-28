@@ -2,7 +2,10 @@
 import pandas as pd
 
 from config import PROJECT_ROOT
-from cmu_tare_model.constants import ANCHOR_YEAR, PROJECTION_END_YEAR
+from cmu_tare_model.constants import (ANCHOR_YEAR, 
+                                      PROJECTION_END_YEAR, 
+                                      CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH, 
+                                      CASE_STUDY_STATE)
 from cmu_tare_model.utils.data_visualization import print_truncated_dict
 
 # ====================================================================================================
@@ -19,9 +22,23 @@ _PATH_FACTORS = os.path.join(PROJECT_ROOT, "cmu_tare_model", "data", "projection
                               "aeo2026_fuel_price_factors_2025_2050.csv")
 
 # ====================================================================================================
-# LOAD ANCHOR PRICES â€” already in USD2025/kWh, no unit conversion or CPI deflation needed
+# LOAD ANCHOR PRICES - Already in USD2025/kWh, no unit conversion or CPI deflation needed
 # ====================================================================================================
 df_anchor = pd.read_csv(_PATH_ANCHOR)
+
+# ====================================================================================================
+# CASE STUDY OVERRIDE -use values from CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH in constants.py
+# ====================================================================================================
+#same projection factors applied, just changes baseline for 2025 prices
+
+if CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH is not None:
+    _is_case_study = ((df_anchor['fuel_type'] == 'electricity')
+                      & (df_anchor['state'] == CASE_STUDY_STATE))
+    df_anchor.loc[_is_case_study, 'price_usd2025_per_kwh'] = (
+        CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH / 100)
+    print(f"Case study electricity price: {CASE_STUDY_STATE} = "
+          f"{CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH} cents/kWh in {ANCHOR_YEAR}")
+
 
 # ====================================================================================================
 # LOAD PROJECTION FACTORS; cast year-header strings to int (Constraint 4 analogue for this module)
