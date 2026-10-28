@@ -1,0 +1,2959 @@
+[runner] model code from C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model
+[runner] release 2022.1.1, packages [0, 3, 4], scope CO, grid impact on, FIPS 08013
+C:\Users\tamar\anaconda3\envs\cmu-tare-model\Lib\site-packages\IPython\core\interactiveshell.py:958: UserWarning: Attempting to work in a virtualenv. If you encounter problems, please install IPython inside the virtualenv.
+  warn(
+[runner] start tare_model_main_v3_1.ipynb
+Project root directory: C:\Users\tamar\Documents\Research\cmu-tare-model
+No event loop hook running.
+
+PROJECT_ROOT: C:\Users\tamar\Documents\Research\cmu-tare-model
+
+Start Time: 2026-10-28_14-22-11
+Model Run Timestamp: 2026-10-28_14-22
+
+Active Measure Packages: [0, 3, 4]
+Active Capital Cost Scenarios: ['v4MID']
+Active SCC Assumptions: ['lower', 'central', 'upper']
+Active Discount Rates: ['fixed_base']
+
+Note: DataFrames contain columns for ALL active cost scenarios.
+
+
+[runner] tare_model_main_v3_1.ipynb cell 2 done in 3.0 s (memory 0.2 GB)
+
+Would you like to begin a new simulation or visualize output results from a previous model run? Please enter one of the following:
+Y. I'd like to start a new model run.
+N. I'd like to visualize output results from a previous model run.
+[runner] answered: Y
+Enter the following input: Y
+Formatted date for use in file name: 2026-10-28_14-22
+File path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\model_scenarios\tare_run_simulation_v3_1.ipynb
+Result outputs will be exported here: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results
+Running file: C:/Users/tamar/Documents/Research/cmu-tare-model/cmu_tare_model/model_scenarios/tare_run_simulation_v3_1.ipynb
+[runner] start tare_run_simulation_v3_1.ipynb
+Case study electricity price: CO = 12.3 cents/kWh in 2025
+
+Running the model for the following measure packages:
+
+VALID_MENU_MPS = [0, 3, 4]
+
+The results will be exported using the export_model_run_output function.
+
+Active Capital Cost Scenarios: ['v4MID']
+Note: Each exported CSV contains columns for ALL active cost scenarios.
+
+
+[runner] tare_run_simulation_v3_1.ipynb cell 1 done in 0.1 s (memory 0.2 GB)
+[runner] tare_run_simulation_v3_1.ipynb cell 2 done in 0.0 s (memory 0.2 GB)
+PROJECT_ROOT (from config.py): C:\Users\tamar\Documents\Research\cmu-tare-model
+Running file: C:/Users/tamar/Documents/Research/cmu-tare-model/cmu_tare_model/model_scenarios/tare_baseline_v3_1.ipynb
+[runner] start tare_baseline_v3_1.ipynb
+
+=========================================================================================================
+Welcome to the Tradeoff Analysis of Residential Energy (TARE) Model
+Let's start by reading the data from the NREL EUSS Database.
+
+Make sure that the zipped folders stay organized as they are once unzipped.
+If changes are made to the file path, then the program will not run properly.
+==========================================================================================================
+
+Project root directory: C:\Users\tamar\Documents\Research\cmu-tare-model
+Result outputs will be exported here: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results
+
+
+[runner] tare_baseline_v3_1.ipynb cell 1 done in 0.0 s (memory 0.2 GB)
+
+====================================================================================================================================================================
+LOAD RESSTOCK DATA FOR BASELINE SCENARIO: 
+MEASURE PACKAGE 0 (MP0) -- ResStock 2022.1.1
+====================================================================================================================================================================
+Load data from the NREL ResStock Database for the baseline scenario and apply various filters.
+
+DATA: NREL ResStock Database
+SCOPE FILTERS: ResStock applicability, occupied units, single-family homes, Alaska/Hawaii excluded
+GEOGRAPHIC FILTERS: National, State, or City
+
+Additional details data can be found in the official End-Use Load Profiles/Savings Shapes documentation.
+Our methodology is detailed in the process_euss_data.py file and its associated imports.
+
+
+Loading ResStock 2022.1.1 baseline
+[FUNNEL] load: 548,916 rdu | 132,909,587 weighted homes | Electricity=28.97% | Electricity ASHP=11.16% | Fuel Oil=4.69% | Natural Gas=47.71% | Propane=4.63%
+[FUNNEL] applicability: 548,916 rdu | 132,909,587 weighted homes | Electricity=28.97% | Electricity ASHP=11.16% | Fuel Oil=4.69% | Natural Gas=47.71% | Propane=4.63%
+[FUNNEL] occupancy: 482,597 rdu | 116,851,700 weighted homes | Electricity=28.43% | Electricity ASHP=10.85% | Fuel Oil=4.64% | Natural Gas=49.01% | Propane=4.37%
+[FUNNEL] housing_type: 396,252 rdu | 95,944,898 weighted homes | Electricity=24.55% | Electricity ASHP=10.13% | Fuel Oil=5.01% | Natural Gas=52.22% | Propane=5.21%
+[FUNNEL] exclude_AK_HI: 396,252 rdu | 95,944,898 weighted homes | Electricity=24.55% | Electricity ASHP=10.13% | Fuel Oil=5.01% | Natural Gas=52.22% | Propane=5.21%
+DATAFRAME SIZE after scope filters: (396252, 259)
+
+Would you like to filter for a specific state's data? Please enter one of the following:
+N. I'd like to analyze all of the United States.
+Y. I'd like to filter data for a specific state.
+
+[runner] answered: Y
+Which state would you like to analyze data for? Please enter the two-letter abbreviation: 
+[runner] answered: CO
+You chose to filter for: CO
+Location ID is: CO
+
+To accurately characterize load profile, it is recommended to select subsets of data with >= 1000 models (~240,000 representative dwelling units).
+
+The following cities (number of models also shown) are available for this state:
+
+in.city
+In another census Place    1879
+Not in a census Place      1047
+CO, Denver                  680
+CO, Colorado Springs        614
+CO, Aurora                  387
+CO, Lakewood                195
+CO, Fort Collins            188
+CO, Pueblo                  159
+CO, Arvada                  153
+CO, Westminster             145
+CO, Thornton                144
+CO, Highlands Ranch         135
+CO, Longmont                126
+CO, Greeley                 122
+CO, Centennial              120
+CO, Boulder                 112
+CO, Loveland                104
+CO, Grand Junction           92
+CO, Broomfield               90
+CO, Castle Rock              72
+CO, Littleton                58
+CO, Commerce City            57
+CO, Parker                   54
+CO, Englewood                50
+Name: count, dtype: int64
+
+Would you like to filter a subset of city-level data? Please enter one of the following:
+N. I'd like to analyze all of my selected state.
+Y. I'd like to filter by city in the state.
+
+[runner] answered: N
+You chose to analyze all of state: CO
+Location ID is: CO
+[FUNNEL] geographic_filter: 6,783 rdu | 1,642,375 weighted homes | Electricity=13.28% | Electricity ASHP=3.86% | Fuel Oil=0.01% | Natural Gas=75.13% | Propane=4.97%
+
+FILTER FUNNEL:
+               stage  rdu_count  ...  Natural Gas_pct  Propane_pct
+0               load     548916  ...        47.710761     4.632221
+1      applicability     548916  ...        47.710761     4.632221
+2          occupancy     482597  ...        49.013566     4.370520
+3       housing_type     396252  ...        52.224342     5.205021
+4      exclude_AK_HI     396252  ...        52.224342     5.205021
+5  geographic_filter       6783  ...        75.128999     4.968303
+
+[6 rows x 8 columns]
+
+[runner] tare_baseline_v3_1.ipynb cell 3 done in 52.6 s (memory 0.2 GB)
+MP3: 6,783 rdu applicable after scope filters
+MP4: 6,783 rdu applicable after scope filters
+[runner] tare_baseline_v3_1.ipynb cell 4 done in 146.7 s (memory 0.2 GB)
+
+====================================================================================================================================================================
+LOAD RESSTOCK DATA FOR BASELINE SCENARIO: 
+MEASURE PACKAGE 0 (MP0) -- ResStock 2022.1.1
+====================================================================================================================================================================
+In addition to the housing type and occupancy filters, the data has been filtered for fuel and technology
+Please see the energy_consumption_and_metadata folder for more details on data processing.
+
+We employ the df_enduse_refactored function to process the data and create a new dataframe, which is part of the 5-step data validation process:
+1. Mask Initialization with initialize_validation_tracking()
+2. Series Initialization with create_retrofit_only_series()
+3. Valid-Only Calculation for qualifying homes
+4. Valid-Only Updates using list-based collection
+5. Final Masking with apply_final_masking()
+
+----------------------------------------------------------------
+
+RESULTS OUTPUT (BASELINE):
+
+Processing column: in.clothes_dryer
+Initial data types: object
+Data types after processing: object
+Processing column: in.cooking_range
+Initial data types: object
+Data types after processing: object
+Calculated total heating consumption
+Calculated total cooling consumption
+
+Creating data quality flags for all categories
+
+--- Processing heating ---
+Values in base_heating_fuel (top 5):
+base_heating_fuel
+Natural Gas    5096
+Electricity    1163
+Propane         337
+Other Fuel      185
+Fuel Oil          1
+Name: count, dtype: int64
+  heating: Found 186 homes (2.7%) with invalid fuel types
+  Invalid fuel types (top 5):
+Values in heating_type (top 5):
+heating_type
+Natural Gas Fuel Furnace               4123
+Natural Gas Fuel Wall/Floor Furnace     463
+Natural Gas Fuel Boiler                 442
+Electricity Electric Furnace            440
+Electricity Baseboard                   425
+Name: count, dtype: int64
+Allowed values for heating:
+['Electricity Baseboard', 'Electricity Electric Boiler', 'Electricity Electric Furnace', 'Electricity ASHP', 'Fuel Oil Fuel Boiler', 'Fuel Oil Fuel Furnace', 'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace', 'Propane Fuel Boiler', 'Propane Fuel Furnace']
+  heating: Found 793 homes (11.7%) with invalid technology types
+  Invalid technology types (top 5):
+heating_type
+Natural Gas Fuel Wall/Floor Furnace    463
+Natural Gas Shared Heating              68
+Propane Fuel Wall/Floor Furnace         46
+Electricity Shared Heating              24
+Electricity Electric Wall Furnace        6
+Name: count, dtype: int64
+  heating: Total 793 homes (11.7%) excluded from analysis
+
+--- Processing cooling ---
+Values in base_cooling_fuel (top 5):
+base_cooling_fuel
+Electricity    6783
+Name: count, dtype: int64
+  cooling: Found 0 homes (0.0%) with invalid fuel types
+Values in cooling_type (top 5):
+cooling_type
+Central AC    2906
+Room AC        886
+Heat Pump      263
+Name: count, dtype: int64
+Allowed values for cooling:
+['Central AC', 'Room AC']
+  cooling: Found 3001 homes (44.2%) with invalid technology types
+  Invalid technology types (top 5):
+cooling_type
+Heat Pump     263
+Central AC     10
+Name: count, dtype: int64
+  cooling: Total 3001 homes (44.2%) excluded from analysis
+
+Overall: Total 3377 homes (49.8%) excluded from ALL categories
+Study sample: 3,406 rdu (824,698 homes)
+
+Applying data validation (baseline only):
+Baseline calculation for heating:
+  - 3406 homes have valid data
+  - 3377 homes have invalid data (values will be NaN)
+  base_electricity_heating_consumption: Masked 3377 values
+  base_naturalGas_heating_consumption: Masked 3377 values
+  base_fuelOil_heating_consumption: Masked 3377 values
+  base_propane_heating_consumption: Masked 3377 values
+  baseline_heating_consumption: Masked 3377 values
+  base_electricity_heating_fansPumps_consumption: Masked 3377 values
+  base_electricity_heating_hpBackup_consumption: Masked 3377 values
+  base_naturalGas_heating_hpBackup_consumption: Masked 3377 values
+  base_propane_heating_hpBackup_consumption: Masked 3377 values
+  base_fuelOil_heating_hpBackup_consumption: Masked 3377 values
+Baseline calculation for cooling:
+  - 3406 homes have valid data
+  - 3377 homes have invalid data (values will be NaN)
+  base_electricity_cooling_consumption: Masked 3377 values
+  baseline_cooling_consumption: Masked 3377 values
+  base_electricity_cooling_fansPumps_consumption: Masked 3377 values
+                         stage  rdu_count  weighted_count  removed_rdu  removed_homes
+0                         load     548916    1.329096e+08          NaN            NaN
+1                applicability     548260    1.327507e+08        656.0   1.588379e+05
+2                    occupancy     482050    1.167193e+08      66210.0   1.603149e+07
+3                 housing_type     396122    9.591342e+07      85928.0   2.080583e+07
+4                exclude_AK_HI     396122    9.591342e+07          0.0   0.000000e+00
+5            geographic_filter       6783    1.642375e+06     389339.0   9.427105e+07
+6                 heating_fuel       6597    1.597338e+06        186.0   4.503637e+04
+7        no_existing_heat_pump       6335    1.533900e+06        262.0   6.343833e+04
+8   replaceable_heating_system       5990    1.450365e+06        345.0   8.353520e+04
+9           central_or_room_ac       3409    8.254246e+05       2581.0   6.249401e+05
+10           no_shared_cooling       3406    8.246982e+05          3.0   7.263930e+02
+[runner] tare_baseline_v3_1.ipynb cell 6 done in 0.2 s (memory 0.2 GB)
+
+====================================================================================================================================================================
+CLIMATE IMPACTS (BASELINE): DAMAGES FROM CLIMATE-RELATED EMISSIONS
+====================================================================================================================================================================
+Detailed documentation of the methods used to calculate the climate impacts can be
+found in the public_impact folder of the cmu-tare-model package. Climate damages are in 2025
+dollars ($USD2025), like every private cost: the social cost of carbon is inflated from 2020 dollars.
+- data_processing sub-folder: contains the data processing scripts used for lookup dictionaries
+- calculations sub-folder: contains the calculations for emissions from fossil fuel appliances
+- Main folder contains the scripts for calculating lifetime climate impacts and climate NPV.
+
+Step 1: Calculate the baseline marginal damages for climate-related emissions
+
+----------------------------------------------------------------------------------------------
+Step 1: Calculate the baseline marginal damages for climate-related emissions
+----------------------------------------------------------------------------------------------
+
+
+[runner] tare_baseline_v3_1.ipynb cell 8 done in 0.5 s (memory 0.3 GB)
+
+==================== PUBLIC IMPACTS (BASELINE): DAMAGES FROM CLIMATE-RELATED EMISSIONS ====================
+
+
+-- Scenario: Baseline (mp0) --
+Baseline calculation for heating:
+  - 3406 homes have valid data
+  - 3377 homes have invalid data (values will be NaN)
+Projecting heating consumption 2025-2039 for 3,406 valid homes
+Baseline calculation for cooling:
+  - 3406 homes have valid data
+  - 3377 homes have invalid data (values will be NaN)
+Projecting cooling consumption 2025-2039 for 3,406 valid homes
+Calculating Climate Emissions and Damages from 2025 to 2039 for heating
+Baseline calculation for heating:
+  - 3406 homes have valid data
+  - 3377 homes have invalid data (values will be NaN)
+Calculating Climate Emissions and Damages from 2025 to 2039 for cooling
+Baseline calculation for cooling:
+  - 3406 homes have valid data
+  - 3377 homes have invalid data (values will be NaN)
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+Masking 8 columns for category 'cooling'
+
+Verifying masking for all calculated columns:
+Masking 128 columns for category 'cooling'
+[runner] tare_baseline_v3_1.ipynb cell 9 done in 1.5 s (memory 0.3 GB)
+
+=====================================================================================================================================================================
+LIFETIME FUEL COSTS: Baseline Scenario
+=====================================================================================================================================================================
+STEPS
+- Create a mapping dictionary for fuel types
+- Create new merge columns to ensure a proper match.
+- Merge df_copy with df_fuel_prices to get fuel prices for electricity, natural gas, propane, and fuel oil
+- Calculate the per kWh fuel costs for each fuel type and region
+- Calculate the baseline fuel cost 
+
+----------------------------------------------------------------------------------------------------------------------
+Step 1: Calculate annual operating (fuel) costs
+----------------------------------------------------------------------------------------------------------------------
+
+====================================================================================================================================================================
+FUEL COSTS RESULTS (BASELINE): 
+
+
+-- Scenario: Baseline (mp0) --
+Baseline calculation for heating:
+  - 3406 homes have valid data
+  - 3377 homes have invalid data (values will be NaN)
+Projecting heating consumption 2025-2039 for 3,406 valid homes
+Baseline calculation for cooling:
+  - 3406 homes have valid data
+  - 3377 homes have invalid data (values will be NaN)
+Projecting cooling consumption 2025-2039 for 3,406 valid homes
+Calculating Fuel Costs from 2025 to 2039 for heating
+Baseline calculation for heating:
+  - 3406 homes have valid data
+  - 3377 homes have invalid data (values will be NaN)
+Calculating Fuel Costs from 2025 to 2039 for cooling
+Baseline calculation for cooling:
+  - 3406 homes have valid data
+  - 3377 homes have invalid data (values will be NaN)
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+Masking 1 columns for category 'heating'
+Masking 1 columns for category 'cooling'
+
+Verifying masking for all calculated columns:
+Masking 1 columns for category 'heating'
+Masking 46 columns for category 'cooling'
+[runner] tare_baseline_v3_1.ipynb cell 11 done in 1.1 s (memory 0.3 GB)
+The code took 3 minutes and 22 seconds to execute.
+[runner] tare_baseline_v3_1.ipynb cell 13 done in 0.0 s (memory 0.3 GB)
+[runner] end tare_baseline_v3_1.ipynb (202.6 s)
+Model Run Complete for Baseline (MP0)
+[runner] tare_run_simulation_v3_1.ipynb cell 4 done in 202.6 s (memory 0.3 GB)
+---------------------------------------------------------------------------------------------------------
+SUPPLEMENTAL DAMAGES: damages_climate_baseline
+Saved to: mp0_damages_climate_baseline_CO_2026-10-28_14-22.csv
+Full path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\supplemental_data_damages\damages_climate_baseline\mp0_damages_climate_baseline_CO_2026-10-28_14-22.csv
+--------------------------------------------------------------------------------------------------------- 
+
+---------------------------------------------------------------------------------------------------------
+SUPPLEMENTAL FUEL COSTS: fuel_costs_baseline
+Saved to: mp0_fuel_costs_baseline_CO_2026-10-28_14-22.csv
+Full path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\supplemental_data_fuelCosts\fuel_costs_baseline\mp0_fuel_costs_baseline_CO_2026-10-28_14-22.csv
+--------------------------------------------------------------------------------------------------------- 
+
+---------------------------------------------------------------------------------------------------------
+BASELINE SUMMARY RESULTS:
+Saved to: baseline_results_CO_2026-10-28_14-22.csv
+Full path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\baseline_summary\summary_baseline\baseline_results_CO_2026-10-28_14-22.csv
+--------------------------------------------------------------------------------------------------------- 
+
+Saved sample funnel: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\baseline_summary\sample_funnel\sample_funnel_CO_2026-10-28_14-22.csv
+[runner] tare_run_simulation_v3_1.ipynb cell 5 done in 3.4 s (memory 0.3 GB)
+
+-------------------------------------------------------------------------------------------------------
+EUSS Post-Retrofit Measure Packages
+-------------------------------------------------------------------------------------------------------
+Running the model for the following measure packages:
+
+VALID_MENU_MPS = [0, 3, 4]
+
+-------------------------------------------------------------------------------------------------------
+TARE MODEL SCENARIO: 2025 Reference Case
+-------------------------------------------------------------------------------------------------------
+- AEO2026 fuel price projections
+- AEO2026 degree-day factors
+- Cambium MidCase electricity grid
+
+[runner] tare_run_simulation_v3_1.ipynb cell 7 done in 0.0 s (memory 0.3 GB)
+PROJECT_ROOT (from config.py): C:\Users\tamar\Documents\Research\cmu-tare-model
+Running file: C:/Users/tamar/Documents/Research/cmu-tare-model/cmu_tare_model/model_scenarios/tare_scenarios_v3_1.ipynb
+[runner] start tare_scenarios_v3_1.ipynb
+[runner] tare_scenarios_v3_1.ipynb cell 1 done in 0.0 s (memory 0.3 GB)
+[BATCH MODE] Using pre-set Measure Package 3.
+
+====================================================================================================================================================================
+MODEL SCENARIO -- ResStock 2022.1.1
+====================================================================================================================================================================
+Measure Package 3 (upgrade03)
+BAU Costs
+Current Electricity Grid
+====================================================================================================================================================================
+
+[FUNNEL] load: 548,916 rdu | 132,909,587 weighted homes | Electricity=28.97% | Electricity ASHP=11.16% | Fuel Oil=4.69% | Natural Gas=47.71% | Propane=4.63%
+[FUNNEL] applicability: 548,260 rdu | 132,750,749 weighted homes | Electricity=28.89% | Electricity ASHP=11.17% | Fuel Oil=4.69% | Natural Gas=47.77% | Propane=4.64%
+[FUNNEL] occupancy: 482,050 rdu | 116,719,255 weighted homes | Electricity=28.35% | Electricity ASHP=10.86% | Fuel Oil=4.65% | Natural Gas=49.07% | Propane=4.38%
+[FUNNEL] housing_type: 396,122 rdu | 95,913,421 weighted homes | Electricity=24.52% | Electricity ASHP=10.13% | Fuel Oil=5.01% | Natural Gas=52.24% | Propane=5.21%
+[FUNNEL] exclude_AK_HI: 396,122 rdu | 95,913,421 weighted homes | Electricity=24.52% | Electricity ASHP=10.13% | Fuel Oil=5.01% | Natural Gas=52.24% | Propane=5.21%
+[FUNNEL] geographic_filter: 6,783 rdu | 1,642,375 weighted homes | Electricity=13.28% | Electricity ASHP=3.86% | Fuel Oil=0.01% | Natural Gas=75.13% | Propane=4.97%
+DATAFRAME SIZE after all filters: (6783, 343)
+
+FILTER FUNNEL:
+               stage  rdu_count  ...  Natural Gas_pct  Propane_pct
+0               load     548916  ...        47.710761     4.632221
+1      applicability     548260  ...        47.767847     4.637763
+2          occupancy     482050  ...        49.069184     4.375480
+3       housing_type     396122  ...        52.241481     5.206729
+4      exclude_AK_HI     396122  ...        52.241481     5.206729
+5  geographic_filter       6783  ...        75.128999     4.968303
+
+[6 rows x 8 columns]
+
+[runner] tare_scenarios_v3_1.ipynb cell 3 done in 67.9 s (memory 0.3 GB)
+
+====================================================================================================================================================================
+LOAD RESSTOCK DATA FOR MEASURE PACKAGE 3 (MP3) -- ResStock 2022.1.1
+====================================================================================================================================================================
+df_euss_am_mpX_home will be created by running the df_enduse_compare function (contains post-retrofit consumption data for the entire home).
+process_euss_data.py file contains the function definition.
+
+
+
+Applying combined validation (data quality + retrofit status):
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+  mp3_heating_consumption: Masked 3377 values
+  mp3_electricity_heating_fansPumps_consumption: Masked 3377 values
+  mp3_electricity_heating_hpBackup_consumption: Masked 3377 values
+  mp3_naturalGas_heating_hpBackup_consumption: Masked 3377 values
+  mp3_propane_heating_hpBackup_consumption: Masked 3377 values
+  mp3_fuelOil_heating_hpBackup_consumption: Masked 3377 values
+Measure package calculation for cooling:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+  mp3_cooling_consumption: Masked 3377 values
+  mp3_electricity_cooling_fansPumps_consumption: Masked 3377 values
+
+MP3 heating + cooling savings vs ResStock's savings columns:
+       fuel  rdu  largest_part_gap_kwh  largest_left_over_kwh  largest_left_over_pct  rdu_failed status
+electricity 3406          1.455192e-11               0.879213               0.018586           0   [OK]
+ naturalGas 3406          0.000000e+00               0.586142               0.008296           0   [OK]
+    propane 3406          0.000000e+00               0.586142               0.005565           0   [OK]
+    fuelOil 3406          0.000000e+00               0.000000               0.000000           0   [OK]
+[runner] tare_scenarios_v3_1.ipynb cell 5 done in 0.1 s (memory 0.3 GB)
+
+====================================================================================================================================================================
+PUBLIC IMPACTS: DAMAGES FROM CLIMATE-RELATED EMISSIONS
+====================================================================================================================================================================
+
+
+
+ Creating dataframe to store marginal damages calculations ...
+[runner] tare_scenarios_v3_1.ipynb cell 7 done in 0.0 s (memory 0.3 GB)
+
+========== SCENARIO: 2025 Reference Case ==========
+
+-- Scenario: 2025 Reference Case (mp3) --
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+Projecting heating consumption 2025-2039 for 3,406 valid homes
+Measure package calculation for cooling:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+Projecting cooling consumption 2025-2039 for 3,406 valid homes
+Calculating Climate Emissions and Damages from 2025 to 2039 for heating
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+Calculating Climate Emissions and Damages from 2025 to 2039 for cooling
+Measure package calculation for cooling:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+Masking 16 columns for category 'cooling'
+
+Verifying masking for all calculated columns:
+Masking 136 columns for category 'cooling'
+[runner] tare_scenarios_v3_1.ipynb cell 8 done in 1.4 s (memory 0.3 GB)
+
+====================================================================================================================================================================
+PRIVATE IMPACTS: OVERVIEW
+====================================================================================================================================================================
+Step 1: Calculate annual operating (fuel) costs
+Step 2: Calculate equipment capital costs (For space heating, include ductwork and weatherization (MP9 and MP10))
+Step 3: Calculate replacement cost (replacing existing piece of equipment with similar technology)
+Step 4: Calculate net equipment capital costs and private NPV
+
+----------------------------------------------------------------------------------------------------------------------
+Step 1: Calculate annual operating (fuel) costs
+----------------------------------------------------------------------------------------------------------------------
+
+====================================================================================================================================================================
+FUEL COSTS RESULTS: 2025 Reference Case
+
+
+[runner] tare_scenarios_v3_1.ipynb cell 10 done in 0.0 s (memory 0.3 GB)
+
+========== SCENARIO: 2025 Reference Case ==========
+
+Creating dataframe to store annual fuel cost calculations ...
+-- Scenario: 2025 Reference Case (mp3) --
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+Projecting heating consumption 2025-2039 for 3,406 valid homes
+Measure package calculation for cooling:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+Projecting cooling consumption 2025-2039 for 3,406 valid homes
+Calculating Fuel Costs from 2025 to 2039 for heating
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+Calculating Fuel Costs from 2025 to 2039 for cooling
+Measure package calculation for cooling:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+Masking 1 columns for category 'heating'
+Masking 6 columns for category 'cooling'
+WARNING: Replacing 2 existing columns. Function was called on data that already contains results.
+Columns being replaced: ['baseline_heating_lifetime_fuel_cost', 'baseline_cooling_lifetime_fuel_cost']
+
+Verifying masking for all calculated columns:
+Masking 1 columns for category 'heating'
+Masking 141 columns for category 'cooling'
+[runner] tare_scenarios_v3_1.ipynb cell 11 done in 1.2 s (memory 0.3 GB)
+
+    ====================================================================================================================================================================
+    PRIVATE IMPACTS: NET CAPITAL COSTS AND TOTAL CAPITAL COSTS
+    ====================================================================================================================================================================
+    Completed Steps:
+    1. Calculate annual operating (fuel) costs                                                                  [COMPLETED]
+
+    REMAINING STEPS:
+    Step 2: Calculate equipment capital costs (For space heating, include ductwork)
+    Step 3: Calculate replacement cost (replacing existing piece of eqipment with similar technology)
+
+    ----------------------------------------------------------------------------------------------------------------------
+    Step 4 (MP9 AND MP10 SPACE HEATING ONLY): 
+        Calculate Enclosure Upgrade Costs
+        - calculate_enclosure_upgrade_costs.py file contains the definition for the calculate_enclosure_upgrade_costs function.
+    ----------------------------------------------------------------------------------------------------------------------
+
+    Cost Databases:
+    - REMDB v4: Regression-based deterministic cost calculations
+    - Cost scenarios: ['v4MID']
+
+    ====================================================================================================================================================================
+    LIFETIME CAPITAL COSTS RESULTS: 2025 Reference Case (With and Without Rebates)
+
+    
+[runner] tare_scenarios_v3_1.ipynb cell 13 done in 0.0 s (memory 0.3 GB)
+
+================================================================================
+LOADING CAPITAL COST DATABASES
+================================================================================
+
+REMDB v4 (Regression):
+  Loaded 32 equipment types from REMDB v4
+
+================================================================================
+
+[runner] tare_scenarios_v3_1.ipynb cell 14 done in 0.0 s (memory 0.3 GB)
+================================================================================
+CALCULATING CAPITAL COSTS - MEASURE PACKAGE 3
+================================================================================
+
+Scenario: v4MID | Method: remdb_v4 | Percentile: mid
+
+============================================================
+Preparing heating REPLACEMENT metrics (REMDB v4)
+============================================================
+  186 homes with unknown row_id (will have NaN costs)
+
+  Row ID Distribution (row_id_heating_replacement):
+    furnaces_gas_furnace: 4,976
+    electric_baseboard_default: 901
+    boiler_gas_non_condensing: 458
+    air_source_heat_pump_centrally_ducted: 262
+    unknown: 186
+
+  NaN Diagnostics:
+    pm1 NaN breakdown (0 total):
+      - Unknown row_id: 0
+      - Missing source data (base_size_heating_system_primary_k_btu_h): 0
+    pm2 NaN breakdown (68 total):
+      - Unknown row_id: 0
+      - No pm2_metric defined (e.g., electric baseboard): 0
+      - Missing source data (base_heating_efficiency): 0
+      - Extraction failure (has metric + source, but numeric parse failed): 68
+          'Shared Heating': 68 homes
+
+  pm2_metric Distribution (heating_replacement_pm2_metric):
+    AFUE: 5,434
+    (NaN - no efficiency metric): 1,087
+    SEER1: 262
+
+  Step 4.5a: Applying efficiency floors (replacement only)
+    Total clamped: 1,211 homes
+    Original values preserved in: heating_replacement_pm2_euss_original
+
+  INFO: 1,003 homes have capacity outside REMDB bounds
+
+    furnaces_gas_furnace: 836 values
+    REMDB Bounds: 30000.00 - 156250.00
+    EUSS Bounds:
+        - BELOW (746): 3640.00 - 29990.00
+        - ABOVE (90): 156630.00 - 308250.00
+
+    air_source_heat_pump_centrally_ducted: 97 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (91): 0.47 - 1.50
+        - ABOVE (6): 5.25 - 6.64
+
+    boiler_gas_non_condensing: 70 values
+    REMDB Bounds: 27000.00 - 416000.00
+    EUSS Bounds:
+        - BELOW (70): 10460.00 - 26940.00
+
+  INFO: 6 homes have efficiency outside REMDB bounds
+
+    boiler_gas_non_condensing: 6 values
+    REMDB Bounds: 0.80 - 0.87
+    EUSS Bounds:
+        - ABOVE (6): 0.90 - 0.90
+
+  Valid metrics: 6,783 pm1, 6,715 pm2
+  NaN metrics: 0 pm1, 68 pm2 (per validation framework)
+
+Calculating heating replacement costs (v4MID)
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+Masking 1 columns for category 'heating'
+  Calculated costs for 3,406 homes (mean: $4,035.56)
+
+
+============================================================
+Preparing heating UPGRADE metrics (REMDB v4)
+============================================================
+
+  Row ID Distribution (row_id_heating_upgrade):
+    air_source_heat_pump_centrally_ducted: 5,440
+    air_source_heat_pump_non_ducted_multi_zone: 1,343
+
+  NaN Diagnostics:
+    pm1 NaN breakdown (0 total):
+      - Unknown row_id: 0
+      - Missing source data (size_heating_system_primary_k_btu_h): 0
+    pm2 NaN breakdown (0 total):
+      - Unknown row_id: 0
+      - No pm2_metric defined (e.g., electric baseboard): 0
+      - Missing source data (upgrade_hvac_heating_efficiency): 0
+
+  pm2_metric Distribution (heating_upgrade_pm2_metric):
+    SEER1: 6,783
+
+  INFO: 2,800 homes have capacity outside REMDB bounds
+
+    air_source_heat_pump_centrally_ducted: 1,748 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (1,578): 0.27 - 1.50
+        - ABOVE (170): 5.00 - 13.88
+
+    air_source_heat_pump_non_ducted_multi_zone: 1,052 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (3): 1.21 - 1.49
+        - ABOVE (1,049): 5.02 - 54.99
+
+  Valid metrics: 6,783 pm1, 6,783 pm2
+
+Calculating heating upgrade costs (v4MID)
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+Masking 1 columns for category 'heating'
+  Calculated costs for 3,406 homes (mean: $16,651.86)
+
+
+============================================================
+Preparing cooling REPLACEMENT metrics (REMDB v4)
+============================================================
+  2,728 homes with unknown row_id (will have NaN costs)
+
+  Row ID Distribution (row_id_cooling_replacement):
+    air_conditioner_centrally_ducted: 2,906
+    unknown: 2,728
+    air_conditioner_room_ac_window_or_through_wall: 886
+    air_source_heat_pump_centrally_ducted: 263
+
+  NaN Diagnostics:
+    pm1 NaN breakdown (0 total):
+      - Unknown row_id: 0
+      - Missing source data (base_size_cooling_system_primary_k_btu_h): 0
+    pm2 NaN breakdown (273 total):
+      - Unknown row_id: 0
+      - No pm2_metric defined (e.g., electric baseboard): 0
+      - Missing source data (base_cooling_efficiency): 0
+      - Extraction failure (has metric + source, but numeric parse failed): 273
+          'Heat Pump': 262 homes
+          'Shared Cooling': 11 homes
+
+  pm2_metric Distribution (cooling_replacement_pm2_metric):
+    SEER1: 3,169
+    (NaN - no efficiency metric): 2,728
+    CEER: 886
+
+  Step 4.5a: Applying efficiency floors (replacement only)
+    Total clamped: 2,126 homes
+    Original values preserved in: cooling_replacement_pm2_euss_original
+
+  INFO: 2,292 homes have capacity outside REMDB bounds
+
+    air_conditioner_centrally_ducted: 1,606 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (1,575): 0.26 - 1.50
+        - ABOVE (31): 5.05 - 9.24
+
+    air_conditioner_room_ac_window_or_through_wall: 588 values
+    REMDB Bounds: 0.42 - 2.33
+    EUSS Bounds:
+        - BELOW (588): 0.06 - 0.42
+
+    air_source_heat_pump_centrally_ducted: 98 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (92): 0.47 - 1.50
+        - ABOVE (6): 5.25 - 6.64
+
+  INFO: 50 homes have efficiency outside REMDB bounds
+
+    air_conditioner_room_ac_window_or_through_wall: 50 values
+    REMDB Bounds: 9.40 - 15.00
+    EUSS Bounds:
+        - BELOW (50): 8.50 - 8.50
+
+  Valid metrics: 6,783 pm1, 6,510 pm2
+  NaN metrics: 0 pm1, 273 pm2 (per validation framework)
+
+Calculating cooling replacement costs (v4MID)
+Measure package calculation for cooling:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+Masking 1 columns for category 'cooling'
+  Calculated costs for 3,406 homes (mean: $4,657.81)
+
+  Replacement: 3,406 valid rdu, mean=$4,035.56
+  Upgrade: 3,406 valid rdu, mean=$16,651.86
+
+Calculated 1 scenarios: ['v4MID']
+================================================================================
+[runner] tare_scenarios_v3_1.ipynb cell 16 done in 0.7 s (memory 0.4 GB)
+
+================================================================================
+MERGED v4 COST COLUMNS INTO df_euss_am_mpX_home (3 columns)
+================================================================================
+  mp3_cooling_replacement_installed_cost_v4MID
+  mp3_heating_replacement_installed_cost_v4MID
+  mp3_heating_upgrade_installed_cost_v4MID
+
+df_euss_am_mpX_home shape: (6783, 161)
+================================================================================
+[runner] tare_scenarios_v3_1.ipynb cell 17 done in 0.0 s (memory 0.4 GB)
+
+====================================================================================================================================================================
+CALCULATE HOUSEHOLD PERCENT AREA MEDIAN INCOME (%AMI) AND REBATE ELIGIBILITY/AMOUNTS
+====================================================================================================================================================================
+determine_rebate_eligibility_and_amount.py file contains the function definitions for calculating rebate amounts and determining household %AMI.
+process_income_data_for_rebates.py file contains additional information on data sources and procedures used to process data for determine_rebate_eligibility_and_amount.py file.
+
+----------------------------------------------------------------------------------------------------------------------
+
+
+Calculating Percent AMI for each household ...
+Preparing discount rates for NPV calculations ...
+
+================================================================================
+DISCOUNT RATE DIAGNOSTIC: Calculating for BOTH private discount methods
+================================================================================
+Public Rate: 2.0% (constant across all households)
+Private Fixed Rate (Base): 7.0% (constant across all households)
+Private Variable Rate (AMI-based):
+  Minimum: 7.0% (highest AMI)
+  Median:  17.1%
+  Maximum: 42.9% (lowest AMI)
+================================================================================
+
+
+Calculating ira2024 rebate amounts for heating (v4MID) ...
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+
+Calculating june2026 rebate amounts for heating (v4MID) ...
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+
+Calculating simplified rebate amounts for heating (v4MID) ...
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+
+Calculating ira2024 rebate amounts for cooling (v4MID) ...
+Skipping rebate for 'cooling' (covered by the heating heat-pump rebate).
+
+Calculating june2026 rebate amounts for cooling (v4MID) ...
+Skipping rebate for 'cooling' (covered by the heating heat-pump rebate).
+
+Calculating simplified rebate amounts for cooling (v4MID) ...
+Measure package calculation for cooling:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+[runner] tare_scenarios_v3_1.ipynb cell 19 done in 3.0 s (memory 0.4 GB)
+  v4 cost columns merged into dictionary: ['cooling_replacement_pm1_euss', 'cooling_replacement_pm2_euss', 'cooling_replacement_pm2_euss_original', 'heating_replacement_pm1_euss', 'heating_replacement_pm2_euss', 'heating_replacement_pm2_euss_original', 'heating_upgrade_pm1_euss', 'heating_upgrade_pm2_euss', 'row_id_cooling_replacement', 'row_id_heating_replacement', 'row_id_heating_upgrade']
+  
+========================================================================================================
+SCENARIO ANALYSIS: CLIMATE IMPACT
+    - calculate_lifetime_climate_impacts_sensitivity.py contains the definition for the calculate_lifetime_climate_impacts function.
+    - Additional information on emissions/damage factor lookups as well as marginal damages calculation methods can be found in the public_impact folder.
+========================================================================================================
+
+Completed Steps:
+1. Calculate the baseline marginal damages for climate-related emissions                                    [COMPLETED]
+2. Calculate the post-retrofit marginal damages for climate-related emissions                               [COMPLETED]
+
+========================================================================================================
+SCENARIO ANALYSIS: PRIVATE IMPACT
+    - calculate_lifetime_private_impact.py file contains the definition for the calculate_private_npv function.
+    - Additional information on fuel price lookups as well as capital costs calculation methods can be found in the private_impact folder.
+========================================================================================================
+
+Completed Steps:
+1. Calculate annual operating (fuel) costs                                                                  [COMPLETED]
+2. Calculate equipment capital costs (For space heating, include ductwork and weatherization (MP9-10))      [COMPLETED]
+3. Calculate replacement cost (replacing existing piece of eqipment with similar technology)                [COMPLETED]
+
+REMAINING STEP:
+Step 4: Calculate net equipment capital costs and private NPV
+------------------------------------------------------------------------------------------------------
+
+========================================================================================================
+SCENARIO ANALYSIS: ADOPTION POTENTIAL
+    determine_economic_adoption_potential.py defines economic_adoption_decision.
+    A home is an economic adopter if its private incremental NPV >= 0.
+    Climate damages are computed and stored but do not enter the adoption decision.
+    Nine adopter columns are produced per call, one per NPV case.
+========================================================================================================
+
+Economic adopter condition (NPV >= 0) applied across nine NPV cases
+(three replacement-credit scopes x three rebate-policy scenarios).
+All nine cases credit BOTH heating and cooling operating savings; the scope
+token controls which end-use's avoided-replacement capital (LCC) is credited:
+    heatingSavings_coolingLCC --> cooling replacement credited; no heating LCC
+    heatingLCC_coolingSavings --> heating replacement credited; no cooling LCC
+    heatingLCC_coolingLCC     --> both heating and cooling replacement credited
+    each x rebate-policy scenario --> _unsub, _sub, _sub_june2026 
+
+------------------------------------------------------------------------------------------------------
+
+Cost scenarios to process: ['v4MID']
+
+
+[runner] tare_scenarios_v3_1.ipynb cell 21 done in 0.0 s (memory 0.4 GB)
+
+====================================================================================================================================================================
+MODEL SCENARIO
+====================================================================================================================================================================
+EUSS Measure Package 3
+Policy Scenario: 2025 Reference Case
+====================================================================================================================================================================
+
+[runner] tare_scenarios_v3_1.ipynb cell 23 done in 0.0 s (memory 0.4 GB)
+
+====================================================================================================================================================================
+SCENARIO ANALYSIS (2025 REFERENCE CASE): PRIVATE IMPACT
+====================================================================================================================================================================
+
+Calculating Private NPV for all cost scenarios and discount methods ...
+
+--- Cost Scenario: v4MID ---
+  Discount Rate: fixed_base, Column: private_discount_rate_fixed_base
+
+Calculating Private NPV (three cases) | input_mp=upgrade03, menu_mp=3, policy_scenario=2025 Reference Case
+-- Scenario: 2025 Reference Case (mp3) --
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Calculating costs for heating... 
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+Masking 28 columns for category 'heating'
+
+Private NPV calculation completed. Added 36 new columns.
+[runner] tare_scenarios_v3_1.ipynb cell 24 done in 0.1 s (memory 0.4 GB)
+
+====================================================================================================
+SCENARIO ANALYSIS (2025 REFERENCE CASE): ADOPTION POTENTIAL
+====================================================================================================
+
+Determining Economic Adoption Potential for all cost scenarios and discount methods ...
+
+--- Cost Scenario: v4MID ---
+  Discount Rate: fixed_base, Column: private_discount_rate_fixed_base
+-- Scenario: 2025 Reference Case (mp3) --
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Economic Adopter Analysis: 2025 Reference Case | 12 NPV cases
+
+Verifying masking for all calculated columns:
+Masking 24 columns for category 'heating'
+[runner] tare_scenarios_v3_1.ipynb cell 25 done in 0.1 s (memory 0.4 GB)
+The code took 4 minutes and 40 seconds to execute.
+[runner] tare_scenarios_v3_1.ipynb cell 27 done in 0.0 s (memory 0.4 GB)
+DataFrames with econ_adopter columns: ['df']
+
+=== df ===
+                                                                    column  n_applicable  n_adopters  rate_%  weighted_rate_%
+             ref2025_mp3_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base          3406        1322    38.8             38.8
+    ref2025_mp3_heatingLCC_coolingLCC_sub_june2026_econ_adopter_fixed_base          3406         434    12.7             12.7
+       ref2025_mp3_heatingLCC_coolingLCC_sub_local_econ_adopter_fixed_base          3406        2026    59.5             59.5
+           ref2025_mp3_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base          3406         351    10.3             10.3
+         ref2025_mp3_heatingLCC_coolingSavings_sub_econ_adopter_fixed_base          3406         417    12.2             12.2
+ref2025_mp3_heatingLCC_coolingSavings_sub_june2026_econ_adopter_fixed_base          3406         286     8.4              8.4
+   ref2025_mp3_heatingLCC_coolingSavings_sub_local_econ_adopter_fixed_base          3406         745    21.9             21.9
+       ref2025_mp3_heatingLCC_coolingSavings_unsub_econ_adopter_fixed_base          3406         141     4.1              4.1
+         ref2025_mp3_heatingSavings_coolingLCC_sub_econ_adopter_fixed_base          3406         593    17.4             17.4
+ref2025_mp3_heatingSavings_coolingLCC_sub_june2026_econ_adopter_fixed_base          3406         325     9.5              9.5
+   ref2025_mp3_heatingSavings_coolingLCC_sub_local_econ_adopter_fixed_base          3406        1166    34.2             34.2
+       ref2025_mp3_heatingSavings_coolingLCC_unsub_econ_adopter_fixed_base          3406         166     4.9              4.9
+[runner] tare_scenarios_v3_1.ipynb cell 28 done in 0.0 s (memory 0.4 GB)
+ref2025_mp3_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base
+  counties=62  mean=46.1%  median=42.5%  min=10.0%  max=100.0%
+
+ref2025_mp3_heatingLCC_coolingLCC_sub_june2026_econ_adopter_fixed_base
+  counties=62  mean=22.6%  median=19.3%  min=0.0%  max=100.0%
+
+ref2025_mp3_heatingLCC_coolingLCC_sub_local_econ_adopter_fixed_base
+  counties=62  mean=62.2%  median=61.7%  min=25.0%  max=100.0%
+
+ref2025_mp3_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base
+  counties=62  mean=20.7%  median=16.7%  min=0.0%  max=100.0%
+
+ref2025_mp3_heatingLCC_coolingSavings_sub_econ_adopter_fixed_base
+  counties=62  mean=26.1%  median=21.7%  min=0.0%  max=100.0%
+
+ref2025_mp3_heatingLCC_coolingSavings_sub_june2026_econ_adopter_fixed_base
+  counties=62  mean=12.3%  median=8.1%  min=0.0%  max=100.0%
+
+ref2025_mp3_heatingLCC_coolingSavings_sub_local_econ_adopter_fixed_base
+  counties=62  mean=35.3%  median=30.4%  min=0.0%  max=100.0%
+
+ref2025_mp3_heatingLCC_coolingSavings_unsub_econ_adopter_fixed_base
+  counties=62  mean=8.9%  median=3.5%  min=0.0%  max=100.0%
+
+ref2025_mp3_heatingSavings_coolingLCC_sub_econ_adopter_fixed_base
+  counties=62  mean=28.6%  median=25.0%  min=0.0%  max=100.0%
+
+ref2025_mp3_heatingSavings_coolingLCC_sub_june2026_econ_adopter_fixed_base
+  counties=62  mean=13.8%  median=9.4%  min=0.0%  max=100.0%
+
+ref2025_mp3_heatingSavings_coolingLCC_sub_local_econ_adopter_fixed_base
+  counties=62  mean=39.6%  median=35.4%  min=0.0%  max=100.0%
+
+ref2025_mp3_heatingSavings_coolingLCC_unsub_econ_adopter_fixed_base
+  counties=62  mean=10.1%  median=4.1%  min=0.0%  max=100.0%
+
+[runner] tare_scenarios_v3_1.ipynb cell 29 done in 0.1 s (memory 0.4 GB)
+-- Scenario: 2025 Reference Case (mp3) --
+MP3 adopter column: ref2025_mp3_heatingLCC_coolingLCC_sub_june2026_econ_adopter_fixed_base
+
+--- June 2026 rebate funding by program (weighted $) ---
+         total_eligible  adopters_only
+program                               
+HEEHR       607059287.0    419726827.0
+HOMES        51331775.0     27602935.0
+
+--- June 2026 rebate funding by baseline fuel (weighted $) ---
+             total_eligible  adopters_only
+fuel                                      
+Electricity     658391061.0    447329763.0
+Fuel Oil                0.0            0.0
+Natural Gas             0.0            0.0
+Other Fuel              0.0            0.0
+Propane                 0.0            0.0
+
+[PASS] MP3 June 2026 fuel gate holds: fossil baselines $0, electric-resistance baselines funded, non-participating states $0.
+[runner] tare_scenarios_v3_1.ipynb cell 30 done in 0.0 s (memory 0.4 GB)
+[runner] end tare_scenarios_v3_1.ipynb (74.8 s)
+Model Run Complete for EUSS Measure Package: MP3
+
+    Preserving MP3 results by copying dataframe variables and re-assigning to MP-specific names.
+    This allows the scenarios file to be re-run for MP3 without overwriting previous model run data
+MP3 results preserved to MP-specific variable names.
+[runner] tare_run_simulation_v3_1.ipynb cell 10 done in 74.9 s (memory 0.4 GB)
+Exporting MP3 Supplemental Data...
+---------------------------------------------------------------------------------------------------------
+SUPPLEMENTAL DAMAGES: damages_climate_ref2025
+Saved to: mp3_damages_climate_ref2025_CO_2026-10-28_14-22.csv
+Full path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\supplemental_data_damages\damages_climate_ref2025\mp3_damages_climate_ref2025_CO_2026-10-28_14-22.csv
+--------------------------------------------------------------------------------------------------------- 
+
+---------------------------------------------------------------------------------------------------------
+SUPPLEMENTAL FUEL COSTS: fuel_costs_ref2025
+Saved to: mp3_fuel_costs_ref2025_CO_2026-10-28_14-22.csv
+Full path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\supplemental_data_fuelCosts\fuel_costs_ref2025\mp3_fuel_costs_ref2025_CO_2026-10-28_14-22.csv
+--------------------------------------------------------------------------------------------------------- 
+
+Exporting SUMMARY RESULTS for discount rate: fixed_base
+---------------------------------------------------------------------------------------------------------
+MEASURE PACKAGE 3 SUMMARY RESULTS:
+  Discount Rate: fixed_base
+Saved to: mp3_results_CO_2026-10-28_14-22.csv
+Full path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\retrofit_mp3_results\summary_mp3_fixed_base\mp3_results_CO_2026-10-28_14-22.csv
+--------------------------------------------------------------------------------------------------------- 
+
+================================================================================
+VERIFICATION: Cost Scenario Columns in MP3 Exported DataFrames
+================================================================================
+Active cost scenarios: ['v4MID']
+
+  [PASS] v4MID:
+    Cost column   (mp3_heating_upgrade_installed_cost_v4MID): [OK]
+    NPV heatingSavings_coolingLCC_sub (ref2025_mp3_heatingSavings_coolingLCC_sub_private_npv_fixed_base): [OK]
+    NPV heatingSavings_coolingLCC_unsub (ref2025_mp3_heatingSavings_coolingLCC_unsub_private_npv_fixed_base): [OK]
+    NPV heatingSavings_coolingLCC_sub_june2026 (ref2025_mp3_heatingSavings_coolingLCC_sub_june2026_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingSavings_sub (ref2025_mp3_heatingLCC_coolingSavings_sub_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingSavings_unsub (ref2025_mp3_heatingLCC_coolingSavings_unsub_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingSavings_sub_june2026 (ref2025_mp3_heatingLCC_coolingSavings_sub_june2026_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingLCC_sub (ref2025_mp3_heatingLCC_coolingLCC_sub_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingLCC_unsub (ref2025_mp3_heatingLCC_coolingLCC_unsub_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingLCC_sub_june2026 (ref2025_mp3_heatingLCC_coolingLCC_sub_june2026_private_npv_fixed_base): [OK]
+    NPV heatingSavings_coolingLCC_sub_local (ref2025_mp3_heatingSavings_coolingLCC_sub_local_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingSavings_sub_local (ref2025_mp3_heatingLCC_coolingSavings_sub_local_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingLCC_sub_local (ref2025_mp3_heatingLCC_coolingLCC_sub_local_private_npv_fixed_base): [OK]
+
+Economic-adopter columns present: 12
+
+Total columns in DataFrame: 226
+================================================================================
+[runner] tare_run_simulation_v3_1.ipynb cell 11 done in 5.8 s (memory 0.4 GB)
+PROJECT_ROOT (from config.py): C:\Users\tamar\Documents\Research\cmu-tare-model
+Running file: C:/Users/tamar/Documents/Research/cmu-tare-model/cmu_tare_model/model_scenarios/tare_scenarios_v3_1.ipynb
+[runner] start tare_scenarios_v3_1.ipynb
+[runner] tare_scenarios_v3_1.ipynb cell 1 done in 0.0 s (memory 0.4 GB)
+[BATCH MODE] Using pre-set Measure Package 4.
+
+====================================================================================================================================================================
+MODEL SCENARIO -- ResStock 2022.1.1
+====================================================================================================================================================================
+Measure Package 4 (upgrade04)
+BAU Costs
+Current Electricity Grid
+====================================================================================================================================================================
+
+[FUNNEL] load: 548,916 rdu | 132,909,587 weighted homes | Electricity=28.97% | Electricity ASHP=11.16% | Fuel Oil=4.69% | Natural Gas=47.71% | Propane=4.63%
+[FUNNEL] applicability: 548,260 rdu | 132,750,749 weighted homes | Electricity=28.89% | Electricity ASHP=11.17% | Fuel Oil=4.69% | Natural Gas=47.77% | Propane=4.64%
+[FUNNEL] occupancy: 482,050 rdu | 116,719,255 weighted homes | Electricity=28.35% | Electricity ASHP=10.86% | Fuel Oil=4.65% | Natural Gas=49.07% | Propane=4.38%
+[FUNNEL] housing_type: 396,122 rdu | 95,913,421 weighted homes | Electricity=24.52% | Electricity ASHP=10.13% | Fuel Oil=5.01% | Natural Gas=52.24% | Propane=5.21%
+[FUNNEL] exclude_AK_HI: 396,122 rdu | 95,913,421 weighted homes | Electricity=24.52% | Electricity ASHP=10.13% | Fuel Oil=5.01% | Natural Gas=52.24% | Propane=5.21%
+[FUNNEL] geographic_filter: 6,783 rdu | 1,642,375 weighted homes | Electricity=13.28% | Electricity ASHP=3.86% | Fuel Oil=0.01% | Natural Gas=75.13% | Propane=4.97%
+DATAFRAME SIZE after all filters: (6783, 344)
+
+FILTER FUNNEL:
+               stage  rdu_count  ...  Natural Gas_pct  Propane_pct
+0               load     548916  ...        47.710761     4.632221
+1      applicability     548260  ...        47.767847     4.637763
+2          occupancy     482050  ...        49.069184     4.375480
+3       housing_type     396122  ...        52.241481     5.206729
+4      exclude_AK_HI     396122  ...        52.241481     5.206729
+5  geographic_filter       6783  ...        75.128999     4.968303
+
+[6 rows x 8 columns]
+
+[runner] tare_scenarios_v3_1.ipynb cell 3 done in 76.5 s (memory 0.4 GB)
+
+====================================================================================================================================================================
+LOAD RESSTOCK DATA FOR MEASURE PACKAGE 4 (MP4) -- ResStock 2022.1.1
+====================================================================================================================================================================
+df_euss_am_mpX_home will be created by running the df_enduse_compare function (contains post-retrofit consumption data for the entire home).
+process_euss_data.py file contains the function definition.
+
+
+
+Applying combined validation (data quality + retrofit status):
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+  mp4_heating_consumption: Masked 3377 values
+  mp4_electricity_heating_fansPumps_consumption: Masked 3377 values
+  mp4_electricity_heating_hpBackup_consumption: Masked 3377 values
+  mp4_naturalGas_heating_hpBackup_consumption: Masked 3377 values
+  mp4_propane_heating_hpBackup_consumption: Masked 3377 values
+  mp4_fuelOil_heating_hpBackup_consumption: Masked 3377 values
+Measure package calculation for cooling:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+  mp4_cooling_consumption: Masked 3377 values
+  mp4_electricity_cooling_fansPumps_consumption: Masked 3377 values
+
+MP4 heating + cooling savings vs ResStock's savings columns:
+       fuel  rdu  largest_part_gap_kwh  largest_left_over_kwh  largest_left_over_pct  rdu_failed status
+electricity 3406          1.455192e-11               0.879213               0.019292           0   [OK]
+ naturalGas 3406          0.000000e+00               0.586142               0.009871           0   [OK]
+    propane 3406          0.000000e+00               0.586142               0.005565           0   [OK]
+    fuelOil 3406          0.000000e+00               0.000000               0.000000           0   [OK]
+[runner] tare_scenarios_v3_1.ipynb cell 5 done in 0.2 s (memory 0.4 GB)
+
+====================================================================================================================================================================
+PUBLIC IMPACTS: DAMAGES FROM CLIMATE-RELATED EMISSIONS
+====================================================================================================================================================================
+
+
+
+ Creating dataframe to store marginal damages calculations ...
+[runner] tare_scenarios_v3_1.ipynb cell 7 done in 0.0 s (memory 0.4 GB)
+
+========== SCENARIO: 2025 Reference Case ==========
+
+-- Scenario: 2025 Reference Case (mp4) --
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+Projecting heating consumption 2025-2039 for 3,406 valid homes
+Measure package calculation for cooling:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+Projecting cooling consumption 2025-2039 for 3,406 valid homes
+Calculating Climate Emissions and Damages from 2025 to 2039 for heating
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+Calculating Climate Emissions and Damages from 2025 to 2039 for cooling
+Measure package calculation for cooling:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+Masking 16 columns for category 'cooling'
+
+Verifying masking for all calculated columns:
+Masking 136 columns for category 'cooling'
+[runner] tare_scenarios_v3_1.ipynb cell 8 done in 1.5 s (memory 0.4 GB)
+
+====================================================================================================================================================================
+PRIVATE IMPACTS: OVERVIEW
+====================================================================================================================================================================
+Step 1: Calculate annual operating (fuel) costs
+Step 2: Calculate equipment capital costs (For space heating, include ductwork and weatherization (MP9 and MP10))
+Step 3: Calculate replacement cost (replacing existing piece of equipment with similar technology)
+Step 4: Calculate net equipment capital costs and private NPV
+
+----------------------------------------------------------------------------------------------------------------------
+Step 1: Calculate annual operating (fuel) costs
+----------------------------------------------------------------------------------------------------------------------
+
+====================================================================================================================================================================
+FUEL COSTS RESULTS: 2025 Reference Case
+
+
+[runner] tare_scenarios_v3_1.ipynb cell 10 done in 0.0 s (memory 0.4 GB)
+
+========== SCENARIO: 2025 Reference Case ==========
+
+Creating dataframe to store annual fuel cost calculations ...
+-- Scenario: 2025 Reference Case (mp4) --
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+Projecting heating consumption 2025-2039 for 3,406 valid homes
+Measure package calculation for cooling:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+Projecting cooling consumption 2025-2039 for 3,406 valid homes
+Calculating Fuel Costs from 2025 to 2039 for heating
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+Calculating Fuel Costs from 2025 to 2039 for cooling
+Measure package calculation for cooling:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+Masking 1 columns for category 'heating'
+Masking 6 columns for category 'cooling'
+WARNING: Replacing 2 existing columns. Function was called on data that already contains results.
+Columns being replaced: ['baseline_heating_lifetime_fuel_cost', 'baseline_cooling_lifetime_fuel_cost']
+
+Verifying masking for all calculated columns:
+Masking 1 columns for category 'heating'
+Masking 141 columns for category 'cooling'
+[runner] tare_scenarios_v3_1.ipynb cell 11 done in 1.2 s (memory 0.4 GB)
+
+    ====================================================================================================================================================================
+    PRIVATE IMPACTS: NET CAPITAL COSTS AND TOTAL CAPITAL COSTS
+    ====================================================================================================================================================================
+    Completed Steps:
+    1. Calculate annual operating (fuel) costs                                                                  [COMPLETED]
+
+    REMAINING STEPS:
+    Step 2: Calculate equipment capital costs (For space heating, include ductwork)
+    Step 3: Calculate replacement cost (replacing existing piece of eqipment with similar technology)
+
+    ----------------------------------------------------------------------------------------------------------------------
+    Step 4 (MP9 AND MP10 SPACE HEATING ONLY): 
+        Calculate Enclosure Upgrade Costs
+        - calculate_enclosure_upgrade_costs.py file contains the definition for the calculate_enclosure_upgrade_costs function.
+    ----------------------------------------------------------------------------------------------------------------------
+
+    Cost Databases:
+    - REMDB v4: Regression-based deterministic cost calculations
+    - Cost scenarios: ['v4MID']
+
+    ====================================================================================================================================================================
+    LIFETIME CAPITAL COSTS RESULTS: 2025 Reference Case (With and Without Rebates)
+
+    
+[runner] tare_scenarios_v3_1.ipynb cell 13 done in 0.0 s (memory 0.4 GB)
+
+================================================================================
+LOADING CAPITAL COST DATABASES
+================================================================================
+
+REMDB v4 (Regression):
+  Loaded 32 equipment types from REMDB v4
+
+================================================================================
+
+[runner] tare_scenarios_v3_1.ipynb cell 14 done in 0.0 s (memory 0.4 GB)
+================================================================================
+CALCULATING CAPITAL COSTS - MEASURE PACKAGE 4
+================================================================================
+
+Scenario: v4MID | Method: remdb_v4 | Percentile: mid
+
+============================================================
+Preparing heating REPLACEMENT metrics (REMDB v4)
+============================================================
+  186 homes with unknown row_id (will have NaN costs)
+
+  Row ID Distribution (row_id_heating_replacement):
+    furnaces_gas_furnace: 4,976
+    electric_baseboard_default: 901
+    boiler_gas_non_condensing: 458
+    air_source_heat_pump_centrally_ducted: 262
+    unknown: 186
+
+  NaN Diagnostics:
+    pm1 NaN breakdown (0 total):
+      - Unknown row_id: 0
+      - Missing source data (base_size_heating_system_primary_k_btu_h): 0
+    pm2 NaN breakdown (68 total):
+      - Unknown row_id: 0
+      - No pm2_metric defined (e.g., electric baseboard): 0
+      - Missing source data (base_heating_efficiency): 0
+      - Extraction failure (has metric + source, but numeric parse failed): 68
+          'Shared Heating': 68 homes
+
+  pm2_metric Distribution (heating_replacement_pm2_metric):
+    AFUE: 5,434
+    (NaN - no efficiency metric): 1,087
+    SEER1: 262
+
+  Step 4.5a: Applying efficiency floors (replacement only)
+    Total clamped: 1,211 homes
+    Original values preserved in: heating_replacement_pm2_euss_original
+
+  INFO: 1,003 homes have capacity outside REMDB bounds
+
+    furnaces_gas_furnace: 836 values
+    REMDB Bounds: 30000.00 - 156250.00
+    EUSS Bounds:
+        - BELOW (746): 3640.00 - 29990.00
+        - ABOVE (90): 156630.00 - 308250.00
+
+    air_source_heat_pump_centrally_ducted: 97 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (91): 0.47 - 1.50
+        - ABOVE (6): 5.25 - 6.64
+
+    boiler_gas_non_condensing: 70 values
+    REMDB Bounds: 27000.00 - 416000.00
+    EUSS Bounds:
+        - BELOW (70): 10460.00 - 26940.00
+
+  INFO: 6 homes have efficiency outside REMDB bounds
+
+    boiler_gas_non_condensing: 6 values
+    REMDB Bounds: 0.80 - 0.87
+    EUSS Bounds:
+        - ABOVE (6): 0.90 - 0.90
+
+  Valid metrics: 6,783 pm1, 6,715 pm2
+  NaN metrics: 0 pm1, 68 pm2 (per validation framework)
+
+Calculating heating replacement costs (v4MID)
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+Masking 1 columns for category 'heating'
+  Calculated costs for 3,406 homes (mean: $4,035.56)
+
+
+============================================================
+Preparing heating UPGRADE metrics (REMDB v4)
+============================================================
+
+  Row ID Distribution (row_id_heating_upgrade):
+    air_source_heat_pump_centrally_ducted: 5,440
+    air_source_heat_pump_non_ducted_multi_zone: 1,343
+
+  NaN Diagnostics:
+    pm1 NaN breakdown (0 total):
+      - Unknown row_id: 0
+      - Missing source data (size_heating_system_primary_k_btu_h): 0
+    pm2 NaN breakdown (0 total):
+      - Unknown row_id: 0
+      - No pm2_metric defined (e.g., electric baseboard): 0
+      - Missing source data (upgrade_hvac_heating_efficiency): 0
+
+  pm2_metric Distribution (heating_upgrade_pm2_metric):
+    SEER1: 6,783
+
+  INFO: 2,208 homes have capacity outside REMDB bounds
+
+    air_source_heat_pump_centrally_ducted: 1,556 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (1,362): 0.29 - 1.50
+        - ABOVE (194): 5.01 - 14.88
+
+    air_source_heat_pump_non_ducted_multi_zone: 652 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (41): 0.69 - 1.50
+        - ABOVE (611): 5.01 - 18.60
+
+  INFO: 1,343 homes have efficiency outside REMDB bounds
+
+    air_source_heat_pump_non_ducted_multi_zone: 1,343 values
+    REMDB Bounds: 16.00 - 23.00
+    EUSS Bounds:
+        - ABOVE (1,343): 29.30 - 29.30
+
+  Valid metrics: 6,783 pm1, 6,783 pm2
+
+Calculating heating upgrade costs (v4MID)
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+Masking 1 columns for category 'heating'
+  Calculated costs for 3,406 homes (mean: $22,261.18)
+
+
+============================================================
+Preparing cooling REPLACEMENT metrics (REMDB v4)
+============================================================
+  2,728 homes with unknown row_id (will have NaN costs)
+
+  Row ID Distribution (row_id_cooling_replacement):
+    air_conditioner_centrally_ducted: 2,906
+    unknown: 2,728
+    air_conditioner_room_ac_window_or_through_wall: 886
+    air_source_heat_pump_centrally_ducted: 263
+
+  NaN Diagnostics:
+    pm1 NaN breakdown (0 total):
+      - Unknown row_id: 0
+      - Missing source data (base_size_cooling_system_primary_k_btu_h): 0
+    pm2 NaN breakdown (273 total):
+      - Unknown row_id: 0
+      - No pm2_metric defined (e.g., electric baseboard): 0
+      - Missing source data (base_cooling_efficiency): 0
+      - Extraction failure (has metric + source, but numeric parse failed): 273
+          'Heat Pump': 262 homes
+          'Shared Cooling': 11 homes
+
+  pm2_metric Distribution (cooling_replacement_pm2_metric):
+    SEER1: 3,169
+    (NaN - no efficiency metric): 2,728
+    CEER: 886
+
+  Step 4.5a: Applying efficiency floors (replacement only)
+    Total clamped: 2,126 homes
+    Original values preserved in: cooling_replacement_pm2_euss_original
+
+  INFO: 2,292 homes have capacity outside REMDB bounds
+
+    air_conditioner_centrally_ducted: 1,606 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (1,575): 0.26 - 1.50
+        - ABOVE (31): 5.05 - 9.24
+
+    air_conditioner_room_ac_window_or_through_wall: 588 values
+    REMDB Bounds: 0.42 - 2.33
+    EUSS Bounds:
+        - BELOW (588): 0.06 - 0.42
+
+    air_source_heat_pump_centrally_ducted: 98 values
+    REMDB Bounds: 1.50 - 5.00
+    EUSS Bounds:
+        - BELOW (92): 0.47 - 1.50
+        - ABOVE (6): 5.25 - 6.64
+
+  INFO: 50 homes have efficiency outside REMDB bounds
+
+    air_conditioner_room_ac_window_or_through_wall: 50 values
+    REMDB Bounds: 9.40 - 15.00
+    EUSS Bounds:
+        - BELOW (50): 8.50 - 8.50
+
+  Valid metrics: 6,783 pm1, 6,510 pm2
+  NaN metrics: 0 pm1, 273 pm2 (per validation framework)
+
+Calculating cooling replacement costs (v4MID)
+Measure package calculation for cooling:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+Masking 1 columns for category 'cooling'
+  Calculated costs for 3,406 homes (mean: $4,657.81)
+
+  Replacement: 3,406 valid rdu, mean=$4,035.56
+  Upgrade: 3,406 valid rdu, mean=$22,261.18
+
+Calculated 1 scenarios: ['v4MID']
+================================================================================
+[runner] tare_scenarios_v3_1.ipynb cell 16 done in 0.7 s (memory 0.4 GB)
+
+================================================================================
+MERGED v4 COST COLUMNS INTO df_euss_am_mpX_home (3 columns)
+================================================================================
+  mp4_cooling_replacement_installed_cost_v4MID
+  mp4_heating_replacement_installed_cost_v4MID
+  mp4_heating_upgrade_installed_cost_v4MID
+
+df_euss_am_mpX_home shape: (6783, 161)
+================================================================================
+[runner] tare_scenarios_v3_1.ipynb cell 17 done in 0.0 s (memory 0.4 GB)
+
+====================================================================================================================================================================
+CALCULATE HOUSEHOLD PERCENT AREA MEDIAN INCOME (%AMI) AND REBATE ELIGIBILITY/AMOUNTS
+====================================================================================================================================================================
+determine_rebate_eligibility_and_amount.py file contains the function definitions for calculating rebate amounts and determining household %AMI.
+process_income_data_for_rebates.py file contains additional information on data sources and procedures used to process data for determine_rebate_eligibility_and_amount.py file.
+
+----------------------------------------------------------------------------------------------------------------------
+
+
+Calculating Percent AMI for each household ...
+Preparing discount rates for NPV calculations ...
+
+================================================================================
+DISCOUNT RATE DIAGNOSTIC: Calculating for BOTH private discount methods
+================================================================================
+Public Rate: 2.0% (constant across all households)
+Private Fixed Rate (Base): 7.0% (constant across all households)
+Private Variable Rate (AMI-based):
+  Minimum: 7.0% (highest AMI)
+  Median:  17.1%
+  Maximum: 42.9% (lowest AMI)
+================================================================================
+
+
+Calculating ira2024 rebate amounts for heating (v4MID) ...
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+
+Calculating june2026 rebate amounts for heating (v4MID) ...
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+
+Calculating simplified rebate amounts for heating (v4MID) ...
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+
+Calculating ira2024 rebate amounts for cooling (v4MID) ...
+Skipping rebate for 'cooling' (covered by the heating heat-pump rebate).
+
+Calculating june2026 rebate amounts for cooling (v4MID) ...
+Skipping rebate for 'cooling' (covered by the heating heat-pump rebate).
+
+Calculating simplified rebate amounts for cooling (v4MID) ...
+Measure package calculation for cooling:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Verifying masking for all calculated columns:
+[runner] tare_scenarios_v3_1.ipynb cell 19 done in 3.1 s (memory 0.4 GB)
+  v4 cost columns merged into dictionary: ['cooling_replacement_pm1_euss', 'cooling_replacement_pm2_euss', 'cooling_replacement_pm2_euss_original', 'heating_replacement_pm1_euss', 'heating_replacement_pm2_euss', 'heating_replacement_pm2_euss_original', 'heating_upgrade_pm1_euss', 'heating_upgrade_pm2_euss', 'row_id_cooling_replacement', 'row_id_heating_replacement', 'row_id_heating_upgrade']
+  
+========================================================================================================
+SCENARIO ANALYSIS: CLIMATE IMPACT
+    - calculate_lifetime_climate_impacts_sensitivity.py contains the definition for the calculate_lifetime_climate_impacts function.
+    - Additional information on emissions/damage factor lookups as well as marginal damages calculation methods can be found in the public_impact folder.
+========================================================================================================
+
+Completed Steps:
+1. Calculate the baseline marginal damages for climate-related emissions                                    [COMPLETED]
+2. Calculate the post-retrofit marginal damages for climate-related emissions                               [COMPLETED]
+
+========================================================================================================
+SCENARIO ANALYSIS: PRIVATE IMPACT
+    - calculate_lifetime_private_impact.py file contains the definition for the calculate_private_npv function.
+    - Additional information on fuel price lookups as well as capital costs calculation methods can be found in the private_impact folder.
+========================================================================================================
+
+Completed Steps:
+1. Calculate annual operating (fuel) costs                                                                  [COMPLETED]
+2. Calculate equipment capital costs (For space heating, include ductwork and weatherization (MP9-10))      [COMPLETED]
+3. Calculate replacement cost (replacing existing piece of eqipment with similar technology)                [COMPLETED]
+
+REMAINING STEP:
+Step 4: Calculate net equipment capital costs and private NPV
+------------------------------------------------------------------------------------------------------
+
+========================================================================================================
+SCENARIO ANALYSIS: ADOPTION POTENTIAL
+    determine_economic_adoption_potential.py defines economic_adoption_decision.
+    A home is an economic adopter if its private incremental NPV >= 0.
+    Climate damages are computed and stored but do not enter the adoption decision.
+    Nine adopter columns are produced per call, one per NPV case.
+========================================================================================================
+
+Economic adopter condition (NPV >= 0) applied across nine NPV cases
+(three replacement-credit scopes x three rebate-policy scenarios).
+All nine cases credit BOTH heating and cooling operating savings; the scope
+token controls which end-use's avoided-replacement capital (LCC) is credited:
+    heatingSavings_coolingLCC --> cooling replacement credited; no heating LCC
+    heatingLCC_coolingSavings --> heating replacement credited; no cooling LCC
+    heatingLCC_coolingLCC     --> both heating and cooling replacement credited
+    each x rebate-policy scenario --> _unsub, _sub, _sub_june2026 
+
+------------------------------------------------------------------------------------------------------
+
+Cost scenarios to process: ['v4MID']
+
+
+[runner] tare_scenarios_v3_1.ipynb cell 21 done in 0.0 s (memory 0.4 GB)
+
+====================================================================================================================================================================
+MODEL SCENARIO
+====================================================================================================================================================================
+EUSS Measure Package 4
+Policy Scenario: 2025 Reference Case
+====================================================================================================================================================================
+
+[runner] tare_scenarios_v3_1.ipynb cell 23 done in 0.0 s (memory 0.4 GB)
+
+====================================================================================================================================================================
+SCENARIO ANALYSIS (2025 REFERENCE CASE): PRIVATE IMPACT
+====================================================================================================================================================================
+
+Calculating Private NPV for all cost scenarios and discount methods ...
+
+--- Cost Scenario: v4MID ---
+  Discount Rate: fixed_base, Column: private_discount_rate_fixed_base
+
+Calculating Private NPV (three cases) | input_mp=upgrade04, menu_mp=4, policy_scenario=2025 Reference Case
+-- Scenario: 2025 Reference Case (mp4) --
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Calculating costs for heating... 
+
+Verifying masking for all calculated columns:
+
+Verifying masking for all calculated columns:
+Masking 28 columns for category 'heating'
+
+Private NPV calculation completed. Added 36 new columns.
+[runner] tare_scenarios_v3_1.ipynb cell 24 done in 0.1 s (memory 0.4 GB)
+
+====================================================================================================
+SCENARIO ANALYSIS (2025 REFERENCE CASE): ADOPTION POTENTIAL
+====================================================================================================
+
+Determining Economic Adoption Potential for all cost scenarios and discount methods ...
+
+--- Cost Scenario: v4MID ---
+  Discount Rate: fixed_base, Column: private_discount_rate_fixed_base
+-- Scenario: 2025 Reference Case (mp4) --
+  Using 'upgrade_hvac_heating_efficiency' column:
+  - 6783 homes will receive heating retrofits.
+  - 0 homes will NOT receive retrofits (values will be NaN).
+Measure package calculation for heating:
+  - 3406 homes have valid data
+  - 6783 homes will receive retrofits
+  - 3406 homes have both valid data AND will receive retrofits
+  - 3377 homes excluded (values will be NaN)
+
+Economic Adopter Analysis: 2025 Reference Case | 12 NPV cases
+
+Verifying masking for all calculated columns:
+Masking 24 columns for category 'heating'
+[runner] tare_scenarios_v3_1.ipynb cell 25 done in 0.1 s (memory 0.4 GB)
+The code took 6 minutes and 10 seconds to execute.
+[runner] tare_scenarios_v3_1.ipynb cell 27 done in 0.0 s (memory 0.4 GB)
+DataFrames with econ_adopter columns: ['df', '_df', 'df_results_export']
+
+=== df ===
+                                                                    column  n_applicable  n_adopters  rate_%  weighted_rate_%
+             ref2025_mp4_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base          3406         527    15.5             15.5
+    ref2025_mp4_heatingLCC_coolingLCC_sub_june2026_econ_adopter_fixed_base          3406         366    10.7             10.7
+       ref2025_mp4_heatingLCC_coolingLCC_sub_local_econ_adopter_fixed_base          3406         892    26.2             26.2
+           ref2025_mp4_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base          3406         228     6.7              6.7
+         ref2025_mp4_heatingLCC_coolingSavings_sub_econ_adopter_fixed_base          3406         299     8.8              8.8
+ref2025_mp4_heatingLCC_coolingSavings_sub_june2026_econ_adopter_fixed_base          3406         230     6.8              6.8
+   ref2025_mp4_heatingLCC_coolingSavings_sub_local_econ_adopter_fixed_base          3406         406    11.9             11.9
+       ref2025_mp4_heatingLCC_coolingSavings_unsub_econ_adopter_fixed_base          3406         120     3.5              3.5
+         ref2025_mp4_heatingSavings_coolingLCC_sub_econ_adopter_fixed_base          3406         329     9.7              9.7
+ref2025_mp4_heatingSavings_coolingLCC_sub_june2026_econ_adopter_fixed_base          3406         264     7.8              7.8
+   ref2025_mp4_heatingSavings_coolingLCC_sub_local_econ_adopter_fixed_base          3406         432    12.7             12.7
+       ref2025_mp4_heatingSavings_coolingLCC_unsub_econ_adopter_fixed_base          3406         122     3.6              3.6
+
+=== _df ===
+                                                                    column  n_applicable  n_adopters  rate_%  weighted_rate_%
+             ref2025_mp3_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base          3406        1322    38.8             38.8
+    ref2025_mp3_heatingLCC_coolingLCC_sub_june2026_econ_adopter_fixed_base          3406         434    12.7             12.7
+       ref2025_mp3_heatingLCC_coolingLCC_sub_local_econ_adopter_fixed_base          3406        2026    59.5             59.5
+           ref2025_mp3_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base          3406         351    10.3             10.3
+         ref2025_mp3_heatingLCC_coolingSavings_sub_econ_adopter_fixed_base          3406         417    12.2             12.2
+ref2025_mp3_heatingLCC_coolingSavings_sub_june2026_econ_adopter_fixed_base          3406         286     8.4              8.4
+   ref2025_mp3_heatingLCC_coolingSavings_sub_local_econ_adopter_fixed_base          3406         745    21.9             21.9
+       ref2025_mp3_heatingLCC_coolingSavings_unsub_econ_adopter_fixed_base          3406         141     4.1              4.1
+         ref2025_mp3_heatingSavings_coolingLCC_sub_econ_adopter_fixed_base          3406         593    17.4             17.4
+ref2025_mp3_heatingSavings_coolingLCC_sub_june2026_econ_adopter_fixed_base          3406         325     9.5              9.5
+   ref2025_mp3_heatingSavings_coolingLCC_sub_local_econ_adopter_fixed_base          3406        1166    34.2             34.2
+       ref2025_mp3_heatingSavings_coolingLCC_unsub_econ_adopter_fixed_base          3406         166     4.9              4.9
+
+=== df_results_export ===
+                                                                    column  n_applicable  n_adopters  rate_%  weighted_rate_%
+             ref2025_mp3_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base          3406        1322    38.8             38.8
+    ref2025_mp3_heatingLCC_coolingLCC_sub_june2026_econ_adopter_fixed_base          3406         434    12.7             12.7
+       ref2025_mp3_heatingLCC_coolingLCC_sub_local_econ_adopter_fixed_base          3406        2026    59.5             59.5
+           ref2025_mp3_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base          3406         351    10.3             10.3
+         ref2025_mp3_heatingLCC_coolingSavings_sub_econ_adopter_fixed_base          3406         417    12.2             12.2
+ref2025_mp3_heatingLCC_coolingSavings_sub_june2026_econ_adopter_fixed_base          3406         286     8.4              8.4
+   ref2025_mp3_heatingLCC_coolingSavings_sub_local_econ_adopter_fixed_base          3406         745    21.9             21.9
+       ref2025_mp3_heatingLCC_coolingSavings_unsub_econ_adopter_fixed_base          3406         141     4.1              4.1
+         ref2025_mp3_heatingSavings_coolingLCC_sub_econ_adopter_fixed_base          3406         593    17.4             17.4
+ref2025_mp3_heatingSavings_coolingLCC_sub_june2026_econ_adopter_fixed_base          3406         325     9.5              9.5
+   ref2025_mp3_heatingSavings_coolingLCC_sub_local_econ_adopter_fixed_base          3406        1166    34.2             34.2
+       ref2025_mp3_heatingSavings_coolingLCC_unsub_econ_adopter_fixed_base          3406         166     4.9              4.9
+[runner] tare_scenarios_v3_1.ipynb cell 28 done in 0.1 s (memory 0.4 GB)
+ref2025_mp4_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base
+  counties=62  mean=32.7%  median=25.0%  min=0.0%  max=100.0%
+
+ref2025_mp4_heatingLCC_coolingLCC_sub_june2026_econ_adopter_fixed_base
+  counties=62  mean=17.7%  median=12.8%  min=0.0%  max=100.0%
+
+ref2025_mp4_heatingLCC_coolingLCC_sub_local_econ_adopter_fixed_base
+  counties=62  mean=41.9%  median=38.8%  min=14.3%  max=100.0%
+
+ref2025_mp4_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base
+  counties=62  mean=13.7%  median=9.2%  min=0.0%  max=100.0%
+
+ref2025_mp4_heatingLCC_coolingSavings_sub_econ_adopter_fixed_base
+  counties=62  mean=19.8%  median=16.2%  min=0.0%  max=100.0%
+
+ref2025_mp4_heatingLCC_coolingSavings_sub_june2026_econ_adopter_fixed_base
+  counties=62  mean=13.5%  median=7.0%  min=0.0%  max=100.0%
+
+ref2025_mp4_heatingLCC_coolingSavings_sub_local_econ_adopter_fixed_base
+  counties=62  mean=25.8%  median=25.0%  min=0.0%  max=100.0%
+
+ref2025_mp4_heatingLCC_coolingSavings_unsub_econ_adopter_fixed_base
+  counties=62  mean=9.7%  median=3.0%  min=0.0%  max=100.0%
+
+ref2025_mp4_heatingSavings_coolingLCC_sub_econ_adopter_fixed_base
+  counties=62  mean=19.8%  median=16.7%  min=0.0%  max=100.0%
+
+ref2025_mp4_heatingSavings_coolingLCC_sub_june2026_econ_adopter_fixed_base
+  counties=62  mean=14.2%  median=9.1%  min=0.0%  max=100.0%
+
+ref2025_mp4_heatingSavings_coolingLCC_sub_local_econ_adopter_fixed_base
+  counties=62  mean=26.1%  median=24.2%  min=0.0%  max=100.0%
+
+ref2025_mp4_heatingSavings_coolingLCC_unsub_econ_adopter_fixed_base
+  counties=62  mean=10.0%  median=3.2%  min=0.0%  max=100.0%
+
+[runner] tare_scenarios_v3_1.ipynb cell 29 done in 0.1 s (memory 0.4 GB)
+-- Scenario: 2025 Reference Case (mp4) --
+MP4 adopter column: ref2025_mp4_heatingLCC_coolingLCC_sub_june2026_econ_adopter_fixed_base
+
+--- June 2026 rebate funding by program (weighted $) ---
+         total_eligible  adopters_only
+program                               
+HEEHR       644422044.0    439642132.0
+HOMES        98789453.0     59079967.0
+
+--- June 2026 rebate funding by baseline fuel (weighted $) ---
+             total_eligible  adopters_only
+fuel                                      
+Electricity     743211497.0    498722099.0
+Fuel Oil                0.0            0.0
+Natural Gas             0.0            0.0
+Other Fuel              0.0            0.0
+Propane                 0.0            0.0
+
+[PASS] MP4 June 2026 fuel gate holds: fossil baselines $0, electric-resistance baselines funded, non-participating states $0.
+[runner] tare_scenarios_v3_1.ipynb cell 30 done in 0.0 s (memory 0.4 GB)
+[runner] end tare_scenarios_v3_1.ipynb (83.6 s)
+Model Run Complete for EUSS Measure Package: MP4
+
+    Preserving MP4 results by copying dataframe variables and re-assigning to MP-specific names.
+    This allows the scenarios file to be re-run for MP4 without overwriting previous model run data
+MP4 results preserved to MP-specific variable names.
+[runner] tare_run_simulation_v3_1.ipynb cell 14 done in 83.7 s (memory 0.5 GB)
+Exporting MP4 Supplemental Data...
+---------------------------------------------------------------------------------------------------------
+SUPPLEMENTAL DAMAGES: damages_climate_ref2025
+Saved to: mp4_damages_climate_ref2025_CO_2026-10-28_14-22.csv
+Full path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\supplemental_data_damages\damages_climate_ref2025\mp4_damages_climate_ref2025_CO_2026-10-28_14-22.csv
+--------------------------------------------------------------------------------------------------------- 
+
+---------------------------------------------------------------------------------------------------------
+SUPPLEMENTAL FUEL COSTS: fuel_costs_ref2025
+Saved to: mp4_fuel_costs_ref2025_CO_2026-10-28_14-22.csv
+Full path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\supplemental_data_fuelCosts\fuel_costs_ref2025\mp4_fuel_costs_ref2025_CO_2026-10-28_14-22.csv
+--------------------------------------------------------------------------------------------------------- 
+
+Exporting SUMMARY RESULTS for discount rate: fixed_base
+---------------------------------------------------------------------------------------------------------
+MEASURE PACKAGE 4 SUMMARY RESULTS:
+  Discount Rate: fixed_base
+Saved to: mp4_results_CO_2026-10-28_14-22.csv
+Full path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\retrofit_mp4_results\summary_mp4_fixed_base\mp4_results_CO_2026-10-28_14-22.csv
+--------------------------------------------------------------------------------------------------------- 
+
+================================================================================
+VERIFICATION: Cost Scenario Columns in MP4 Exported DataFrames
+================================================================================
+Active cost scenarios: ['v4MID']
+
+  [PASS] v4MID:
+    Cost column   (mp4_heating_upgrade_installed_cost_v4MID): [OK]
+    NPV heatingSavings_coolingLCC_sub (ref2025_mp4_heatingSavings_coolingLCC_sub_private_npv_fixed_base): [OK]
+    NPV heatingSavings_coolingLCC_unsub (ref2025_mp4_heatingSavings_coolingLCC_unsub_private_npv_fixed_base): [OK]
+    NPV heatingSavings_coolingLCC_sub_june2026 (ref2025_mp4_heatingSavings_coolingLCC_sub_june2026_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingSavings_sub (ref2025_mp4_heatingLCC_coolingSavings_sub_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingSavings_unsub (ref2025_mp4_heatingLCC_coolingSavings_unsub_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingSavings_sub_june2026 (ref2025_mp4_heatingLCC_coolingSavings_sub_june2026_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingLCC_sub (ref2025_mp4_heatingLCC_coolingLCC_sub_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingLCC_unsub (ref2025_mp4_heatingLCC_coolingLCC_unsub_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingLCC_sub_june2026 (ref2025_mp4_heatingLCC_coolingLCC_sub_june2026_private_npv_fixed_base): [OK]
+    NPV heatingSavings_coolingLCC_sub_local (ref2025_mp4_heatingSavings_coolingLCC_sub_local_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingSavings_sub_local (ref2025_mp4_heatingLCC_coolingSavings_sub_local_private_npv_fixed_base): [OK]
+    NPV heatingLCC_coolingLCC_sub_local (ref2025_mp4_heatingLCC_coolingLCC_sub_local_private_npv_fixed_base): [OK]
+
+Economic-adopter columns present: 12
+
+Total columns in DataFrame: 226
+================================================================================
+[runner] tare_run_simulation_v3_1.ipynb cell 15 done in 5.7 s (memory 0.5 GB)
+MP8 (ResStock 2022.1.1) skipped: this run uses ResStock 2022.1.1 with packages [0, 3, 4].
+[runner] tare_run_simulation_v3_1.ipynb cell 17 done in 0.0 s (memory 0.5 GB)
+[runner] tare_run_simulation_v3_1.ipynb cell 18 done in 0.0 s (memory 0.5 GB)
+MP9 (ResStock 2022.1.1) skipped: this run uses ResStock 2022.1.1 with packages [0, 3, 4].
+[runner] tare_run_simulation_v3_1.ipynb cell 20 done in 0.0 s (memory 0.5 GB)
+[runner] tare_run_simulation_v3_1.ipynb cell 21 done in 0.0 s (memory 0.5 GB)
+MP10 (ResStock 2022.1.1) skipped: this run uses ResStock 2022.1.1 with packages [0, 3, 4].
+[runner] tare_run_simulation_v3_1.ipynb cell 23 done in 0.0 s (memory 0.5 GB)
+[runner] tare_run_simulation_v3_1.ipynb cell 24 done in 0.0 s (memory 0.5 GB)
+MP5 (ResStock 2025.1) skipped: this run uses ResStock 2022.1.1 with packages [0, 3, 4].
+[runner] tare_run_simulation_v3_1.ipynb cell 26 done in 0.0 s (memory 0.5 GB)
+[runner] tare_run_simulation_v3_1.ipynb cell 27 done in 0.0 s (memory 0.5 GB)
+
+================================================================================
+ALL EXPORTS COMPLETE
+================================================================================
+Cost scenarios exported: ['v4MID']
+Discount rates: ['fixed_base']
+CSVs per MP: 1
+Total CSVs: 3 MPs x 1 = 3
+================================================================================
+[runner] tare_run_simulation_v3_1.ipynb cell 29 done in 0.0 s (memory 0.5 GB)
+[runner] end tare_run_simulation_v3_1.ipynb (376.1 s)
+[runner] tare_model_main_v3_1.ipynb cell 3 done in 376.1 s (memory 0.5 GB)
+
+    ====================================================================================================================================================================
+    LOAD SCENARIO DATA
+    ====================================================================================================================================================================
+    The load_model_run_output function loads scenario data from a specified folder and date. Additional details are provided below:
+
+    Documentation for the load_model_run_output function:
+    Load model run results from CSV files (reverse of export_model_run_output).
+
+    This function loads DataFrame results from CSV files organized by result type.
+    It mirrors the export_model_run_output() function exactly, using the same
+    parameters to construct the correct file path.
+
+    Args:
+        results_category: Category of results being loaded. Valid options:
+            - 'summary_baseline': Baseline summary results
+            - 'summary': Retrofit summary results (requires discount_rate)
+            - 'damages_climate_IRA', 'damages_climate_noIRA': Climate damages
+            - 'fuel_costs_IRA', 'fuel_costs_noIRA': Fuel costs
+        menu_mp: Measure package identifier (0 for baseline, VALID_MENU_MPS for retrofits).
+        output_folder_path: Base directory where results are stored.
+        location_id: Location identifier in the filename (e.g., 'National', 'PA', "Pittsburgh").
+        results_export_formatted_date: Date string in the filename (e.g., '2024-01-24_10-30').
+        discount_rate: Short key for discount rate method (e.g., 'fixed_base', 'variable').
+            Required when results_category='summary' and menu_mp != 0.
+        use_chunked_loading: Whether to load the file in chunks to reduce memory usage.
+        chunk_size: Number of rows to read per chunk when using chunked loading.
+
+    Returns:
+        DataFrame (df_model_run_output) containing the loaded data, or None if file not found or loading fails.
+
+    Raises:
+        ValueError: If any required parameter is missing, results_category is invalid,
+            or sensitivity parameters are missing when required.
+        FileNotFoundError: If the expected directory or file doesn't exist.
+
+    Example:
+        >>> # Load baseline
+        >>> df_output_baseline = load_model_run_output(
+        ...     results_category='summary_baseline',
+        ...     menu_mp=0,
+        ...     output_folder_path='./output_results',
+        ...     location_id='national',
+        ...     results_export_formatted_date='2024-01-24_10-30'
+        ... )
+        >>>
+        >>> # Load retrofit summary (with the discount rate key)
+        >>> df_output_mp9_fixed_base = load_model_run_output(
+        ...     results_category='summary',
+        ...     menu_mp=9,
+        ...     output_folder_path='./output_results',
+        ...     location_id='national',
+        ...     results_export_formatted_date='2024-01-24_10-30',
+        ...     discount_rate='fixed_base'
+        ... )
+    
+
+    -----------------------------------------------------------------------------------------------
+    LOADING SCENARIO DATA ...
+
+    These parameters are common to all function calls:
+    Output folder path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results
+    Model run date time: 2026-10-28_14-22
+    
+[runner] tare_model_main_v3_1.ipynb cell 4 done in 0.0 s (memory 0.5 GB)
+Loading baseline_results_CO_2026-10-28_14-22.csv in chunks of 10,000 rows...
+  Successfully combined 1 chunks into DataFrame with shape (6783, 81)
+Loaded: baseline_results_CO_2026-10-28_14-22.csv
+Shape: (6783, 81)
+
+Study sample: 3,406 rdu in 62 counties
+Loading MP3 data...
+  fixed_base: Loading mp3_results_CO_2026-10-28_14-22.csv in chunks of 10,000 rows...
+  Successfully combined 1 chunks into DataFrame with shape (6783, 226)
+Loaded: mp3_results_CO_2026-10-28_14-22.csv
+Shape: (6783, 226)
+
+[OK]
+MP3 loading complete!
+
+Loading MP4 data...
+  fixed_base: Loading mp4_results_CO_2026-10-28_14-22.csv in chunks of 10,000 rows...
+  Successfully combined 1 chunks into DataFrame with shape (6783, 226)
+Loaded: mp4_results_CO_2026-10-28_14-22.csv
+Shape: (6783, 226)
+
+[OK]
+MP4 loading complete!
+
+
+Loaded measure packages: [3, 4]
+[runner] tare_model_main_v3_1.ipynb cell 6 done in 0.9 s (memory 0.5 GB)
+        stage  rdu_count  weighted_count  Electricity_pct  Electricity ASHP_pct  Fuel Oil_pct  Natural Gas_pct  Propane_pct
+         load     548916    1.329096e+08        28.971464             11.159449      4.686692        47.710761     4.632221
+applicability     548916    1.329096e+08        28.971464             11.159449      4.686692        47.710761     4.632221
+    occupancy     482597    1.168517e+08        28.427446             10.850047      4.643833        49.013566     4.370520
+ housing_type     396252    9.594490e+07        24.547763             10.127646      5.005905        52.224342     5.205021
+exclude_AK_HI     396252    9.594490e+07        24.547763             10.127646      5.005905        52.224342     5.205021
+Baseline: 396,252 occupied SF rdu
+[WARN] County shapefile not loaded: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\data\shapefiles\cb_2021_us_county_500k\cb_2021_us_county_500k.shp: No such file or directory
+[runner] tare_model_main_v3_1.ipynb cell 9 done in 56.1 s (memory 1.4 GB)
+-- Scenario: 2025 Reference Case (mp3) --
+[SKIP] MP3: all economic-adopter columns already present
+-- Scenario: 2025 Reference Case (mp4) --
+[SKIP] MP4: all economic-adopter columns already present
+
+[OK] Economic-adopter columns present for all selected MPs
+[runner] tare_model_main_v3_1.ipynb cell 10 done in 0.0 s (memory 1.4 GB)
+ASHP upgrade population:      MP3 3,406 | MP4 3,406
+Central AC replacement pop.:  MP3 2,730 | MP4 2,730
+NG Furnace replacement pop.:  MP3 2,572 | MP4 2,572
+Saved: C:\Users\tamar\Documents\Research\cmu-tare-model\figures\capital_cost_consumption_size_distributions.png / .pdf
+<Figure size 8400x4800 with 12 Axes>
+
+##############################################################################################################
+#  CAPITAL COST VALIDATION: Equipment-Level Disaggregation (MP3)
+#  Active cost scenarios: ['v4MID']
+#  rdu in DataFrame: 6,783 | in the study sample: 3,406
+##############################################################################################################
+
+==============================================================================================================
+  Central AC — Centrally Ducted (Cooling Replacement)
+==============================================================================================================
+  Cost type: cooling replacement (like-for-like Central AC)
+  Filter: hvac_cooling_type = Central AC
+  SEER bins: cooling_replacement_pm2_euss (floored efficiency, see clamping summary)
+  Costs: computed using floored efficiency (see Section 5 of protocol)
+  v3 note: No v3 data exists for cooling replacement — v3 columns show N/A
+
+  Total rdu matching filter: 2,730
+  Outliers excluded from bins:
+    Capacity  < 1.5 tons: 1,477 rdu
+    Capacity >= 10.5 tons: 0 rdu
+    SEER  < 12.5: 0 rdu
+    SEER >= 30.5: 0 rdu
+
+  Efficiency floor impact on SEER 15 bin composition (2,730 rdu in bin):
+    8 SEER (56 / 2,730 rdu, 2.1%) --> 15 SEER (56 / 2,730 in bin, 2.1%)
+    10 SEER (472 / 2,730 rdu, 17.3%) --> 15 SEER (472 / 2,730 in bin, 17.3%)
+    13 SEER (1,471 / 2,730 rdu, 53.9%) --> 15 SEER (1,471 / 2,730 in bin, 53.9%)
+    15 SEER (original) (731 / 2,730 in bin, 26.8%)
+
+ Capacity (tons)  SEER v4MID N v4MID P10 v4MID P50 v4MID P90
+               2    15     874    $5,622    $5,777    $6,021
+               3    15     244    $6,142    $6,274    $6,537
+               4    15      86    $6,664    $6,807    $7,100
+               5    15      27    $7,195    $7,358    $7,557
+               6    15      11    $7,720    $7,898    $8,049
+               7    15       5    $8,278    $8,472    $8,629
+               8    15       5    $8,763    $8,835    $8,885
+               9    15       1    $9,612    $9,612    $9,612
+==============================================================================================================
+
+==============================================================================================================
+  Gas Furnace — Natural Gas (Heating Replacement)
+==============================================================================================================
+  Cost type: heating replacement (like-for-like furnace)
+  Filter: base_heating_fuel = Natural Gas, heating_type contains Furnace
+  AFUE bins: heating_replacement_pm2_euss (floored efficiency, see clamping summary)
+  Costs: computed using floored efficiency (see Section 5 of protocol)
+
+  Total rdu matching filter: 2,572
+  Outliers excluded from bins:
+    Capacity  < 35.0 kBTU/h: 589 rdu
+    Capacity >= 205.0 kBTU/h: 14 rdu
+    AFUE  < 77.5: 0 rdu
+    AFUE >= 98.5: 0 rdu
+
+  Efficiency floor impact on AFUE 80 bin composition (1,781 rdu in bin):
+    60 AFUE (23 / 2,572 rdu, 0.9%) --> 80 AFUE (23 / 1,781 in bin, 1.3%)
+    76 AFUE (233 / 2,572 rdu, 9.1%) --> 80 AFUE (233 / 1,781 in bin, 13.1%)
+    80 AFUE (original) (1,525 / 1,781 in bin, 85.6%)
+
+ Capacity (kBTU/h)  AFUE v4MID N v4MID P10 v4MID P50 v4MID P90
+                40    80     269    $3,309    $3,333    $3,361
+                40    92     122    $3,879    $3,904    $3,931
+                50    80     243    $3,374    $3,399    $3,429
+                50    92     103    $3,946    $3,972    $4,002
+                60    80     209    $3,444    $3,467    $3,499
+                60    92     106    $4,015    $4,037    $4,072
+                70    80     148    $3,515    $3,539    $3,567
+                70    92      85    $4,081    $4,101    $4,133
+                80    80     134    $3,578    $3,604    $3,635
+                80    92      43    $4,154    $4,169    $4,206
+                90    80     100    $3,649    $3,676    $3,703
+                90    92      42    $4,216    $4,241    $4,271
+               100    80      75    $3,716    $3,743    $3,772
+               100    92      32    $4,286    $4,311    $4,339
+               110    80      64    $3,785    $3,811    $3,839
+               110    92      24    $4,359    $4,386    $4,411
+               120    80      41    $3,855    $3,869    $3,898
+               120    92      22    $4,424    $4,448    $4,469
+               130    80      22    $3,918    $3,946    $3,972
+               130    92       9    $4,488    $4,504    $4,525
+               140    80      17    $3,993    $4,021    $4,030
+               140    92       6    $4,575    $4,592    $4,605
+               150    80      11    $4,072    $4,098    $4,108
+               150    92       2    $4,632    $4,652    $4,671
+               160    80      15    $4,122    $4,154    $4,173
+               160    92       2    $4,712    $4,713    $4,714
+               170    80       8    $4,202    $4,228    $4,241
+               170    92       1    $4,815    $4,815    $4,815
+               180    80       6    $4,280    $4,297    $4,311
+               180    92       1    $4,859    $4,859    $4,859
+               190    80       1    $4,327    $4,327    $4,327
+               200    80       5    $4,399    $4,404    $4,430
+               200    92       1    $4,992    $4,992    $4,992
+==============================================================================================================
+
+==============================================================================================================
+  Propane Furnace (Heating Replacement)
+==============================================================================================================
+  Cost type: heating replacement (like-for-like furnace)
+  Filter: base_heating_fuel = Propane, heating_type contains Furnace
+  AFUE bins: heating_replacement_pm2_euss (floored efficiency, see clamping summary)
+  Costs: computed using floored efficiency (see Section 5 of protocol)
+
+  Total rdu matching filter: 177
+  Outliers excluded from bins:
+    Capacity  < 35.0 kBTU/h: 38 rdu
+    Capacity >= 205.0 kBTU/h: 0 rdu
+    AFUE  < 77.5: 0 rdu
+    AFUE >= 98.5: 0 rdu
+
+  Efficiency floor impact on AFUE 80 bin composition (131 rdu in bin):
+    60 AFUE (2 / 177 rdu, 1.1%) --> 80 AFUE (2 / 131 in bin, 1.5%)
+    76 AFUE (12 / 177 rdu, 6.8%) --> 80 AFUE (12 / 131 in bin, 9.2%)
+    80 AFUE (original) (117 / 131 in bin, 89.3%)
+
+ Capacity (kBTU/h)  AFUE v4MID N v4MID P10 v4MID P50 v4MID P90
+                40    80      16    $3,314    $3,326    $3,365
+                40    92       7    $3,884    $3,910    $3,924
+                50    80      21    $3,375    $3,401    $3,427
+                50    92       4    $3,949    $3,982    $4,000
+                60    80      13    $3,442    $3,454    $3,478
+                60    92       7    $4,019    $4,063    $4,069
+                70    80      14    $3,511    $3,542    $3,556
+                70    92       5    $4,078    $4,090    $4,123
+                80    80       8    $3,578    $3,593    $3,619
+                80    92       2    $4,164    $4,168    $4,172
+                90    80       6    $3,656    $3,677    $3,690
+                90    92       6    $4,225    $4,237    $4,252
+               100    80       7    $3,715    $3,721    $3,757
+               100    92       2    $4,282    $4,282    $4,282
+               110    80       4    $3,787    $3,795    $3,817
+               110    92       1    $4,393    $4,393    $4,393
+               120    80       3    $3,849    $3,858    $3,890
+               120    92       1    $4,441    $4,441    $4,441
+               130    80       6    $3,931    $3,957    $3,971
+               130    92       1    $4,491    $4,491    $4,491
+               140    80       2    $3,983    $3,987    $3,990
+               150    80       1    $4,054    $4,054    $4,054
+               170    80       1    $4,237    $4,237    $4,237
+               200    80       1    $4,420    $4,420    $4,420
+==============================================================================================================
+
+==============================================================================================================
+  ASHP — Air Source Heat Pump (Heating Upgrade)
+==============================================================================================================
+  Cost type: heating upgrade (new ASHP installation)
+  Filter: all homes with valid heating_upgrade_pm2_euss
+  SEER source: heating_upgrade_pm2_euss (MP-defined upgrade efficiency)
+  Costs: computed using floored efficiency (see Section 5 of protocol)
+
+  Total rdu matching filter: 3,406
+  Outliers excluded from bins:
+    Capacity  < 1.5 tons: 959 rdu
+    Capacity >= 10.5 tons: 99 rdu
+    SEER  < 12.5: 0 rdu
+    SEER >= 30.5: 0 rdu
+
+ Capacity (tons)  SEER v4MID N v4MID P10 v4MID P50 v4MID P90
+               2    16   1,170   $12,688   $13,344   $14,019
+               3    16     632   $14,335   $14,905   $15,649
+               4    16     254   $15,982   $16,581   $17,485
+               5    16     124   $17,792   $18,672   $27,618
+               6    16      63   $19,461   $20,747   $32,810
+               7    16      43   $21,308   $35,180   $37,910
+               8    16      21   $23,181   $40,761   $43,055
+               9    16      22   $24,748   $45,536   $47,867
+              10    16      19   $50,521   $51,881   $53,752
+==============================================================================================================
+
+==============================================================================================================
+  Central AC (Cooling Upgrade)
+==============================================================================================================
+  Cost type: cooling upgrade
+  Filter: all homes with valid cooling_upgrade_pm2_euss
+  SEER source: cooling_upgrade_pm2_euss (MP-defined upgrade efficiency)
+  Costs: computed using floored efficiency (see Section 5 of protocol)
+  v3 note: No v3 data exists for cooling upgrade — v3 columns show N/A
+
+  No matching rdu found in the DataFrame for this equipment type.
+==============================================================================================================
+
+##############################################################################################################
+#  VALIDATION SUMMARY
+#  Study-sample rdu: 3,406
+##############################################################################################################
+  Central AC (Cooling Replacement)               8/8 bins with data  |  1,253 rdu matched  |  36.8% of sample rdu  |  45.9% of 2,730 filtered
+  Gas Furnace (Heating Replacement)              33/33 bins with data  |  1,969 rdu matched  |  57.8% of sample rdu  |  76.6% of 2,572 filtered
+  Propane Furnace (Heating Replacement)          24/24 bins with data  |  139 rdu matched  |  4.1% of sample rdu  |  78.5% of 177 filtered
+  ASHP (Heating Upgrade)                         9/9 bins with data  |  2,348 rdu matched  |  68.9% of sample rdu  |  68.9% of 3,406 filtered
+  Central AC (Cooling Upgrade)                   No matching rdu
+##############################################################################################################
+
+
+##############################################################################################################
+#  CAPITAL COST VALIDATION: Equipment-Level Disaggregation (MP4)
+#  Active cost scenarios: ['v4MID']
+#  rdu in DataFrame: 6,783 | in the study sample: 3,406
+##############################################################################################################
+
+==============================================================================================================
+  Central AC — Centrally Ducted (Cooling Replacement)
+==============================================================================================================
+  Cost type: cooling replacement (like-for-like Central AC)
+  Filter: hvac_cooling_type = Central AC
+  SEER bins: cooling_replacement_pm2_euss (floored efficiency, see clamping summary)
+  Costs: computed using floored efficiency (see Section 5 of protocol)
+  v3 note: No v3 data exists for cooling replacement — v3 columns show N/A
+
+  Total rdu matching filter: 2,730
+  Outliers excluded from bins:
+    Capacity  < 1.5 tons: 1,477 rdu
+    Capacity >= 10.5 tons: 0 rdu
+    SEER  < 12.5: 0 rdu
+    SEER >= 30.5: 0 rdu
+
+  Efficiency floor impact on SEER 15 bin composition (2,730 rdu in bin):
+    8 SEER (56 / 2,730 rdu, 2.1%) --> 15 SEER (56 / 2,730 in bin, 2.1%)
+    10 SEER (472 / 2,730 rdu, 17.3%) --> 15 SEER (472 / 2,730 in bin, 17.3%)
+    13 SEER (1,471 / 2,730 rdu, 53.9%) --> 15 SEER (1,471 / 2,730 in bin, 53.9%)
+    15 SEER (original) (731 / 2,730 in bin, 26.8%)
+
+ Capacity (tons)  SEER v4MID N v4MID P10 v4MID P50 v4MID P90
+               2    15     874    $5,622    $5,777    $6,021
+               3    15     244    $6,142    $6,274    $6,537
+               4    15      86    $6,664    $6,807    $7,100
+               5    15      27    $7,195    $7,358    $7,557
+               6    15      11    $7,720    $7,898    $8,049
+               7    15       5    $8,278    $8,472    $8,629
+               8    15       5    $8,763    $8,835    $8,885
+               9    15       1    $9,612    $9,612    $9,612
+==============================================================================================================
+
+==============================================================================================================
+  Gas Furnace — Natural Gas (Heating Replacement)
+==============================================================================================================
+  Cost type: heating replacement (like-for-like furnace)
+  Filter: base_heating_fuel = Natural Gas, heating_type contains Furnace
+  AFUE bins: heating_replacement_pm2_euss (floored efficiency, see clamping summary)
+  Costs: computed using floored efficiency (see Section 5 of protocol)
+
+  Total rdu matching filter: 2,572
+  Outliers excluded from bins:
+    Capacity  < 35.0 kBTU/h: 589 rdu
+    Capacity >= 205.0 kBTU/h: 14 rdu
+    AFUE  < 77.5: 0 rdu
+    AFUE >= 98.5: 0 rdu
+
+  Efficiency floor impact on AFUE 80 bin composition (1,781 rdu in bin):
+    60 AFUE (23 / 2,572 rdu, 0.9%) --> 80 AFUE (23 / 1,781 in bin, 1.3%)
+    76 AFUE (233 / 2,572 rdu, 9.1%) --> 80 AFUE (233 / 1,781 in bin, 13.1%)
+    80 AFUE (original) (1,525 / 1,781 in bin, 85.6%)
+
+ Capacity (kBTU/h)  AFUE v4MID N v4MID P10 v4MID P50 v4MID P90
+                40    80     269    $3,309    $3,333    $3,361
+                40    92     122    $3,879    $3,904    $3,931
+                50    80     243    $3,374    $3,399    $3,429
+                50    92     103    $3,946    $3,972    $4,002
+                60    80     209    $3,444    $3,467    $3,499
+                60    92     106    $4,015    $4,037    $4,072
+                70    80     148    $3,515    $3,539    $3,567
+                70    92      85    $4,081    $4,101    $4,133
+                80    80     134    $3,578    $3,604    $3,635
+                80    92      43    $4,154    $4,169    $4,206
+                90    80     100    $3,649    $3,676    $3,703
+                90    92      42    $4,216    $4,241    $4,271
+               100    80      75    $3,716    $3,743    $3,772
+               100    92      32    $4,286    $4,311    $4,339
+               110    80      64    $3,785    $3,811    $3,839
+               110    92      24    $4,359    $4,386    $4,411
+               120    80      41    $3,855    $3,869    $3,898
+               120    92      22    $4,424    $4,448    $4,469
+               130    80      22    $3,918    $3,946    $3,972
+               130    92       9    $4,488    $4,504    $4,525
+               140    80      17    $3,993    $4,021    $4,030
+               140    92       6    $4,575    $4,592    $4,605
+               150    80      11    $4,072    $4,098    $4,108
+               150    92       2    $4,632    $4,652    $4,671
+               160    80      15    $4,122    $4,154    $4,173
+               160    92       2    $4,712    $4,713    $4,714
+               170    80       8    $4,202    $4,228    $4,241
+               170    92       1    $4,815    $4,815    $4,815
+               180    80       6    $4,280    $4,297    $4,311
+               180    92       1    $4,859    $4,859    $4,859
+               190    80       1    $4,327    $4,327    $4,327
+               200    80       5    $4,399    $4,404    $4,430
+               200    92       1    $4,992    $4,992    $4,992
+==============================================================================================================
+
+==============================================================================================================
+  Propane Furnace (Heating Replacement)
+==============================================================================================================
+  Cost type: heating replacement (like-for-like furnace)
+  Filter: base_heating_fuel = Propane, heating_type contains Furnace
+  AFUE bins: heating_replacement_pm2_euss (floored efficiency, see clamping summary)
+  Costs: computed using floored efficiency (see Section 5 of protocol)
+
+  Total rdu matching filter: 177
+  Outliers excluded from bins:
+    Capacity  < 35.0 kBTU/h: 38 rdu
+    Capacity >= 205.0 kBTU/h: 0 rdu
+    AFUE  < 77.5: 0 rdu
+    AFUE >= 98.5: 0 rdu
+
+  Efficiency floor impact on AFUE 80 bin composition (131 rdu in bin):
+    60 AFUE (2 / 177 rdu, 1.1%) --> 80 AFUE (2 / 131 in bin, 1.5%)
+    76 AFUE (12 / 177 rdu, 6.8%) --> 80 AFUE (12 / 131 in bin, 9.2%)
+    80 AFUE (original) (117 / 131 in bin, 89.3%)
+
+ Capacity (kBTU/h)  AFUE v4MID N v4MID P10 v4MID P50 v4MID P90
+                40    80      16    $3,314    $3,326    $3,365
+                40    92       7    $3,884    $3,910    $3,924
+                50    80      21    $3,375    $3,401    $3,427
+                50    92       4    $3,949    $3,982    $4,000
+                60    80      13    $3,442    $3,454    $3,478
+                60    92       7    $4,019    $4,063    $4,069
+                70    80      14    $3,511    $3,542    $3,556
+                70    92       5    $4,078    $4,090    $4,123
+                80    80       8    $3,578    $3,593    $3,619
+                80    92       2    $4,164    $4,168    $4,172
+                90    80       6    $3,656    $3,677    $3,690
+                90    92       6    $4,225    $4,237    $4,252
+               100    80       7    $3,715    $3,721    $3,757
+               100    92       2    $4,282    $4,282    $4,282
+               110    80       4    $3,787    $3,795    $3,817
+               110    92       1    $4,393    $4,393    $4,393
+               120    80       3    $3,849    $3,858    $3,890
+               120    92       1    $4,441    $4,441    $4,441
+               130    80       6    $3,931    $3,957    $3,971
+               130    92       1    $4,491    $4,491    $4,491
+               140    80       2    $3,983    $3,987    $3,990
+               150    80       1    $4,054    $4,054    $4,054
+               170    80       1    $4,237    $4,237    $4,237
+               200    80       1    $4,420    $4,420    $4,420
+==============================================================================================================
+
+==============================================================================================================
+  ASHP — Air Source Heat Pump (Heating Upgrade)
+==============================================================================================================
+  Cost type: heating upgrade (new ASHP installation)
+  Filter: all homes with valid heating_upgrade_pm2_euss
+  SEER source: heating_upgrade_pm2_euss (MP-defined upgrade efficiency)
+  Costs: computed using floored efficiency (see Section 5 of protocol)
+
+  Total rdu matching filter: 3,406
+  Outliers excluded from bins:
+    Capacity  < 1.5 tons: 839 rdu
+    Capacity >= 10.5 tons: 20 rdu
+    SEER  < 12.5: 0 rdu
+    SEER >= 30.5: 0 rdu
+
+ Capacity (tons)  SEER v4MID N v4MID P10 v4MID P50 v4MID P90
+               2    24   1,218   $20,222   $20,884   $21,564
+               2    29      25   $14,143   $15,808   $17,508
+               3    24     669   $21,848   $22,405   $23,136
+               3    29      56   $18,522   $20,490   $22,414
+               4    24     241   $23,566   $24,101   $24,943
+               4    29      52   $23,020   $24,830   $27,066
+               5    24      86   $25,219   $25,804   $26,672
+               5    29      28   $28,611   $30,790   $32,280
+               6    24      42   $26,908   $27,552   $28,214
+               6    29      32   $33,179   $35,372   $37,026
+               7    24      20   $28,868   $29,455   $30,007
+               7    29      29   $37,915   $39,752   $41,672
+               8    24       6   $30,258   $30,708   $31,515
+               8    29      12   $43,192   $45,008   $47,265
+               9    24       7   $31,982   $32,701   $33,207
+               9    29      14   $48,240   $49,911   $51,406
+              10    24       1   $33,931   $33,931   $33,931
+              10    29       9   $53,126   $53,911   $56,438
+==============================================================================================================
+
+==============================================================================================================
+  Central AC (Cooling Upgrade)
+==============================================================================================================
+  Cost type: cooling upgrade
+  Filter: all homes with valid cooling_upgrade_pm2_euss
+  SEER source: cooling_upgrade_pm2_euss (MP-defined upgrade efficiency)
+  Costs: computed using floored efficiency (see Section 5 of protocol)
+  v3 note: No v3 data exists for cooling upgrade — v3 columns show N/A
+
+  No matching rdu found in the DataFrame for this equipment type.
+==============================================================================================================
+
+##############################################################################################################
+#  VALIDATION SUMMARY
+#  Study-sample rdu: 3,406
+##############################################################################################################
+  Central AC (Cooling Replacement)               8/8 bins with data  |  1,253 rdu matched  |  36.8% of sample rdu  |  45.9% of 2,730 filtered
+  Gas Furnace (Heating Replacement)              33/33 bins with data  |  1,969 rdu matched  |  57.8% of sample rdu  |  76.6% of 2,572 filtered
+  Propane Furnace (Heating Replacement)          24/24 bins with data  |  139 rdu matched  |  4.1% of sample rdu  |  78.5% of 177 filtered
+  ASHP (Heating Upgrade)                         18/18 bins with data  |  2,547 rdu matched  |  74.8% of sample rdu  |  74.8% of 3,406 filtered
+  Central AC (Cooling Upgrade)                   No matching rdu
+##############################################################################################################
+
+[runner] tare_model_main_v3_1.ipynb cell 11 done in 16.0 s (memory 2.2 GB)
+
+============================================================
+Economic Adoption Rate -- 2025 Reference Case
+============================================================
+
+===== Single-stage, minimum-efficiency heat pump =====
+-- Scenario: 2025 Reference Case (mp3) --
+  Adoption column: ref2025_mp3_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base
+Counties with data: 62 / 62
+Mean counties adoption rate: 20.7%
+
+===== Variable-speed, high-efficiency heat pump =====
+-- Scenario: 2025 Reference Case (mp4) --
+  Adoption column: ref2025_mp4_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base
+Counties with data: 62 / 62
+Mean counties adoption rate: 13.7%
+
+[OK] Economic adoption rate complete (county-level)
+[runner] tare_model_main_v3_1.ipynb cell 12 done in 0.0 s (memory 2.2 GB)
+[WARN] Adoption choropleth skipped -- county shapefile not available
+[runner] tare_model_main_v3_1.ipynb cell 13 done in 0.0 s (memory 2.2 GB)
+-- Scenario: 2025 Reference Case (mp3) --
+-- Scenario: 2025 Reference Case (mp3) --
+--- MP3 economic adoption summary (National, unsubsidized) ---
+  Heating Replacement Cost Offset: 4.1%
+  Cooling Replacement Cost Offset: 4.9%
+  Heating + Cooling Replacement Cost Offset: 10.3%
+
+-- Scenario: 2025 Reference Case (mp4) --
+-- Scenario: 2025 Reference Case (mp4) --
+--- MP4 economic adoption summary (National, unsubsidized) ---
+  Heating Replacement Cost Offset: 3.5%
+  Cooling Replacement Cost Offset: 3.6%
+  Heating + Cooling Replacement Cost Offset: 6.7%
+
+[OK] Saved figure6_econ_adoption_dotplot_CO.png / .pdf to C:\Users\tamar\Documents\Research\cmu-tare-model\figures
+<Figure size 3600x3600 with 2 Axes>
+[runner] tare_model_main_v3_1.ipynb cell 15 done in 4.8 s (memory 2.4 GB)
+-- Scenario: 2025 Reference Case (mp3) --
+-- Scenario: 2025 Reference Case (mp3) --
+--- MP3 adoption by rebate policy scenario (heatingLCC_coolingLCC) ---
+  Unsubsidized: 10.3%
+  2024 Rebate: 38.8%
+  2026 Rebate w/o fuel switching: 12.7%
+
+-- Scenario: 2025 Reference Case (mp4) --
+-- Scenario: 2025 Reference Case (mp4) --
+--- MP4 adoption by rebate policy scenario (heatingLCC_coolingLCC) ---
+  Unsubsidized: 6.7%
+  2024 Rebate: 15.5%
+  2026 Rebate w/o fuel switching: 10.7%
+
+[OK] Saved econ_adoption_dotplot_rebate_policy_scenario_heatingLCC_coolingLCC.png / .pdf to C:\Users\tamar\Documents\Research\cmu-tare-model\figures
+<Figure size 3600x3600 with 2 Axes>
+[runner] tare_model_main_v3_1.ipynb cell 17 done in 4.6 s (memory 2.6 GB)
+Loading MP3 (upgrade03)...
+        stage  rdu_count  weighted_count  Electricity_pct  Electricity ASHP_pct  Fuel Oil_pct  Natural Gas_pct  Propane_pct
+         load     548916    1.329096e+08        28.971464             11.159449      4.686692        47.710761     4.632221
+applicability     548260    1.327507e+08        28.886477             11.172801      4.692299        47.767847     4.637763
+    occupancy     482050    1.167193e+08        28.346230             10.862359      4.649103        49.069184     4.375480
+ housing_type     396122    9.591342e+07        24.523000             10.130970      5.007548        52.241481     5.206729
+exclude_AK_HI     396122    9.591342e+07        24.523000             10.130970      5.007548        52.241481     5.206729
+  MP3: 396,122 applicable rdu
+Loading MP4 (upgrade04)...
+        stage  rdu_count  weighted_count  Electricity_pct  Electricity ASHP_pct  Fuel Oil_pct  Natural Gas_pct  Propane_pct
+         load     548916    1.329096e+08        28.971464             11.159449      4.686692        47.710761     4.632221
+applicability     548260    1.327507e+08        28.886477             11.172801      4.692299        47.767847     4.637763
+    occupancy     482050    1.167193e+08        28.346230             10.862359      4.649103        49.069184     4.375480
+ housing_type     396122    9.591342e+07        24.523000             10.130970      5.007548        52.241481     5.206729
+exclude_AK_HI     396122    9.591342e+07        24.523000             10.130970      5.007548        52.241481     5.206729
+  MP4: 396,122 applicable rdu
+
+============================================================
+OPERATING COST % CHANGE -- average annual, all fuels, 100% adoption
+============================================================
+
+===== Single-stage, minimum-efficiency heat pump =====
+-- Scenario: 2025 Reference Case (mp3) --
+  Per-home valid records: 3,406 | Counties: 62
+
+===== Variable-speed, high-efficiency heat pump =====
+-- Scenario: 2025 Reference Case (mp4) --
+  Per-home valid records: 3,406 | Counties: 62
+
+============================================================
+DEMAND CHANGE -- all fuels, 100% adoption
+============================================================
+
+===== Single-stage, minimum-efficiency heat pump =====
+[OK] Demand accounting check passed
+
+===== Variable-speed, high-efficiency heat pump =====
+[OK] Demand accounting check passed
+
+============================================================
+DEMAND BREAKDOWN -- GWh at 100% adoption, study sample
+============================================================
+                                        MP3         MP4
+Baseline electricity              9,081.261   9,081.261
+Net heating                       6,272.750   3,359.685
+Net cooling                         146.599    -343.208
+Net hot water                        -0.085      -0.019
+Other end uses                       -0.003      -0.002
+Post-retrofit electricity        15,500.523  12,097.717
+Net change                        6,419.261   3,016.456
+Net heating, Electricity homes     -766.175  -1,096.972
+Net heating, Fuel Oil homes          10.152       7.531
+Net heating, Natural Gas homes    6,555.337   4,147.370
+Net heating, Propane homes          473.436     301.757
+Baseline site energy (all fuels) 27,933.203  27,933.203
+Site energy change (all fuels)   -8,490.124 -11,891.646
+Site energy change (%)              -30.394     -42.572
+[runner] tare_model_main_v3_1.ipynb cell 19 done in 161.3 s (memory 4.8 GB)
+[runner] tare_model_main_v3_1.ipynb cell 20 done in 0.0 s (memory 4.8 GB)
+[runner] tare_model_main_v3_1.ipynb cell 21 done in 0.0 s (memory 4.8 GB)
+[runner] tare_model_main_v3_1.ipynb cell 22 done in 0.0 s (memory 4.8 GB)
+[OK] MP3: home_count agrees in all 62 counties.
+[OK] MP4: home_count agrees in all 62 counties.
+Loading mp3_fuel_costs_ref2025_CO_2026-10-28_14-22.csv in chunks of 50,000 rows...
+  Successfully combined 1 chunks into DataFrame with shape (6783, 291)
+Loaded: mp3_fuel_costs_ref2025_CO_2026-10-28_14-22.csv
+Shape: (6783, 291)
+
+---------------------------------------------------------------------------------------------------------
+-- Scenario: 2025 Reference Case (mp3) --
+-- Scenario: 2025 Reference Case (mp3) --
+-- Scenario: 2025 Reference Case (mp3) --
+-- Scenario: 2025 Reference Case (mp3) --
+-- Scenario: 2025 Reference Case (mp3) --
+[OK] Tepper household export written
+     MP3 | 3,406 rows x 167 columns (+ bldg_id index)
+     Path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\tepper_export\tepper_household_mp3_CO_2026-10-28_14-22.csv
+[OK] Tepper household export written
+     MP3 | 3,406 rows x 317 columns (+ bldg_id index)
+     Path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\tepper_export\tepper_household_detailed_mp3_CO_2026-10-28_14-22.csv
+--------------------------------------------------------------------------------------------------------- 
+
+---------------------------------------------------------------------------------------------------------
+[OK] Tepper county export written
+     MP3 | 62 counties x 11 columns
+     Path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\tepper_export\tepper_county_mp3_CO_2026-10-28_14-22.csv
+--------------------------------------------------------------------------------------------------------- 
+
+[INFO] MP3: no rdu match county = 'G4200030'; skipping the Allegheny files.
+Loading mp4_fuel_costs_ref2025_CO_2026-10-28_14-22.csv in chunks of 50,000 rows...
+  Successfully combined 1 chunks into DataFrame with shape (6783, 291)
+Loaded: mp4_fuel_costs_ref2025_CO_2026-10-28_14-22.csv
+Shape: (6783, 291)
+
+---------------------------------------------------------------------------------------------------------
+-- Scenario: 2025 Reference Case (mp4) --
+-- Scenario: 2025 Reference Case (mp4) --
+-- Scenario: 2025 Reference Case (mp4) --
+-- Scenario: 2025 Reference Case (mp4) --
+-- Scenario: 2025 Reference Case (mp4) --
+[OK] Tepper household export written
+     MP4 | 3,406 rows x 167 columns (+ bldg_id index)
+     Path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\tepper_export\tepper_household_mp4_CO_2026-10-28_14-22.csv
+[OK] Tepper household export written
+     MP4 | 3,406 rows x 317 columns (+ bldg_id index)
+     Path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\tepper_export\tepper_household_detailed_mp4_CO_2026-10-28_14-22.csv
+--------------------------------------------------------------------------------------------------------- 
+
+---------------------------------------------------------------------------------------------------------
+[OK] Tepper county export written
+     MP4 | 62 counties x 11 columns
+     Path: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\tepper_export\tepper_county_mp4_CO_2026-10-28_14-22.csv
+--------------------------------------------------------------------------------------------------------- 
+
+[INFO] MP4: no rdu match county = 'G4200030'; skipping the Allegheny files.
+
+Tepper exports written to: C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\tepper_export
+[OK] Source data copied for readers
+     3 files, unchanged -> C:\Users\tamar\Documents\Research\cmu-tare-model\cmu_tare_model\output_results\tepper_export\source_data
+[runner] tare_model_main_v3_1.ipynb cell 23 done in 6.9 s (memory 4.4 GB)
+NG Furnace baseline population: 2,572 | ASHP upgrade population: MP3 3,406 | MP4 3,406
+<Figure size 7200x2400 with 3 Axes>
+[runner] tare_model_main_v3_1.ipynb cell 24 done in 0.8 s (memory 4.5 GB)
+NG Furnace baseline population: 2,572 | ASHP upgrade population: MP3 3,406 | MP4 3,406
+<Figure size 7200x2400 with 3 Axes>
+[runner] tare_model_main_v3_1.ipynb cell 25 done in 0.8 s (memory 4.5 GB)
+ASHP upgrade population: MP3 3,406 rdu | MP4 3,406 rdu
+
+Heating consumption summary (kWh, all baseline fuels):
+                                        N (rdu)   Mean  Min (P2.5)   P25   P50    P75  Max (P97.5)
+ASHP Primary Heating Consumption (MP3)     3406  4,634         987 2,519 3,996  5,938       12,159
+ASHP Total Heating Consumption (MP3)       3406 10,137       1,438 4,592 8,061 13,165       31,146
+ASHP Primary Heating Consumption (MP4)     3406  3,641         615 1,876 3,086  4,734        9,841
+ASHP Total Heating Consumption (MP4)       3406  6,605         764 2,692 4,994  8,496       21,682
+<Figure size 7200x4800 with 4 Axes>
+[runner] tare_model_main_v3_1.ipynb cell 26 done in 1.2 s (memory 4.7 GB)
+[OK] MP3: adoption column ref2025_mp3_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base
+     Counties: 62 | all_filtered: 3,406 | constrained (NPV>=0): 1,322
+[OK] MP4: adoption column ref2025_mp4_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base
+     Counties: 62 | all_filtered: 3,406 | constrained (NPV>=0): 527
+
+[OK] adopter_ids_by_mp built for MPs: [3, 4]
+[runner] tare_model_main_v3_1.ipynb cell 28 done in 0.1 s (memory 4.7 GB)
+[SKIP] BSQ / AWS diagnostic not run. Set RUN_BSQ_DIAGNOSTIC = True above to troubleshoot the AWS setup.
+[runner] tare_model_main_v3_1.ipynb cell 30 done in 0.0 s (memory 4.7 GB)
+[OK] Custom weighting: 78 of 169 matched buildings are in the study sample.
+[OK] Custom weighting: 78 representative buildings matched from tax-parcel data (22,277 real parcels total).
+[runner] tare_model_main_v3_1.ipynb cell 32 done in 0.1 s (memory 4.7 GB)
+INFO:botocore.credentials:Found credentials in shared credentials file: ~/.aws/credentials
+INFO:botocore.credentials:Found credentials in shared credentials file: ~/.aws/credentials
+INFO:botocore.credentials:Found credentials in shared credentials file: ~/.aws/credentials
+[OK] BuildStockQuery initialized: BuildStockQuery
+
+Querying baseline timeseries (upgrade=0)...
+
+========== df_ts_baseline_case_study summary ==========
+  Rows       : 683,280
+  Buildings  : 78
+  Hours/bldg : 8,760 - 8,760
+  kWh range  : 0.128 to 33.213
+  Query time : 25.74 s
+[OK] Step 5 PASSED
+
+Querying upgrade timeseries (upgrade=3)...
+
+========== df_ts_upgrade_case_study (MP3) summary ==========
+  Rows       : 683,280
+  Buildings  : 78
+  Hours/bldg : 8,760 - 8,760
+  kWh range  : 0.128 to 41.152
+  Query time : 3.64 s
+
+Querying upgrade timeseries (upgrade=4)...
+
+========== df_ts_upgrade_case_study (MP4) summary ==========
+  Rows       : 683,280
+  Buildings  : 78
+  Hours/bldg : 8,760 - 8,760
+  kWh range  : 0.128 to 41.097
+  Query time : 3.74 s
+[OK] Step 6 PASSED
+[OK] Query cache saved to disk (.bsq_cache/)
+[runner] tare_model_main_v3_1.ipynb cell 33 done in 51.0 s (memory 5.7 GB)
+Grid impact base case (constrained adopters): heatingLCC_coolingLCC_sub
+Custom weighting: True
+
+Computing county profiles for MP3 (adopter column: ref2025_mp3_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base)...
+
+Case-study peak results (MP3)
+  [100pct] adopters: 78 / 78
+    adoption      : 100.0%
+    baseline peak : 53.56 MW @ hour 4530
+    scenario peak : 242.74 MW @ hour 1210
+    delta         : +189.17 MW
+  [constrained] adopters: 29 / 78
+    adoption      : 37.2%
+    baseline peak : 53.56 MW @ hour 4530
+    scenario peak : 92.34 MW @ hour 1210
+    delta         : +38.78 MW
+
+Computing county profiles for MP4 (adopter column: ref2025_mp4_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base)...
+
+Case-study peak results (MP4)
+  [100pct] adopters: 78 / 78
+    adoption      : 100.0%
+    baseline peak : 53.56 MW @ hour 4530
+    scenario peak : 202.23 MW @ hour 1210
+    delta         : +148.67 MW
+  [constrained] adopters: 12 / 78
+    adoption      : 15.4%
+    baseline peak : 53.56 MW @ hour 4530
+    scenario peak : 53.64 MW @ hour 4530
+    delta         : +0.08 MW
+
+[OK] Step 7 PASSED -- peak_results_case_study_by_mp.keys() = [3, 4]
+[OK] Figure saved: C:\Users\tamar\Documents\Research\cmu-tare-model\outputs\allegheny_demand_profiles_MP3_4.png
+<Figure size 4800x3300 with 4 Axes>
+[OK] Figure saved: C:\Users\tamar\Documents\Research\cmu-tare-model\outputs\allegheny_demand_profiles_100pct_MP3_4.png
+<Figure size 4800x1950 with 2 Axes>
+[runner] tare_model_main_v3_1.ipynb cell 35 done in 12.0 s (memory 6.1 GB)
+Grid impact base case (constrained adopters): heatingLCC_coolingLCC_sub
+Custom weighting: True
+
+Computing county profiles for MP3 (adopter column: ref2025_mp3_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base)...
+
+Case-study peak results (MP3)
+  [100pct] adopters: 78 / 78
+    Percent adoption      : 100.0%
+    Baseline absolute peak : 53.56 MW @ hour 4530
+    Scenario absolute peak : 242.74 MW @ hour 1210
+    Absolute peak delta    : +189.17 MW
+    Baseline winter peak : 47.03 MW @ hour 8756
+    Scenario winter peak : 242.74 MW @ hour 1210
+    Winter peak delta    : +195.71 MW
+    Baseline summer peak : 53.56 MW @ hour 4530
+    Scenario summer peak : 63.99 MW @ hour 4530
+    Summer peak delta    : +10.43 MW
+    Baseline annual MWh : 204,560
+    Scenario annual MWh : 367,325
+    Annual MWh delta    : +162,764
+  [constrained] adopters: 29 / 78
+    Percent adoption      : 37.2%
+    Baseline absolute peak : 53.56 MW @ hour 4530
+    Scenario absolute peak : 92.34 MW @ hour 1210
+    Absolute peak delta    : +38.78 MW
+    Baseline winter peak : 47.03 MW @ hour 8756
+    Scenario winter peak : 92.34 MW @ hour 1210
+    Winter peak delta    : +45.31 MW
+    Baseline summer peak : 53.56 MW @ hour 4530
+    Scenario summer peak : 56.01 MW @ hour 4530
+    Summer peak delta    : +2.45 MW
+    Baseline annual MWh : 204,560
+    Scenario annual MWh : 234,583
+    Annual MWh delta    : +30,022
+
+Computing county profiles for MP4 (adopter column: ref2025_mp4_heatingLCC_coolingLCC_sub_econ_adopter_fixed_base)...
+
+Case-study peak results (MP4)
+  [100pct] adopters: 78 / 78
+    Percent adoption      : 100.0%
+    Baseline absolute peak : 53.56 MW @ hour 4530
+    Scenario absolute peak : 202.23 MW @ hour 1210
+    Absolute peak delta    : +148.67 MW
+    Baseline winter peak : 47.03 MW @ hour 8756
+    Scenario winter peak : 202.23 MW @ hour 1210
+    Winter peak delta    : +155.21 MW
+    Baseline summer peak : 53.56 MW @ hour 4530
+    Scenario summer peak : 63.26 MW @ hour 4771
+    Summer peak delta    : +9.69 MW
+    Baseline annual MWh : 204,560
+    Scenario annual MWh : 286,946
+    Annual MWh delta    : +82,385
+  [constrained] adopters: 12 / 78
+    Percent adoption      : 15.4%
+    Baseline absolute peak : 53.56 MW @ hour 4530
+    Scenario absolute peak : 53.64 MW @ hour 4530
+    Absolute peak delta    : +0.08 MW
+    Baseline winter peak : 47.03 MW @ hour 8756
+    Scenario winter peak : 47.21 MW @ hour 8756
+    Winter peak delta    : +0.19 MW
+    Baseline summer peak : 53.56 MW @ hour 4530
+    Scenario summer peak : 53.64 MW @ hour 4530
+    Summer peak delta    : +0.08 MW
+    Baseline annual MWh : 204,560
+    Scenario annual MWh : 198,271
+    Annual MWh delta    : -6,289
+
+[OK] Step 7 PASSED -- peak_results_case_study_by_mp.keys() = [3, 4]
+[OK] Figure saved: C:\Users\tamar\Documents\Research\cmu-tare-model\outputs\allegheny_demand_profiles_MP3_4.png
+<Figure size 4800x3300 with 4 Axes>
+[runner] tare_model_main_v3_1.ipynb cell 36 done in 7.9 s (memory 6.4 GB)
+[runner] tare_model_main_v3_1.ipynb cell 37 done in 0.0 s (memory 6.4 GB)
+                  scenario  ...  Electricity Consumption Delta (GWh)
+0                 Baseline  ...                                 0.00
+1      MP3 (100% Adoption)  ...                            162764.10
+2  MP3 (Economic Adopters)  ...                             30022.36
+3      MP4 (100% Adoption)  ...                             82385.32
+4  MP4 (Economic Adopters)  ...                             -6289.18
+
+[5 rows x 8 columns]
+[runner] tare_model_main_v3_1.ipynb cell 38 done in 0.0 s (memory 6.4 GB)
+<Figure size 600x400 with 1 Axes>
+<Figure size 600x400 with 1 Axes>
+<Figure size 600x400 with 1 Axes>
+<Figure size 600x400 with 1 Axes>
+<Figure size 600x400 with 1 Axes>
+<Figure size 600x400 with 1 Axes>
+<Figure size 600x400 with 1 Axes>
+[runner] tare_model_main_v3_1.ipynb cell 39 done in 0.5 s (memory 6.4 GB)
+<Figure size 800x500 with 1 Axes>
+[runner] tare_model_main_v3_1.ipynb cell 40 done in 0.1 s (memory 6.4 GB)
+<Figure size 1000x500 with 1 Axes>
+Rebate scenario used in this figure: heatingLCC_coolingLCC_sub
+[runner] tare_model_main_v3_1.ipynb cell 41 done in 0.1 s (memory 6.4 GB)
+[runner] tare_model_main_v3_1.ipynb cell 42 done in 0.0 s (memory 6.4 GB)
+The code took 11 minutes and 41 seconds to execute.
+[runner] tare_model_main_v3_1.ipynb cell 44 done in 0.0 s (memory 6.4 GB)
+[runner] end tare_model_main_v3_1.ipynb (704.2 s)
+
+==============================================================================
+CHECKS AFTER THE RUN
+==============================================================================
+-- Scenario: 2025 Reference Case (mp3) --
+
+MP3, discount rate fixed_base:
+  [OK]   one distinct weight -- 1 distinct: [242.13101273]
+  study sample: 3,406 rdu = 824,698 homes (weight 242.13101272727272)
+  [OK]   heatingSavings_coolingLCC_sub -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 17.41%
+  [OK]   heatingSavings_coolingLCC_unsub -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 4.87%
+  [OK]   heatingSavings_coolingLCC_sub_june2026 -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 9.54%
+  [OK]   heatingLCC_coolingSavings_sub -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 12.24%
+  [OK]   heatingLCC_coolingSavings_unsub -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 4.14%
+  [OK]   heatingLCC_coolingSavings_sub_june2026 -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 8.40%
+  [OK]   heatingLCC_coolingLCC_sub -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 38.81%
+  [OK]   heatingLCC_coolingLCC_unsub -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 10.31%
+  [OK]   heatingLCC_coolingLCC_sub_june2026 -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 12.74%
+  [OK]   heatingSavings_coolingLCC_sub_local -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 34.23%
+  [OK]   heatingLCC_coolingSavings_sub_local -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 21.87%
+  [OK]   heatingLCC_coolingLCC_sub_local -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 59.48%
+  [OK]   heatingLCC_coolingLCC_unsub >= heatingLCC_coolingSavings_unsub -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   heatingLCC_coolingLCC_unsub >= heatingSavings_coolingLCC_unsub -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   heatingLCC_coolingLCC_sub >= heatingLCC_coolingSavings_sub -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   heatingLCC_coolingLCC_sub >= heatingSavings_coolingLCC_sub -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   heatingLCC_coolingLCC_sub_june2026 >= heatingLCC_coolingSavings_sub_june2026 -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   heatingLCC_coolingLCC_sub_june2026 >= heatingSavings_coolingLCC_sub_june2026 -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   heatingLCC_coolingLCC_sub_local >= heatingLCC_coolingSavings_sub_local -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   heatingLCC_coolingLCC_sub_local >= heatingSavings_coolingLCC_sub_local -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   no blank energy, cost or NPV value (38 columns)
+  [OK]   tepper_household_mp3_CO_2026-10-28_14-22.csv has one row per sample home -- 3,406 rows, 3,406 sample rdu
+  [OK]   tepper_household_detailed_mp3_CO_2026-10-28_14-22.csv has one row per sample home -- 3,406 rows, 3,406 sample rdu
+  [OK]   tepper_county_mp3_CO_2026-10-28_14-22.csv exists
+-- Scenario: 2025 Reference Case (mp4) --
+
+MP4, discount rate fixed_base:
+  [OK]   one distinct weight -- 1 distinct: [242.13101273]
+  study sample: 3,406 rdu = 824,698 homes (weight 242.13101272727272)
+  [OK]   heatingSavings_coolingLCC_sub -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 9.66%
+  [OK]   heatingSavings_coolingLCC_unsub -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 3.58%
+  [OK]   heatingSavings_coolingLCC_sub_june2026 -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 7.75%
+  [OK]   heatingLCC_coolingSavings_sub -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 8.78%
+  [OK]   heatingLCC_coolingSavings_unsub -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 3.52%
+  [OK]   heatingLCC_coolingSavings_sub_june2026 -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 6.75%
+  [OK]   heatingLCC_coolingLCC_sub -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 15.47%
+  [OK]   heatingLCC_coolingLCC_unsub -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 6.69%
+  [OK]   heatingLCC_coolingLCC_sub_june2026 -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 10.75%
+  [OK]   heatingSavings_coolingLCC_sub_local -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 12.68%
+  [OK]   heatingLCC_coolingSavings_sub_local -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 11.92%
+  [OK]   heatingLCC_coolingLCC_sub_local -- identity violations 0, flag != NPV>=0 0, non-blank adopters 3,406 (sample 3,406), dtype float64, adoption 26.19%
+  [OK]   heatingLCC_coolingLCC_unsub >= heatingLCC_coolingSavings_unsub -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   heatingLCC_coolingLCC_unsub >= heatingSavings_coolingLCC_unsub -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   heatingLCC_coolingLCC_sub >= heatingLCC_coolingSavings_sub -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   heatingLCC_coolingLCC_sub >= heatingSavings_coolingLCC_sub -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   heatingLCC_coolingLCC_sub_june2026 >= heatingLCC_coolingSavings_sub_june2026 -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   heatingLCC_coolingLCC_sub_june2026 >= heatingSavings_coolingLCC_sub_june2026 -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   heatingLCC_coolingLCC_sub_local >= heatingLCC_coolingSavings_sub_local -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   heatingLCC_coolingLCC_sub_local >= heatingSavings_coolingLCC_sub_local -- per-home violations 0, county violations 0 of 62 counties
+  [OK]   no blank energy, cost or NPV value (38 columns)
+  [OK]   tepper_household_mp4_CO_2026-10-28_14-22.csv has one row per sample home -- 3,406 rows, 3,406 sample rdu
+  [OK]   tepper_household_detailed_mp4_CO_2026-10-28_14-22.csv has one row per sample home -- 3,406 rows, 3,406 sample rdu
+  [OK]   tepper_county_mp4_CO_2026-10-28_14-22.csv exists
+
+[OK] All 50 checks passed.
+
+==============================================================================
+[runner] wall time 11.7 min (704 s)
+[runner] peak memory 10.26 GB (sampled), during tare_model_main_v3_1.ipynb cell 19
+[runner] peak memory 10.27 GB (operating system record)
+[runner] questions answered: {'begin a new simulation': 1, "filter for a specific state's data": 1, 'which state would you like to analyze': 1, 'filter a subset of city-level data': 1}; not asked: ['county fips code for the grid-impact']
+[runner] exit code 0
