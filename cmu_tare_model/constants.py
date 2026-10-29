@@ -55,25 +55,12 @@ ALLOWED_TECHNOLOGIES = {
         'Natural Gas Fuel Boiler', 'Natural Gas Fuel Furnace',
         'Propane Fuel Boiler', 'Propane Fuel Furnace'
     ],
-    # in.hvac_cooling_type: central and room AC only, as in the submitted
-    # 2022.1.1 analysis. Same list for both releases, so both share one scope.
-    # This list also limits the study sample: a home with valid heating but no
-    # central or room AC (38,910 rdu, 9.42M homes in 2022.1.1) is left out,
-    # because the heat pump would add cooling it never had (CLAUDE.md
-    # Limitation 11).
-    # Shared cooling is left out too (SHARED_COOLING_EFFICIENCY, below): ResStock
-    # files it under 'Central AC', so this list alone does not catch it.
-    # TODO (no-AC homes): a future session may bring homes with no existing
-    # cooling into the sample, for analyses with a different scope. For them:
-    # ResStock energy values stay as published; the cooling replacement cost
-    # and credit are $0 (nothing to replace); cooling savings are negative
-    # (the heat pump adds cooling as a new service). Plan: a switch here, for
-    # example INCLUDE_HOMES_WITHOUT_COOLING = False, read at each point tagged
-    # 'TODO (no-AC homes)': process_euss_data.py (sample rule),
-    # calculate_equipment_replacement_costs.py (cooling replacement cost), and
-    # calculate_lifetime_private_impact.py (NPV).
-    # PLACEHOLDER -- that session may also decide whether existing heat pump
-    # homes ('Ducted Heat Pump' / 'Non-Ducted Heat Pump' in 2025.1) belong here.
+
+    # Homes with no AC are left out of the study sample, unless
+    # INCLUDE_HOMES_WITHOUT_COOLING (below) is True.
+    # Shared cooling is always left out (SHARED_COOLING_EFFICIENCY, below).
+    # Session 3 decides whether homes that already have a heat pump belong here.
+
     'cooling': [
         'Central AC',
         'Room AC'
@@ -138,6 +125,22 @@ if RESSTOCK_RELEASE_THIS_RUN not in RESSTOCK_RELEASE_AND_MP:
     raise ValueError(
         f"{RESSTOCK_RELEASE_ENV_VAR}={RESSTOCK_RELEASE_THIS_RUN!r} is not a known "
         f"ResStock release; expected one of {sorted(RESSTOCK_RELEASE_AND_MP)}")
+
+
+# Switch to include homes without existing AC.
+# True brings homes with no AC into the study sample. Their old-AC cost is
+# $0, and their cooling savings are negative (the heat pump adds cooling).
+INCLUDE_HOMES_WITHOUT_COOLING = False
+
+# Checked on ResStock 2022.1.1 only. 2025.1 spells "no AC" differently, has
+# its own heat pump cooling labels and a dual-fuel package, none of which the
+# switch has been tested on.
+if INCLUDE_HOMES_WITHOUT_COOLING and RESSTOCK_RELEASE_THIS_RUN != '2022.1.1':
+    raise ValueError(
+        f"INCLUDE_HOMES_WITHOUT_COOLING = True has only been checked on ResStock "
+        f"2022.1.1, but this run reads {RESSTOCK_RELEASE_THIS_RUN!r}. Set it to "
+        f"False, or run 2022.1.1.")
+
 
 # Run the model for all measure packages (MPs) or a specific MP
 # Enclosure upgrades (MP9 and MP10) are excluded for now since they are not yet included in the REMDB v4 code.

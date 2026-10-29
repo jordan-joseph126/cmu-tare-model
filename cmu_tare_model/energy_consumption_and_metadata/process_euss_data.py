@@ -924,12 +924,12 @@ def df_enduse_refactored(
     # (include_cooling), and applied in every package in the run. Set here once;
     # get_valid_calculation_mask requires it, so every result is limited to it.
     # Homes without AC are left out: the heat pump would add cooling they never
-    # had (CLAUDE.md Limitation 11). Shared cooling is left out: it has no
-    # replacement cost (SHARED_COOLING_EFFICIENCY in constants.py).
-    # TODO (no-AC homes): to bring homes with no existing cooling into the
-    # sample, this is the rule to change (see ALLOWED_TECHNOLOGIES in
-    # constants.py). Their cooling energy must then stay as published (0 kWh
-    # before the retrofit), not be blanked in STEP 5 below.
+    # had (CLAUDE.md Limitation 11), unless INCLUDE_HOMES_WITHOUT_COOLING
+    # is True: then identify_valid_homes marks them valid for cooling, and STEP
+    # 5 keeps their published 0 kWh of cooling instead of blanking it. Shared
+    # cooling is always left out: it has no replacement cost
+    # (SHARED_COOLING_EFFICIENCY in constants.py).
+    
     is_applicable = pd.Series(True, index=df_enduse.index)
     for package_ids in applicable_bldg_ids:
         is_applicable &= df_enduse.index.isin(package_ids)

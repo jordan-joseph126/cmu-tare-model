@@ -170,3 +170,43 @@ def test_replacement_cost_clipped_to_zero(mock_constants):
         df, df_detailed, menu_mp=8, end_use='heating', cost_scenario='v4MID', verbose=False)
     cost_col = 'mp8_heating_replacement_installed_cost_v4MID'
     assert (df_copy[cost_col].dropna() >= 0).all()
+
+
+def test_cooling_replacement_cost_is_zero_for_no_ac_homes(mock_constants):
+    """With INCLUDE_HOMES_WITHOUT_COOLING on, a home with no AC costs $0.
+    Homes with an AC are priced the same with the switch on or off."""
+    from cmu_tare_model.private_impact.calculations.calculate_equipment_replacement_costs import (
+        calculate_replacement_installed_cost,
+    )
+    prefix = 'cooling_replacement_'
+    df = pd.DataFrame({
+        'include_cooling': [True, True, True],
+        'include_sample': True,
+        'hvac_cooling_type': ['Central AC', None, 'Room AC'],
+    })
+    # REMDB has no row for a home with no AC, so its numbers are blank.
+    df_detailed = pd.DataFrame({
+        f'{prefix}pm1_euss': [36.0, np.nan, 12.0],
+        f'{prefix}pm2_euss': [13.0, np.nan, 10.0],
+        f'{prefix}pm1_coef_mid': [10.0, np.nan, 10.0],
+        f'{prefix}pm2_coef_mid': [100.0, np.nan, 100.0],
+        f'{prefix}intercept_mid': [50.0, np.nan, 50.0],
+        f'{prefix}multiplier_retrofit': [1.5, np.nan, 1.5],
+        f'{prefix}adder_retrofit': [200.0, np.nan, 200.0],
+    })
+    cost_col = 'mp8_cooling_replacement_installed_cost_v4MID'
+    cost_arguments = {
+        'menu_mp': 8, 'end_use': 'cooling', 'cost_scenario': 'v4MID',
+        'verbose': False,
+    }
+
+    df_off, _ = calculate_replacement_installed_cost(
+        df, df_detailed, include_homes_without_cooling=False, **cost_arguments)
+    df_on, _ = calculate_replacement_installed_cost(
+        df, df_detailed, include_homes_without_cooling=True, **cost_arguments)
+
+    assert pd.isna(df_off[cost_col].iloc[1])
+    assert df_on[cost_col].iloc[1] == 0.0
+    has_ac = [0, 2]
+    assert list(df_on[cost_col].iloc[has_ac]) == list(df_off[cost_col].iloc[has_ac])
+    assert (df_on[cost_col].iloc[has_ac] > 0).all()

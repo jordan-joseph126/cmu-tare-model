@@ -46,6 +46,6 @@ Each session fills in its row.
 
 | Session | Date | Commit(s) | Run stamps | Notes and decisions |
 |---|---|---|---|---|
-| 1 | | | | |
+| 1 | 28 Oct 2026 | `2f55d9c` plan files; `2424041` merge of main `d08004a`; `6f055b0` CO price override; `74d45ad` notebook print fix and price override comments; `15bffb0`, `aa28449` CO CSV untracked and ignored; `1a06910` compare_runs.py and test | `2026-10-28_14-22` baseline: 2022.1.1, CO, grid impact on, 50 of 50 checks passed (log `baseline.log`) | Sessions 2 and 3 must use the same settings. CO electricity 12.3 cents/kWh (`CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH`; EIA price 15.85). Kept on purpose: `'Electricity ASHP'` in the heating list (Session 3's switch-off run must allow for it), wider housing types (mobile homes, 2-4 unit multi-family), `VERBOSE = True`, `TEST_FIPS`, the old v3_0 and v2_3 notebooks. Grid impact uses `CUSTOM_WEIGHTING = True` (78 of 169 matched buildings in the sample, 22,277 parcels), so `--fips` is not used. Sample: 3,406 rdu (824,698 homes) in 62 counties. Tests: 421 passed, 1 skipped. compare_runs.py also counts a file found in only one run as a difference. County shapefile missing locally, so the adoption map is skipped. |
 | 2 | | | | |
 | 3 | | | | |

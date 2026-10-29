@@ -237,10 +237,11 @@ def calculate_private_npv(
         menu_mp=menu_mp,
         verbose=verbose,
     )
-    # TODO (no-AC homes): if homes with no existing cooling are brought into
-    # the sample, leave their cooling savings as calculated. Baseline cooling
-    # use is 0 and the heat pump adds cooling, so the savings are negative: a
-    # new service the home pays for. Do not set them to $0.
+    
+    # With INCLUDE_HOMES_WITHOUT_COOLING on, a home with no AC uses 0 kWh of
+    # cooling before the retrofit, and the heat pump adds cooling, so its
+    # cooling savings are negative: a new service the home pays for. They are
+    # left as calculated, not set to $0.
     heating_and_cooling_savings = heating_savings + cooling_savings
 
     # Save the discounted heating savings and the discounted cooling savings.
@@ -280,24 +281,19 @@ def calculate_private_npv(
         cost_type='replacement', cost_scenario=cost_scenario)
     cooling_replacement_cost = df_copy[cooling_replacement_col]
 
-    # TODO (no-AC homes): a home with no existing cooling has nothing to
-    # replace, so its credit would be $0 on purpose, for example:
-    #   has_cooling = df_copy['include_cooling'].astype(bool)
-    #   cooling_replacement_cost = cooling_replacement_cost.where(has_cooling, 0.0)
-    # The stop below would then apply only to homes that have a cooling system.
 
-    # Every home in the calculation has a cooling system to replace, so a
+   # A home with no AC (INCLUDE_HOMES_WITHOUT_COOLING) already arrives with a
+    # cost of $0, set in calculate_replacement_installed_cost, so its credit
+    # is $0. Every other home in the calculation has an AC to replace, so a
     # blank cost is a data error, not a $0 credit.
     n_blank = int(cooling_replacement_cost[heating_valid_mask].isna().sum())
     if n_blank > 0:
         raise ValueError(
             f"{cooling_replacement_col} is blank for {n_blank:,} rdu in the NPV "
-            "calculation. The study sample is limited to homes with a central "
-            "or room AC of their own, and each of those has a cooling "
-            "replacement cost, so a blank means the sample rule and the cost "
-            "data disagree. Homes with no existing cooling are not supported "
-            "yet: see 'TODO (no-AC homes)' in constants.py. For them this "
-            "credit would be set to $0 on purpose, not left blank.")
+            "calculation. Each sample home with a central or room AC of its "
+            "own has a cooling replacement cost, and a home with no AC gets $0 "
+            "when INCLUDE_HOMES_WITHOUT_COOLING is on, so a blank means the "
+            "sample rule and the cost data disagree.")
 
     # FIXED 20 Aug 2026: this credit is now priced off the existing air
     # conditioner's own size, not the retrofit heat pump's -- see

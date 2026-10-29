@@ -286,6 +286,38 @@ def test_identify_valid_homes_leaves_out_shared_cooling(monkeypatch):
             df_homes.drop(columns=['base_cooling_efficiency']), verbose=False)
 
 
+def test_has_no_cooling_system_reads_blank_and_none():
+    """A blank (2022.1.1) and the text 'None' (2025.1) both mean no AC."""
+    from cmu_tare_model.utils.calculation_utils import has_no_cooling_system
+
+    cooling_type = pd.Series(['Central AC', None, 'None', 'Room AC'])
+    assert list(has_no_cooling_system(cooling_type)) == [
+        False, True, True, False]
+
+
+def test_identify_valid_homes_keeps_no_ac_homes_when_switch_on(monkeypatch):
+    """With INCLUDE_HOMES_WITHOUT_COOLING on, a home with no AC is valid for
+    cooling. Shared cooling and heat pump cooling still are not."""
+    from cmu_tare_model.utils.calculation_utils import identify_valid_homes
+
+    monkeypatch.setattr(
+        'cmu_tare_model.utils.calculation_utils.EQUIPMENT_SPECS', {'cooling': 15})
+    df_homes = pd.DataFrame({
+        'base_cooling_fuel': ['Electricity'] * 5,
+        'cooling_type': ['Central AC', 'Central AC', None, 'None', 'Heat Pump'],
+        'base_cooling_efficiency': [
+            'AC, SEER 13', 'Shared Cooling', None, 'None', 'Heat Pump'],
+    })
+    result_off = identify_valid_homes(
+        df_homes.copy(), verbose=False, include_homes_without_cooling=False)
+    result_on = identify_valid_homes(
+        df_homes.copy(), verbose=False, include_homes_without_cooling=True)
+    assert list(result_off['include_cooling']) == [
+        True, False, False, False, False]
+    assert list(result_on['include_cooling']) == [
+        True, False, True, True, False]
+
+
 # =============================================================================
 # filter_valid_tech_homes
 # =============================================================================

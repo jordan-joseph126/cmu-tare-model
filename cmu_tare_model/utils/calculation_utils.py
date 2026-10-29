@@ -20,6 +20,7 @@ from cmu_tare_model.constants import (
     FUEL_MAPPING,
     ALLOWED_TECHNOLOGIES,
     SHARED_COOLING_EFFICIENCY,
+    INCLUDE_HOMES_WITHOUT_COOLING,
     DUAL_FUEL_PACKAGES_BY_RELEASE,
     RESSTOCK_RELEASE_AND_MP,
     RESSTOCK_RELEASE_THIS_RUN,
@@ -281,9 +282,27 @@ def get_consumption_component_columns(
     return pairs
 
 
+def has_no_cooling_system(cooling_type: pd.Series) -> pd.Series:
+    """Marks homes with no air conditioner of any kind.
+
+    ResStock labels these 'None'. In 2022.1.1 the model reads that label as a
+    blank, because pandas treats the text 'None' as missing when it reads a
+    CSV; in 2025.1 it stays the text 'None'. Both mean no AC.
+
+    Args:
+        cooling_type: The home's in.hvac_cooling_type value (cooling_type or
+            hvac_cooling_type).
+
+    Returns:
+        True where the home has no cooling system.
+    """
+    return cooling_type.isna() | (cooling_type == 'None')
+
+
 def identify_valid_homes(
     df: pd.DataFrame,
-    verbose: bool = VERBOSE
+        verbose: bool = VERBOSE,
+        include_homes_without_cooling: bool = INCLUDE_HOMES_WITHOUT_COOLING,
 ) -> pd.DataFrame:
     """Creates comprehensive data quality flags for all categories.
     
@@ -293,6 +312,9 @@ def identify_valid_homes(
     
     Args:
         df: DataFrame containing energy consumption data.
+        verbose: Whether to print each step.
+        include_homes_without_cooling: True counts a home with no AC as
+            valid for cooling (INCLUDE_HOMES_WITHOUT_COOLING).
         
     Returns:
         DataFrame with added data quality flags.
@@ -366,6 +388,13 @@ def identify_valid_homes(
                 if category == 'cooling':
                     df[tech_flag] &= (
                         df['base_cooling_efficiency'] != SHARED_COOLING_EFFICIENCY)
+                    
+                    # With the switch on, a home with no AC is valid too: its
+                    # cooling is 0 kWh before the retrofit and it has nothing
+                    # to replace. Heat pump and shared cooling stay out.
+                    if include_homes_without_cooling:
+                        df[tech_flag] |= has_no_cooling_system(df[tech_col])
+             
 
                 # Invalid technology count and percentage
                 invalid_tech_count = (~df[tech_flag]).sum()

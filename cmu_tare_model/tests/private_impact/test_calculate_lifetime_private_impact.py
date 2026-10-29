@@ -213,9 +213,6 @@ def npv_cases_df():
     study sample requires; homes 4-5 are excluded (invalid heating / no
     retrofit). Cost values are fixed constants so the NPV arithmetic is
     deterministic.
-
-    TODO (no-AC homes): when homes with no existing cooling are supported, add
-    one here: cooling replacement credit $0, cooling savings negative.
     """
     n = 6
     data = {
@@ -416,6 +413,54 @@ def test_private_npv_blank_cooling_replacement_cost_raises(mock_discount, mock_p
     npv_cases_df.loc[1, cost_col] = np.nan
     with pytest.raises(ValueError, match='is blank for 1 rdu'):
         calculate_private_npv(df=npv_cases_df, **npv_arguments)
+
+
+@patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.define_scenario_params')
+@patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.calculate_discount_factors')
+def test_private_npv_no_ac_home(mock_discount, mock_params, npv_cases_df, npv_cases_fuel_costs, heating_cooling_specs):
+    """A home with no AC gets a $0 cooling credit and negative cooling
+    savings, because the heat pump adds cooling it never had."""
+    from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_private_npv
+    from cmu_tare_model.utils.column_names import (
+        create_cooling_credit_applied_col, create_discounted_savings_col)
+
+    df_baseline, df_measure = npv_cases_fuel_costs
+    mock_params.return_value = ('ref2025_mp3_', 'MidCase', {}, {}, {})
+    mock_discount.return_value = pd.Series(0.95, index=npv_cases_df.index)
+
+    # Home 2 has no AC: $0 of cooling before the retrofit, and a $0
+    # replacement cost (set in calculate_replacement_installed_cost).
+    no_ac = 2
+    npv_cases_df.loc[no_ac, 'mp3_cooling_replacement_installed_cost_v4MID'] = 0.0
+    for year in range(BASE_YEAR, BASE_YEAR + 15):
+        df_baseline.loc[no_ac, f'baseline_{year}_cooling_fuel_cost'] = 0.0
+
+    result = calculate_private_npv(
+        df=npv_cases_df,
+        df_fuel_costs=df_measure,
+        df_baseline_costs=df_baseline,
+        input_mp='upgrade03',
+        menu_mp=3,
+        policy_scenario='2025 Reference Case',
+        discount_rate_col_name='private_discount_rate_fixed_base',
+        cost_scenario='v4MID',
+        verbose=False,
+    )
+
+    credit_col = create_cooling_credit_applied_col(3, 'v4MID')
+    savings_col = create_discounted_savings_col(
+        'ref2025_mp3_', 'cooling', '_fixed_base')
+    assert result.loc[no_ac, credit_col] == 0.0
+    # Cooling savings = (0 - 300) * 0.95 * 15 = -4275
+    assert result.loc[no_ac, savings_col] == pytest.approx(-4275)
+
+    # With a $0 credit, crediting the cooling replacement adds nothing.
+    base = 'ref2025_mp3_{case}_private_npv_fixed_base'
+    npv_lcc_lcc = result.loc[no_ac, base.format(case='heatingLCC_coolingLCC_sub')]
+    npv_lcc_sav = result.loc[no_ac, base.format(case='heatingLCC_coolingSavings_sub')]
+    assert npv_lcc_lcc == pytest.approx(npv_lcc_sav)
+    # 8550 heating savings - 4275 cooling savings - 7000 net capital
+    assert npv_lcc_lcc == pytest.approx(-2725)
 
 
 # =============================================================================

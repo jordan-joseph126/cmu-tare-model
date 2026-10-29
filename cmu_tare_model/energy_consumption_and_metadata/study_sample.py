@@ -7,6 +7,7 @@ fuel oil, heated by a furnace, boiler, or electric baseboard -- not an existing
 heat pump, wall/floor furnace, or shared system), and if ResStock applied every
 measure package in the run to it, and if it has a central or room AC of its
 own, not a shared cooling system (include_cooling = True).
+With INCLUDE_HOMES_WITHOUT_COOLING on, a home with no AC is included too.
 df_enduse_refactored sets this once as the
 include_sample column; this module only reads that column, so the rule lives in
 one place. The ids are passed to results that do not use the TARE frame
@@ -17,10 +18,14 @@ from typing import Dict, List, Union
 
 import pandas as pd
 
-from cmu_tare_model.constants import ALLOWED_TECHNOLOGIES
+from cmu_tare_model.constants import (
+    ALLOWED_TECHNOLOGIES,
+    INCLUDE_HOMES_WITHOUT_COOLING,
+)
 from cmu_tare_model.utils.calculation_utils import (
     EXISTING_HEAT_PUMP_TYPES,
     compute_funnel_stage_row,
+    has_no_cooling_system,
 )
 
 
@@ -69,6 +74,7 @@ def build_sample_funnel(
     df_funnel_packages: List[pd.DataFrame],
     applicable_bldg_ids: List[pd.Index],
     df_enduse: pd.DataFrame,
+    include_homes_without_cooling: bool = INCLUDE_HOMES_WITHOUT_COOLING,
 ) -> pd.DataFrame:
     """Funnel table from the ResStock stock to the study sample (SI table).
 
@@ -78,6 +84,9 @@ def build_sample_funnel(
         applicable_bldg_ids: The same packages' bldg_ids, as passed to
             df_enduse_refactored.
         df_enduse: Baseline frame from df_enduse_refactored.
+        include_homes_without_cooling: True keeps homes with no AC at the AC
+                                step (INCLUDE_HOMES_WITHOUT_COOLING).
+
 
     Returns:
         One row per step: stage, rdu_count, weighted_count, removed_rdu,
@@ -105,17 +114,26 @@ def build_sample_funnel(
     valid_fuel = df_in_scope['valid_fuel_heating'].astype(bool)
     no_heat_pump = ~df_in_scope['heating_type'].isin(EXISTING_HEAT_PUMP_TYPES)
     replaceable_heating = df_in_scope['include_heating'].astype(bool)
-    # include_cooling also leaves out shared cooling, so the AC step reads the
-    # cooling type itself and shared cooling gets its own row.
+    
+    #keeps homes with a central or room AC. It reads the cooling
+    # type, not include_cooling, so that homes with shared cooling are
+    # counted at the next step instead of this one.
+    # When INCLUDE_HOMES_WITHOUT_COOLING (constants.py) is True, homes with
+    # no AC are in the sample
     has_ac = df_in_scope['cooling_type'].isin(ALLOWED_TECHNOLOGIES['cooling'])
+    ac_stage = 'central_or_room_ac'
+    if include_homes_without_cooling:
+        has_ac |= has_no_cooling_system(df_in_scope['cooling_type'])
+        ac_stage = 'central_room_or_no_ac'
     own_cooling_system = df_in_scope['include_cooling'].astype(bool)
     scope_steps = [
         ('heating_fuel', valid_fuel),
         ('no_existing_heat_pump', valid_fuel & no_heat_pump),
         ('replaceable_heating_system', replaceable_heating),
-        ('central_or_room_ac', replaceable_heating & has_ac),
+        (ac_stage, replaceable_heating & has_ac),
         ('no_shared_cooling', replaceable_heating & own_cooling_system),
     ]
+
     scope_rows = [compute_funnel_stage_row(df_in_scope, label, mask)
                   for label, mask in scope_steps]
 

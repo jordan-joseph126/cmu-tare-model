@@ -43,8 +43,10 @@ from typing import Dict, List, Tuple, Optional
 
 from cmu_tare_model.constants import (
     VERBOSE, VALID_MENU_MPS, EQUIPMENT_SPECS, VALID_CATEGORIES,
-    REMDB_COST_SCENARIO_KEYS
+    REMDB_COST_SCENARIO_KEYS,
+    INCLUDE_HOMES_WITHOUT_COOLING
 )
+
 from cmu_tare_model.utils.column_names import create_cost_col
 from cmu_tare_model.utils.validation_framework import (
     apply_new_columns_to_dataframe,
@@ -54,6 +56,7 @@ from cmu_tare_model.utils.validation_framework import (
 )
 from cmu_tare_model.utils.calculation_utils import (
     filter_valid_tech_homes,
+    has_no_cooling_system,
     sample_costs_from_distributions
 )
 from cmu_tare_model.utils.inflation_adjustment import cpi_ratio_2025_2023
@@ -71,6 +74,8 @@ def calculate_replacement_installed_cost(
     cost_scenario: str,
     cost_dict: Optional[dict] = None,
     verbose: bool = VERBOSE,
+    include_homes_without_cooling: bool = INCLUDE_HOMES_WITHOUT_COOLING,
+
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Calculate REPLACEMENT installed costs using unified interface.
@@ -99,6 +104,9 @@ def calculate_replacement_installed_cost(
         cost_dict: Required for REMDB v3. Dictionary mapping (technology, efficiency) tuples
             to cost component distributions. Ignored for v4.
         verbose: Whether to print detailed processing information.
+        include_homes_without_cooling: True gives a home with no AC a cooling
+            replacement cost of $0 (INCLUDE_HOMES_WITHOUT_COOLING).
+
 
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]:
@@ -187,10 +195,11 @@ def calculate_replacement_installed_cost(
 
     # Update result series with calculated values (only for valid homes)
     result_series.loc[valid_mask] = installed_cost.loc[valid_mask].round(2)
-    # TODO (no-AC homes): when end_use is 'cooling', a home with no existing
-    # cooling has nothing to replace, so its replacement cost would be set to
-    # $0 here on purpose (see ALLOWED_TECHNOLOGIES in constants.py). Today
-    # those homes are outside the sample and stay blank.
+
+    #Homes without AC get replacement costs of $0. 
+    if end_use == 'cooling' and include_homes_without_cooling:
+        has_no_ac = valid_mask & has_no_cooling_system(df_copy['hvac_cooling_type'])
+        result_series.loc[has_no_ac] = 0.0
 
     # Build column name using centralized utility
     cost_col = create_cost_col(menu_mp=menu_mp, category=end_use, cost_type='replacement', cost_scenario=cost_scenario)

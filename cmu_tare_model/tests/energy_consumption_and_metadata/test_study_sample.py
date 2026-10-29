@@ -121,3 +121,19 @@ def test_funnel_must_end_at_sample(funnel_inputs):
     df_enduse.loc[1, 'include_sample'] = False
     with pytest.raises(ValueError, match='include_sample'):
         build_sample_funnel([df_package], applicable_bldg_ids, df_enduse)
+
+
+def test_funnel_keeps_no_ac_homes_when_switch_on(funnel_inputs):
+    """With INCLUDE_HOMES_WITHOUT_COOLING on, home 5 (no AC) is in the sample,
+    so the AC step keeps it and no step removes a negative count."""
+    df_package, applicable_bldg_ids, df_enduse = funnel_inputs
+    df_enduse.loc[5, 'cooling_type'] = None  # how 2022.1.1 reads 'None'
+    df_enduse.loc[5, 'include_cooling'] = True
+    df_enduse.loc[5, 'include_sample'] = True
+    df_funnel = build_sample_funnel(
+        [df_package], applicable_bldg_ids, df_enduse,
+        include_homes_without_cooling=True)
+    assert list(df_funnel['stage'])[-2:] == [
+        'central_room_or_no_ac', 'no_shared_cooling']
+    assert list(df_funnel['rdu_count']) == [9, 8, 6, 5, 4, 3, 3, 2]
+    assert list(df_funnel['removed_rdu'].iloc[1:]) == [1, 2, 1, 1, 1, 0, 1]
