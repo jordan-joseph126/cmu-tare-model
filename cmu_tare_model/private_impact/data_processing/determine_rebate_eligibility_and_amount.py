@@ -22,7 +22,7 @@ from cmu_tare_model.constants import (
     HOMES_CAP_TIER1,
     HOMES_CAP_TIER2, 
     HOMES_COVERAGE_NON_LMI,
-    ELECTRIC_RESISTANCE_BASELINE,
+    ELECTRIC_BASELINE,
     NON_PARTICIPATING_REBATE_STATES,
     REBATE_NONE,
     REBATE_HEEHR,
@@ -524,8 +524,8 @@ def calculate_rebate_program(
       - Efficiency (ENERGY STAR): only get_rebate_eligible_mps() qualify.
       - State participation: homes in a never-participating state (e.g. South
         Dakota) get 0 / 'None'.
-    HEEHR additionally applies a fuel gate under June 2026 (only existing
-    electric-resistance heating qualifies, because a rebate may not fund removing
+    HEEHR additionally applies a fuel gate under June 2026 (only homes that
+    already heat with electricity qualify, because a rebate may not fund removing
     a fossil system). HOMES is fuel-neutral (see the config note on the 2026
     homes_fuel_gate, kept only for byte-identity pending re-derivation).
     A dual-fuel retrofit keeps a fossil furnace as the heat pump's backup, so it
@@ -605,7 +605,7 @@ def calculate_rebate_program(
         return df_copy
 
     # Step 4 -- shared gate masks.
-    # Fuel gate: only existing electric-resistance heating qualifies. Read
+    # Fuel gate: only homes that already heat with electricity qualify. Read
     # base_heating_fuel only when a fuel gate is actually active so the 2024
     # (fuel-neutral) path does not require the column. When no gate is active the
     # mask is all-True and never filters anyone out.
@@ -619,7 +619,7 @@ def calculate_rebate_program(
     homes_fuel_gate_active = config['homes_enabled'] and homes_fuel_gate
     if heehr_fuel_gate or homes_fuel_gate_active:
         electric_mask = df_copy['base_heating_fuel'].isin(
-            ELECTRIC_RESISTANCE_BASELINE)
+            ELECTRIC_BASELINE)
     else:
         electric_mask = pd.Series(True, index=df_copy.index)
     # State-participation gate: never-participating states are ineligible.

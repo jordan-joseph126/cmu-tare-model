@@ -130,7 +130,7 @@ if RESSTOCK_RELEASE_THIS_RUN not in RESSTOCK_RELEASE_AND_MP:
 # Switch to include homes without existing AC.
 # True brings homes with no AC into the study sample. Their old-AC cost is
 # $0, and their cooling savings are negative (the heat pump adds cooling).
-INCLUDE_HOMES_WITHOUT_COOLING = True
+INCLUDE_HOMES_WITHOUT_COOLING = False
 
 # Checked on ResStock 2022.1.1 only. 2025.1 spells "no AC" differently, has
 # its own heat pump cooling labels and a dual-fuel package, none of which the
@@ -144,7 +144,7 @@ if INCLUDE_HOMES_WITHOUT_COOLING and RESSTOCK_RELEASE_THIS_RUN != '2022.1.1':
 # Switch to count every home in the grid impact totals, not only homes not
 # filtered out of sample. Homes outside the sample (with an existing HP or a
 # wall furnace) do not adopt but are included in load cals.
-INCLUDE_ALL_HOMES_IN_GRID_IMPACT = True
+INCLUDE_ALL_HOMES_IN_GRID_IMPACT = False
 
 # Checked on ResStock 2022.1.1 only, the one release grid impact runs on.
 if INCLUDE_ALL_HOMES_IN_GRID_IMPACT and RESSTOCK_RELEASE_THIS_RUN != '2022.1.1':
@@ -371,10 +371,9 @@ HOMES_CAP_TIER2 = 4_000          # dollars; >=35% savings, non-LMI
 HOMES_COVERAGE_NON_LMI = 0.50    # covers 50% of project cost, up to the tier cap
 
 # June 2026 fuel gate: rebates may no longer fund removing a fossil heating
-# system. TARE models only full electrification, so only homes whose existing
-# heating is electric resistance qualify. Value matches the base_heating_fuel
-# label for electric-resistance heating.
-ELECTRIC_RESISTANCE_BASELINE = {"Electricity"}
+# system, so only homes that already heat with electricity qualify. It tests
+# the fuel only, so it covers electric resistance heat and heat pumps alike.
+ELECTRIC_BASELINE = {"Electricity"}
 
 # States that never participated in the federal rebate programs are ineligible
 # under every rebate policy scenario (2024 HEEHR and June 2026 HEEHR + HOMES).
