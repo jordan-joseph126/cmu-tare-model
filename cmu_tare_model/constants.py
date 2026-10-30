@@ -130,7 +130,7 @@ if RESSTOCK_RELEASE_THIS_RUN not in RESSTOCK_RELEASE_AND_MP:
 # Switch to include homes without existing AC.
 # True brings homes with no AC into the study sample. Their old-AC cost is
 # $0, and their cooling savings are negative (the heat pump adds cooling).
-INCLUDE_HOMES_WITHOUT_COOLING = False
+INCLUDE_HOMES_WITHOUT_COOLING = True
 
 # Checked on ResStock 2022.1.1 only. 2025.1 spells "no AC" differently, has
 # its own heat pump cooling labels and a dual-fuel package, none of which the
@@ -140,6 +140,18 @@ if INCLUDE_HOMES_WITHOUT_COOLING and RESSTOCK_RELEASE_THIS_RUN != '2022.1.1':
         f"INCLUDE_HOMES_WITHOUT_COOLING = True has only been checked on ResStock "
         f"2022.1.1, but this run reads {RESSTOCK_RELEASE_THIS_RUN!r}. Set it to "
         f"False, or run 2022.1.1.")
+
+# Switch to count every home in the grid impact totals, not only homes not
+# filtered out of sample. Homes outside the sample (with an existing HP or a
+# wall furnace) do not adopt but are included in load cals.
+INCLUDE_ALL_HOMES_IN_GRID_IMPACT = True
+
+# Checked on ResStock 2022.1.1 only, the one release grid impact runs on.
+if INCLUDE_ALL_HOMES_IN_GRID_IMPACT and RESSTOCK_RELEASE_THIS_RUN != '2022.1.1':
+    raise ValueError(
+        f"INCLUDE_ALL_HOMES_IN_GRID_IMPACT = True has only been checked on "
+        f"ResStock 2022.1.1, but this run reads {RESSTOCK_RELEASE_THIS_RUN!r}. "
+        f"Set it to False, or run 2022.1.1.")
 
 
 # Run the model for all measure packages (MPs) or a specific MP
