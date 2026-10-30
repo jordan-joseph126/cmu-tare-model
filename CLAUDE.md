@@ -159,6 +159,23 @@ Where it lives:
 | Central or room AC | 221,301 | 38,910 |
 | Cooling system not shared | 221,205 | 96 |
 
+### Sample switches (`constants.py`, both `False` by default)
+
+With both off, results match the run without them (checked on a Colorado run,
+29 Oct 2026). Both work on ResStock 2022.1.1 only; a 2025.1 run with either on
+stops with an error.
+
+- `INCLUDE_HOMES_WITHOUT_COOLING`: homes with no AC join the study sample. Their
+  old-AC cost and credit are $0, and their cooling savings stay negative (the
+  heat pump adds cooling). The funnel's AC step is then named
+  `central_room_or_no_ac`.
+- `INCLUDE_ALL_HOMES_IN_GRID_IMPACT`: every home counts in the grid impact load
+  totals, not only the sample. Homes outside the sample (for example existing
+  heat pumps and wall or floor furnaces) keep their own load and never adopt,
+  in the economic case or the 100% case. The sample, costs, NPV and rebates do
+  not change. It is read in one cell of `tare_model_main_v3_1.ipynb`, the grid
+  impact cell that sets `CUSTOM_WEIGHTING`, and works with that set either way.
+
 ---
 
 ## Critical Rules — Read First
@@ -579,6 +596,9 @@ modeled — not an actual disbursement amount.
    deferred list).
 7. Uncertainty surrounding fuel switiching and project eligibility. Will need to update logic with new federal guidance. We use guidance as of June 2026.
 8. Our analysis is focused marginal NPV (replacing existing fossil fuel systems with heat pumps) and does not include homes with existing heat pump systems.
+   They never adopt and get no NPV or rebate. With `INCLUDE_ALL_HOMES_IN_GRID_IMPACT`
+   on (2022.1.1 only), they and the other homes outside the sample (wall or floor
+   furnaces, shared heating) count in the grid impact load totals with their own load.
 9. The capital cost estimation is currently performed for homes outside of the NRL REMDB regression cost formula bounds. Plans to update this and be more clear about the sample size after each filtering step and why the homes were removed. 
     The rule in the code, kept as it is on 8 Oct 2026: a size or an efficiency
     outside a REMDB row's range is priced by carrying the row's line beyond
@@ -612,12 +632,11 @@ modeled — not an actual disbursement amount.
     cooling cost is for a new service, not a change to an existing one; the
     same is partly true for room-AC homes, whose heat pump cools the whole
     house. Keeping no-AC homes in with cooling set to zero did not make sense.
-    PLACEHOLDER: a future switch would bring no-AC homes back for a
-    colleague's use case, at the points tagged 'TODO (no-AC homes)' in the
-    code: energy as ResStock publishes it (0 kWh of cooling before the
-    retrofit), cooling replacement cost and credit $0 on purpose, and cooling
-    savings left negative, because the added cooling is a cost the home pays.
-    See the cooling-list comment in `constants.py`.
+   `INCLUDE_HOMES_WITHOUT_COOLING` (`constants.py`,  for 2022.1.1 ResStock 
+    only; added 29 Oct 2026) brings no-AC homes back into the case study: 
+    energy as ResStock publishes it (0 kWh of cooling before the retrofit), cooling replacement cost and credit $0 on purpose, and cooling savings left negative,
+    because the added cooling is a cost the
+    home pays. See Sample switches, under Study Sample.
 12. Five sample rdu (1,211 homes) have blank climate emissions and damages.
     Their county (FIPS 46102) is not in the county-to-GEA-region crosswalk
     (`process_euss_data.py`, STEP 1b). Accepted: where data is missing the
@@ -726,13 +745,18 @@ out negative.
   room AC never did, and the dollars-only NPV counts the added cooling cost
   with no offsetting comfort credit.
 
-**Existing-ASHP homes — resolved: exclude.**
+**Existing-ASHP homes — never in the study sample.**
 
-`'Electricity ASHP'` (or any variant of it) must not appear in
-`EQUIPMENT_SPECS` or `ALLOWED_TECHNOLOGIES['heating']`. The study models
-transitions from fossil-fuel heating to an ASHP — a home that already has an
-ASHP has no fossil-fuel system left to replace. If you find an existing-ASHP
-entry in `constants.py`, flag it and remove it.
+A home that already has a heat pump has no fossil-fuel system left to
+replace, so it never adopts and gets no cost, credit, NPV or rebate.
+
+- On this branch `'Electricity ASHP'` is in `ALLOWED_TECHNOLOGIES['heating']`,
+  on purpose. These homes are kept out of the sample by the cooling list,
+  which leaves out the cooling type `'Heat Pump'`. Do not add `'Heat Pump'`
+  to the cooling list.
+- When `INCLUDE_ALL_HOMES_IN_GRID_IMPACT` (`constants.py`) is True, these
+  homes count in the grid impact load totals with their own load. They still
+  never adopt, in the economic case or the 100% case.
 
 **Consumption counts every component (22 Sep 2026).** Heating and cooling energy
 include primary energy, fans and pumps, and heat-pump backup, on both the baseline and
@@ -890,7 +914,7 @@ Do not suggest any of these:
 ❌ Hardcode 'mp3', 'ref2025_mp3_', 'aeo2026_mp3_', 'iraRef_mp3_', or any scenario prefix
 ❌ Use old scenario strings: 'AEO2023 Reference Case', 'No Inflation Reduction Act', preIRA, iraRef, aeo2026_mp{mp}_
 ❌ Rename anything in fetch_aeo_data_and_project_EXPORT_24June2026.py
-❌ Add 'Electricity ASHP' or any ASHP variant to EQUIPMENT_SPECS / ALLOWED_TECHNOLOGIES['heating'] — existing-ASHP homes are excluded by design
+❌ Let existing-heat-pump homes into the study sample (for example by adding 'Heat Pump' to ALLOWED_TECHNOLOGIES['cooling']) — they have no fossil system to replace and would be credited twice; INCLUDE_ALL_HOMES_IN_GRID_IMPACT counts their load only
 ❌ Read degree-day CSV without int-casting year columns — silent flat 1.0 results
 ❌ Use full state name as price lookup key ('Pennsylvania') — must be abbreviation ('PA') — fails silently as zero
 ❌ Set cooling savings or the cooling replacement credit to $0 by include_cooling, or count a blank energy value or cost as zero — every sample home has its own AC, and a blank in a sample home stops the run
