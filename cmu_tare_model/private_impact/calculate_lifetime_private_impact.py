@@ -24,7 +24,8 @@ from cmu_tare_model.utils.validation_framework import (
 from cmu_tare_model.utils.calculation_utils import (
     validate_common_parameters,
     is_dual_fuel_package,
-    apply_temporary_validation_and_mask
+    apply_temporary_validation_and_mask,
+    has_no_cooling_system
 )
 from cmu_tare_model.utils.column_names import (
     COST_TYPE_BACKUP_FURNACE,
@@ -101,9 +102,8 @@ def calculate_private_npv(
       - heatingLCC_coolingSavings: credit avoided heating replacement only
       - heatingLCC_coolingLCC:     credit both avoided replacements
 
-    Every home in the calculation has a central or room AC of its own (the
-    study sample requires it), so cooling savings and the cooling replacement
-    credit apply to every home.
+    For homes without pre-existing AC, cooling replacement costs and operational
+    savings from cooling are both set to $0.
 
     The NPV is the lifetime savings minus the incremental (net) capital cost of
     the heat pump over a like-for-like replacement. A single willingness-to-pay
@@ -238,10 +238,18 @@ def calculate_private_npv(
         verbose=verbose,
     )
     
-    # With INCLUDE_HOMES_WITHOUT_COOLING on, a home with no AC uses 0 kWh of
-    # cooling before the retrofit, and the heat pump adds cooling, so its
-    # cooling savings are negative: a new service the home pays for. They are
-    # left as calculated, not set to $0.
+    # A home with no AC uses 0 kWh of cooling before the retrofit, 
+    # A heat pump adds cooling as a service but we asome that savings are 0
+    # because we do not assume a behavioral change in cooling use
+    # (ie. the household could choose not to use the heat pump for cooling)
+
+    if 'hvac_cooling_type' not in df_copy.columns:
+        raise KeyError(
+            "hvac_cooling_type is missing from df; it is needed to find "
+            "homes with no AC, whose cooling savings are set to $0.")
+    gains_cooling = (
+        heating_valid_mask & has_no_cooling_system(df_copy['hvac_cooling_type']))
+    cooling_savings = cooling_savings.mask(gains_cooling, 0.0)
     heating_and_cooling_savings = heating_savings + cooling_savings
 
     # Save the discounted heating savings and the discounted cooling savings.

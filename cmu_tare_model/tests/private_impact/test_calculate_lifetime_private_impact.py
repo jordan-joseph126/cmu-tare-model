@@ -223,6 +223,7 @@ def npv_cases_df():
         'upgrade_hvac_heating_efficiency': [
             'ASHP', 'ASHP', 'ASHP', 'ASHP', None, None],
         'include_cooling': [True] * n,
+        'hvac_cooling_type': ['Central AC'] * n,
         'private_discount_rate_fixed_base': [0.07] * n,
         # Fixed cost columns (MP3, v4MID).
         'mp3_heating_upgrade_installed_cost_v4MID': [12000.0] * n,
@@ -418,8 +419,8 @@ def test_private_npv_blank_cooling_replacement_cost_raises(mock_discount, mock_p
 @patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.define_scenario_params')
 @patch('cmu_tare_model.private_impact.calculate_lifetime_private_impact.calculate_discount_factors')
 def test_private_npv_no_ac_home(mock_discount, mock_params, npv_cases_df, npv_cases_fuel_costs, heating_cooling_specs):
-    """A home with no AC gets a $0 cooling credit and negative cooling
-    savings, because the heat pump adds cooling it never had."""
+    """A home with no AC gets a $0 cooling credit and $0 cooling
+    savings, because the heat pump adds cooling as a service."""
     from cmu_tare_model.private_impact.calculate_lifetime_private_impact import calculate_private_npv
     from cmu_tare_model.utils.column_names import (
         create_cooling_credit_applied_col, create_discounted_savings_col)
@@ -431,6 +432,7 @@ def test_private_npv_no_ac_home(mock_discount, mock_params, npv_cases_df, npv_ca
     # Home 2 has no AC: $0 of cooling before the retrofit, and a $0
     # replacement cost (set in calculate_replacement_installed_cost).
     no_ac = 2
+    npv_cases_df.loc[no_ac, 'hvac_cooling_type'] = None
     npv_cases_df.loc[no_ac, 'mp3_cooling_replacement_installed_cost_v4MID'] = 0.0
     for year in range(BASE_YEAR, BASE_YEAR + 15):
         df_baseline.loc[no_ac, f'baseline_{year}_cooling_fuel_cost'] = 0.0
@@ -451,8 +453,8 @@ def test_private_npv_no_ac_home(mock_discount, mock_params, npv_cases_df, npv_ca
     savings_col = create_discounted_savings_col(
         'ref2025_mp3_', 'cooling', '_fixed_base')
     assert result.loc[no_ac, credit_col] == 0.0
-    # Cooling savings = (0 - 300) * 0.95 * 15 = -4275
-    assert result.loc[no_ac, savings_col] == pytest.approx(-4275)
+    # Without the $0 rule this would be (0 - 300) * 0.95 * 15 = -4275.
+    assert result.loc[no_ac, savings_col] == 0.0
 
     # With a $0 credit, crediting the cooling replacement adds nothing.
     base = 'ref2025_mp3_{case}_private_npv_fixed_base'
@@ -460,7 +462,7 @@ def test_private_npv_no_ac_home(mock_discount, mock_params, npv_cases_df, npv_ca
     npv_lcc_sav = result.loc[no_ac, base.format(case='heatingLCC_coolingSavings_sub')]
     assert npv_lcc_lcc == pytest.approx(npv_lcc_sav)
     # 8550 heating savings - 4275 cooling savings - 7000 net capital
-    assert npv_lcc_lcc == pytest.approx(-2725)
+    assert npv_lcc_lcc == pytest.approx(1550)
 
 
 # =============================================================================
