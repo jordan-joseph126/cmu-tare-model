@@ -520,9 +520,9 @@ def peak_dicts_to_table(
         Summer Peak (MW):        peak within the cooling season's months
         Absolute Annual Peak (MW): highest single hour of the whole year
                                   (the top-level peak in the peak dict)
-        Annual Consumption (MWh): annual energy
+        Annual Consumption (GWh): annual energy
         Peak Delta (MW):          scenario minus baseline absolute annual peak
-        Electricity Consumption Delta (MWh): scenario minus baseline energy
+        Electricity Consumption Delta (GWh): scenario minus baseline energy
  
     Args:
         scenario_peaks: {row label: peak_dict}. All peak dicts must share the
@@ -580,7 +580,7 @@ def peak_dicts_to_table(
                 "Peak Delta (MW)": p["delta_mw"],
                 "Annual Consumption (GWh)": p["scenario_mwh"] / 1000,
                 # "Annual Consumption (MWh)": p["scenario_mwh"],
-                "Electricity Consumption Delta (GWh)": p["delta_mwh"],
+                "Electricity Consumption Delta (GWh)": p["delta_mwh"]/1000,
             }
         )
  
