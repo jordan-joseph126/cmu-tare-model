@@ -32,6 +32,11 @@ CASE_STUDY_STATE = "CO"
 CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH = 12.3
 # CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH = None
 
+#Switch for using custom ResStock weighting for case study
+CUSTOM_WEIGHTING = True
+
+#Point to custom weights file (PSM results)
+CUSTOM_WEIGHTS_PATH = r"C:\Users\tamar\Documents\Research\residential_electrification\PSM_R\output\PSM_output_buildYear07_09_2026.csv"
 
 ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached', 'Mobile Home', 'Multi-Family with 2 - 4 Units']
 # ALLOWED_HOUSING_TYPES = ['Single-Family Attached', 'Single-Family Detached']
