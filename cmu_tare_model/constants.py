@@ -32,6 +32,15 @@ CASE_STUDY_STATE = "CO"
 CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH = 12.3
 # CASE_STUDY_ELECTRICITY_PRICE_CENTS_PER_KWH = None
 
+# Switch for the study base case: the NPV case used for the headline results,
+# the county adoption map, the grid impact adopters and the Tepper export.
+# Must be one of NPV_CASE_CATEGORIES found in (utils/column_names.py).
+#Tamar's study uses
+BASE_CASE_NPV_CASE = "heatingLCC_coolingSavings_sub_local"
+
+#Jordan's study uses
+# BASE_CASE_NPV_CASE = "heatingLCC_coolingLCC_unsub"
+
 #Switch for using custom ResStock weighting for case study
 CUSTOM_WEIGHTING = True
 

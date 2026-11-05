@@ -20,6 +20,8 @@ from cmu_tare_model.grid_impact.peak_load_functions import (
     summarize_hourly_timeseries,
 )
 
+from cmu_tare_model.utils.column_names import BASE_CASE_NPV_CASE
+
 
 # ============================================================================
 # gisjoin_to_fips
@@ -69,9 +71,8 @@ class TestFindAdoptionColumn:
     @pytest.fixture()
     def expected_col_name(self):
         """The column name that find_adoption_column should produce for defaults."""
-        return (
-            "ref2025_mp3_heatingLCC_coolingLCC_unsub_econ_adopter_fixed_base"
-        )
+        return f"ref2025_mp3_{BASE_CASE_NPV_CASE}_econ_adopter_fixed_base"
+
 
     @pytest.fixture()
     def df_with_adoption(self, expected_col_name):
@@ -97,7 +98,7 @@ class TestFindAdoptionColumn:
 
         expected = create_adoption_col(
             scenario_prefix="ref2025_mp4_",
-            npv_case="heatingLCC_coolingLCC_unsub",
+            npv_case=BASE_CASE_NPV_CASE,
             method_suffix="_fixed_base",
         )
         df = pd.DataFrame({expected: [1.0, 0.0, 1.0]})

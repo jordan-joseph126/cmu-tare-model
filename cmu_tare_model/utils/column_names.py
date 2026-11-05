@@ -26,7 +26,10 @@ Usage:
     # -> 'iraRef_mp3_heating_net_capital_cost_v4MID'
 """
 
-from cmu_tare_model.constants import REMDB_COST_SCENARIO_KEYS
+from cmu_tare_model.constants import (
+    REMDB_COST_SCENARIO_KEYS, 
+    BASE_CASE_NPV_CASE
+)
 from typing import Optional
 
 # =============================================================================
@@ -360,14 +363,13 @@ NPV_CASE_CATEGORIES = (
     "heatingLCC_coolingLCC_sub_local"
 )
 
-# The study base case: the single NPV case reported as the headline result and
-# used as the default economic-adopter definition (for example the constrained
-# grid-impact set and the county adoption-rate map). Unsubsidized, with both the
-# heating and cooling replacement costs credited in the NPV. Defined here as the
-# one source of truth so the peak-load module default and every notebook cell
-# import the same string -- change it here to move the base case everywhere.
-# Must be one of NPV_CASE_CATEGORIES above.
-BASE_CASE_NPV_CASE = "heatingLCC_coolingLCC_unsub"
+# The study base case is a switch in constants.py (BASE_CASE_NPV_CASE).
+# Other modules import it from here. It must be one of the cases above.
+if BASE_CASE_NPV_CASE not in NPV_CASE_CATEGORIES:
+    raise ValueError(
+        f"BASE_CASE_NPV_CASE = {BASE_CASE_NPV_CASE!r} in constants.py is not an "
+        f"NPV case. Expected one of {list(NPV_CASE_CATEGORIES)}")
+
 
 
 def create_npv_case_col(

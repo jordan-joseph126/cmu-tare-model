@@ -74,11 +74,10 @@ def find_adoption_column(
             output column names in the July 2026 refactor).
         discount_rate_key: Discount rate variant key (e.g. ``'fixed_base'``).
         npv_case: One of the NPV cases in NPV_CASE_CATEGORIES. Defaults to
-            ``BASE_CASE_NPV_CASE`` (``'heatingLCC_coolingLCC_unsub'``) from
-            column_names.py -- the study base case: unsubsidized, with both the
-            heating and cooling replacement costs credited in the NPV. Pass this
-            argument by keyword at every call site so a positional slip cannot
-            silently substitute another case.
+            ``BASE_CASE_NPV_CASE``, the study base case, set in constants.py.
+            Pass this argument by keyword at every call site so a positional
+            slip cannot silently substitute another case.
+
 
     Returns:
         The matched column name string.
