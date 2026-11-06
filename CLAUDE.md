@@ -166,9 +166,11 @@ With both off, results match the run without them (checked on a Colorado run,
 stops with an error.
 
 - `INCLUDE_HOMES_WITHOUT_COOLING`: homes with no AC join the study sample. Their
-  old-AC cost and credit are $0, and their cooling savings stay negative (the
-  heat pump adds cooling). The funnel's AC step is then named
-  `central_room_or_no_ac`.
+  old-AC cost and credit are $0, and so are their cooling savings in the NPV
+  (since 2 Nov 2026): the household may choose not to cool with the heat pump.
+  Their undiscounted cooling savings column and the
+  `_cooling_lifetime_savings_negative` flag still show the added cooling use.
+  The funnel's AC step is then named `central_room_or_no_ac`.
 - `INCLUDE_ALL_HOMES_IN_GRID_IMPACT`: every home counts in the grid impact load
   totals, not only the sample. Homes outside the sample (for example existing
   heat pumps and wall or floor furnaces) keep their own load and never adopt,
@@ -632,11 +634,13 @@ modeled — not an actual disbursement amount.
     cooling cost is for a new service, not a change to an existing one; the
     same is partly true for room-AC homes, whose heat pump cools the whole
     house. Keeping no-AC homes in with cooling set to zero did not make sense.
-   `INCLUDE_HOMES_WITHOUT_COOLING` (`constants.py`,  for 2022.1.1 ResStock 
-    only; added 29 Oct 2026) brings no-AC homes back into the case study: 
-    energy as ResStock publishes it (0 kWh of cooling before the retrofit), cooling replacement cost and credit $0 on purpose, and cooling savings left negative,
-    because the added cooling is a cost the
-    home pays. See Sample switches, under Study Sample.
+    `INCLUDE_HOMES_WITHOUT_COOLING` (`constants.py`, for 2022.1.1 ResStock
+    only; added 29 Oct 2026) brings no-AC homes back into the case study:
+    energy as ResStock publishes it (0 kWh of cooling before the retrofit), and
+    the cooling replacement cost, credit and NPV cooling savings all $0 on
+    purpose. The savings were left negative until 2 Nov 2026; they are now $0
+    because the household may choose not to cool with the heat pump. See
+    Sample switches, under Study Sample.
 12. Five sample rdu (1,211 homes) have blank climate emissions and damages.
     Their county (FIPS 46102) is not in the county-to-GEA-region crosswalk
     (`process_euss_data.py`, STEP 1b). Accepted: where data is missing the
@@ -712,6 +716,8 @@ modeled — not an actual disbursement amount.
 - `valid_fuel_cooling`: hardcoded True (cooling is always electric) — this flag is a no-op
 - `valid_tech_cooling`: technology is one of {Central AC, Room AC}, and the system is not shared between homes (`SHARED_COOLING_EFFICIENCY` in `constants.py`)
 - Homes with no AC (`'None'`) or evaporative coolers are excluded here, and so are left out of the study sample (Limitation 11)
+With `INCLUDE_HOMES_WITHOUT_COOLING` on, a home with no AC gets $0 cooling savings and a $0 cooling credit in the NPV (`calculate_private_npv`).
+
 
 **Cooling in NPV:** every home in the study sample has an AC of its own, so cooling savings and the cooling replacement credit apply to every home in the NPV. Nothing is set to $0 by `include_cooling`. A blank energy value or a blank cooling replacement cost in a sample home stops the run; it is not counted as zero.
 
@@ -738,6 +744,9 @@ out negative.
 - **Decision:** keep the negative savings in the NPV as a real operating
   cost, consistent with the dollars-only, no-WTP adoption threshold. Do not
   floor it at zero or exclude it.
+  Exception: a home with no AC (`INCLUDE_HOMES_WITHOUT_COOLING`) gets $0
+  cooling savings in the NPV, not negative ones (2 Nov 2026).
+
 - **Flagging:** a non-NPV boolean column,
   `ref2025_mp{mp}_cooling_lifetime_savings_negative`, marks the affected
   homes for reporting. This decision does not move any reference value.

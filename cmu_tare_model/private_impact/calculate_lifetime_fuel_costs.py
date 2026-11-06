@@ -370,12 +370,12 @@ def calculate_lifetime_fuel_costs(
                     # have a baseline room AC that cools one room, while the heat
                     # pump cools the whole house, so cooling kWh legitimately
                     # rises. The negative savings stay in the NPV as a real
-                    # operating cost; this boolean only marks the affected homes
-                    # so the phenomenon can be reported. True means a valid
-                    # cooling home whose lifetime cooling savings is below zero.
-                    # Excluded homes have NaN savings, which compare False here,
-                    # so they stay False. Left out of category_columns_to_mask on
-                    # purpose so it is never masked to NaN and stays boolean.
+                    # operating cost, except in a home with no AC, whose NPV
+                    # cooling savings are set to $0 (calculate_private_npv). This
+                    # boolean only marks the affected homes so they can be
+                    # reported; homes with no AC are marked too. True means a
+                    # valid cooling home whose lifetime cooling savings is below
+                    # zero.
                     if category == 'cooling':
                         negative_flag_col = (
                             f'{scenario_prefix}{category}_lifetime_savings_negative'

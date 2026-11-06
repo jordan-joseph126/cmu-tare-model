@@ -237,12 +237,10 @@ def calculate_private_npv(
         menu_mp=menu_mp,
         verbose=verbose,
     )
-    
-    # A home with no AC uses 0 kWh of cooling before the retrofit, 
-    # A heat pump adds cooling as a service but we asome that savings are 0
-    # because we do not assume a behavioral change in cooling use
-    # (ie. the household could choose not to use the heat pump for cooling)
 
+    # A home with no AC used 0 kWh of cooling before the retrofit. The heat
+    # pump can now cool it, but the household may choose not to use it for
+    # cooling, so its cooling savings are set to $0 instead of left negative.
     if 'hvac_cooling_type' not in df_copy.columns:
         raise KeyError(
             "hvac_cooling_type is missing from df; it is needed to find "
@@ -290,7 +288,7 @@ def calculate_private_npv(
     cooling_replacement_cost = df_copy[cooling_replacement_col]
 
 
-   # A home with no AC (INCLUDE_HOMES_WITHOUT_COOLING) already arrives with a
+    # A home with no AC (INCLUDE_HOMES_WITHOUT_COOLING) already arrives with a
     # cost of $0, set in calculate_replacement_installed_cost, so its credit
     # is $0. Every other home in the calculation has an AC to replace, so a
     # blank cost is a data error, not a $0 credit.
