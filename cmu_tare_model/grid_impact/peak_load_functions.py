@@ -411,6 +411,16 @@ def compute_county_scenario_profile(
             f"Hour range: {df_profile['hour'].min()}..{df_profile['hour'].max()}"
         )
 
+    # With custom weights the adoption share counts tax parcels, matching the
+    # MW totals. Otherwise every building counts once.
+    if custom_weighting:
+        adopter_weight = sum(weight_dict[bldg] for bldg in effective_adopters)
+        total_weight = sum(weight_dict[bldg] for bldg in all_baseline_bldgs)
+    else:
+        adopter_weight = len(effective_adopters)
+        total_weight = len(all_baseline_bldgs)
+
+
     peak_dict: dict[str, Any] = {
         "peak_hour_baseline": int(
             #Finds the hour at which the baseline_mw is the greatest 
@@ -428,7 +438,7 @@ def compute_county_scenario_profile(
         ),
         "n_adopters": len(effective_adopters),
         "n_total_buildings": len(all_baseline_bldgs),
-        "pct_adopters": (len(effective_adopters)/len(all_baseline_bldgs))*100
+        "pct_adopters": (adopter_weight / total_weight) * 100
     }
 
     return df_profile, peak_dict
