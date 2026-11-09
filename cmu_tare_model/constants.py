@@ -143,7 +143,7 @@ if RESSTOCK_RELEASE_THIS_RUN not in RESSTOCK_RELEASE_AND_MP:
 
 # Switch to include homes without existing AC.
 # True brings homes with no AC into the study sample. Their old-AC cost is
-# $0, and their cooling savings are negative (the heat pump adds cooling).
+# $0, and their cooling savings are set to $0 instead of being negative
 INCLUDE_HOMES_WITHOUT_COOLING = True
 
 # Checked on ResStock 2022.1.1 only. 2025.1 spells "no AC" differently, has
