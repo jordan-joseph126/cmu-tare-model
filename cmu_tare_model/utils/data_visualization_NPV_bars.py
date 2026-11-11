@@ -135,12 +135,15 @@ def plot_NPV_bars(df_tare, npv_col, case_study_weight_dict):
 
         ax.axhline(0, color='black', linewidth=1)
         ax.axvline(parcels_below_zero, color='gray', linestyle='--', linewidth=1)
-        ax.annotate(
+                # The top-left corner stays empty because the bars are sorted by NPV
+        ax.text(
+            0.02,
+            0.95,
             f'{pct_at_or_above_zero:.1f}% of modeled parcels have NPV >= $0',
-            xy=(parcels_below_zero, 0),
-            xytext=(-8, 8),
-            textcoords='offset points',
-            ha='right',
+            transform=ax.transAxes,
+            ha='left',
+            va='top',
+            fontsize=12,
         )
 
         ax.set_xlim(0, bar_edges[-1])
